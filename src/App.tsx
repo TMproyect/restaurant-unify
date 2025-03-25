@@ -8,6 +8,14 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Orders from "./pages/Orders";
+import Kitchen from "./pages/Kitchen";
+import Inventory from "./pages/Inventory";
+import Delivery from "./pages/Delivery";
+import Sales from "./pages/Sales";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import Staff from "./pages/Staff";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +30,14 @@ const App = () => (
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/kitchen" element={<Kitchen />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/delivery" element={<Delivery />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/staff" element={<Staff />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

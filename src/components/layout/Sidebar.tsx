@@ -21,37 +21,37 @@ const menuItems: MenuItem[] = [
     allowedRoles: ['admin', 'manager', 'waiter', 'kitchen', 'delivery'],
   },
   {
-    title: 'Orders',
+    title: 'Pedidos',
     icon: ShoppingCart,
     path: '/orders',
     allowedRoles: ['admin', 'manager', 'waiter', 'kitchen', 'delivery'],
   },
   {
-    title: 'Tables',
+    title: 'Mesas',
     icon: Users,
     path: '/tables',
     allowedRoles: ['admin', 'manager', 'waiter'],
   },
   {
-    title: 'Kitchen',
+    title: 'Cocina',
     icon: Calendar,
     path: '/kitchen',
     allowedRoles: ['admin', 'manager', 'kitchen'],
   },
   {
-    title: 'Inventory',
+    title: 'Inventario',
     icon: Package,
     path: '/inventory',
     allowedRoles: ['admin', 'manager', 'kitchen'],
   },
   {
-    title: 'Reports',
+    title: 'Informes',
     icon: FileText,
     path: '/reports',
     allowedRoles: ['admin', 'manager'],
   },
   {
-    title: 'Settings',
+    title: 'Configuración',
     icon: Settings,
     path: '/settings',
     allowedRoles: ['admin', 'manager'],
@@ -111,7 +111,7 @@ const Sidebar = () => {
       {!collapsed && user && (
         <div className="p-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
-            Logged in as: <span className="font-medium">{user.role}</span>
+            Conectado como: <span className="font-medium">{user.role}</span>
           </div>
         </div>
       )}

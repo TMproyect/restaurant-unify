@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 
 // Sample notifications for demo
 const SAMPLE_NOTIFICATIONS = [
-  { id: 1, message: 'Pedido #45 listo para entregar', time: '2 min ago', read: false },
-  { id: 2, message: 'Inventario bajo: Tomates', time: '10 min ago', read: false },
-  { id: 3, message: 'Nuevo pedido en Mesa 3', time: '15 min ago', read: true },
+  { id: 1, message: 'Pedido #45 listo para entregar', time: '2 min atrás', read: false },
+  { id: 2, message: 'Inventario bajo: Tomates', time: '10 min atrás', read: false },
+  { id: 3, message: 'Nuevo pedido en Mesa 3', time: '15 min atrás', read: true },
 ];
 
 const Header = () => {

@@ -9,14 +9,14 @@ import { Search, Plus, Filter, AlertTriangle } from 'lucide-react';
 
 // Datos de ejemplo para inventario
 const inventoryItems = [
-  { id: 1, name: 'Pollo', category: 'Carnes', stock: 30, unit: 'kg', minStock: 10, price: '$5.50' },
-  { id: 2, name: 'Tomates', category: 'Vegetales', stock: 15, unit: 'kg', minStock: 20, price: '$2.20' },
-  { id: 3, name: 'Aceite de oliva', category: 'Aceites', stock: 45, unit: 'l', minStock: 10, price: '$7.80' },
-  { id: 4, name: 'Harina', category: 'Panadería', stock: 100, unit: 'kg', minStock: 30, price: '$1.50' },
-  { id: 5, name: 'Huevos', category: 'Lácteos', stock: 200, unit: 'unidad', minStock: 50, price: '$0.25' },
-  { id: 6, name: 'Queso mozzarella', category: 'Lácteos', stock: 8, unit: 'kg', minStock: 10, price: '$10.30' },
-  { id: 7, name: 'Ajo', category: 'Condimentos', stock: 5, unit: 'kg', minStock: 2, price: '$4.25' },
-  { id: 8, name: 'Sal', category: 'Condimentos', stock: 20, unit: 'kg', minStock: 5, price: '$0.80' },
+  { id: 1, name: 'Pollo', category: 'Carnes', stock: 30, unit: 'kg', minStock: 10, price: '5,50 €' },
+  { id: 2, name: 'Tomates', category: 'Vegetales', stock: 15, unit: 'kg', minStock: 20, price: '2,20 €' },
+  { id: 3, name: 'Aceite de oliva', category: 'Aceites', stock: 45, unit: 'l', minStock: 10, price: '7,80 €' },
+  { id: 4, name: 'Harina', category: 'Panadería', stock: 100, unit: 'kg', minStock: 30, price: '1,50 €' },
+  { id: 5, name: 'Huevos', category: 'Lácteos', stock: 200, unit: 'unidad', minStock: 50, price: '0,25 €' },
+  { id: 6, name: 'Queso mozzarella', category: 'Lácteos', stock: 8, unit: 'kg', minStock: 10, price: '10,30 €' },
+  { id: 7, name: 'Ajo', category: 'Condimentos', stock: 5, unit: 'kg', minStock: 2, price: '4,25 €' },
+  { id: 8, name: 'Sal', category: 'Condimentos', stock: 20, unit: 'kg', minStock: 5, price: '0,80 €' },
 ];
 
 const Inventory = () => {
@@ -42,7 +42,7 @@ const Inventory = () => {
               <CardTitle className="text-muted-foreground text-sm">Valor del Inventario</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">$3,548.20</p>
+              <p className="text-2xl font-bold">3.548,20 €</p>
             </CardContent>
           </Card>
           <Card>

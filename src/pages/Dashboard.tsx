@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import DashboardCard from '@/components/dashboard/DashboardCard';
@@ -6,6 +7,32 @@ import AlertsBanner from '@/components/dashboard/AlertsBanner';
 import { Avatar, AvatarGroup } from '@/components/ui/Avatars';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { 
+  MessageSquare, 
+  AlertTriangle, 
+  FileText, 
+  ClipboardList,
+  MessagesSquare
+} from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter
+} from '@/components/ui/drawer';
+import { useToast } from '@/hooks/use-toast';
 
 // Sample staff data
 const STAFF_MEMBERS = [
@@ -176,18 +203,437 @@ const AdminDashboard = () => {
 
 // Dashboard for Waiters
 const WaiterDashboard = () => {
+  const isMobile = useIsMobile();
+  const { toast } = useToast();
+  
+  // Estados para los diálogos
+  const [openOrderDialog, setOpenOrderDialog] = useState(false);
+  const [openBillDialog, setOpenBillDialog] = useState(false);
+  const [openChatDialog, setOpenChatDialog] = useState(false);
+  const [openSOSDialog, setOpenSOSDialog] = useState(false);
+  
+  // Estado para mensajes de chat
+  const [chatMessages, setMessages] = useState([
+    { sender: 'Cocina', text: 'Necesitamos más detalles para la orden #35', time: '09:45' },
+    { sender: 'Cocina', text: 'Se terminaron las papas fritas, ofrecer sustituto', time: '10:10' },
+    { sender: 'Cocina', text: 'Pedido de mesa 3 estará listo en 5 minutos', time: '10:30' },
+  ]);
+  
+  // Estado para la nueva orden
+  const [newOrder, setNewOrder] = useState({
+    tableId: '',
+    items: []
+  });
+  
+  // Estado para el mensaje SOS
+  const [sosMessage, setSOSMessage] = useState('');
+  
+  // Estado para el mensaje de chat
+  const [newChatMessage, setNewChatMessage] = useState('');
+  
+  // Función para enviar mensaje de chat
+  const sendChatMessage = () => {
+    if (newChatMessage.trim() === '') return;
+    
+    const newMsg = {
+      sender: 'Carlos',
+      text: newChatMessage,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    setMessages([...chatMessages, newMsg]);
+    setNewChatMessage('');
+    toast({
+      title: "Mensaje enviado",
+      description: "Tu mensaje ha sido enviado a cocina",
+    });
+  };
+  
+  // Función para enviar SOS
+  const sendSOS = () => {
+    if (sosMessage.trim() === '') return;
+    
+    toast({
+      title: "Ayuda solicitada",
+      description: "Un gerente se acercará pronto",
+      variant: "destructive"
+    });
+    
+    setSOSMessage('');
+    setOpenSOSDialog(false);
+  };
+  
+  // Función para crear una nueva orden
+  const createNewOrder = () => {
+    if (newOrder.tableId === '') return;
+    
+    toast({
+      title: "Orden creada",
+      description: `Orden creada para Mesa ${newOrder.tableId}`,
+    });
+    
+    setNewOrder({ tableId: '', items: [] });
+    setOpenOrderDialog(false);
+  };
+  
+  // Función para generar cuenta
+  const generateBill = (tableId) => {
+    toast({
+      title: "Cuenta generada",
+      description: `La cuenta para Mesa ${tableId} está lista`,
+    });
+    
+    setOpenBillDialog(false);
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Mi Trabajo</h1>
+      <h1 className="text-xl md:text-2xl font-semibold">Mi Trabajo</h1>
+      
+      {/* Acciones Rápidas - Movidas al inicio */}
+      <div>
+        <h2 className="text-base md:text-lg font-medium mb-2 md:mb-3">Acciones Rápidas</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          {/* Botón Tomar Orden */}
+          {isMobile ? (
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button variant="outline" className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full">
+                  <ClipboardList className="h-6 w-6 mb-2" />
+                  <div className="text-base font-medium">Tomar Orden</div>
+                  <p className="text-xs text-muted-foreground mt-1">Crear nueva orden</p>
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader>
+                  <DrawerTitle>Tomar Nueva Orden</DrawerTitle>
+                  <DrawerDescription>Selecciona una mesa y agrega los items</DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Mesa</label>
+                    <select 
+                      className="w-full p-2 border border-border rounded-md"
+                      value={newOrder.tableId}
+                      onChange={(e) => setNewOrder({...newOrder, tableId: e.target.value})}
+                    >
+                      <option value="">Seleccionar Mesa</option>
+                      {TABLES_DATA
+                        .filter(table => table.status === 'available' || table.server === 'Carlos')
+                        .map(table => (
+                          <option key={table.id} value={table.id}>Mesa {table.id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-sm">Esta funcionalidad permite tomar órdenes a los clientes.</p>
+                    <p className="text-sm text-muted-foreground mt-1">En una implementación completa, aquí podrías ver el menú y agregar items a la orden.</p>
+                  </div>
+                </div>
+                <DrawerFooter>
+                  <Button onClick={createNewOrder} disabled={!newOrder.tableId}>Crear Orden</Button>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          ) : (
+            <Dialog open={openOrderDialog} onOpenChange={setOpenOrderDialog}>
+              <Button 
+                variant="outline" 
+                onClick={() => setOpenOrderDialog(true)}
+                className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full"
+              >
+                <ClipboardList className="h-6 w-6 mb-2" />
+                <div className="text-base font-medium">Tomar Orden</div>
+                <p className="text-xs text-muted-foreground mt-1">Crear nueva orden</p>
+              </Button>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Tomar Nueva Orden</DialogTitle>
+                  <DialogDescription>Selecciona una mesa y agrega los items</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Mesa</label>
+                    <select 
+                      className="w-full p-2 border border-border rounded-md"
+                      value={newOrder.tableId}
+                      onChange={(e) => setNewOrder({...newOrder, tableId: e.target.value})}
+                    >
+                      <option value="">Seleccionar Mesa</option>
+                      {TABLES_DATA
+                        .filter(table => table.status === 'available' || table.server === 'Carlos')
+                        .map(table => (
+                          <option key={table.id} value={table.id}>Mesa {table.id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-sm">Esta funcionalidad permite tomar órdenes a los clientes.</p>
+                    <p className="text-sm text-muted-foreground mt-1">En una implementación completa, aquí podrías ver el menú y agregar items a la orden.</p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={createNewOrder} disabled={!newOrder.tableId}>Crear Orden</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          
+          {/* Botón Generar Cuenta */}
+          {isMobile ? (
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button variant="outline" className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full">
+                  <FileText className="h-6 w-6 mb-2" />
+                  <div className="text-base font-medium">Generar Cuenta</div>
+                  <p className="text-xs text-muted-foreground mt-1">Para mesa actual</p>
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader>
+                  <DrawerTitle>Generar Cuenta</DrawerTitle>
+                  <DrawerDescription>Selecciona una mesa para generar su cuenta</DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {TABLES_DATA
+                      .filter(table => table.status === 'occupied' && table.server === 'Carlos')
+                      .map(table => (
+                        <Button 
+                          key={table.id} 
+                          variant="outline"
+                          onClick={() => generateBill(table.id)}
+                          className="h-16 justify-start flex-col items-start p-3"
+                        >
+                          <div className="font-medium">Mesa {table.id}</div>
+                          <div className="text-xs text-muted-foreground">{table.time} de ocupación</div>
+                        </Button>
+                    ))}
+                  </div>
+                </div>
+                <DrawerFooter>
+                  <Button onClick={() => setOpenBillDialog(false)}>Cancelar</Button>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          ) : (
+            <Dialog open={openBillDialog} onOpenChange={setOpenBillDialog}>
+              <Button 
+                variant="outline" 
+                onClick={() => setOpenBillDialog(true)}
+                className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full"
+              >
+                <FileText className="h-6 w-6 mb-2" />
+                <div className="text-base font-medium">Generar Cuenta</div>
+                <p className="text-xs text-muted-foreground mt-1">Para mesa actual</p>
+              </Button>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Generar Cuenta</DialogTitle>
+                  <DialogDescription>Selecciona una mesa para generar su cuenta</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {TABLES_DATA
+                      .filter(table => table.status === 'occupied' && table.server === 'Carlos')
+                      .map(table => (
+                        <Button 
+                          key={table.id} 
+                          variant="outline"
+                          onClick={() => generateBill(table.id)}
+                          className="h-16 justify-start flex-col items-start p-3"
+                        >
+                          <div className="font-medium">Mesa {table.id}</div>
+                          <div className="text-xs text-muted-foreground">{table.time} de ocupación</div>
+                        </Button>
+                    ))}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setOpenBillDialog(false)}>Cancelar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          
+          {/* Botón Chat Cocina */}
+          {isMobile ? (
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button variant="outline" className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full">
+                  <MessagesSquare className="h-6 w-6 mb-2" />
+                  <div className="text-base font-medium">Chat Cocina</div>
+                  <p className="text-xs text-muted-foreground mt-1">3 mensajes nuevos</p>
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent className="max-h-[90vh]">
+                <DrawerHeader>
+                  <DrawerTitle>Chat con Cocina</DrawerTitle>
+                </DrawerHeader>
+                <div className="p-4">
+                  <div className="border border-border rounded-lg h-[300px] mb-4 overflow-y-auto p-3 space-y-3">
+                    {chatMessages.map((msg, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`flex flex-col p-2 rounded-lg ${
+                          msg.sender === 'Carlos' 
+                            ? 'bg-primary/10 ml-8' 
+                            : 'bg-muted mr-8'
+                        }`}
+                      >
+                        <div className="flex justify-between mb-1">
+                          <span className="text-xs font-medium">{msg.sender}</span>
+                          <span className="text-xs text-muted-foreground">{msg.time}</span>
+                        </div>
+                        <p className="text-sm">{msg.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Escribe un mensaje..." 
+                      className="flex-1 p-2 border border-border rounded-md"
+                      value={newChatMessage}
+                      onChange={(e) => setNewChatMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                    />
+                    <Button onClick={sendChatMessage}>Enviar</Button>
+                  </div>
+                </div>
+              </DrawerContent>
+            </Drawer>
+          ) : (
+            <Dialog open={openChatDialog} onOpenChange={setOpenChatDialog}>
+              <Button 
+                variant="outline" 
+                onClick={() => setOpenChatDialog(true)}
+                className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full"
+              >
+                <MessagesSquare className="h-6 w-6 mb-2" />
+                <div className="text-base font-medium">Chat Cocina</div>
+                <p className="text-xs text-muted-foreground mt-1">3 mensajes nuevos</p>
+              </Button>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Chat con Cocina</DialogTitle>
+                </DialogHeader>
+                <div className="border border-border rounded-lg h-[300px] mb-4 overflow-y-auto p-3 space-y-3">
+                  {chatMessages.map((msg, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex flex-col p-2 rounded-lg ${
+                        msg.sender === 'Carlos' 
+                          ? 'bg-primary/10 ml-8' 
+                          : 'bg-muted mr-8'
+                      }`}
+                    >
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs font-medium">{msg.sender}</span>
+                        <span className="text-xs text-muted-foreground">{msg.time}</span>
+                      </div>
+                      <p className="text-sm">{msg.text}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Escribe un mensaje..." 
+                    className="flex-1 p-2 border border-border rounded-md"
+                    value={newChatMessage}
+                    onChange={(e) => setNewChatMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                  />
+                  <Button onClick={sendChatMessage}>Enviar</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+          
+          {/* Botón SOS Manager */}
+          {isMobile ? (
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button variant="outline" className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full">
+                  <AlertTriangle className="h-6 w-6 mb-2" />
+                  <div className="text-base font-medium">SOS Manager</div>
+                  <p className="text-xs text-muted-foreground mt-1">Solicitar ayuda</p>
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader>
+                  <DrawerTitle>Solicitar ayuda del Gerente</DrawerTitle>
+                  <DrawerDescription>Describe brevemente la situación</DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4 space-y-4">
+                  <textarea 
+                    placeholder="Ej: Necesito ayuda con un cliente difícil en la mesa 3" 
+                    className="w-full h-32 p-2 border border-border rounded-md resize-none"
+                    value={sosMessage}
+                    onChange={(e) => setSOSMessage(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">Esta alerta se enviará a todos los gerentes disponibles.</p>
+                </div>
+                <DrawerFooter>
+                  <Button 
+                    onClick={sendSOS} 
+                    disabled={sosMessage.trim() === ''}
+                    variant="destructive"
+                  >
+                    Enviar SOS
+                  </Button>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          ) : (
+            <Dialog open={openSOSDialog} onOpenChange={setOpenSOSDialog}>
+              <Button 
+                variant="outline" 
+                onClick={() => setOpenSOSDialog(true)}
+                className="flex flex-col items-center justify-center h-24 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors w-full"
+              >
+                <AlertTriangle className="h-6 w-6 mb-2" />
+                <div className="text-base font-medium">SOS Manager</div>
+                <p className="text-xs text-muted-foreground mt-1">Solicitar ayuda</p>
+              </Button>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Solicitar ayuda del Gerente</DialogTitle>
+                  <DialogDescription>Describe brevemente la situación</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <textarea 
+                    placeholder="Ej: Necesito ayuda con un cliente difícil en la mesa 3" 
+                    className="w-full h-32 p-2 border border-border rounded-md resize-none"
+                    value={sosMessage}
+                    onChange={(e) => setSOSMessage(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">Esta alerta se enviará a todos los gerentes disponibles.</p>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    onClick={sendSOS} 
+                    disabled={sosMessage.trim() === ''}
+                    variant="destructive"
+                  >
+                    Enviar SOS
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
       
       {/* Tables Grid */}
       <div>
-        <h2 className="text-lg font-medium mb-3">Mis Mesas</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <h2 className="text-base md:text-lg font-medium mb-2 md:mb-3">Mis Mesas</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
           {TABLES_DATA.filter(t => t.server === 'Carlos' || t.status === 'available').map((table) => (
             <div 
               key={table.id}
-              className={`border rounded-lg p-4 text-center transition-all ${
+              className={`border rounded-lg p-3 md:p-4 text-center transition-all ${
                 table.status === 'occupied' 
                   ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-900' 
                   : table.status === 'reserved' 
@@ -195,8 +641,8 @@ const WaiterDashboard = () => {
                   : 'bg-white border-border dark:bg-gray-900'
               }`}
             >
-              <h3 className="font-medium">Mesa {table.id}</h3>
-              <p className={`text-sm mt-1 ${
+              <h3 className="font-medium text-sm md:text-base">Mesa {table.id}</h3>
+              <p className={`text-xs md:text-sm mt-1 ${
                 table.status === 'occupied' ? 'text-blue-700 dark:text-blue-300' :
                 table.status === 'reserved' ? 'text-purple-700 dark:text-purple-300' :
                 'text-green-700 dark:text-green-300'
@@ -208,7 +654,15 @@ const WaiterDashboard = () => {
               {table.server && <p className="text-xs mt-1">Mesero: {table.server}</p>}
               <div className="mt-2">
                 <button 
-                  className="w-full px-3 py-1 text-sm rounded-md bg-primary text-white hover:bg-primary/90 transition-colors"
+                  className="w-full px-3 py-1 text-xs md:text-sm rounded-md bg-primary text-white hover:bg-primary/90 transition-colors"
+                  onClick={() => {
+                    if (table.status === 'occupied') {
+                      setOpenBillDialog(true);
+                    } else {
+                      setNewOrder({...newOrder, tableId: table.id});
+                      setOpenOrderDialog(true);
+                    }
+                  }}
                 >
                   {table.status === 'occupied' ? 'Ver orden' : 'Tomar orden'}
                 </button>
@@ -220,32 +674,9 @@ const WaiterDashboard = () => {
       
       {/* My Orders */}
       <div>
-        <h2 className="text-lg font-medium mb-3">Mis Órdenes</h2>
+        <h2 className="text-base md:text-lg font-medium mb-2 md:mb-3">Mis Órdenes</h2>
         <div className="bg-white dark:bg-gray-900 border border-border rounded-xl shadow-sm overflow-hidden">
           <OrdersList limit={5} filter="table" />
-        </div>
-      </div>
-      
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-medium mb-3">Acciones Rápidas</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="p-4 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors">
-            <div className="text-lg font-medium">Tomar Orden</div>
-            <p className="text-sm text-muted-foreground mt-1">Crear nueva orden</p>
-          </button>
-          <button className="p-4 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors">
-            <div className="text-lg font-medium">Generar Cuenta</div>
-            <p className="text-sm text-muted-foreground mt-1">Para mesa actual</p>
-          </button>
-          <button className="p-4 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors">
-            <div className="text-lg font-medium">Chat Cocina</div>
-            <p className="text-sm text-muted-foreground mt-1">3 mensajes nuevos</p>
-          </button>
-          <button className="p-4 bg-white dark:bg-gray-900 border border-border rounded-lg text-center hover:bg-muted/50 transition-colors">
-            <div className="text-lg font-medium">SOS Manager</div>
-            <p className="text-sm text-muted-foreground mt-1">Solicitar ayuda</p>
-          </button>
         </div>
       </div>
     </div>

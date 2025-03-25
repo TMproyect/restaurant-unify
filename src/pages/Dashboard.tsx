@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import DashboardCard from '@/components/dashboard/DashboardCard';
@@ -6,6 +5,7 @@ import OrdersList from '@/components/dashboard/OrdersList';
 import AlertsBanner from '@/components/dashboard/AlertsBanner';
 import { Avatar, AvatarGroup } from '@/components/ui/Avatars';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Sample staff data
 const STAFF_MEMBERS = [
@@ -59,11 +59,13 @@ const Dashboard = () => {
 
 // Dashboard for Admin/Manager
 const AdminDashboard = () => {
+  const isMobile = useIsMobile();
+  
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Panel de Control</h1>
+    <div className="space-y-4 md:space-y-6">
+      <h1 className="text-xl md:text-2xl font-semibold">Panel de Control</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Sales Summary Card */}
         <DashboardCard 
           title="Resumen de Ventas" 
@@ -74,20 +76,20 @@ const AdminDashboard = () => {
             </div>
           }
         >
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Ventas Hoy</p>
-              <p className="text-2xl font-semibold mt-1">$1,284.50</p>
+              <p className="text-xl md:text-2xl font-semibold mt-1">$1,284.50</p>
               <p className="text-xs text-green-600 mt-1">+12.5% vs ayer</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Órdenes</p>
-              <p className="text-2xl font-semibold mt-1">24</p>
+              <p className="text-xl md:text-2xl font-semibold mt-1">24</p>
               <p className="text-xs text-green-600 mt-1">+4 vs ayer</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Ticket Promedio</p>
-              <p className="text-2xl font-semibold mt-1">$53.52</p>
+              <p className="text-xl md:text-2xl font-semibold mt-1">$53.52</p>
               <p className="text-xs text-green-600 mt-1">+$2.30 vs ayer</p>
             </div>
           </div>
@@ -121,15 +123,15 @@ const AdminDashboard = () => {
       
       {/* Alerts */}
       <div className="py-2">
-        <h2 className="text-lg font-medium mb-3">Alertas Importantes</h2>
+        <h2 className="text-base md:text-lg font-medium mb-2 md:mb-3">Alertas Importantes</h2>
         <AlertsBanner />
       </div>
       
       {/* Orders */}
       <div>
-        <h2 className="text-lg font-medium mb-3">Órdenes Recientes</h2>
+        <h2 className="text-base md:text-lg font-medium mb-2 md:mb-3">Órdenes Recientes</h2>
         <div className="bg-white dark:bg-gray-900 border border-border rounded-xl shadow-sm overflow-hidden">
-          <OrdersList limit={5} />
+          <OrdersList limit={isMobile ? 3 : 5} />
           <div className="p-3 border-t border-border text-center">
             <a href="#" className="text-primary hover:underline text-sm">
               Ver todas las órdenes
@@ -140,12 +142,12 @@ const AdminDashboard = () => {
       
       {/* Tables Grid */}
       <div>
-        <h2 className="text-lg font-medium mb-3">Estado de Mesas</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <h2 className="text-base md:text-lg font-medium mb-2 md:mb-3">Estado de Mesas</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
           {TABLES_DATA.map((table) => (
             <div 
               key={table.id}
-              className={`border rounded-lg p-4 text-center transition-all ${
+              className={`border rounded-lg p-3 md:p-4 text-center transition-all ${
                 table.status === 'occupied' 
                   ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-900' 
                   : table.status === 'reserved' 
@@ -153,8 +155,8 @@ const AdminDashboard = () => {
                   : 'bg-white border-border dark:bg-gray-900'
               }`}
             >
-              <h3 className="font-medium">Mesa {table.id}</h3>
-              <p className={`text-sm mt-1 ${
+              <h3 className="font-medium text-sm md:text-base">Mesa {table.id}</h3>
+              <p className={`text-xs md:text-sm mt-1 ${
                 table.status === 'occupied' ? 'text-blue-700 dark:text-blue-300' :
                 table.status === 'reserved' ? 'text-purple-700 dark:text-purple-300' :
                 'text-green-700 dark:text-green-300'

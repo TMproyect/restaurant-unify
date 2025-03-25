@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Bell, Moon, Sun, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Sample notifications for demo
 const SAMPLE_NOTIFICATIONS = [
@@ -15,6 +16,7 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const isMobile = useIsMobile();
   
   const toggleDarkMode = () => {
     const newMode = !darkMode;
@@ -32,25 +34,31 @@ const Header = () => {
   const unreadCount = SAMPLE_NOTIFICATIONS.filter(n => !n.read).length;
 
   return (
-    <header className="h-16 px-4 bg-white dark:bg-gray-900 border-b border-border flex items-center justify-between">
-      <div className="flex-1">
-        <h1 className="text-xl font-medium">
+    <header className={cn(
+      "bg-white dark:bg-gray-900 border-b border-border flex items-center justify-between",
+      isMobile ? "h-14 px-2" : "h-16 px-4"
+    )}>
+      <div className="flex-1 ml-10 md:ml-0">
+        <h1 className={cn(
+          "font-medium truncate",
+          isMobile ? "text-lg" : "text-xl"  
+        )}>
           {user ? `Bienvenido, ${user.name}` : 'Restaurant OS'}
         </h1>
       </div>
       
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 md:space-x-4">
         {/* Dark mode toggle */}
         <button 
           className="icon-button"
           onClick={toggleDarkMode}
         >
-          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+          {darkMode ? <Sun size={isMobile ? 18 : 20} /> : <Moon size={isMobile ? 18 : 20} />}
         </button>
         
-        {/* Chat button */}
-        <button className="icon-button relative">
-          <MessageSquare size={20} />
+        {/* Chat button - hide on very small screens */}
+        <button className="icon-button relative hidden sm:flex">
+          <MessageSquare size={isMobile ? 18 : 20} />
           <span className="absolute top-0 right-0 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
             2
           </span>
@@ -62,7 +70,7 @@ const Header = () => {
             className="icon-button relative"
             onClick={() => setShowNotifications(!showNotifications)}
           >
-            <Bell size={20} />
+            <Bell size={isMobile ? 18 : 20} />
             {unreadCount > 0 && (
               <span className="absolute top-0 right-0 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                 {unreadCount}
@@ -72,7 +80,7 @@ const Header = () => {
           
           {/* Notifications dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
+            <div className="absolute right-0 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
               <div className="p-3 border-b border-border">
                 <h3 className="font-medium">Notificaciones</h3>
               </div>

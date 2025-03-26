@@ -51,14 +51,14 @@ const Login = () => {
     }
   }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
 
-  // Mejorado el estado de carga con un timeout de seguridad
+  // Mejorado el estado de carga con un timeout de seguridad más rápido (1 segundo)
   useEffect(() => {
-    // Safety timeout - si después de 5 segundos seguimos cargando, mostrar la página de login de todos modos
+    // Safety timeout - si después de 1 segundo seguimos cargando, mostrar la página de login de todos modos
     if (isLoading) {
       const safetyTimer = setTimeout(() => {
         console.log("Safety timeout triggered - showing login form");
         setShowContent(true);
-      }, 5000);
+      }, 1000); // Reducido a 1 segundo para mayor rapidez
       
       return () => clearTimeout(safetyTimer);
     }

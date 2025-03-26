@@ -18,16 +18,16 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Safety timeout to prevent infinite loading
+  // Safety timeout to prevent infinite loading - reducido a 1 segundo
   useEffect(() => {
     let timer: number | null = null;
     
     if (loading) {
-      // Auto-reset loading after 10 seconds as a failsafe
+      // Auto-reset loading after 1 second as a failsafe
       timer = window.setTimeout(() => {
         console.log("Safety timeout triggered to reset loading state");
         setLoading(false);
-      }, 10000);
+      }, 1000); // Reducido a 1 segundo para mayor rapidez
     }
     
     return () => {

@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log("Session check timeout reached, forcing loading state to false");
         setIsLoading(false);
       }
-    }, 5000);
+    }, 1000);
 
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       console.log('Initial session check:', currentSession?.user?.id);

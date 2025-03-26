@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -67,27 +68,42 @@ const Staff = () => {
       setIsLoading(true);
       
       // Get profiles from Supabase
-      const { data, error } = await supabase
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
         
-      if (error) {
-        throw error;
+      if (profilesError) {
+        throw profilesError;
       }
       
-      console.log('Fetched profiles:', data);
+      console.log('Fetched profiles:', profilesData);
       
-      // Create usersWithEmail array with a default email when not available
-      const usersWithEmail: UserProfile[] = data.map((profile) => ({
-        ...profile,
-        email: 'correo-no-disponible@ejemplo.com',
-        role: profile.role as UserRole,
-      }));
+      // Get users from Auth to get emails
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        // Continue with just profiles if auth fails
+      }
+      
+      const authUsers = authData?.users || [];
+      console.log('Auth users:', authUsers);
+      
+      // Match profiles with auth users to get emails
+      const usersWithEmail: UserProfile[] = profilesData.map((profile) => {
+        // Find matching auth user to get email
+        const matchingAuthUser = authUsers.find(authUser => authUser.id === profile.id);
+        return {
+          ...profile,
+          email: matchingAuthUser?.email || 'correo-no-disponible@ejemplo.com',
+          role: profile.role as UserRole,
+        };
+      });
       
       setStaffMembers(usersWithEmail);
       
       // Update role counts
-      const roleCounts = data.reduce((counts: Record<string, number>, profile) => {
+      const roleCounts = profilesData.reduce((counts: Record<string, number>, profile) => {
         counts[profile.role] = (counts[profile.role] || 0) + 1;
         return counts;
       }, {});
@@ -95,6 +111,31 @@ const Staff = () => {
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Error al cargar los usuarios');
+      
+      // Fallback: try to get auth users directly
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          const { data, error } = await supabase.auth.admin.listUsers();
+          
+          if (error) throw error;
+          
+          if (data && data.users) {
+            // Create minimal profiles from auth users
+            const usersWithEmail: UserProfile[] = data.users.map(authUser => ({
+              id: authUser.id,
+              name: authUser.user_metadata?.name || 'Usuario',
+              email: authUser.email || 'correo-no-disponible@ejemplo.com',
+              role: (authUser.user_metadata?.role as UserRole) || 'admin',
+              created_at: authUser.created_at || new Date().toISOString(),
+            }));
+            
+            setStaffMembers(usersWithEmail);
+          }
+        }
+      } catch (fallbackError) {
+        console.error('Fallback fetch also failed:', fallbackError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +148,8 @@ const Staff = () => {
   // Filter staff based on search
   const filteredStaff = staffMembers.filter(staff => 
     staff.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    staff.role.toLowerCase().includes(searchQuery.toLowerCase())
+    staff.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   // Handle user creation
@@ -140,7 +182,9 @@ const Staff = () => {
       setUserDialogOpen(false);
       
       // Reload user list
-      fetchUsers();
+      setTimeout(() => {
+        fetchUsers();
+      }, 1000); // Pequeño retraso para permitir que la BD se actualice
       
     } catch (error: any) {
       console.error('Error creating user:', error);

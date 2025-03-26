@@ -23,11 +23,11 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     let timer: number | null = null;
     
     if (loading) {
-      // Auto-reset loading after 10 seconds as a failsafe
+      // Auto-reset loading after 15 seconds as a failsafe
       timer = window.setTimeout(() => {
         console.log("Safety timeout triggered to reset loading state");
         setLoading(false);
-      }, 10000); // Increased from 5s to 10s
+      }, 15000); // Increased to 15s for slower connections
     }
     
     return () => {
@@ -58,12 +58,16 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       const result = await login(email, password);
       console.log("Login completado exitosamente:", result);
       
+      toast.success('Inicio de sesión exitoso', {
+        description: 'Redirigiendo al dashboard...',
+      });
+      
       if (onSuccess) {
-        console.log("Esperando 1.5 segundos antes de ejecutar callback de éxito");
+        console.log("Esperando 3 segundos antes de ejecutar callback de éxito");
         setTimeout(() => {
           console.log("Ejecutando callback de éxito para redirección");
           onSuccess();
-        }, 1500); // Increased from 500ms to 1500ms
+        }, 3000); // Increased to allow more time for auth to settle
       }
     } catch (err: any) {
       console.error("Error en login:", err);
@@ -82,7 +86,11 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       });
     } finally {
       console.log("Proceso de login finalizado, reseteando estado de carga");
-      setLoading(false);
+      // Don't reset loading immediately if login was successful
+      // to avoid UI flicker during redirect
+      setTimeout(() => {
+        if (loading) setLoading(false);
+      }, 2000);
     }
   };
 

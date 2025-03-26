@@ -29,6 +29,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     console.log('Session data retrieved, email:', email);
 
     console.log('Profile data found:', data);
+    console.log('Building AuthUser object with:', {id: data.id, email, role: data.role});
     
     return {
       id: data.id,

@@ -51,18 +51,18 @@ const Login = () => {
       setTimeout(() => {
         console.log("Ejecutando redirección a dashboard");
         navigate('/dashboard', { replace: true });
-      }, 2000); // Increased from 500ms to 2000ms
+      }, 3000); // Increased to 3 seconds to ensure profile data is fully loaded
     }
   }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
 
   // Mejorado el estado de carga con un timeout de seguridad
   useEffect(() => {
-    // Safety timeout - si después de 5 segundos seguimos cargando, mostrar la página de login de todos modos
+    // Safety timeout - si después de 8 segundos seguimos cargando, mostrar la página de login de todos modos
     if (isLoading) {
       const safetyTimer = setTimeout(() => {
         console.log("Safety timeout triggered - showing login form");
         setShowContent(true);
-      }, 5000); // Increased from 2s to 5s
+      }, 8000); // Increased timeout for slower connections
       
       return () => clearTimeout(safetyTimer);
     }
@@ -105,7 +105,7 @@ const Login = () => {
                   setTimeout(() => {
                     console.log("Navegando a dashboard desde callback");
                     navigate('/dashboard', { replace: true });
-                  }, 2000); // Increased from 500ms to 2000ms
+                  }, 3000); // Increased to ensure all auth state is settled
                 }}
               />
             </TabsContent>

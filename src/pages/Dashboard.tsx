@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,8 @@ const inventoryAlerts = [
   }
 ];
 
-const pendingOrders = [
+// Initial orders state
+const initialOrders = [
   {
     id: '45',
     table: 'Mesa 3',
@@ -59,22 +60,65 @@ const pendingOrders = [
 ];
 
 const Dashboard = () => {
+  const [orders, setOrders] = useState(initialOrders);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Function to start food preparation
   const handleStartPreparation = (orderId: string) => {
+    // Update the order status in state
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId 
+          ? { ...order, status: 'preparing' } 
+          : order
+      )
+    );
+
+    // Save updated orders to localStorage to persist between pages
+    const updatedOrders = orders.map(order => 
+      order.id === orderId 
+        ? { ...order, status: 'preparing' } 
+        : order
+    );
+    localStorage.setItem('kitchenOrders', JSON.stringify(updatedOrders));
+    
+    // Show notification
     toast({
       title: "Preparación iniciada",
       description: `La orden #${orderId} ha comenzado su preparación`,
     });
+    
+    // Navigate to kitchen page
     navigate('/kitchen');
   };
 
+  // Function to mark order as ready
   const handleMarkAsReady = (orderId: string) => {
+    // Update the order status in state
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId 
+          ? { ...order, status: 'completed' } 
+          : order
+      )
+    );
+
+    // Save updated orders to localStorage to persist between pages
+    const updatedOrders = orders.map(order => 
+      order.id === orderId 
+        ? { ...order, status: 'completed' } 
+        : order
+    );
+    localStorage.setItem('kitchenOrders', JSON.stringify(updatedOrders));
+    
+    // Show notification
     toast({
       title: "Orden lista",
       description: `La orden #${orderId} ha sido marcada como lista`,
     });
+    
+    // Navigate to kitchen page
     navigate('/kitchen');
   };
 
@@ -88,11 +132,11 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="border-l-4 border-l-yellow-500">
             <CardHeader>
-              <CardTitle>Pendientes ({pendingOrders.filter(o => !o.status).length})</CardTitle>
+              <CardTitle>Pendientes ({orders.filter(o => !o.status).length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {pendingOrders.filter(o => !o.status).map(order => (
+                {orders.filter(o => !o.status).map(order => (
                   <div key={order.id} className="p-4 bg-secondary/30 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -120,11 +164,11 @@ const Dashboard = () => {
 
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader>
-              <CardTitle>En Preparación ({pendingOrders.filter(o => o.status === 'preparing').length})</CardTitle>
+              <CardTitle>En Preparación ({orders.filter(o => o.status === 'preparing').length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {pendingOrders.filter(o => o.status === 'preparing').map(order => (
+                {orders.filter(o => o.status === 'preparing').map(order => (
                   <div key={order.id} className="p-4 bg-secondary/30 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
                       <div>

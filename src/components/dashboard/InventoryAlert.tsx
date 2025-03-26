@@ -19,10 +19,14 @@ const InventoryAlert: React.FC<InventoryAlertProps> = ({ item }) => {
   const { toast } = useToast();
 
   const handleRequestMore = () => {
+    // Show toast notification
     toast({
       title: "Solicitud enviada",
       description: `Se ha enviado una solicitud de reabastecimiento para ${item.name}`,
     });
+    
+    // In a real app, you would also send this request to your backend
+    console.log(`Requesting more ${item.name}: Current ${item.current}${item.unit}, Minimum ${item.minimum}${item.unit}`);
   };
 
   return (

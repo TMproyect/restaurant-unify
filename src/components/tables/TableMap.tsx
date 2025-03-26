@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { updateRestaurantTable } from '@/services/tableService';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Check } from 'lucide-react';
+import { Check, TableIcon } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface TableMapProps {
   tables: RestaurantTable[];
@@ -19,15 +21,8 @@ interface TableMapProps {
 
 export const TableMap: React.FC<TableMapProps> = ({ tables, zones, isLoading, onTableUpdate }) => {
   const [selectedZone, setSelectedZone] = useState<string>('all');
-  const [statusUpdateDialog, setStatusUpdateDialog] = useState<{
-    isOpen: boolean;
-    table: RestaurantTable | null;
-    newStatus: TableStatus | null;
-  }>({
-    isOpen: false,
-    table: null,
-    newStatus: null
-  });
+  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
+  const [statusSelectOpen, setStatusSelectOpen] = useState(false);
   const [notification, setNotification] = useState<{ isVisible: boolean; message: string; table: number | null }>({
     isVisible: false,
     message: '',
@@ -40,37 +35,26 @@ export const TableMap: React.FC<TableMapProps> = ({ tables, zones, isLoading, on
 
   // Función para manejar el clic en una mesa
   const handleTableClick = (table: RestaurantTable) => {
-    const newStatus = getNextStatus(table.status as TableStatus);
-    
-    setStatusUpdateDialog({
-      isOpen: true,
-      table,
-      newStatus
-    });
+    setSelectedTable(table);
+    setStatusSelectOpen(true);
   };
 
-  // Función para obtener el siguiente estado en el ciclo
-  const getNextStatus = (currentStatus: TableStatus): TableStatus => {
-    const statusCycle: TableStatus[] = ['available', 'occupied', 'reserved', 'maintenance'];
-    const currentIndex = statusCycle.indexOf(currentStatus);
-    return statusCycle[(currentIndex + 1) % statusCycle.length];
-  };
-
-  // Función para confirmar el cambio de estado
-  const confirmStatusChange = async () => {
-    if (!statusUpdateDialog.table || !statusUpdateDialog.newStatus) return;
-    
+  // Función para cambiar el estado de una mesa
+  const changeTableStatus = async (tableId: string, newStatus: TableStatus) => {
     try {
+      const tableToUpdate = tables.find(t => t.id === tableId);
+      if (!tableToUpdate) return;
+      
       await updateRestaurantTable(
-        statusUpdateDialog.table.id, 
-        { status: statusUpdateDialog.newStatus }
+        tableId, 
+        { status: newStatus }
       );
       
       // Mostrar notificación
       setNotification({
         isVisible: true,
-        message: `Mesa ${statusUpdateDialog.table.number} actualizada a ${TableStatusLabels[statusUpdateDialog.newStatus]}`,
-        table: statusUpdateDialog.table.number
+        message: `Mesa ${tableToUpdate.number} actualizada a ${TableStatusLabels[newStatus]}`,
+        table: tableToUpdate.number
       });
       
       // Disparar callback de actualización si existe
@@ -79,11 +63,8 @@ export const TableMap: React.FC<TableMapProps> = ({ tables, zones, isLoading, on
       }
       
       // Cerrar el diálogo
-      setStatusUpdateDialog({
-        isOpen: false,
-        table: null,
-        newStatus: null
-      });
+      setStatusSelectOpen(false);
+      setSelectedTable(null);
       
       // Esconder la notificación después de 3 segundos
       setTimeout(() => {
@@ -95,12 +76,8 @@ export const TableMap: React.FC<TableMapProps> = ({ tables, zones, isLoading, on
       }, 3000);
     } catch (error) {
       toast.error('Error al actualizar estado: ' + (error as Error).message);
-      
-      setStatusUpdateDialog({
-        isOpen: false,
-        table: null,
-        newStatus: null
-      });
+      setStatusSelectOpen(false);
+      setSelectedTable(null);
     }
   };
 
@@ -193,56 +170,59 @@ export const TableMap: React.FC<TableMapProps> = ({ tables, zones, isLoading, on
         Haga clic en una mesa para cambiar su estado
       </div>
 
-      {/* Diálogo de confirmación para cambio de estado */}
-      <Dialog 
-        open={statusUpdateDialog.isOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            setStatusUpdateDialog({
-              isOpen: false,
-              table: null,
-              newStatus: null
-            });
-          }
-        }}
+      {/* Diálogo para seleccionar estado de mesa */}
+      <Sheet 
+        open={statusSelectOpen} 
+        onOpenChange={setStatusSelectOpen}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cambiar Estado de Mesa</DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4">
-            {statusUpdateDialog.table && statusUpdateDialog.newStatus && (
-              <p>
-                ¿Desea cambiar la Mesa {statusUpdateDialog.table.number} de
-                <span className="font-medium mx-1">
-                  {TableStatusLabels[statusUpdateDialog.table.status as TableStatus]}
-                </span> 
-                a
-                <span className="font-medium mx-1">
-                  {TableStatusLabels[statusUpdateDialog.newStatus]}
-                </span>?
-              </p>
-            )}
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedTable && `Cambiar estado de Mesa ${selectedTable.number}`}
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="py-6">
+            <p className="text-sm text-muted-foreground mb-4">
+              Seleccione el nuevo estado para la mesa:
+            </p>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <Button 
+                className={`p-3 h-auto flex items-center justify-between ${TableStatusColors.available} hover:bg-green-600`}
+                onClick={() => selectedTable && changeTableStatus(selectedTable.id, 'available')}
+              >
+                <span className="text-lg font-semibold">Disponible</span>
+                <div className="h-4 w-4 bg-white rounded-full"></div>
+              </Button>
+              
+              <Button 
+                className={`p-3 h-auto flex items-center justify-between ${TableStatusColors.occupied} hover:bg-red-600`}
+                onClick={() => selectedTable && changeTableStatus(selectedTable.id, 'occupied')}
+              >
+                <span className="text-lg font-semibold">Ocupada</span>
+                <div className="h-4 w-4 bg-white rounded-full"></div>
+              </Button>
+              
+              <Button 
+                className={`p-3 h-auto flex items-center justify-between ${TableStatusColors.reserved} hover:bg-blue-600`}
+                onClick={() => selectedTable && changeTableStatus(selectedTable.id, 'reserved')}
+              >
+                <span className="text-lg font-semibold">Reservada</span>
+                <div className="h-4 w-4 bg-white rounded-full"></div>
+              </Button>
+              
+              <Button 
+                className={`p-3 h-auto flex items-center justify-between ${TableStatusColors.maintenance} hover:bg-orange-600`}
+                onClick={() => selectedTable && changeTableStatus(selectedTable.id, 'maintenance')}
+              >
+                <span className="text-lg font-semibold">Mantenimiento</span>
+                <div className="h-4 w-4 bg-white rounded-full"></div>
+              </Button>
+            </div>
           </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setStatusUpdateDialog({
-                isOpen: false,
-                table: null,
-                newStatus: null
-              })}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={confirmStatusChange}>
-              Confirmar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Notificación de estado actualizado */}
       {notification.isVisible && (

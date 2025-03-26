@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -93,6 +92,7 @@ const Staff = () => {
             return {
               ...profile,
               email,
+              role: profile.role as UserRole, // Asegurar que el rol sea del tipo UserRole
             };
           })
         );
@@ -136,7 +136,7 @@ const Staff = () => {
         newUserEmail,
         newUserPassword,
         newUserName,
-        newUserRole as UserRole
+        newUserRole
       );
       
       // Limpiar el formulario
@@ -150,10 +150,13 @@ const Staff = () => {
       const { data, error } = await supabase.from('profiles').select('*');
       if (error) throw error;
       
-      setStaffMembers(data.map(profile => ({
+      const updatedStaff: UserProfile[] = data.map(profile => ({
         ...profile,
-        email: newUserEmail, // Añadimos el email que conocemos
-      })));
+        email: newUserEmail,
+        role: profile.role as UserRole, // Asegurar que el rol sea del tipo UserRole
+      }));
+      
+      setStaffMembers(updatedStaff);
       
     } catch (error: any) {
       console.error('Error creating user:', error);

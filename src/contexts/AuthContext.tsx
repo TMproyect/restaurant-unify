@@ -153,7 +153,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Función para crear usuarios por parte del administrador
-  const createUser = async (email: string, password: string, name: string, role: UserRole) => {
+  const createUser = async (email: string, password: string, name: string, role: UserRole): Promise<void> => {
     setIsLoading(true);
     try {
       // Crear usuario en Supabase Authentication
@@ -184,7 +184,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (profileError) throw profileError;
 
       toast.success(`Usuario ${name} creado correctamente con rol ${role}`);
-      return data.user;
     } catch (error: any) {
       console.error('Error creating user:', error.message);
       toast.error(error.message || 'Error al crear el usuario');

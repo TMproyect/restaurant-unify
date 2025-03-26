@@ -23,11 +23,11 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     let timer: number | null = null;
     
     if (loading) {
-      // Auto-reset loading after 5 seconds as a failsafe
+      // Auto-reset loading after 10 seconds as a failsafe
       timer = window.setTimeout(() => {
         console.log("Safety timeout triggered to reset loading state");
         setLoading(false);
-      }, 5000);
+      }, 10000); // Increased from 5s to 10s
     }
     
     return () => {
@@ -54,14 +54,16 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       console.log("Iniciando proceso de login para:", email);
       setLoading(true);
       
+      console.log("Enviando solicitud de login a supabase...");
       const result = await login(email, password);
-      console.log("Login completado exitosamente", result);
+      console.log("Login completado exitosamente:", result);
       
       if (onSuccess) {
-        console.log("Ejecutando callback de éxito");
+        console.log("Esperando 1.5 segundos antes de ejecutar callback de éxito");
         setTimeout(() => {
+          console.log("Ejecutando callback de éxito para redirección");
           onSuccess();
-        }, 500); // Breve retraso para permitir que el estado se actualice
+        }, 1500); // Increased from 500ms to 1500ms
       }
     } catch (err: any) {
       console.error("Error en login:", err);

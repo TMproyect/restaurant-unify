@@ -23,8 +23,10 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       return null;
     }
 
+    console.log('Getting session for email data...');
     const sessionResponse = await supabase.auth.getSession();
     const email = sessionResponse.data.session?.user?.email || '';
+    console.log('Session data retrieved, email:', email);
 
     console.log('Profile data found:', data);
     
@@ -45,13 +47,15 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
 export const loginUser = async (email: string, password: string) => {
   try {
     console.log('Attempting to login with email:', email);
+    console.log('Calling supabase.auth.signInWithPassword...');
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      console.error('Login error:', error.message);
+      console.error('Login error from Supabase:', error.message);
       throw error;
     }
 
@@ -60,10 +64,11 @@ export const loginUser = async (email: string, password: string) => {
       throw new Error('No se pudo iniciar sesión');
     }
 
-    console.log('Login successful, user ID:', data.user.id);
+    console.log('Supabase login successful, user ID:', data.user.id);
+    console.log('Session data:', data.session ? 'Session obtained' : 'No session');
     return data;
   } catch (error) {
-    console.error('Error in loginUser:', error);
+    console.error('Error in loginUser helper function:', error);
     throw error;
   }
 };

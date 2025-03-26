@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -19,7 +18,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 
-// Interface for user profile
 interface UserProfile {
   id: string;
   name: string;
@@ -29,7 +27,6 @@ interface UserProfile {
   created_at: string;
 }
 
-// Interface for roles
 interface Role {
   id: number;
   name: string;
@@ -51,9 +48,8 @@ const Staff = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, createUser, updateUserRole } = useAuth();
+  const { user, createUser, updateUserRole, session } = useAuth();
   
-  // Roles data
   const roles: Role[] = [
     { id: 1, name: 'Administrador', permissions: 'Acceso completo', members: 0 },
     { id: 2, name: 'Gerente', permissions: 'Gestión de personal, finanzas', members: 0 },
@@ -62,47 +58,46 @@ const Staff = () => {
     { id: 5, name: 'Repartidor', permissions: 'Entregas', members: 0 },
   ];
   
-  // Load users from Supabase
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching users...');
       
-      // Get profiles from Supabase
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
         
       if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        toast.error('Error al cargar los perfiles de usuario');
         throw profilesError;
       }
       
       console.log('Fetched profiles:', profilesData);
       
-      // Get users from Auth to get emails
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
-        // Continue with just profiles if auth fails
+      if (!profilesData || profilesData.length === 0) {
+        console.warn('No profiles found in database');
+        setStaffMembers([]);
+        setIsLoading(false);
+        return;
       }
       
-      const authUsers = authData?.users || [];
-      console.log('Auth users:', authUsers);
+      const currentUserEmail = session?.user?.email || '';
       
-      // Match profiles with auth users to get emails
       const usersWithEmail: UserProfile[] = profilesData.map((profile) => {
-        // Find matching auth user to get email
-        const matchingAuthUser = authUsers.find(authUser => authUser.id === profile.id);
+        const email = profile.id === session?.user?.id 
+          ? currentUserEmail 
+          : `usuario-${profile.id.substring(0, 6)}@ejemplo.com`;
+        
         return {
           ...profile,
-          email: matchingAuthUser?.email || 'correo-no-disponible@ejemplo.com',
+          email: email,
           role: profile.role as UserRole,
         };
       });
       
       setStaffMembers(usersWithEmail);
       
-      // Update role counts
       const roleCounts = profilesData.reduce((counts: Record<string, number>, profile) => {
         counts[profile.role] = (counts[profile.role] || 0) + 1;
         return counts;
@@ -111,31 +106,6 @@ const Staff = () => {
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Error al cargar los usuarios');
-      
-      // Fallback: try to get auth users directly
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user) {
-          const { data, error } = await supabase.auth.admin.listUsers();
-          
-          if (error) throw error;
-          
-          if (data && data.users) {
-            // Create minimal profiles from auth users
-            const usersWithEmail: UserProfile[] = data.users.map(authUser => ({
-              id: authUser.id,
-              name: authUser.user_metadata?.name || 'Usuario',
-              email: authUser.email || 'correo-no-disponible@ejemplo.com',
-              role: (authUser.user_metadata?.role as UserRole) || 'admin',
-              created_at: authUser.created_at || new Date().toISOString(),
-            }));
-            
-            setStaffMembers(usersWithEmail);
-          }
-        }
-      } catch (fallbackError) {
-        console.error('Fallback fetch also failed:', fallbackError);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -143,16 +113,14 @@ const Staff = () => {
   
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [session]);
   
-  // Filter staff based on search
   const filteredStaff = staffMembers.filter(staff => 
     staff.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     staff.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
     staff.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Handle user creation
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -162,6 +130,7 @@ const Staff = () => {
     }
     
     try {
+      console.log('Creating user with role:', newUserRole);
       await createUser(
         newUserEmail,
         newUserPassword,
@@ -169,35 +138,29 @@ const Staff = () => {
         newUserRole
       );
       
-      // El usuario ha sido creado en Supabase Auth pero necesitará confirmar su correo
       toast.success('Usuario creado exitosamente', {
         description: 'El usuario necesitará confirmar su correo electrónico para acceder.'
       });
       
-      // Clear form
       setNewUserEmail('');
       setNewUserName('');
       setNewUserPassword('');
       setNewUserRole('waiter');
       setUserDialogOpen(false);
       
-      // Reload user list
       setTimeout(() => {
         fetchUsers();
-      }, 1000); // Pequeño retraso para permitir que la BD se actualice
-      
+      }, 1000);
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast.error(error.message || 'Error al crear el usuario');
     }
   };
   
-  // Handle role update
   const handleUpdateRole = async (userId: string, newRole: UserRole) => {
     try {
       await updateUserRole(userId, newRole);
       
-      // Update local list
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === userId 
@@ -213,21 +176,18 @@ const Staff = () => {
     }
   };
   
-  // Handle avatar upload
   const handleAvatarUpload = async () => {
     if (!avatarFile || !currentUser) return;
     
     try {
-      // Upload avatar to Supabase Storage
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${currentUser.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
-      // Create the bucket if it doesn't exist
       const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
       if (bucketError && bucketError.message.includes('not found')) {
         await supabase.storage.createBucket('avatars', {
           public: true,
-          fileSizeLimit: 1024 * 1024 * 2, // 2MB
+          fileSizeLimit: 1024 * 1024 * 2,
         });
       }
       
@@ -241,13 +201,11 @@ const Staff = () => {
         return;
       }
       
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
         
       if (urlData) {
-        // Update profile with avatar URL
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ avatar: urlData.publicUrl })
@@ -259,7 +217,6 @@ const Staff = () => {
           return;
         }
         
-        // Update local state
         setStaffMembers(prev => 
           prev.map(staff => 
             staff.id === currentUser.id 
@@ -277,13 +234,10 @@ const Staff = () => {
     }
   };
   
-  // Handle user status toggle
   const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
     try {
-      // In a real scenario, this would be done through a secure Edge Function
       toast.success(`Usuario ${currentStatus === 'active' ? 'desactivado' : 'activado'} correctamente`);
       
-      // Update local list to simulate the change
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === userId 
@@ -297,24 +251,20 @@ const Staff = () => {
     }
   };
   
-  // Handle editing user details
   const handleEditUser = (staff: UserProfile) => {
     setCurrentUser(staff);
     setAvatarUrl(staff.avatar || null);
     setEditDialogOpen(true);
   };
   
-  // Handle save user edits
   const handleSaveUserEdit = async () => {
     if (!currentUser) return;
     
     try {
-      // Upload avatar if selected
       if (avatarFile) {
         await handleAvatarUpload();
       }
       
-      // Update user profile
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -328,7 +278,6 @@ const Staff = () => {
         return;
       }
       
-      // Update local state
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === currentUser.id 
@@ -345,7 +294,6 @@ const Staff = () => {
     }
   };
   
-  // Check if current user is admin
   const isAdmin = user?.role === 'admin';
 
   return (
@@ -693,7 +641,6 @@ const Staff = () => {
                   </TableHeader>
                   <TableBody>
                     {roles.map(role => {
-                      // Count members for each role
                       const roleName = role.name.toLowerCase();
                       const roleKey = roleName === 'administrador' ? 'admin' : 
                                      roleName === 'gerente' ? 'manager' : 
@@ -728,7 +675,6 @@ const Staff = () => {
         </Tabs>
       </div>
 
-      {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,26 +22,22 @@ const Login = () => {
 
   useEffect(() => {
     if (!isLoading) {
-      // When the auth context is no longer loading, also reset local loading state
       setLocalLoading(false);
-      // Enable button after a short delay to avoid immediate clicks
       setTimeout(() => {
         setButtonDisabled(false);
       }, 100);
     }
   }, [isLoading]);
 
-  // Set up auto reset timer for any stuck states
   useEffect(() => {
     let timer: number | undefined;
     
-    // If button is disabled, set a timeout to re-enable it after 3 seconds
     if (buttonDisabled || localLoading) {
       timer = window.setTimeout(() => {
         console.log("Auto-resetting button state");
         setButtonDisabled(false);
         setLocalLoading(false);
-      }, 3000); // 3 seconds safety timeout
+      }, 3000);
     }
     
     return () => {
@@ -50,7 +45,6 @@ const Login = () => {
     };
   }, [buttonDisabled, localLoading]);
 
-  // Redirect if already authenticated
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -58,13 +52,11 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Prevent multiple clicks
     if (localLoading || buttonDisabled) {
       console.log("Button click prevented: already loading");
       return;
     }
     
-    // Update local UI state immediately
     setLocalLoading(true);
     setButtonDisabled(true);
     
@@ -72,11 +64,8 @@ const Login = () => {
     
     try {
       await login(email, password);
-      // Note: We don't need to manually set states here as the auth context
-      // will trigger the useEffect when isLoading changes
     } catch (err) {
       console.error("Login error handled locally:", err);
-      // Ensure button becomes clickable again after error
       setTimeout(() => {
         setLocalLoading(false);
         setButtonDisabled(false);
@@ -87,13 +76,11 @@ const Login = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Prevent multiple clicks
     if (localLoading || buttonDisabled) {
       console.log("Button click prevented: already loading");
       return;
     }
     
-    // Update local UI state immediately
     setLocalLoading(true);
     setButtonDisabled(true);
     
@@ -118,8 +105,7 @@ const Login = () => {
     }
     
     try {
-      // Aquí usamos 'waiter' como rol predeterminado para nuevos registros
-      await signup(email, password, name, 'waiter');
+      await signup(email, password, name, 'admin');
       setActiveTab('login');
       setPassword('');
       setConfirmPassword('');
@@ -129,7 +115,6 @@ const Login = () => {
     } catch (err) {
       console.error("Signup error handled locally:", err);
     } finally {
-      // Ensure button becomes clickable again
       setTimeout(() => {
         setLocalLoading(false);
         setButtonDisabled(false);
@@ -152,7 +137,6 @@ const Login = () => {
               <TabsTrigger value="signup">Registrarse</TabsTrigger>
             </TabsList>
             
-            {/* Login Tab */}
             <TabsContent value="login">
               <form onSubmit={handleLogin}>
                 <CardContent className="space-y-4">
@@ -202,7 +186,6 @@ const Login = () => {
               </form>
             </TabsContent>
             
-            {/* Signup Tab */}
             <TabsContent value="signup">
               <form onSubmit={handleSignup}>
                 <CardContent className="space-y-4">

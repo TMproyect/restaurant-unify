@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 const UpgradeToAdmin = () => {
   const { user, updateUserRole } = useAuth();
 
+  // Don't render the component if user is admin or not logged in
   if (!user || user.role === 'admin') {
     return null;
   }
@@ -29,7 +30,7 @@ const UpgradeToAdmin = () => {
           Actualizar permisos
         </CardTitle>
         <CardDescription>
-          Actualmente tienes el rol de <strong className="capitalize">{user.role}</strong> (mesero).
+          Actualmente tienes el rol de <strong className="capitalize">{user.role}</strong>.
         </CardDescription>
       </CardHeader>
       <CardContent>

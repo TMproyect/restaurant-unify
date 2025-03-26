@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -149,11 +148,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function - modificada para aceptar cualquier rol (waiter por defecto)
-  const signup = async (email: string, password: string, name: string, role: UserRole = 'waiter') => {
+  // Signup function - Modified to make 'admin' the default role
+  const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     try {
       setIsLoading(true);
-      console.log("Signup started...");
+      console.log("Signup started with role:", role);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -173,7 +172,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       toast.success('Cuenta creada con éxito. Por favor, verifica tu correo electrónico.');
-      console.log("Signup successful");
+      console.log("Signup successful with role:", role);
     } catch (error: any) {
       console.error('Error signing up:', error.message);
       toast.error(error.message || 'Error al crear la cuenta');
@@ -184,11 +183,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Función para crear usuarios por parte del administrador
-  const createUser = async (email: string, password: string, name: string, role: UserRole): Promise<void> => {
+  // Función para crear usuarios por parte del administrador - Updated default role
+  const createUser = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<void> => {
     try {
       setIsLoading(true);
-      console.log("Create user started...");
+      console.log("Create user started with role:", role);
       
       // Crear usuario en Supabase Authentication
       const { data, error } = await supabase.auth.admin.createUser({
@@ -226,7 +225,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       toast.success(`Usuario ${name} creado correctamente con rol ${role}`);
-      console.log("Create user successful");
+      console.log("Create user successful with role:", role);
     } catch (error: any) {
       console.error('Error creating user:', error.message);
       toast.error(error.message || 'Error al crear el usuario');

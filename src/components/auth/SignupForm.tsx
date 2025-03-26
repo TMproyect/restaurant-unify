@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,56 +13,33 @@ interface SignupFormProps {
 }
 
 const SignupForm = ({ onSuccess }: SignupFormProps) => {
-  const { signup, isLoading: authLoading } = useAuth();
+  const { signup } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [localLoading, setLocalLoading] = useState(false);
-
-  // Reset local loading when auth loading changes
-  useEffect(() => {
-    if (!authLoading) {
-      setLocalLoading(false);
-    }
-  }, [authLoading]);
-
-  // Auto-reset button state after timeout to prevent permanent disabled state
-  useEffect(() => {
-    let timer: number | undefined;
-    
-    if (localLoading) {
-      timer = window.setTimeout(() => {
-        console.log("Auto-resetting loading state after timeout");
-        setLocalLoading(false);
-      }, 10000); // 10 second safety timeout
-    }
-    
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [localLoading]);
+  const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (localLoading || authLoading) {
-      console.log("Signup already in progress, ignoring request");
+    if (loading) {
+      console.log("Registro ya en proceso, ignorando solicitud");
       return;
     }
     
-    setLocalLoading(true);
+    setLoading(true);
     console.log("Signup button clicked, state set to loading");
     
     if (password !== confirmPassword) {
       toast.error('Las contraseñas no coinciden');
-      setLocalLoading(false);
+      setLoading(false);
       return;
     }
 
     if (password.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres');
-      setLocalLoading(false);
+      setLoading(false);
       return;
     }
     
@@ -85,11 +62,9 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
       setConfirmPassword('');
     } finally {
       console.log("Signup process completed, resetting loading state");
-      setLocalLoading(false);
+      setLoading(false);
     }
   };
-
-  const isButtonDisabled = localLoading || authLoading;
 
   return (
     <form onSubmit={handleSignup}>
@@ -103,7 +78,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setName(e.target.value)}
             placeholder="Juan Pérez"
             required
-            disabled={isButtonDisabled}
+            disabled={loading}
           />
         </div>
         
@@ -116,7 +91,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@restaurante.com"
             required
-            disabled={isButtonDisabled}
+            disabled={loading}
           />
         </div>
         
@@ -129,7 +104,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mínimo 6 caracteres"
             required
-            disabled={isButtonDisabled}
+            disabled={loading}
           />
         </div>
         
@@ -142,7 +117,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirmar contraseña"
             required
-            disabled={isButtonDisabled}
+            disabled={loading}
           />
         </div>
       </CardContent>
@@ -151,9 +126,9 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
         <Button 
           type="submit" 
           className="w-full" 
-          disabled={isButtonDisabled}
+          disabled={loading}
         >
-          {isButtonDisabled ? (
+          {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Registrando...

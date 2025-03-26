@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,39 +13,16 @@ interface LoginFormProps {
 }
 
 const LoginForm = ({ onSuccess }: LoginFormProps) => {
-  const { login, isLoading: authLoading } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [localLoading, setLocalLoading] = useState(false);
-
-  // Reset local loading state when auth loading changes
-  useEffect(() => {
-    if (!authLoading) {
-      setLocalLoading(false);
-    }
-  }, [authLoading]);
-
-  // Safety timeout to prevent permanent loading state
-  useEffect(() => {
-    let timer: number;
-    
-    if (localLoading) {
-      timer = window.setTimeout(() => {
-        console.log("Auto-reset loading state after timeout");
-        setLocalLoading(false);
-      }, 10000); // 10 second timeout as a fallback
-    }
-    
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [localLoading]);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (localLoading || authLoading) {
-      console.log("Login already in progress, ignoring request");
+    if (loading) {
+      console.log("Proceso de login ya en curso, ignorando solicitud");
       return;
     }
     
@@ -57,15 +34,15 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     }
     
     try {
-      console.log("Setting local loading state to true");
-      setLocalLoading(true);
+      console.log("Iniciando proceso de login");
+      setLoading(true);
       
       const result = await login(email, password);
-      console.log("Login completed", result);
+      console.log("Login completado exitosamente", result);
       
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("Error en login:", err);
       if (err.message?.includes('Email not confirmed')) {
         toast.error('El correo electrónico no ha sido confirmado', {
           description: 'Por favor, revisa tu bandeja de entrada y confirma tu correo',
@@ -80,13 +57,10 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         });
       }
     } finally {
-      console.log("Login process completed, resetting local loading state");
-      setLocalLoading(false);
+      console.log("Proceso de login finalizado, reseteando estado de carga");
+      setLoading(false);
     }
   };
-
-  // Determine if the button should be disabled
-  const isButtonDisabled = localLoading || authLoading;
 
   return (
     <form onSubmit={handleLogin}>
@@ -100,7 +74,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@restaurante.com"
             required
-            disabled={isButtonDisabled}
+            disabled={loading}
           />
         </div>
         
@@ -113,7 +87,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
-            disabled={isButtonDisabled}
+            disabled={loading}
           />
         </div>
       </CardContent>
@@ -122,9 +96,9 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         <Button 
           type="submit" 
           className="w-full mb-4" 
-          disabled={isButtonDisabled}
+          disabled={loading}
         >
-          {isButtonDisabled ? (
+          {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Iniciando sesión...

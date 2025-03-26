@@ -34,9 +34,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('Auth state changed:', event, currentSession?.user?.id);
         if (!isMounted) return;
         
-        setSession(currentSession);
-        
         if (currentSession) {
+          setSession(currentSession);
           try {
             const profile = await fetchUserProfile(currentSession.user.id);
             if (profile) {
@@ -51,6 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(null);
           }
         } else {
+          setSession(null);
           setUser(null);
         }
         
@@ -63,9 +63,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('Initial session check:', currentSession?.user?.id);
       if (!isMounted) return;
       
-      setSession(currentSession);
-      
       if (currentSession) {
+        setSession(currentSession);
         try {
           const profile = await fetchUserProfile(currentSession.user.id);
           if (profile) {
@@ -99,7 +98,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     console.log("Login started for email:", email);
-    setIsLoading(true);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -135,9 +133,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       throw error;
-    } finally {
-      console.log("Login process completed, resetting loading state");
-      setIsLoading(false);
     }
   };
 

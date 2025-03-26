@@ -32,7 +32,7 @@ const Login = () => {
   }, []);
 
   // Only redirect once loading is complete and user is authenticated
-  if (isAuthenticated && !isLoading) {
+  if (!isLoading && isAuthenticated) {
     console.log("User is authenticated, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }

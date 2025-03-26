@@ -127,7 +127,7 @@ export const getLowStockItems = async (): Promise<InventoryItem[]> => {
   const { data, error } = await supabase
     .from('inventory_items')
     .select('*, category:category_id(id, name)')
-    .lt('stock_quantity', supabase.raw('min_stock_level'))
+    .lt('stock_quantity', 'min_stock_level')
     .gt('stock_quantity', 0);
     
   if (error) throw error;

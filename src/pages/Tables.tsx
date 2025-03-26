@@ -7,9 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TablesList } from '@/components/tables/TablesList';
 import { TableZones } from '@/components/tables/TableZones';
 import { TableMap } from '@/components/tables/TableMap';
-import { getRestaurantTables, getTableZones } from '@/services/tableService';
+import { 
+  getRestaurantTables, 
+  getTableZones, 
+  subscribeToTableChanges, 
+  subscribeToZoneChanges 
+} from '@/services/tableService';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 
 const Tables: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('lista');
+  
   const { 
     data: tables, 
     isLoading: tablesLoading, 
@@ -40,6 +49,24 @@ const Tables: React.FC = () => {
     }
   }, [tablesError, zonesError]);
 
+  // Suscripciones a cambios en tiempo real
+  useEffect(() => {
+    const unsubscribeTables = subscribeToTableChanges((updatedTables) => {
+      // Actualizar la caché de react-query en lugar de usar setState directamente
+      // Esto mantiene el estado sincronizado con otros componentes
+      refetchTables();
+    });
+
+    const unsubscribeZones = subscribeToZoneChanges((updatedZones) => {
+      refetchZones();
+    });
+
+    return () => {
+      unsubscribeTables();
+      unsubscribeZones();
+    };
+  }, [refetchTables, refetchZones]);
+
   const handleRefresh = () => {
     refetchTables();
     refetchZones();
@@ -51,15 +78,17 @@ const Tables: React.FC = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gestión de Mesas</h1>
-          <button 
+          <Button 
             onClick={handleRefresh}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition"
+            variant="outline"
+            className="flex items-center gap-2"
           >
+            <RefreshCw className="h-4 w-4" />
             Actualizar
-          </button>
+          </Button>
         </div>
 
-        <Tabs defaultValue="lista" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-6">
             <TabsTrigger value="lista">Lista de Mesas</TabsTrigger>
             <TabsTrigger value="zonas">Zonas</TabsTrigger>
@@ -88,6 +117,7 @@ const Tables: React.FC = () => {
               tables={tables || []} 
               zones={zones || []} 
               isLoading={tablesLoading || zonesLoading}
+              onTableUpdate={refetchTables}
             />
           </TabsContent>
         </Tabs>

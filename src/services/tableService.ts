@@ -159,3 +159,56 @@ export const deleteTableZone = async (id: string): Promise<void> => {
     throw new Error(error.message);
   }
 };
+
+// Funciones para tiempo real
+export const subscribeToTableChanges = (callback: (tables: RestaurantTable[]) => void) => {
+  const channel = supabase
+    .channel('table-changes')
+    .on('postgres_changes', 
+      { 
+        event: '*', 
+        schema: 'public', 
+        table: 'restaurant_tables' 
+      }, 
+      async () => {
+        // Cuando ocurre un cambio, obtenemos todas las mesas actualizadas
+        try {
+          const tables = await getRestaurantTables();
+          callback(tables);
+        } catch (error) {
+          console.error('Error fetching updated tables:', error);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+export const subscribeToZoneChanges = (callback: (zones: TableZone[]) => void) => {
+  const channel = supabase
+    .channel('zone-changes')
+    .on('postgres_changes', 
+      { 
+        event: '*', 
+        schema: 'public', 
+        table: 'table_zones' 
+      }, 
+      async () => {
+        // Cuando ocurre un cambio, obtenemos todas las zonas actualizadas
+        try {
+          const zones = await getTableZones();
+          callback(zones);
+        } catch (error) {
+          console.error('Error fetching updated zones:', error);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};

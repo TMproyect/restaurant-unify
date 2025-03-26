@@ -13,11 +13,15 @@ import {
   updateInventoryItem, 
   deleteInventoryItem, 
   updateInventoryItemStock,
-  InventoryItem 
+  createInventoryCategory,
+  updateInventoryCategory,
+  deleteInventoryCategory,
+  InventoryItem,
+  InventoryCategory
 } from '@/services/inventoryService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -36,6 +40,11 @@ const Inventory = () => {
   });
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  // For category management
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null);
   
   // Fetch inventory items
   const { 
@@ -156,6 +165,72 @@ const Inventory = () => {
     }
   });
   
+  // Create category mutation
+  const createCategoryMutation = useMutation({
+    mutationFn: (name: string) => createInventoryCategory(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryCategories'] });
+      setNewCategoryName('');
+      setEditingCategory(null);
+      toast({
+        title: "Categoría creada",
+        description: "La categoría ha sido creada exitosamente"
+      });
+    },
+    onError: (error) => {
+      console.error('Error creating category:', error);
+      toast({
+        title: "Error al crear",
+        description: "No se pudo crear la categoría",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update category mutation
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string, name: string }) => 
+      updateInventoryCategory(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryCategories'] });
+      setNewCategoryName('');
+      setEditingCategory(null);
+      toast({
+        title: "Categoría actualizada",
+        description: "La categoría ha sido actualizada exitosamente"
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating category:', error);
+      toast({
+        title: "Error al actualizar",
+        description: "No se pudo actualizar la categoría",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Delete category mutation
+  const deleteCategoryMutation = useMutation({
+    mutationFn: deleteInventoryCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      toast({
+        title: "Categoría eliminada",
+        description: "La categoría ha sido eliminada exitosamente"
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting category:', error);
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar la categoría",
+        variant: "destructive"
+      });
+    }
+  });
+  
   // Filter items based on search term and category
   const filteredItems = inventoryItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -238,6 +313,29 @@ const Inventory = () => {
     }
   };
 
+  // Handle category form submission
+  const handleCategorySubmit = () => {
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre de la categoría no puede estar vacío",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (editingCategory) {
+      updateCategoryMutation.mutate({
+        id: editingCategory.id,
+        name: newCategoryName
+      });
+    } else {
+      createCategoryMutation.mutate(newCategoryName);
+    }
+    
+    setIsCategoryDialogOpen(false);
+  };
+
   // Edit item
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
@@ -275,6 +373,18 @@ const Inventory = () => {
     }
   };
 
+  // Edit category
+  const handleEditCategory = (category: InventoryCategory) => {
+    setEditingCategory(category);
+    setNewCategoryName(category.name);
+    setIsCategoryDialogOpen(true);
+  };
+
+  // Delete category
+  const handleDeleteCategory = (id: string) => {
+    deleteCategoryMutation.mutate(id);
+  };
+
   if (itemsError) {
     toast({
       title: "Error al cargar inventario",
@@ -289,105 +399,146 @@ const Inventory = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Inventario</h1>
           
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus size={18} className="mr-2" /> Añadir Producto</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingItem ? 'Editar Producto' : 'Añadir Nuevo Producto'}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nombre</Label>
-                  <Input
-                    id="name"
-                    value={newItem.name || ''}
-                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    placeholder="Nombre del producto"
-                  />
-                </div>
+          <div className="flex space-x-2">
+            <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline"><Plus size={18} className="mr-2" /> Categoría</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingCategory ? 'Editar Categoría' : 'Añadir Nueva Categoría'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingCategory 
+                      ? 'Modifica los detalles de la categoría seleccionada.' 
+                      : 'Crea una nueva categoría para organizar tus productos de inventario.'}
+                  </DialogDescription>
+                </DialogHeader>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="category">Categoría</Label>
-                    <Select
-                      value={newItem.category_id || ''}
-                      onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
-                    >
-                      <SelectTrigger id="category">
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="unit">Unidad</Label>
-                    <Select
-                      value={newItem.unit || 'kg'}
-                      onValueChange={(value) => setNewItem({ ...newItem, unit: value })}
-                    >
-                      <SelectTrigger id="unit">
-                        <SelectValue placeholder="Seleccionar unidad" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="kg">kg</SelectItem>
-                        <SelectItem value="g">g</SelectItem>
-                        <SelectItem value="l">l</SelectItem>
-                        <SelectItem value="ml">ml</SelectItem>
-                        <SelectItem value="unidad">unidad</SelectItem>
-                        <SelectItem value="paquete">paquete</SelectItem>
-                        <SelectItem value="caja">caja</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="stock">Stock actual</Label>
+                    <Label htmlFor="categoryName">Nombre de la categoría</Label>
                     <Input
-                      id="stock"
-                      type="number"
-                      value={newItem.stock_quantity || 0}
-                      onChange={(e) => setNewItem({ ...newItem, stock_quantity: parseInt(e.target.value) })}
-                      placeholder="0"
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="minStock">Stock mínimo</Label>
-                    <Input
-                      id="minStock"
-                      type="number"
-                      value={newItem.min_stock_level || 0}
-                      onChange={(e) => setNewItem({ ...newItem, min_stock_level: parseInt(e.target.value) })}
-                      placeholder="0"
+                      id="categoryName"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Nombre de categoría"
                     />
                   </div>
                 </div>
-              </div>
-              
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cancelar</Button>
-                </DialogClose>
-                <Button onClick={handleSubmit}>
-                  {editingItem ? 'Guardar Cambios' : 'Añadir Producto'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button onClick={handleCategorySubmit}>
+                    {editingCategory ? 'Guardar Cambios' : 'Añadir Categoría'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus size={18} className="mr-2" /> Añadir Producto</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingItem ? 'Editar Producto' : 'Añadir Nuevo Producto'}
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Nombre</Label>
+                    <Input
+                      id="name"
+                      value={newItem.name || ''}
+                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                      placeholder="Nombre del producto"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="category">Categoría</Label>
+                      <Select
+                        value={newItem.category_id || ''}
+                        onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
+                      >
+                        <SelectTrigger id="category">
+                          <SelectValue placeholder="Seleccionar categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="unit">Unidad</Label>
+                      <Select
+                        value={newItem.unit || 'kg'}
+                        onValueChange={(value) => setNewItem({ ...newItem, unit: value })}
+                      >
+                        <SelectTrigger id="unit">
+                          <SelectValue placeholder="Seleccionar unidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kg">kg</SelectItem>
+                          <SelectItem value="g">g</SelectItem>
+                          <SelectItem value="l">l</SelectItem>
+                          <SelectItem value="ml">ml</SelectItem>
+                          <SelectItem value="unidad">unidad</SelectItem>
+                          <SelectItem value="paquete">paquete</SelectItem>
+                          <SelectItem value="caja">caja</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="stock">Stock actual</Label>
+                      <Input
+                        id="stock"
+                        type="number"
+                        value={newItem.stock_quantity || 0}
+                        onChange={(e) => setNewItem({ ...newItem, stock_quantity: parseInt(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="minStock">Stock mínimo</Label>
+                      <Input
+                        id="minStock"
+                        type="number"
+                        value={newItem.min_stock_level || 0}
+                        onChange={(e) => setNewItem({ ...newItem, min_stock_level: parseInt(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button onClick={handleSubmit}>
+                    {editingItem ? 'Guardar Cambios' : 'Añadir Producto'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {renderAlertBanner()}
@@ -429,6 +580,58 @@ const Inventory = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Categories section */}
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle>Categorías de Inventario</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {categoriesLoading ? (
+              <div className="text-center py-4">Cargando categorías...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No hay categorías definidas. Crea una categoría para organizar tu inventario.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {categories.map(category => (
+                  <Card key={category.id} className="overflow-hidden">
+                    <CardHeader className="py-2">
+                      <CardTitle className="text-sm font-medium">{category.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-2 flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
+                        Editar
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                            Eliminar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción eliminará la categoría y puede afectar a los productos asignados a ella.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteCategory(category.id)}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="flex justify-between items-center space-x-4 mb-4">
           <div className="relative flex-1">

@@ -5,7 +5,8 @@ import {
   Plus,
   AlertCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Tag
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,8 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [itemNotes, setItemNotes] = useState('');
+  const [additionalItems, setAdditionalItems] = useState<string[]>([]);
+  const [additionalItemText, setAdditionalItemText] = useState('');
 
   // Filtrar items del menú
   const filteredItems = menuItems.filter(item => {
@@ -51,6 +54,8 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       setActiveItemId(null);
       setSelectedOptions({});
       setItemNotes('');
+      setAdditionalItems([]);
+      setAdditionalItemText('');
     } else {
       const item = menuItems.find(i => i.id === itemId);
       if (item && item.options) {
@@ -62,6 +67,8 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       }
       setActiveItemId(itemId);
       setItemNotes('');
+      setAdditionalItems([]);
+      setAdditionalItemText('');
     }
   };
 
@@ -70,6 +77,17 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       ...prev,
       [optionName]: optionId
     }));
+  };
+
+  const handleAddAdditionalItem = () => {
+    if (additionalItemText.trim()) {
+      setAdditionalItems(prev => [...prev, additionalItemText.trim()]);
+      setAdditionalItemText('');
+    }
+  };
+
+  const handleRemoveAdditionalItem = (index: number) => {
+    setAdditionalItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAddToCart = (item: MenuItem) => {
@@ -94,6 +112,13 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       };
     }) : [];
 
+    // Preparar las notas con elementos adicionales
+    let notes = itemNotes.trim();
+    if (additionalItems.length > 0) {
+      notes += notes ? '\n' : '';
+      notes += 'Adicionales: ' + additionalItems.join(', ');
+    }
+
     // Crear el ítem para el carrito
     const cartItem: CartItem = {
       id: `${item.id}-${Date.now()}`, // ID único para el carrito
@@ -102,7 +127,7 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       price: item.price,
       quantity: 1,
       options: itemOptions,
-      notes: itemNotes.trim() || undefined
+      notes: notes || undefined
     };
 
     // Añadir al carrito
@@ -112,6 +137,8 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
     setActiveItemId(null);
     setSelectedOptions({});
     setItemNotes('');
+    setAdditionalItems([]);
+    setAdditionalItemText('');
   };
 
   const getActiveItem = () => {
@@ -228,6 +255,54 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
                     </div>
                   )}
 
+                  {/* Adicionales */}
+                  <div className="mt-3">
+                    <h4 className="text-sm font-medium mb-2">Adicionales</h4>
+                    <div className="flex gap-2 mb-2">
+                      <Input
+                        placeholder="Agregar ingrediente o extra..."
+                        value={additionalItemText}
+                        onChange={(e) => setAdditionalItemText(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddAdditionalItem();
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button 
+                        type="button" 
+                        size="sm"
+                        onClick={handleAddAdditionalItem}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    {additionalItems.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {additionalItems.map((item, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary"
+                            className="flex items-center gap-1 py-1"
+                          >
+                            <Tag className="h-3 w-3" />
+                            {item}
+                            <button 
+                              className="ml-1 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleRemoveAdditionalItem(index)}
+                            >
+                              ×
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notas */}
                   <div className="mt-3">
                     <h4 className="text-sm font-medium mb-2">Notas especiales</h4>
                     <Input

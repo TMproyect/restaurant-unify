@@ -3,14 +3,30 @@ import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import MenuItems from './MenuItems';
 import OrderCart, { CartItem } from './OrderCart';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OrderTakingProps {
   tableId: string;
   onOrderComplete: () => void;
 }
 
+// Kitchen options for restaurants with multiple kitchen areas
+const kitchenOptions = [
+  { id: "main", name: "Cocina Principal" },
+  { id: "grill", name: "Parrilla" },
+  { id: "cold", name: "Cocina Fría" },
+  { id: "pastry", name: "Pastelería" },
+];
+
 const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedKitchen, setSelectedKitchen] = useState("main");
   const { toast } = useToast();
 
   const handleAddToCart = (item: CartItem) => {
@@ -48,11 +64,23 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     }
   };
 
-  const handleCheckout = (paymentMethod: string) => {
-    // Simulación de envío de orden
+  const handleSendToKitchen = () => {
+    if (cartItems.length === 0) {
+      toast({
+        title: "No hay productos",
+        description: "Añade productos al pedido antes de enviarlo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get the kitchen name for the toast message
+    const kitchenName = kitchenOptions.find(k => k.id === selectedKitchen)?.name || "Cocina";
+    
+    // Simulación de envío de orden a la cocina seleccionada
     toast({
-      title: "Pedido procesado",
-      description: `Pedido para Mesa ${tableId} enviado a cocina`
+      title: "Pedido enviado a cocina",
+      description: `Pedido para Mesa ${tableId} enviado a ${kitchenName}`
     });
     
     // Reiniciar el carrito
@@ -68,12 +96,41 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
         <MenuItems onAddToCart={handleAddToCart} />
       </div>
       <div>
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-border shadow-sm overflow-hidden mb-4">
+          <div className="p-4 border-b border-border">
+            <h3 className="font-medium text-lg mb-2">Enviar pedido a cocina</h3>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Seleccionar cocina</label>
+              <Select value={selectedKitchen} onValueChange={setSelectedKitchen}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar cocina" />
+                </SelectTrigger>
+                <SelectContent>
+                  {kitchenOptions.map(kitchen => (
+                    <SelectItem key={kitchen.id} value={kitchen.id}>
+                      {kitchen.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button 
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium mt-2"
+                onClick={handleSendToKitchen}
+              >
+                Enviar a Cocina
+              </button>
+            </div>
+          </div>
+        </div>
         <OrderCart 
           items={cartItems}
           tableId={tableId}
           onUpdateQuantity={handleUpdateQuantity}
           onRemoveItem={handleRemoveItem}
-          onCheckout={handleCheckout}
+          onSendToKitchen={handleSendToKitchen}
+          selectedKitchen={selectedKitchen}
+          onSelectKitchen={setSelectedKitchen}
+          kitchenOptions={kitchenOptions}
         />
       </div>
     </div>

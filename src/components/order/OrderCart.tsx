@@ -5,12 +5,8 @@ import {
   Trash2, 
   Plus, 
   Minus, 
-  CreditCard, 
-  Banknote,
-  Smartphone,
-  Users
+  ChefHat
 } from 'lucide-react';
-import { paymentMethods } from '@/data/menuData';
 import { useToast } from '@/hooks/use-toast';
 
 // Definición de tipos para los items del carrito
@@ -31,12 +27,20 @@ export interface CartItem {
   notes?: string;
 }
 
+interface KitchenOption {
+  id: string;
+  name: string;
+}
+
 interface OrderCartProps {
   items: CartItem[];
   tableId: string;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
-  onCheckout: (paymentMethod: string) => void;
+  onSendToKitchen: () => void;
+  selectedKitchen: string;
+  onSelectKitchen: (kitchenId: string) => void;
+  kitchenOptions: KitchenOption[];
 }
 
 const OrderCart: React.FC<OrderCartProps> = ({ 
@@ -44,9 +48,11 @@ const OrderCart: React.FC<OrderCartProps> = ({
   tableId, 
   onUpdateQuantity, 
   onRemoveItem,
-  onCheckout
+  onSendToKitchen,
+  selectedKitchen,
+  onSelectKitchen,
+  kitchenOptions
 }) => {
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = React.useState('');
   const { toast } = useToast();
 
   // Calcular el subtotal
@@ -61,38 +67,6 @@ const OrderCart: React.FC<OrderCartProps> = ({
   const tax = subtotal * 0.18; // 18% de impuesto
   const serviceCharge = subtotal * 0.10; // 10% de cargo por servicio
   const total = subtotal + tax + serviceCharge;
-
-  const getPaymentIcon = (paymentId: string) => {
-    switch(paymentId) {
-      case 'efectivo': return <Banknote className="mr-2" />;
-      case 'tarjeta': return <CreditCard className="mr-2" />;
-      case 'movil': return <Smartphone className="mr-2" />;
-      case 'dividir': return <Users className="mr-2" />;
-      default: return null;
-    }
-  };
-
-  const handleCheckout = () => {
-    if (!selectedPaymentMethod) {
-      toast({
-        title: "Selecciona un método de pago",
-        description: "Debes seleccionar un método de pago para continuar",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (items.length === 0) {
-      toast({
-        title: "Carrito vacío",
-        description: "Añade productos al carrito antes de continuar",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    onCheckout(selectedPaymentMethod);
-  };
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-border shadow-sm overflow-hidden">
@@ -199,27 +173,13 @@ const OrderCart: React.FC<OrderCartProps> = ({
       </div>
       
       <div className="p-4 border-t border-border">
-        <h4 className="font-medium mb-3">Método de pago</h4>
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {paymentMethods.map(method => (
-            <Button
-              key={method.id}
-              type="button"
-              variant={selectedPaymentMethod === method.id ? "default" : "outline"}
-              className="justify-start"
-              onClick={() => setSelectedPaymentMethod(method.id)}
-            >
-              {getPaymentIcon(method.id)}
-              <span>{method.name}</span>
-            </Button>
-          ))}
-        </div>
         <Button 
           className="w-full" 
           size="lg"
-          onClick={handleCheckout}
+          onClick={onSendToKitchen}
         >
-          Procesar Orden
+          <ChefHat className="mr-2 h-4 w-4" />
+          Enviar a Cocina
         </Button>
       </div>
     </div>

@@ -3,13 +3,15 @@ import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MenuManager from '@/components/menu/MenuManager';
+import CategoryManager from '@/components/menu/CategoryManager';
 import InventoryManager from '@/components/inventory/InventoryManager';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Database, Utensils } from 'lucide-react';
+import { Database, Utensils, Tag } from 'lucide-react';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
+  const [categoriesTab, setCategoriesTab] = useState(false);
   const { toast } = useToast();
   
   const handleSynchronize = () => {
@@ -21,6 +23,11 @@ const Menu: React.FC = () => {
     // Dispatch events to update other components
     window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
     window.dispatchEvent(new CustomEvent('inventoryItemsUpdated'));
+  };
+
+  const handleCategoriesUpdated = () => {
+    // Force refresh of menu items with new categories
+    window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
   };
   
   return (
@@ -46,7 +53,37 @@ const Menu: React.FC = () => {
           </TabsList>
           
           <TabsContent value="menu" className="mt-4">
-            <MenuManager />
+            {categoriesTab ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCategoriesTab(false)}
+                    className="mb-4"
+                  >
+                    Volver a Productos
+                  </Button>
+                </div>
+                <CategoryManager 
+                  categories={[]} 
+                  onCategoriesUpdated={handleCategoriesUpdated} 
+                />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCategoriesTab(true)}
+                    className="mb-4"
+                  >
+                    <Tag className="mr-2 h-4 w-4" />
+                    Gestionar Categorías
+                  </Button>
+                </div>
+                <MenuManager />
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="inventory" className="mt-4">

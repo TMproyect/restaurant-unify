@@ -41,6 +41,69 @@ export const fetchMenuCategories = async (): Promise<MenuCategory[]> => {
   }
 };
 
+export const createMenuCategory = async (category: { name: string }): Promise<MenuCategory | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('menu_categories')
+      .insert([category])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating menu category:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in createMenuCategory:', error);
+    toast.error('Error al crear la categoría');
+    return null;
+  }
+};
+
+export const updateMenuCategory = async (id: string, updates: Partial<MenuCategory>): Promise<MenuCategory | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('menu_categories')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating menu category:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in updateMenuCategory:', error);
+    toast.error('Error al actualizar la categoría');
+    return null;
+  }
+};
+
+export const deleteMenuCategory = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('menu_categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting menu category:', error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteMenuCategory:', error);
+    toast.error('Error al eliminar la categoría');
+    return false;
+  }
+};
+
 export const fetchMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const { data, error } = await supabase

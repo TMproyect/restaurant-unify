@@ -68,6 +68,7 @@ const MenuManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   
   // Form state for adding/editing menu items
@@ -127,7 +128,7 @@ const MenuManager: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(item => 
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+        item.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
@@ -140,10 +141,10 @@ const MenuManager: React.FC = () => {
   
   // Handle adding a new menu item
   const handleAddItem = async () => {
-    if (!newItem.name || !newItem.description || !newItem.category_id) {
+    if (!newItem.name || !newItem.category_id) {
       toast({
         title: "Error al guardar",
-        description: "Por favor complete todos los campos requeridos",
+        description: "Por favor complete el nombre y seleccione una categoría",
         variant: "destructive"
       });
       return;
@@ -206,6 +207,7 @@ const MenuManager: React.FC = () => {
       image_url: item.image_url
     });
     setImageFile(null);
+    setIsEditDialogOpen(true);
   };
   
   // Handle saving edited menu item
@@ -242,6 +244,7 @@ const MenuManager: React.FC = () => {
       );
       
       setEditingItem(null);
+      setIsEditDialogOpen(false);
       
       // Reset form
       setNewItem({
@@ -327,7 +330,7 @@ const MenuManager: React.FC = () => {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
-                {editingItem ? 'Editar Plato' : 'Añadir Nuevo Plato'}
+                Añadir Nuevo Plato
               </DialogTitle>
             </DialogHeader>
             
@@ -460,8 +463,8 @@ const MenuManager: React.FC = () => {
               <DialogClose asChild>
                 <Button variant="outline">Cancelar</Button>
               </DialogClose>
-              <Button onClick={editingItem ? handleSaveEdit : handleAddItem}>
-                {editingItem ? 'Guardar Cambios' : 'Añadir Plato'}
+              <Button onClick={handleAddItem}>
+                Añadir Plato
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -536,6 +539,19 @@ const MenuManager: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {item.image_url && (
+                  <div className="mt-3">
+                    <img 
+                      src={item.image_url} 
+                      alt={item.name} 
+                      className="rounded-md w-full h-36 object-cover"
+                      onError={(e) => {
+                        // Fallback for broken images
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex justify-between pt-2 border-t">
                 <Button 
@@ -546,13 +562,13 @@ const MenuManager: React.FC = () => {
                   {item.available ? 'Deshabilitar' : 'Habilitar'}
                 </Button>
                 <div className="flex space-x-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={() => handleEditItem(item)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => handleEditItem(item)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="icon"
@@ -571,6 +587,160 @@ const MenuManager: React.FC = () => {
           <p className="text-sm mt-1">Intenta con otra búsqueda o añade nuevos platos</p>
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              Editar Plato
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Nombre</Label>
+              <Input
+                id="edit-name"
+                value={newItem.name || ''}
+                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                placeholder="Nombre del plato"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Descripción</Label>
+              <Textarea
+                id="edit-description"
+                value={newItem.description || ''}
+                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                placeholder="Descripción del plato"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-price">Precio</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  value={newItem.price || 0}
+                  onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Categoría</Label>
+                <Select
+                  value={newItem.category_id || ''}
+                  onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
+                >
+                  <SelectTrigger id="edit-category">
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-available">Disponibilidad</Label>
+                <Select
+                  value={newItem.available ? "true" : "false"}
+                  onValueChange={(value) => setNewItem({ ...newItem, available: value === "true" })}
+                >
+                  <SelectTrigger id="edit-available">
+                    <SelectValue placeholder="Disponibilidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Disponible</SelectItem>
+                    <SelectItem value="false">No disponible</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-popular">Popular</Label>
+                <Select
+                  value={newItem.popular ? "true" : "false"}
+                  onValueChange={(value) => setNewItem({ ...newItem, popular: value === "true" })}
+                >
+                  <SelectTrigger id="edit-popular">
+                    <SelectValue placeholder="¿Es popular?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-image">Imagen</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" size="icon">
+                  <ImagePlus className="h-4 w-4" />
+                </Button>
+              </div>
+              {(newItem.image_url || imageFile) && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {imageFile 
+                      ? `Nueva imagen seleccionada: ${imageFile.name}` 
+                      : `Imagen actual: ${newItem.image_url?.split('/').pop()}`}
+                  </p>
+                  {newItem.image_url && !imageFile && (
+                    <img 
+                      src={newItem.image_url} 
+                      alt="Imagen actual" 
+                      className="h-32 object-contain rounded border border-border"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-allergens">Alérgenos (separados por coma)</Label>
+              <Input
+                id="edit-allergens"
+                value={newItem.allergens?.join(', ') || ''}
+                onChange={(e) => setNewItem({ 
+                  ...newItem, 
+                  allergens: e.target.value.split(',').map(item => item.trim()).filter(Boolean) 
+                })}
+                placeholder="lácteos, gluten, frutos secos..."
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -19,27 +19,36 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [activeTab, setActiveTab] = useState('login');
   const [localLoading, setLocalLoading] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
 
-  // Reset de estado de carga local cuando cambia isLoading
   useEffect(() => {
     if (!isLoading) {
+      // When the auth context is no longer loading, also reset local loading state
       setLocalLoading(false);
+      // Enable button after a short delay to avoid immediate clicks
+      setTimeout(() => {
+        setButtonDisabled(false);
+      }, 100);
     }
   }, [isLoading]);
 
-  // Timeout para evitar bloqueo del botón
+  // Set up auto reset timer for any stuck states
   useEffect(() => {
-    // Auto-reset de localLoading después de 5 segundos para evitar bloqueos permanentes
-    let timeout: number;
-    if (localLoading) {
-      timeout = window.setTimeout(() => {
+    let timer: number | undefined;
+    
+    // If button is disabled, set a timeout to re-enable it after 3 seconds
+    if (buttonDisabled || localLoading) {
+      timer = window.setTimeout(() => {
+        console.log("Auto-resetting button state");
+        setButtonDisabled(false);
         setLocalLoading(false);
-      }, 5000);
+      }, 3000); // 3 seconds safety timeout
     }
+    
     return () => {
-      if (timeout) clearTimeout(timeout);
+      if (timer) clearTimeout(timer);
     };
-  }, [localLoading]);
+  }, [buttonDisabled, localLoading]);
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -49,20 +58,28 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // No proceder si ya está cargando
-    if (localLoading || isLoading) return;
+    // Prevent multiple clicks
+    if (localLoading || buttonDisabled) {
+      console.log("Button click prevented: already loading");
+      return;
+    }
     
+    // Update local UI state immediately
     setLocalLoading(true);
+    setButtonDisabled(true);
+    
+    console.log("Login button clicked, state set to loading");
     
     try {
       await login(email, password);
+      // Note: We don't need to manually set states here as the auth context
+      // will trigger the useEffect when isLoading changes
     } catch (err) {
-      // Error already handled in login function
-      console.error("Login error handled by context:", err);
-    } finally {
-      // Forzar reset del estado de carga después de un corto retraso
+      console.error("Login error handled locally:", err);
+      // Ensure button becomes clickable again after error
       setTimeout(() => {
         setLocalLoading(false);
+        setButtonDisabled(false);
       }, 500);
     }
   };
@@ -70,20 +87,33 @@ const Login = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // No proceder si ya está cargando
-    if (localLoading || isLoading) return;
+    // Prevent multiple clicks
+    if (localLoading || buttonDisabled) {
+      console.log("Button click prevented: already loading");
+      return;
+    }
     
+    // Update local UI state immediately
     setLocalLoading(true);
+    setButtonDisabled(true);
+    
+    console.log("Signup button clicked, state set to loading");
     
     if (password !== confirmPassword) {
       toast.error('Las contraseñas no coinciden');
-      setLocalLoading(false);
+      setTimeout(() => {
+        setLocalLoading(false);
+        setButtonDisabled(false);
+      }, 500);
       return;
     }
 
     if (password.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres');
-      setLocalLoading(false);
+      setTimeout(() => {
+        setLocalLoading(false);
+        setButtonDisabled(false);
+      }, 500);
       return;
     }
     
@@ -97,20 +127,14 @@ const Login = () => {
         description: 'Por favor inicia sesión con tus credenciales',
       });
     } catch (err) {
-      // Error is handled in the signup function
-      console.error("Signup error handled by context:", err);
+      console.error("Signup error handled locally:", err);
     } finally {
-      // Forzar reset del estado de carga después de un corto retraso
+      // Ensure button becomes clickable again
       setTimeout(() => {
         setLocalLoading(false);
+        setButtonDisabled(false);
       }, 500);
     }
-  };
-
-  // Función que determina si el botón debe estar deshabilitado
-  const isButtonDisabled = () => {
-    // Limitar a 2 segundos para el estado de carga para prevenir bloqueo permanente
-    return localLoading || isLoading;
   };
 
   return (
@@ -141,6 +165,7 @@ const Login = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="ejemplo@restaurante.com"
                       required
+                      disabled={localLoading || buttonDisabled}
                     />
                   </div>
                   
@@ -153,6 +178,7 @@ const Login = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       required
+                      disabled={localLoading || buttonDisabled}
                     />
                   </div>
                 </CardContent>
@@ -161,7 +187,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full mb-4" 
-                    disabled={isButtonDisabled()}
+                    disabled={localLoading || buttonDisabled}
                   >
                     {localLoading ? (
                       <>
@@ -189,6 +215,7 @@ const Login = () => {
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Juan Pérez"
                       required
+                      disabled={localLoading || buttonDisabled}
                     />
                   </div>
                   
@@ -201,6 +228,7 @@ const Login = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="ejemplo@restaurante.com"
                       required
+                      disabled={localLoading || buttonDisabled}
                     />
                   </div>
                   
@@ -213,6 +241,7 @@ const Login = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Mínimo 6 caracteres"
                       required
+                      disabled={localLoading || buttonDisabled}
                     />
                   </div>
                   
@@ -225,6 +254,7 @@ const Login = () => {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirmar contraseña"
                       required
+                      disabled={localLoading || buttonDisabled}
                     />
                   </div>
                 </CardContent>
@@ -233,7 +263,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={isButtonDisabled()}
+                    disabled={localLoading || buttonDisabled}
                   >
                     {localLoading ? (
                       <>

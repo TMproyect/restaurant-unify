@@ -69,10 +69,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize the auth state
   useEffect(() => {
+    let isMounted = true;
+    
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        setSession(currentSession);
+        if (!isMounted) return;
         
         if (currentSession) {
           const profile = await fetchUserProfile(currentSession.user.id);
@@ -81,12 +83,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(null);
         }
         
+        setSession(currentSession);
         setIsLoading(false);
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (!isMounted) return;
+      
       setSession(currentSession);
       
       if (currentSession) {
@@ -98,21 +103,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   // Login function
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      console.log("Login started...");
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        setIsLoading(false); // Asegurarse que isLoading se restablezca siempre
+        console.error('Login error:', error.message);
+        toast.error('Error al iniciar sesión: ' + error.message);
         throw error;
       }
 
@@ -120,7 +129,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const profile = await fetchUserProfile(data.user.id);
         
         if (!profile) {
-          setIsLoading(false); // Asegurarse que isLoading se restablezca siempre
+          toast.error('No se pudo recuperar el perfil de usuario');
           throw new Error('No se pudo recuperar el perfil de usuario');
         }
         
@@ -128,23 +137,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         toast.success('Inicio de sesión exitoso', {
           description: `Bienvenido, ${profile.name}`,
         });
+        console.log("Login successful:", profile);
       }
-      
-      // Asegurarse de que isLoading se restablezca al finalizar correctamente
-      setIsLoading(false);
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       toast.error(error.message || 'Error al iniciar sesión');
-      // Importante: asegurarse de que isLoading se ponga en false cuando hay error
-      setIsLoading(false);
       throw error;
+    } finally {
+      console.log("Login process completed, resetting loading state");
+      setIsLoading(false);
     }
   };
 
   // Signup function - modificada para aceptar cualquier rol (waiter por defecto)
   const signup = async (email: string, password: string, name: string, role: UserRole = 'waiter') => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      console.log("Signup started...");
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -157,24 +167,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error) {
-        setIsLoading(false);
+        console.error('Signup error:', error.message);
+        toast.error('Error al crear la cuenta: ' + error.message);
         throw error;
       }
 
       toast.success('Cuenta creada con éxito. Por favor, verifica tu correo electrónico.');
+      console.log("Signup successful");
     } catch (error: any) {
       console.error('Error signing up:', error.message);
       toast.error(error.message || 'Error al crear la cuenta');
       throw error;
     } finally {
+      console.log("Signup process completed, resetting loading state");
       setIsLoading(false);
     }
   };
 
   // Función para crear usuarios por parte del administrador
   const createUser = async (email: string, password: string, name: string, role: UserRole): Promise<void> => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      console.log("Create user started...");
+      
       // Crear usuario en Supabase Authentication
       const { data, error } = await supabase.auth.admin.createUser({
         email,
@@ -187,7 +202,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error) {
-        setIsLoading(false);
+        console.error('Create user error:', error.message);
+        toast.error('Error al crear el usuario: ' + error.message);
         throw error;
       }
 
@@ -204,31 +220,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ]);
 
       if (profileError) {
-        setIsLoading(false);
+        console.error('Create profile error:', profileError.message);
+        toast.error('Error al crear el perfil: ' + profileError.message);
         throw profileError;
       }
 
       toast.success(`Usuario ${name} creado correctamente con rol ${role}`);
+      console.log("Create user successful");
     } catch (error: any) {
       console.error('Error creating user:', error.message);
       toast.error(error.message || 'Error al crear el usuario');
       throw error;
     } finally {
+      console.log("Create user process completed, resetting loading state");
       setIsLoading(false);
     }
   };
 
   // Nueva función para actualizar el rol de un usuario
   const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      console.log("Update user role started...");
+      
       const { error } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('id', userId);
 
       if (error) {
-        setIsLoading(false);
+        console.error('Update role error:', error.message);
+        toast.error('Error al actualizar el rol: ' + error.message);
         throw error;
       }
 
@@ -239,26 +261,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         toast.success(`Rol de usuario actualizado correctamente a ${newRole}`);
       }
+      console.log("Update role successful");
     } catch (error: any) {
       console.error('Error updating user role:', error.message);
       toast.error(error.message || 'Error al actualizar el rol del usuario');
       throw error;
     } finally {
+      console.log("Update role process completed, resetting loading state");
       setIsLoading(false);
     }
   };
 
   // Logout function
   const logout = async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      console.log("Logout started...");
+      
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
+      console.log("Logout successful");
     } catch (error: any) {
       console.error('Error logging out:', error.message);
       toast.error('Error al cerrar sesión');
     } finally {
+      console.log("Logout process completed, resetting loading state");
       setIsLoading(false);
     }
   };

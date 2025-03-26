@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,11 +53,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(null);
         }
         
-        setIsLoading(false);
+        // Ensure loading state is reset even if there are errors
+        if (isMounted) setIsLoading(false);
       }
     );
 
-    // Check for existing session
+    // Check for existing session with a safety timeout
+    const sessionCheckTimeout = setTimeout(() => {
+      if (isMounted && isLoading) {
+        console.log("Session check timeout reached, forcing loading state to false");
+        setIsLoading(false);
+      }
+    }, 5000);
+
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       console.log('Initial session check:', currentSession?.user?.id);
       if (!isMounted) return;
@@ -80,17 +87,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
       
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
+    }).catch(error => {
+      console.error('Error in getSession:', error);
+      if (isMounted) setIsLoading(false);
     });
 
     return () => {
       console.log("AuthProvider cleanup, unsubscribing from auth state changes");
       isMounted = false;
+      clearTimeout(sessionCheckTimeout);
       subscription.unsubscribe();
     };
   }, []);
 
-  // Login function
+  // Login function - simplified for better error handling
   const login = async (email: string, password: string) => {
     if (!email || !password) {
       console.error("Email and password are required");
@@ -136,7 +147,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function
+  // Keep existing signup, createUser, updateUserRole, and logout functions
   const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     try {
       setIsLoading(true);

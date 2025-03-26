@@ -13,6 +13,15 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState('login');
   const navigate = useNavigate();
   const [redirectAttempted, setRedirectAttempted] = useState(false);
+  const [showContent, setShowContent] = useState(false);
+
+  // Mostrar el contenido después de un breve retraso para evitar parpadeos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Check for auth-related URL parameters (for email verification, etc.)
@@ -42,13 +51,26 @@ const Login = () => {
     }
   }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
 
-  // Show content based on loading state
-  if (isLoading) {
+  // Mejorado el estado de carga con un timeout de seguridad
+  useEffect(() => {
+    // Safety timeout - si después de 5 segundos seguimos cargando, mostrar la página de login de todos modos
+    if (isLoading) {
+      const safetyTimer = setTimeout(() => {
+        console.log("Safety timeout triggered - showing login form");
+        setShowContent(true);
+      }, 5000);
+      
+      return () => clearTimeout(safetyTimer);
+    }
+  }, [isLoading]);
+
+  // Show loading indicator
+  if (!showContent || (isLoading && !redirectAttempted)) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-lg mb-2">Cargando...</p>
-          <div className="h-1 w-32 bg-gray-200 mx-auto rounded-full overflow-hidden">
+          <div className="h-2 w-64 bg-gray-200 mx-auto rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 animate-pulse rounded-full"></div>
           </div>
         </div>
@@ -56,6 +78,7 @@ const Login = () => {
     );
   }
 
+  // Show login content
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">

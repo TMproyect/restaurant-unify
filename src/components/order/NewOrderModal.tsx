@@ -27,6 +27,7 @@ interface NewOrderModalProps {
 const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess }) => {
   const [orderType, setOrderType] = useState<'table' | 'delivery'>('table');
   const [selectedTable, setSelectedTable] = useState<string>('');
+  const [tableNumber, setTableNumber] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +45,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
       // Reset form when modal closes
       setOrderType('table');
       setSelectedTable('');
+      setTableNumber('');
       setCustomerName('');
       setOrderStep('details');
     }
@@ -91,6 +93,14 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
       return;
     }
 
+    // Guardar el número de mesa para mostrarlo claramente
+    if (orderType === 'table' && selectedTable) {
+      const selectedTableObj = tables.find(table => table.id.toString() === selectedTable);
+      if (selectedTableObj) {
+        setTableNumber(selectedTableObj.number.toString());
+      }
+    }
+
     setOrderStep('items');
   };
 
@@ -103,7 +113,9 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl p-0">
         <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>{orderStep === 'details' ? 'Nueva Orden' : `Mesa ${selectedTable} - ${customerName}`}</DialogTitle>
+          <DialogTitle>
+            {orderStep === 'details' ? 'Nueva Orden' : 'Tomar Pedido'}
+          </DialogTitle>
         </DialogHeader>
         
         {orderStep === 'details' ? (
@@ -169,7 +181,9 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
         ) : (
           <div className="p-6">
             <OrderTaking 
-              tableId={selectedTable} 
+              tableId={selectedTable}
+              tableNumber={tableNumber} 
+              customerName={customerName}
               onOrderComplete={handleOrderComplete}
             />
           </div>

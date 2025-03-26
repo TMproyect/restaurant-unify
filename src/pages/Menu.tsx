@@ -7,7 +7,7 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import InventoryManager from '@/components/inventory/InventoryManager';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Database, Utensils, Tag } from 'lucide-react';
+import { Utensils, Tag } from 'lucide-react';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
@@ -41,14 +41,10 @@ const Menu: React.FC = () => {
         </div>
         
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="menu" className="flex items-center gap-2">
               <Utensils className="h-4 w-4" />
               <span>Menú</span>
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              <span>Inventario</span>
             </TabsTrigger>
           </TabsList>
           
@@ -84,10 +80,6 @@ const Menu: React.FC = () => {
                 <MenuManager />
               </div>
             )}
-          </TabsContent>
-          
-          <TabsContent value="inventory" className="mt-4">
-            <InventoryManager />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -69,6 +68,7 @@ const MenuManager: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
   
   // Form state for adding/editing menu items
@@ -139,6 +139,19 @@ const MenuManager: React.FC = () => {
     setFilteredItems(filtered);
   }, [menuItems, searchTerm, selectedCategory]);
   
+  // Reset form fields
+  const resetForm = () => {
+    setNewItem({
+      name: '',
+      description: '',
+      price: 0,
+      category_id: '',
+      available: true,
+      allergens: [],
+    });
+    setImageFile(null);
+  };
+  
   // Handle adding a new menu item
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.category_id) {
@@ -175,16 +188,55 @@ const MenuManager: React.FC = () => {
     if (createdItem) {
       setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
       
-      // Reset form
-      setNewItem({
-        name: '',
-        description: '',
-        price: 0,
-        category_id: '',
-        available: true,
-        allergens: [],
+      toast({
+        title: "Plato añadido",
+        description: `${createdItem.name} ha sido añadido al menú`
       });
-      setImageFile(null);
+      
+      // Close dialog if requested
+      setIsAddDialogOpen(false);
+      resetForm();
+    }
+  };
+  
+  // Handle adding and staying in dialog to add more
+  const handleAddAndContinue = async () => {
+    if (!newItem.name || !newItem.category_id) {
+      toast({
+        title: "Error al guardar",
+        description: "Por favor complete el nombre y seleccione una categoría",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Handle image upload if provided
+    let imageUrl = newItem.image_url;
+    if (imageFile) {
+      const uploadedUrl = await uploadMenuItemImage(imageFile);
+      if (uploadedUrl) {
+        imageUrl = uploadedUrl;
+      }
+    }
+    
+    const itemToAdd = {
+      name: newItem.name,
+      description: newItem.description || '',
+      price: newItem.price || 0,
+      category_id: newItem.category_id,
+      available: newItem.available !== undefined ? newItem.available : true,
+      popular: newItem.popular || false,
+      allergens: newItem.allergens || [],
+      image_url: imageUrl
+    };
+    
+    const createdItem = await createMenuItem(itemToAdd);
+    
+    if (createdItem) {
+      setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
+      
+      // Reset form but keep dialog open for adding more
+      resetForm();
       
       toast({
         title: "Plato añadido",
@@ -247,15 +299,7 @@ const MenuManager: React.FC = () => {
       setIsEditDialogOpen(false);
       
       // Reset form
-      setNewItem({
-        name: '',
-        description: '',
-        price: 0,
-        category_id: '',
-        available: true,
-        allergens: [],
-      });
-      setImageFile(null);
+      resetForm();
       
       toast({
         title: "Plato actualizado",
@@ -320,14 +364,14 @@ const MenuManager: React.FC = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Gestión del Menú</h2>
         
-        <Dialog>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
               Añadir Plato
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Añadir Nuevo Plato
@@ -425,16 +469,24 @@ const MenuManager: React.FC = () => {
               <div className="grid gap-2">
                 <Label htmlFor="image">Imagen</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" size="icon">
-                    <ImagePlus className="h-4 w-4" />
-                  </Button>
+                  <div className="relative flex-1">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full flex justify-start text-muted-foreground"
+                      onClick={() => document.getElementById('image')?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4 mr-2" />
+                      {imageFile ? imageFile.name : "Seleccionar archivo"}
+                    </Button>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="sr-only"
+                    />
+                  </div>
                 </div>
                 {(newItem.image_url || imageFile) && (
                   <p className="text-xs text-muted-foreground">
@@ -459,13 +511,18 @@ const MenuManager: React.FC = () => {
               </div>
             </div>
             
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button onClick={handleAddItem}>
-                Añadir Plato
-              </Button>
+            <DialogFooter className="flex justify-between sm:justify-end">
+              <div className="space-x-2">
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleAddAndContinue}>
+                  Guardar y Crear otro
+                </Button>
+                <Button onClick={handleAddItem}>
+                  Guardar
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -508,6 +565,18 @@ const MenuManager: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className={item.available ? "" : "opacity-60"}>
+              {item.image_url && (
+                <div className="w-full">
+                  <img 
+                    src={item.image_url} 
+                    alt={item.name} 
+                    className="rounded-t-lg w-full h-44 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg mr-2">{item.name}</CardTitle>
@@ -539,19 +608,6 @@ const MenuManager: React.FC = () => {
                     )}
                   </div>
                 </div>
-                {item.image_url && (
-                  <div className="mt-3">
-                    <img 
-                      src={item.image_url} 
-                      alt={item.name} 
-                      className="rounded-md w-full h-36 object-cover"
-                      onError={(e) => {
-                        // Fallback for broken images
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
               </CardContent>
               <CardFooter className="flex justify-between pt-2 border-t">
                 <Button 
@@ -588,9 +644,8 @@ const MenuManager: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Editar Plato
@@ -688,16 +743,24 @@ const MenuManager: React.FC = () => {
             <div className="grid gap-2">
               <Label htmlFor="edit-image">Imagen</Label>
               <div className="flex gap-2">
-                <Input
-                  id="edit-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="flex-1"
-                />
-                <Button type="button" variant="outline" size="icon">
-                  <ImagePlus className="h-4 w-4" />
-                </Button>
+                <div className="relative flex-1">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full flex justify-start text-muted-foreground"
+                    onClick={() => document.getElementById('edit-image')?.click()}
+                  >
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    {imageFile ? imageFile.name : "Seleccionar archivo"}
+                  </Button>
+                  <Input
+                    id="edit-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="sr-only"
+                  />
+                </div>
               </div>
               {(newItem.image_url || imageFile) && (
                 <div>
@@ -746,3 +809,4 @@ const MenuManager: React.FC = () => {
 };
 
 export default MenuManager;
+

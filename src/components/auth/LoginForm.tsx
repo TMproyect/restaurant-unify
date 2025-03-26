@@ -18,16 +18,16 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Safety timeout to prevent infinite loading - reducido a 3 segundos
+  // Safety timeout to prevent infinite loading
   useEffect(() => {
     let timer: number | null = null;
     
     if (loading) {
-      // Auto-reset loading after 3 seconds as a failsafe
+      // Auto-reset loading after 5 seconds as a failsafe
       timer = window.setTimeout(() => {
         console.log("Safety timeout triggered to reset loading state");
         setLoading(false);
-      }, 3000);
+      }, 5000);
     }
     
     return () => {
@@ -54,12 +54,14 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       console.log("Iniciando proceso de login para:", email);
       setLoading(true);
       
-      await login(email, password);
-      console.log("Login completado exitosamente");
+      const result = await login(email, password);
+      console.log("Login completado exitosamente", result);
       
       if (onSuccess) {
         console.log("Ejecutando callback de éxito");
-        onSuccess();
+        setTimeout(() => {
+          onSuccess();
+        }, 500); // Breve retraso para permitir que el estado se actualice
       }
     } catch (err: any) {
       console.error("Error en login:", err);

@@ -47,18 +47,21 @@ const Login = () => {
     if (!isLoading && isAuthenticated && !redirectAttempted) {
       console.log("User is authenticated, redirecting to dashboard");
       setRedirectAttempted(true);
-      navigate('/dashboard', { replace: true });
+      // Agregar un pequeño delay para permitir que el estado se actualice completamente
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 500);
     }
   }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
 
-  // Mejorado el estado de carga con un timeout de seguridad más rápido (1 segundo)
+  // Mejorado el estado de carga con un timeout de seguridad
   useEffect(() => {
-    // Safety timeout - si después de 1 segundo seguimos cargando, mostrar la página de login de todos modos
+    // Safety timeout - si después de 2 segundos seguimos cargando, mostrar la página de login de todos modos
     if (isLoading) {
       const safetyTimer = setTimeout(() => {
         console.log("Safety timeout triggered - showing login form");
         setShowContent(true);
-      }, 1000); // Reducido a 1 segundo para mayor rapidez
+      }, 2000);
       
       return () => clearTimeout(safetyTimer);
     }
@@ -95,7 +98,14 @@ const Login = () => {
             </TabsList>
             
             <TabsContent value="login">
-              <LoginForm />
+              <LoginForm 
+                onSuccess={() => {
+                  console.log("LoginForm success callback executed");
+                  setTimeout(() => {
+                    navigate('/dashboard', { replace: true });
+                  }, 500);
+                }}
+              />
             </TabsContent>
             
             <TabsContent value="signup">

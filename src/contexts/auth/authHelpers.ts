@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
@@ -77,7 +78,7 @@ export const signupUser = async (email: string, password: string, name: string, 
         name,
         role,
       },
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: `${window.location.origin}/login`,
     },
   });
 
@@ -109,7 +110,7 @@ export const createUserProfile = async (userId: string, name: string, role: User
   }
 };
 
-// Modificado: Crear usuario sin usar admin API
+// Crear usuario sin usar admin API
 export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
   // En lugar de usar la API admin, usamos el registro normal
   const { data, error } = await supabase.auth.signUp({
@@ -120,7 +121,7 @@ export const createUserByAdmin = async (email: string, password: string, name: s
         name,
         role,
       },
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: `${window.location.origin}/login`,
     },
   });
 

@@ -10,7 +10,8 @@ import {
   createUserProfile, 
   createUserByAdmin, 
   updateUserRoleById, 
-  logoutUser 
+  logoutUser,
+  fetchAllProfiles
 } from './authHelpers';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -276,6 +277,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const fetchAllUsers = async (): Promise<AuthUser[]> => {
+    try {
+      console.log("Fetching all users from context...");
+      return await fetchAllProfiles();
+    } catch (error) {
+      console.error("Error fetching all users from context:", error);
+      return [];
+    }
+  };
+
   const value = {
     user,
     session,
@@ -286,6 +297,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     createUser,
     updateUserRole,
+    fetchAllUsers,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

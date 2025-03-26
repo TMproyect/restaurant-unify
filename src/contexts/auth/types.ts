@@ -24,4 +24,5 @@ export interface AuthContextType {
   isLoading: boolean;
   createUser: (email: string, password: string, name: string, role?: UserRole) => Promise<void>;
   updateUserRole: (userId: string, newRole: UserRole) => Promise<void>;
+  fetchAllUsers: () => Promise<AuthUser[]>;
 }

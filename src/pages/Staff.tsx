@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -18,25 +19,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 
-interface UserProfile {
-  id: string;
-  name: string;
-  role: UserRole;
-  email: string;
-  avatar?: string;
-  created_at: string;
-}
-
-interface Role {
-  id: number;
-  name: string;
-  permissions: string;
-  members: number;
-}
-
 const Staff = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [staffMembers, setStaffMembers] = useState<UserProfile[]>([]);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -44,92 +29,84 @@ const Staff = () => {
   const [newUserRole, setNewUserRole] = useState<UserRole>('waiter');
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, createUser, updateUserRole, session } = useAuth();
+  const { user, createUser, updateUserRole, session, fetchAllUsers } = useAuth();
   
-  const roles: Role[] = [
-    { id: 1, name: 'Administrador', permissions: 'Acceso completo', members: 0 },
-    { id: 2, name: 'Gerente', permissions: 'Gestión de personal, finanzas', members: 0 },
-    { id: 3, name: 'Cocina', permissions: 'Cocina, inventario', members: 0 },
-    { id: 4, name: 'Mesero', permissions: 'Órdenes, mesas', members: 0 },
-    { id: 5, name: 'Repartidor', permissions: 'Entregas', members: 0 },
+  const roles = [
+    { id: 1, name: 'Administrador', permissions: 'Acceso completo', members: 0, key: 'admin' },
+    { id: 2, name: 'Gerente', permissions: 'Gestión de personal, finanzas', members: 0, key: 'manager' },
+    { id: 3, name: 'Cocina', permissions: 'Cocina, inventario', members: 0, key: 'kitchen' },
+    { id: 4, name: 'Mesero', permissions: 'Órdenes, mesas', members: 0, key: 'waiter' },
+    { id: 5, name: 'Repartidor', permissions: 'Entregas', members: 0, key: 'delivery' },
   ];
   
-  const fetchUsers = async () => {
+  const fetchUsersData = async () => {
     try {
       setIsLoading(true);
       console.log('Iniciando obtención de usuarios...');
       
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+      // Use the AuthContext's fetchAllUsers function
+      const users = await fetchAllUsers();
+      console.log('Usuarios obtenidos desde AuthContext:', users);
+      
+      if (users.length === 0) {
+        // Fallback to direct query if the context method fails
+        console.log('No users found, trying direct query...');
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (profilesError) {
+          console.error('Error al obtener perfiles directamente:', profilesError);
+          toast.error('Error al cargar los perfiles de usuario');
+          setStaffMembers([]);
+          return;
+        }
         
-      if (profilesError) {
-        console.error('Error al obtener perfiles:', profilesError);
-        toast.error('Error al cargar los perfiles de usuario');
-        throw profilesError;
-      }
-      
-      console.log('Perfiles obtenidos:', profilesData?.length || 0, profilesData);
-      
-      if (!profilesData || profilesData.length === 0) {
-        console.warn('No se encontraron perfiles en la base de datos');
-        setStaffMembers([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      let authUsers: any[] = [];
-      try {
-        const sessionData = await supabase.auth.getSession();
-        const currentUserEmail = sessionData.data.session?.user?.email || '';
-        const currentUserId = sessionData.data.session?.user?.id || '';
+        if (!profilesData || profilesData.length === 0) {
+          console.warn('No se encontraron perfiles en la base de datos');
+          setStaffMembers([]);
+          return;
+        }
         
-        console.log('Información de sesión actual:', { 
-          email: currentUserEmail, 
-          id: currentUserId 
+        console.log('Perfiles obtenidos directamente:', profilesData.length, profilesData);
+        
+        // Create email placeholders for all profiles
+        const usersWithPlaceholderEmails = profilesData.map(profile => {
+          let email = '';
+          
+          // For the current user, we can use the email from the session
+          if (profile.id === session?.user?.id && session?.user?.email) {
+            email = session.user.email;
+          } else {
+            // For other users, create a placeholder email based on their name
+            email = `${profile.name.toLowerCase().replace(/\s+/g, '.')}@ejemplo.com`;
+          }
+          
+          return {
+            ...profile,
+            email,
+          };
         });
         
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          authUsers = [userData.user];
-          console.log('Usuario autenticado actual:', userData.user);
-        }
-      } catch (authError) {
-        console.warn('No se pudieron obtener datos de usuarios autenticados:', authError);
+        setStaffMembers(usersWithPlaceholderEmails);
+      } else {
+        // Use the users from the AuthContext
+        setStaffMembers(users);
       }
       
-      const usersWithEmail: UserProfile[] = profilesData.map((profile) => {
-        const matchingAuthUser = authUsers.find(authUser => authUser.id === profile.id);
-        let email = '';
-        
-        if (matchingAuthUser?.email) {
-          email = matchingAuthUser.email;
-        } else if (profile.id === session?.user?.id && session?.user?.email) {
-          email = session.user.email;
-        } else {
-          email = `${profile.name.toLowerCase().replace(/\s+/g, '.')}@ejemplo.com`;
+      // Count roles for the Roles tab
+      const updatedRoles = [...roles];
+      staffMembers.forEach(member => {
+        const roleIndex = updatedRoles.findIndex(r => r.key === member.role);
+        if (roleIndex >= 0) {
+          updatedRoles[roleIndex].members += 1;
         }
-        
-        return {
-          ...profile,
-          email: email,
-          role: profile.role as UserRole,
-        };
       });
-      
-      console.log('Usuarios procesados con emails:', usersWithEmail);
-      setStaffMembers(usersWithEmail);
-      
-      const roleCounts = profilesData.reduce((counts: Record<string, number>, profile) => {
-        counts[profile.role] = (counts[profile.role] || 0) + 1;
-        return counts;
-      }, {});
-      
-      console.log('Conteo de roles:', roleCounts);
       
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
@@ -140,7 +117,24 @@ const Staff = () => {
   };
   
   useEffect(() => {
-    fetchUsers();
+    fetchUsersData();
+    
+    // Listen for realtime changes to profiles
+    const channel = supabase
+      .channel('public:profiles')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'profiles' 
+      }, (payload) => {
+        console.log('Cambio en perfiles detectado:', payload);
+        fetchUsersData();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session]);
   
   useEffect(() => {
@@ -148,16 +142,16 @@ const Staff = () => {
     const refreshParam = params.get('refresh');
     
     if (refreshParam === 'true') {
-      fetchUsers();
+      fetchUsersData();
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
   }, []);
   
   const filteredStaff = staffMembers.filter(staff => 
-    staff.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    staff.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.email.toLowerCase().includes(searchQuery.toLowerCase())
+    staff.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    staff.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -187,8 +181,9 @@ const Staff = () => {
       setNewUserRole('waiter');
       setUserDialogOpen(false);
       
+      // Refresh after a short delay to allow the database to update
       setTimeout(() => {
-        fetchUsers();
+        fetchUsersData();
       }, 1500);
     } catch (error: any) {
       console.error('Error al crear usuario:', error);
@@ -222,14 +217,20 @@ const Staff = () => {
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${currentUser.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
-      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
-      if (bucketError && bucketError.message.includes('not found')) {
-        await supabase.storage.createBucket('avatars', {
-          public: true,
-          fileSizeLimit: 1024 * 1024 * 2,
-        });
+      // Check if avatars bucket exists and create it if it doesn't
+      try {
+        const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
+        if (bucketError && bucketError.message.includes('not found')) {
+          await supabase.storage.createBucket('avatars', {
+            public: true,
+            fileSizeLimit: 1024 * 1024 * 2, // 2MB limit
+          });
+        }
+      } catch (error) {
+        console.error('Error checking/creating avatars bucket:', error);
       }
       
+      // Upload the avatar
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, avatarFile);
@@ -240,11 +241,13 @@ const Staff = () => {
         return;
       }
       
+      // Get the public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
         
       if (urlData) {
+        // Update the profile
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ avatar: urlData.publicUrl })
@@ -256,6 +259,7 @@ const Staff = () => {
           return;
         }
         
+        // Update local state
         setStaffMembers(prev => 
           prev.map(staff => 
             staff.id === currentUser.id 
@@ -277,6 +281,7 @@ const Staff = () => {
     try {
       toast.success(`Usuario ${currentStatus === 'active' ? 'desactivado' : 'activado'} correctamente`);
       
+      // Update the user status in the local state
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === userId 
@@ -290,7 +295,7 @@ const Staff = () => {
     }
   };
   
-  const handleEditUser = (staff: UserProfile) => {
+  const handleEditUser = (staff: any) => {
     setCurrentUser(staff);
     setAvatarUrl(staff.avatar || null);
     setEditDialogOpen(true);
@@ -341,7 +346,7 @@ const Staff = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Personal</h1>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={fetchUsers}>
+            <Button variant="outline" onClick={fetchUsersData}>
               <RefreshCw size={18} className="mr-2" /> Actualizar
             </Button>
             {isAdmin && (
@@ -485,7 +490,7 @@ const Staff = () => {
                               <div className="flex items-center gap-3">
                                 <Avatar>
                                   <AvatarImage src={staff.avatar} />
-                                  <AvatarFallback>{staff.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                  <AvatarFallback>{staff.name?.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                                 </Avatar>
                                 <div>
                                   <p className="font-medium">{staff.name}</p>
@@ -524,7 +529,7 @@ const Staff = () => {
                                       <div className="flex flex-col items-center gap-2">
                                         <Avatar className="h-20 w-20">
                                           <AvatarImage src={staff.avatar} />
-                                          <AvatarFallback className="text-xl">{staff.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                          <AvatarFallback className="text-xl">{staff.name?.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                                         </Avatar>
                                         <h3 className="font-bold text-lg">{staff.name}</h3>
                                         <Badge variant="outline">
@@ -680,15 +685,9 @@ const Staff = () => {
                   </TableHeader>
                   <TableBody>
                     {roles.map(role => {
-                      const roleName = role.name.toLowerCase();
-                      const roleKey = roleName === 'administrador' ? 'admin' : 
-                                     roleName === 'gerente' ? 'manager' : 
-                                     roleName === 'mesero' ? 'waiter' : 
-                                     roleName === 'cocina' ? 'kitchen' : 
-                                     roleName === 'repartidor' ? 'delivery' : roleName;
-                      
+                      // Count members with this role
                       const memberCount = staffMembers.filter(
-                        staff => staff.role === roleKey
+                        staff => staff.role === role.key
                       ).length;
                       
                       return (
@@ -728,7 +727,7 @@ const Staff = () => {
                 <Avatar className="h-24 w-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                   <AvatarImage src={avatarUrl || currentUser.avatar} />
                   <AvatarFallback className="text-xl relative group">
-                    {currentUser.name.split(' ').map(n => n[0]).join('')}
+                    {currentUser.name?.split(' ').map((n: string) => n[0]).join('')}
                     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-full">
                       <Upload size={20} />
                     </div>

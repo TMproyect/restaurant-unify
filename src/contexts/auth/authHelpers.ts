@@ -31,7 +31,9 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     }
 
     const sessionResponse = await supabase.auth.getSession();
-    const email = sessionResponse.data.session?.user?.email || '';
+    const email = sessionResponse.data.session?.user?.id === userId 
+      ? sessionResponse.data.session?.user?.email || ''
+      : '';
     
     console.log('Profile data found:', data);
     
@@ -45,6 +47,57 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
   } catch (error) {
     console.error('Error in fetchUserProfile:', error);
     return null;
+  }
+};
+
+// Fetch all user profiles with improved reliability
+export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
+  try {
+    console.log('Fetching all profiles...');
+    
+    // First get all profiles
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (profilesError) {
+      console.error('Error fetching all profiles:', profilesError);
+      return [];
+    }
+
+    if (!profilesData || profilesData.length === 0) {
+      console.warn('No profiles found in database');
+      return [];
+    }
+    
+    console.log('Fetched profiles:', profilesData.length, profilesData);
+    
+    // Get current user's session to extract their email
+    const sessionResponse = await supabase.auth.getSession();
+    const currentUserEmail = sessionResponse.data.session?.user?.email;
+    const currentUserId = sessionResponse.data.session?.user?.id;
+    
+    // Map profiles to AuthUser objects
+    const users: AuthUser[] = profilesData.map(profile => {
+      // For the current user, we know the email from the session
+      const email = profile.id === currentUserId ? currentUserEmail || '' : '';
+      
+      return {
+        id: profile.id,
+        name: profile.name,
+        email: email,
+        role: profile.role as UserRole, 
+        avatar: profile.avatar
+      };
+    });
+    
+    console.log('Processed users with emails:', users);
+    
+    return users;
+  } catch (error) {
+    console.error('Error in fetchAllProfiles:', error);
+    return [];
   }
 };
 

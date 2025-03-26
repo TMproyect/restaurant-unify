@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,22 +12,18 @@ import {
   logoutUser 
 } from './authHelpers';
 
-// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  // Initialize the auth state
   useEffect(() => {
     let isMounted = true;
     
     console.log("AuthProvider initialized, setting up auth state listener");
     
-    // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log('Auth state changed:', event, currentSession?.user?.id);
@@ -54,12 +49,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(null);
         }
         
-        // Ensure loading state is reset even if there are errors
         if (isMounted) setIsLoading(false);
       }
     );
 
-    // Check for existing session with a safety timeout
     const sessionCheckTimeout = setTimeout(() => {
       if (isMounted && isLoading) {
         console.log("Session check timeout reached, forcing loading state to false");
@@ -102,7 +95,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  // Login function - simplified for better error handling
   const login = async (email: string, password: string) => {
     if (!email || !password) {
       console.error("Email and password are required");
@@ -148,7 +140,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function with improved error handling
   const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     try {
       setIsLoading(true);
@@ -174,7 +165,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log("Auth signup successful, creating profile...");
       
-      // Then manually insert into profiles table
       if (data.user) {
         try {
           await createUserProfile(data.user.id, name, role);
@@ -199,34 +189,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Function to create users by admin
   const createUser = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<void> => {
     try {
       setIsLoading(true);
       console.log("Create user started with role:", role);
       
-      // Create user in Supabase Authentication
       const userData = await createUserByAdmin(email, password, name, role);
 
-      // Manually create the profile since the trigger might not activate for admin creations
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: userData.user.id,
-            name,
-            role,
-            avatar: null,
-          },
-        ]);
-
-      if (profileError) {
-        console.error('Create profile error:', profileError.message);
-        toast.error('Error al crear el perfil: ' + profileError.message);
-        throw profileError;
-      }
-
-      toast.success(`Usuario ${name} creado correctamente con rol ${role}`);
+      toast.success(`Usuario ${name} creado correctamente con rol ${role}`, {
+        description: 'El usuario necesitará confirmar su correo electrónico'
+      });
       console.log("Create user successful with role:", role);
     } catch (error: any) {
       console.error('Error creating user:', error.message);
@@ -238,7 +210,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Function to update user role
   const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
     try {
       setIsLoading(true);
@@ -246,7 +217,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       await updateUserRoleById(userId, newRole);
 
-      // If the user being updated is the current user, update the state
       if (user && userId === user.id) {
         setUser(prev => prev ? { ...prev, role: newRole } : null);
         toast.success(`Tu rol ha sido actualizado a ${newRole}`);
@@ -264,7 +234,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
       setIsLoading(true);
@@ -298,7 +267,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

@@ -134,12 +134,17 @@ const Staff = () => {
     }
     
     try {
-      await createUser(
+      const result = await createUser(
         newUserEmail,
         newUserPassword,
         newUserName,
         newUserRole
       );
+      
+      // El usuario ha sido creado en Supabase Auth pero necesitará confirmar su correo
+      toast.success('Usuario creado exitosamente', {
+        description: 'El usuario necesitará confirmar su correo electrónico para acceder.'
+      });
       
       // Clear form
       setNewUserEmail('');
@@ -160,7 +165,7 @@ const Staff = () => {
           email = sessionData.session.user.email || email;
         }
         
-        // If this is the newly created user
+        // Si este es el usuario recién creado
         if (profile.name === newUserName) {
           email = newUserEmail;
         }

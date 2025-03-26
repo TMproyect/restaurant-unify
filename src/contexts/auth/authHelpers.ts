@@ -96,15 +96,18 @@ export const createUserProfile = async (userId: string, name: string, role: User
   }
 };
 
-// Create user helper - Admin function
+// Modificado: Crear usuario sin usar admin API
 export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
-  const { data, error } = await supabase.auth.admin.createUser({
+  // En lugar de usar la API admin, usamos el registro normal
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    email_confirm: true,
-    user_metadata: {
-      name,
-      role,
+    options: {
+      data: {
+        name,
+        role,
+      },
+      emailRedirectTo: window.location.origin,
     },
   });
 
@@ -112,6 +115,16 @@ export const createUserByAdmin = async (email: string, password: string, name: s
     console.error('Create user error:', error.message);
     toast.error('Error al crear el usuario: ' + error.message);
     throw error;
+  }
+
+  // En un entorno real, necesitaríamos una función edge para esto
+  // pero por ahora simplemente creamos el perfil para el usuario
+  if (data.user) {
+    try {
+      await createUserProfile(data.user.id, name, role);
+    } catch (profileError) {
+      console.error('Error creating profile after signup:', profileError);
+    }
   }
 
   return data;

@@ -108,19 +108,39 @@ export const signupUser = async (email: string, password: string, name: string, 
 // Create profile helper
 export const createUserProfile = async (userId: string, name: string, role: UserRole) => {
   console.log('Creating user profile for:', userId, name, role);
-  const { error } = await supabase
-    .from('profiles')
-    .insert([
-      {
-        id: userId,
-        name,
-        role,
-      }
-    ]);
+  
+  try {
+    // Verificamos si el perfil ya existe antes de crearlo
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+    
+    if (existingProfile) {
+      console.log('Profile already exists for user:', userId);
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: userId,
+          name,
+          role,
+        }
+      ]);
 
-  if (error) {
-    console.error('Error creating profile:', error);
-    toast.error('Error al crear el perfil de usuario: ' + error.message);
+    if (error) {
+      console.error('Error creating profile:', error);
+      toast.error('Error al crear el perfil de usuario: ' + error.message);
+      throw error;
+    }
+    
+    console.log('Profile created successfully for user:', userId);
+  } catch (error) {
+    console.error('Error in createUserProfile:', error);
     throw error;
   }
 };

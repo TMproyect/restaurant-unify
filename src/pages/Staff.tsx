@@ -61,33 +61,58 @@ const Staff = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching users...');
+      console.log('Iniciando obtención de usuarios...');
       
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
         
       if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+        console.error('Error al obtener perfiles:', profilesError);
         toast.error('Error al cargar los perfiles de usuario');
         throw profilesError;
       }
       
-      console.log('Fetched profiles:', profilesData);
+      console.log('Perfiles obtenidos:', profilesData?.length || 0, profilesData);
       
       if (!profilesData || profilesData.length === 0) {
-        console.warn('No profiles found in database');
+        console.warn('No se encontraron perfiles en la base de datos');
         setStaffMembers([]);
         setIsLoading(false);
         return;
       }
       
-      const currentUserEmail = session?.user?.email || '';
+      let authUsers: any[] = [];
+      try {
+        const sessionData = await supabase.auth.getSession();
+        const currentUserEmail = sessionData.data.session?.user?.email || '';
+        const currentUserId = sessionData.data.session?.user?.id || '';
+        
+        console.log('Información de sesión actual:', { 
+          email: currentUserEmail, 
+          id: currentUserId 
+        });
+        
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          authUsers = [userData.user];
+          console.log('Usuario autenticado actual:', userData.user);
+        }
+      } catch (authError) {
+        console.warn('No se pudieron obtener datos de usuarios autenticados:', authError);
+      }
       
       const usersWithEmail: UserProfile[] = profilesData.map((profile) => {
-        const email = profile.id === session?.user?.id 
-          ? currentUserEmail 
-          : `usuario-${profile.id.substring(0, 6)}@ejemplo.com`;
+        const matchingAuthUser = authUsers.find(authUser => authUser.id === profile.id);
+        let email = '';
+        
+        if (matchingAuthUser?.email) {
+          email = matchingAuthUser.email;
+        } else if (profile.id === session?.user?.id && session?.user?.email) {
+          email = session.user.email;
+        } else {
+          email = `${profile.name.toLowerCase().replace(/\s+/g, '.')}@ejemplo.com`;
+        }
         
         return {
           ...profile,
@@ -96,6 +121,7 @@ const Staff = () => {
         };
       });
       
+      console.log('Usuarios procesados con emails:', usersWithEmail);
       setStaffMembers(usersWithEmail);
       
       const roleCounts = profilesData.reduce((counts: Record<string, number>, profile) => {
@@ -103,8 +129,10 @@ const Staff = () => {
         return counts;
       }, {});
       
+      console.log('Conteo de roles:', roleCounts);
+      
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error al obtener usuarios:', error);
       toast.error('Error al cargar los usuarios');
     } finally {
       setIsLoading(false);
@@ -114,6 +142,17 @@ const Staff = () => {
   useEffect(() => {
     fetchUsers();
   }, [session]);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refreshParam = params.get('refresh');
+    
+    if (refreshParam === 'true') {
+      fetchUsers();
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
   
   const filteredStaff = staffMembers.filter(staff => 
     staff.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -130,7 +169,7 @@ const Staff = () => {
     }
     
     try {
-      console.log('Creating user with role:', newUserRole);
+      console.log('Creando usuario con rol:', newUserRole);
       await createUser(
         newUserEmail,
         newUserPassword,
@@ -150,9 +189,9 @@ const Staff = () => {
       
       setTimeout(() => {
         fetchUsers();
-      }, 1000);
+      }, 1500);
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('Error al crear usuario:', error);
       toast.error(error.message || 'Error al crear el usuario');
     }
   };
@@ -171,7 +210,7 @@ const Staff = () => {
       
       toast.success('Rol actualizado correctamente');
     } catch (error: any) {
-      console.error('Error updating role:', error);
+      console.error('Error al actualizar rol:', error);
       toast.error(error.message || 'Error al actualizar el rol');
     }
   };
@@ -196,7 +235,7 @@ const Staff = () => {
         .upload(fileName, avatarFile);
         
       if (uploadError) {
-        console.error('Avatar upload error:', uploadError);
+        console.error('Error al subir avatar:', uploadError);
         toast.error('Error al subir la imagen');
         return;
       }
@@ -212,7 +251,7 @@ const Staff = () => {
           .eq('id', currentUser.id);
           
         if (updateError) {
-          console.error('Profile update error:', updateError);
+          console.error('Error al actualizar perfil:', updateError);
           toast.error('Error al actualizar el perfil');
           return;
         }
@@ -229,7 +268,7 @@ const Staff = () => {
         toast.success('Imagen de perfil actualizada');
       }
     } catch (error) {
-      console.error('Error handling avatar upload:', error);
+      console.error('Error al procesar la imagen:', error);
       toast.error('Error al procesar la imagen');
     }
   };
@@ -246,7 +285,7 @@ const Staff = () => {
         )
       );
     } catch (error: any) {
-      console.error('Error toggling user status:', error);
+      console.error('Error al cambiar estado del usuario:', error);
       toast.error(error.message || 'Error al cambiar el estado del usuario');
     }
   };
@@ -273,7 +312,7 @@ const Staff = () => {
         .eq('id', currentUser.id);
         
       if (error) {
-        console.error('Error updating profile:', error);
+        console.error('Error al actualizar perfil:', error);
         toast.error('Error al actualizar el perfil');
         return;
       }
@@ -289,7 +328,7 @@ const Staff = () => {
       setEditDialogOpen(false);
       toast.success('Perfil actualizado correctamente');
     } catch (error) {
-      console.error('Error saving user edit:', error);
+      console.error('Error al guardar cambios:', error);
       toast.error('Error al guardar los cambios');
     }
   };
@@ -560,7 +599,7 @@ const Staff = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
+          
           <TabsContent value="roles" className="mt-4">
             <Card>
               <CardHeader>

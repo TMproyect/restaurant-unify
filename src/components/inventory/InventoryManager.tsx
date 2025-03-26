@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -469,14 +468,14 @@ const InventoryManager: React.FC = () => {
                 />
               </div>
               <Select
-                value={selectedCategory || ""}
-                onValueChange={(value) => setSelectedCategory(value === "" ? null : value)}
+                value={selectedCategory || "all"}
+                onValueChange={(value) => setSelectedCategory(value === "all" ? null : value)}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Todas las categorías" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas las categorías</SelectItem>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
                   {inventoryCategories.map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}

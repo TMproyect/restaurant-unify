@@ -480,14 +480,14 @@ const MenuManager: React.FC = () => {
           />
         </div>
         <Select
-          value={selectedCategory || ""}
-          onValueChange={(value) => setSelectedCategory(value === "" ? null : value)}
+          value={selectedCategory || "all"}
+          onValueChange={(value) => setSelectedCategory(value === "all" ? null : value)}
         >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Todas las categorías" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas las categorías</SelectItem>
+            <SelectItem value="all">Todas las categorías</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 {category.name}

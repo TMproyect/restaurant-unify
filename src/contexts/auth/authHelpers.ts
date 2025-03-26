@@ -127,6 +127,8 @@ export const createUserProfile = async (userId: string, name: string, role: User
 
 // Crear usuario sin usar admin API
 export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
+  console.log('Creating new user with role:', role);
+  
   // En lugar de usar la API admin, usamos el registro normal
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -161,6 +163,8 @@ export const createUserByAdmin = async (email: string, password: string, name: s
 
 // Update user role helper
 export const updateUserRoleById = async (userId: string, newRole: UserRole) => {
+  console.log('Updating user role:', userId, 'to', newRole);
+  
   const { error } = await supabase
     .from('profiles')
     .update({ role: newRole })

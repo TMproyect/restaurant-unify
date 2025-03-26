@@ -102,6 +102,9 @@ const Sidebar = () => {
     (item) => user && item.allowedRoles.includes(user.role)
   );
 
+  console.log('Current user role:', user?.role);
+  console.log('Filtered menu items:', filteredMenuItems);
+
   const handleNavigation = (path: string) => {
     navigate(path);
     if (isMobile) {
@@ -164,7 +167,7 @@ const Sidebar = () => {
           {user && (
             <div className="p-4 border-t border-border">
               <div className="text-sm text-muted-foreground">
-                Conectado como: <span className="font-medium">{user.role}</span>
+                Conectado como: <span className="font-medium">{user.role === 'kitchen' ? 'Cocina' : user.role}</span>
               </div>
             </div>
           )}
@@ -215,7 +218,13 @@ const Sidebar = () => {
       {!collapsed && user && (
         <div className="p-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
-            Conectado como: <span className="font-medium">{user.role}</span>
+            Conectado como: <span className="font-medium">
+              {user.role === 'admin' ? 'Administrador' : 
+               user.role === 'manager' ? 'Gerente' : 
+               user.role === 'waiter' ? 'Mesero' : 
+               user.role === 'kitchen' ? 'Cocina' : 
+               user.role === 'delivery' ? 'Repartidor' : user.role}
+            </span>
           </div>
         </div>
       )}

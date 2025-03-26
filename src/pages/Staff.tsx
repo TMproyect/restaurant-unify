@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Search, Plus, MoreHorizontal, UserPlus, ChevronDown, Upload } from 'lucide-react';
+import { Search, Plus, MoreHorizontal, UserPlus, ChevronDown, Upload, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { UserRole } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,64 +57,53 @@ const Staff = () => {
   const roles: Role[] = [
     { id: 1, name: 'Administrador', permissions: 'Acceso completo', members: 0 },
     { id: 2, name: 'Gerente', permissions: 'Gestión de personal, finanzas', members: 0 },
-    { id: 3, name: 'Chef', permissions: 'Cocina, inventario', members: 0 },
+    { id: 3, name: 'Cocina', permissions: 'Cocina, inventario', members: 0 },
     { id: 4, name: 'Mesero', permissions: 'Órdenes, mesas', members: 0 },
-    { id: 5, name: 'Recepcionista', permissions: 'Reservas, clientes', members: 0 },
-    { id: 6, name: 'Repartidor', permissions: 'Entregas', members: 0 },
-    { id: 7, name: 'Ayudante de Cocina', permissions: 'Cocina', members: 0 },
+    { id: 5, name: 'Repartidor', permissions: 'Entregas', members: 0 },
   ];
   
   // Load users from Supabase
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get profiles from Supabase
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
         
-        // Get profiles from Supabase
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*');
-          
-        if (error) {
-          throw error;
-        }
-        
-        // For each profile, fetch the actual email from auth.users
-        const usersWithEmail: UserProfile[] = await Promise.all(
-          data.map(async (profile) => {
-            // Get session for current user to access their email
-            const { data: sessionData } = await supabase.auth.getSession();
-            
-            // If this profile belongs to the current logged in user, use their email
-            let email = 'no-email@example.com';
-            if (sessionData.session && sessionData.session.user && profile.id === sessionData.session.user.id) {
-              email = sessionData.session.user.email || email;
-            }
-            
-            return {
-              ...profile,
-              email,
-              role: profile.role as UserRole,
-            };
-          })
-        );
-        
-        setStaffMembers(usersWithEmail);
-        
-        // Update role counts
-        const roleCounts = data.reduce((counts: Record<string, number>, profile) => {
-          counts[profile.role] = (counts[profile.role] || 0) + 1;
-          return counts;
-        }, {});
-        
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        toast.error('Error al cargar los usuarios');
-      } finally {
-        setIsLoading(false);
+      if (error) {
+        throw error;
       }
-    };
-    
+      
+      console.log('Fetched profiles:', data);
+      
+      // Create usersWithEmail array with a default email when not available
+      const usersWithEmail: UserProfile[] = data.map((profile) => {
+        return {
+          ...profile,
+          email: profile.email || 'correo-no-disponible@ejemplo.com',
+          role: profile.role as UserRole,
+        };
+      });
+      
+      setStaffMembers(usersWithEmail);
+      
+      // Update role counts
+      const roleCounts = data.reduce((counts: Record<string, number>, profile) => {
+        counts[profile.role] = (counts[profile.role] || 0) + 1;
+        return counts;
+      }, {});
+      
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Error al cargar los usuarios');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchUsers();
   }, []);
   
@@ -134,7 +123,7 @@ const Staff = () => {
     }
     
     try {
-      const result = await createUser(
+      await createUser(
         newUserEmail,
         newUserPassword,
         newUserName,
@@ -154,30 +143,7 @@ const Staff = () => {
       setUserDialogOpen(false);
       
       // Reload user list
-      const { data, error } = await supabase.from('profiles').select('*');
-      if (error) throw error;
-      
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      const updatedStaff: UserProfile[] = data.map(profile => {
-        let email = 'no-email@example.com';
-        if (sessionData.session && sessionData.session.user && profile.id === sessionData.session.user.id) {
-          email = sessionData.session.user.email || email;
-        }
-        
-        // Si este es el usuario recién creado
-        if (profile.name === newUserName) {
-          email = newUserEmail;
-        }
-        
-        return {
-          ...profile,
-          email,
-          role: profile.role as UserRole,
-        };
-      });
-      
-      setStaffMembers(updatedStaff);
+      fetchUsers();
       
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -346,78 +312,83 @@ const Staff = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Personal</h1>
-          {isAdmin && (
-            <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
-              <DialogTrigger asChild>
-                <Button><UserPlus size={18} className="mr-2" /> Añadir Empleado</Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Añadir Nuevo Empleado</DialogTitle>
-                  <DialogDescription>
-                    Complete la información para crear una nueva cuenta de empleado.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateUser}>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-name">Nombre Completo</Label>
-                      <Input 
-                        id="new-name" 
-                        placeholder="Ej. Juan Pérez" 
-                        value={newUserName}
-                        onChange={(e) => setNewUserName(e.target.value)}
-                        required
-                      />
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={fetchUsers}>
+              <RefreshCw size={18} className="mr-2" /> Actualizar
+            </Button>
+            {isAdmin && (
+              <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button><UserPlus size={18} className="mr-2" /> Añadir Empleado</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Añadir Nuevo Empleado</DialogTitle>
+                    <DialogDescription>
+                      Complete la información para crear una nueva cuenta de empleado.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateUser}>
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="new-name">Nombre Completo</Label>
+                        <Input 
+                          id="new-name" 
+                          placeholder="Ej. Juan Pérez" 
+                          value={newUserName}
+                          onChange={(e) => setNewUserName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-email">Email</Label>
+                        <Input 
+                          id="new-email" 
+                          type="email" 
+                          placeholder="juan.perez@example.com" 
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password">Contraseña</Label>
+                        <Input 
+                          id="new-password" 
+                          type="password" 
+                          placeholder="Mínimo 6 caracteres" 
+                          value={newUserPassword}
+                          onChange={(e) => setNewUserPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-role">Rol</Label>
+                        <Select 
+                          value={newUserRole} 
+                          onValueChange={(value) => setNewUserRole(value as UserRole)}
+                        >
+                          <SelectTrigger id="new-role">
+                            <SelectValue placeholder="Seleccionar rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                            <SelectItem value="manager">Gerente</SelectItem>
+                            <SelectItem value="waiter">Mesero</SelectItem>
+                            <SelectItem value="kitchen">Cocina</SelectItem>
+                            <SelectItem value="delivery">Repartidor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-email">Email</Label>
-                      <Input 
-                        id="new-email" 
-                        type="email" 
-                        placeholder="juan.perez@example.com" 
-                        value={newUserEmail}
-                        onChange={(e) => setNewUserEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">Contraseña</Label>
-                      <Input 
-                        id="new-password" 
-                        type="password" 
-                        placeholder="Mínimo 6 caracteres" 
-                        value={newUserPassword}
-                        onChange={(e) => setNewUserPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-role">Rol</Label>
-                      <Select 
-                        value={newUserRole} 
-                        onValueChange={(value) => setNewUserRole(value as UserRole)}
-                      >
-                        <SelectTrigger id="new-role">
-                          <SelectValue placeholder="Seleccionar rol" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="manager">Gerente</SelectItem>
-                          <SelectItem value="waiter">Mesero</SelectItem>
-                          <SelectItem value="kitchen">Cocina</SelectItem>
-                          <SelectItem value="delivery">Repartidor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit">Crear Empleado</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
+                    <DialogFooter>
+                      <Button type="submit">Crear Empleado</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
         <Tabs defaultValue="employees">
@@ -682,8 +653,15 @@ const Staff = () => {
                   <TableBody>
                     {roles.map(role => {
                       // Count members for each role
+                      const roleName = role.name.toLowerCase();
+                      const roleKey = roleName === 'administrador' ? 'admin' : 
+                                     roleName === 'gerente' ? 'manager' : 
+                                     roleName === 'mesero' ? 'waiter' : 
+                                     roleName === 'cocina' ? 'kitchen' : 
+                                     roleName === 'repartidor' ? 'delivery' : roleName;
+                      
                       const memberCount = staffMembers.filter(
-                        staff => staff.role === role.name.toLowerCase()
+                        staff => staff.role === roleKey
                       ).length;
                       
                       return (

@@ -18,7 +18,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -32,7 +31,7 @@ import {
 } from "@/components/ui/sheet";
 import { OrderItem } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
 
 interface OrderTakingProps {
   tableId: string;
@@ -219,10 +218,10 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     }
 
     try {
-      // Crear la orden en la base de datos
+      // En un caso real, aquí se enviaría la orden a la base de datos
       // const orderData = await createOrder({
       //   table_id: tableId,
-      //   customer_name: 'Cliente', // TODO: Obtener el nombre del cliente
+      //   customer_name: 'Cliente',
       //   status: 'pending',
       //   total: calculateTotal(),
       //   items_count: orderItems.length,
@@ -230,15 +229,11 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
       //   kitchen_id: selectedKitchen
       // }, orderItems);
 
-      // if (orderData) {
-        toast.success('Orden enviada a cocina');
-        setOrderItems([]);
-        setNotes('');
-        setDiscount(0);
-        onOrderComplete();
-      // } else {
-      //   toast.error('Error al crear la orden');
-      // }
+      toast.success('Orden enviada a cocina');
+      setOrderItems([]);
+      setNotes('');
+      setDiscount(0);
+      onOrderComplete();
     } catch (error) {
       console.error('Error al enviar la orden:', error);
       toast.error('Error al enviar la orden');
@@ -246,9 +241,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-full overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-full">
       {/* Menu Section */}
-      <Card className="h-full flex flex-col">
+      <Card className="h-full flex flex-col overflow-hidden">
         <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
           <div className="mb-4">
             <Label htmlFor="category">Categoría</Label>
@@ -266,47 +261,62 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
               </SelectContent>
             </Select>
           </div>
-          <ScrollArea className="flex-grow rounded-md border">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-              {loading ? (
-                <div className="col-span-2 text-center">Cargando...</div>
-              ) : (
-                menuItems.map((item) => (
-                  <div key={item.id} className="border rounded-md p-3 hover:bg-secondary/50 cursor-pointer" onClick={() => handleAddItem(item)}>
-                    <img src={item.image_url || 'https://via.placeholder.com/150'} alt={item.name} className="w-full h-32 object-cover rounded-md mb-2" />
-                    <h3 className="font-semibold text-sm">{item.name}</h3>
-                    <p className="text-muted-foreground text-xs">{item.description?.substring(0, 50)}</p>
-                    <p className="text-sm">${item.price.toFixed(2)}</p>
+          <div className="flex-grow overflow-auto">
+            <ScrollArea className="h-[calc(100vh-350px)] rounded-md border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                {loading ? (
+                  <div className="col-span-2 text-center py-8">Cargando...</div>
+                ) : menuItems.length === 0 ? (
+                  <div className="col-span-2 text-center py-8 text-muted-foreground">
+                    No hay items disponibles en esta categoría
                   </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                ) : (
+                  menuItems.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="border rounded-md p-3 hover:bg-secondary/50 cursor-pointer transition-colors" 
+                      onClick={() => handleAddItem(item)}
+                    >
+                      <img 
+                        src={item.image_url || 'https://via.placeholder.com/150'} 
+                        alt={item.name} 
+                        className="w-full h-32 object-cover rounded-md mb-2" 
+                      />
+                      <h3 className="font-semibold text-sm">{item.name}</h3>
+                      <p className="text-muted-foreground text-xs truncate">{item.description}</p>
+                      <p className="text-sm font-medium mt-1">${item.price.toFixed(2)}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 
       {/* Order Section */}
-      <Card className="h-full flex flex-col">
-        <ScrollArea className="h-full">
-          <CardContent className="p-4 flex flex-col">
-            <h2 className="text-lg font-semibold mb-4">Orden</h2>
-            <div className="mb-4">
-              <Label htmlFor="kitchen">Cocina Destino</Label>
-              <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
-                <SelectTrigger id="kitchen">
-                  <SelectValue placeholder="Seleccionar cocina" />
-                </SelectTrigger>
-                <SelectContent>
-                  {kitchens.map((kitchen) => (
-                    <SelectItem key={kitchen.id} value={kitchen.id}>
-                      {kitchen.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="border rounded-md mb-4">
+      <Card className="h-full flex flex-col overflow-hidden">
+        <CardContent className="p-4 flex flex-col">
+          <h2 className="text-lg font-semibold mb-4">Orden - Mesa {tableId}</h2>
+          
+          <div className="mb-4">
+            <Label htmlFor="kitchen">Cocina Destino</Label>
+            <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
+              <SelectTrigger id="kitchen">
+                <SelectValue placeholder="Seleccionar cocina" />
+              </SelectTrigger>
+              <SelectContent>
+                {kitchens.map((kitchen) => (
+                  <SelectItem key={kitchen.id} value={kitchen.id}>
+                    {kitchen.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex-grow overflow-auto mb-4">
+            <ScrollArea className="h-[calc(100vh-450px)] border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -317,119 +327,131 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orderItems.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div>
-                          <div>{item.name}</div>
-                          {item.notes && (
-                            <div className="text-xs text-muted-foreground truncate max-w-[120px]">
-                              {item.notes}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center">
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-6 w-6"
-                            onClick={() => handleQuantityChange(index, 'decrease')}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="mx-2">{item.quantity}</span>
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-6 w-6"
-                            onClick={() => handleQuantityChange(index, 'increase')}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => openNoteSheet(item)}>
-                          Notas
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => handleRemoveItem(index)}>
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {orderItems.length === 0 && (
+                  {orderItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                        Aún no hay items en la orden
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        No hay items en la orden
                       </TableCell>
                     </TableRow>
+                  ) : (
+                    orderItems.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            {item.notes && (
+                              <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                                {item.notes}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={() => handleQuantityChange(index, 'decrease')}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="mx-2">{item.quantity}</span>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={() => handleQuantityChange(index, 'increase')}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2" 
+                            onClick={() => openNoteSheet(item)}
+                          >
+                            Notas
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-destructive" 
+                            onClick={() => handleRemoveItem(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
+            </ScrollArea>
+          </div>
+
+          <div className="mb-4">
+            <Label htmlFor="order-notes" className="mb-2 block">Notas de la orden</Label>
+            <Textarea 
+              id="order-notes"
+              placeholder="Añadir notas para toda la orden..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+
+          <div className="space-y-2 mt-4 border-t pt-4">
+            <div className="flex justify-between items-center">
+              <span>Subtotal</span>
+              <span>${calculateSubtotal().toFixed(2)}</span>
             </div>
 
-            <div className="mb-4">
-              <Label htmlFor="order-notes" className="mb-2 block">Notas de la orden</Label>
-              <Textarea 
-                id="order-notes"
-                placeholder="Añadir notas para toda la orden..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-[80px]"
-              />
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span>Descuento</span>
+                <Select 
+                  value={discountType} 
+                  onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
+                >
+                  <SelectTrigger className="h-7 w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">%</SelectItem>
+                    <SelectItem value="fixed">$</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input 
+                  type="number" 
+                  value={discount}
+                  onChange={(e) => setDiscount(Number(e.target.value))}
+                  className="w-20 h-7"
+                  min="0"
+                />
+              </div>
+              <span>-${calculateDiscount().toFixed(2)}</span>
             </div>
 
-            <div className="space-y-2 mt-4">
-              <div className="flex justify-between items-center">
-                <span>Subtotal</span>
-                <span>${calculateSubtotal().toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span>Descuento</span>
-                  <Select 
-                    value={discountType} 
-                    onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
-                  >
-                    <SelectTrigger className="h-7 w-16">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="percentage">%</SelectItem>
-                      <SelectItem value="fixed">$</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input 
-                    type="number" 
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value))}
-                    className="w-20 h-7"
-                    min="0"
-                  />
-                </div>
-                <span>-${calculateDiscount().toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between items-center font-bold text-lg">
-                <span>Total</span>
-                <span>${calculateTotal().toFixed(2)}</span>
-              </div>
+            <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
+              <span>Total</span>
+              <span>${calculateTotal().toFixed(2)}</span>
             </div>
-          </CardContent>
-        </ScrollArea>
+          </div>
+        </CardContent>
         
         {/* Fixed position button at the bottom */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t mt-auto">
           <Button 
             className="w-full" 
             onClick={handleSubmitOrder} 
             disabled={orderItems.length === 0}
             size="lg"
+            variant="default"
           >
             <ShoppingBag className="mr-2 h-5 w-5" />
             Crear Pedido
@@ -447,8 +469,8 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
             </SheetDescription>
           </SheetHeader>
           <div className="mt-6">
-            <textarea
-              className="w-full p-2 border rounded-md h-40"
+            <Textarea
+              className="min-h-[150px]"
               placeholder="Añadir notas especiales..."
               value={noteItem?.notes || ''}
               onChange={(e) => handleNotesChange(e.target.value)}

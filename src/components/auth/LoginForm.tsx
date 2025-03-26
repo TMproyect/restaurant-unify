@@ -37,25 +37,25 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       console.log("Iniciando proceso de login");
       setLoading(true);
       
-      const result = await login(email, password);
-      console.log("Login completado exitosamente", result);
+      await login(email, password);
+      console.log("Login completado exitosamente");
       
       if (onSuccess) onSuccess();
     } catch (err: any) {
       console.error("Error en login:", err);
+      let errorMessage = 'Intente nuevamente más tarde';
+      
       if (err.message?.includes('Email not confirmed')) {
-        toast.error('El correo electrónico no ha sido confirmado', {
-          description: 'Por favor, revisa tu bandeja de entrada y confirma tu correo',
-        });
+        errorMessage = 'Por favor, revisa tu bandeja de entrada y confirma tu correo';
       } else if (err.message?.includes('Invalid login credentials')) {
-        toast.error('Credenciales inválidas', {
-          description: 'El correo o la contraseña son incorrectos',
-        });
-      } else {
-        toast.error('Error al iniciar sesión', {
-          description: err.message || 'Intente nuevamente más tarde',
-        });
+        errorMessage = 'El correo o la contraseña son incorrectos';
+      } else if (err.message) {
+        errorMessage = err.message;
       }
+      
+      toast.error('Error al iniciar sesión', {
+        description: errorMessage,
+      });
     } finally {
       console.log("Proceso de login finalizado, reseteando estado de carga");
       setLoading(false);

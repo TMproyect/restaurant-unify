@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 const Login = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check for auth-related URL parameters (for email verification, etc.)
@@ -29,12 +30,23 @@ const Login = () => {
     }
     
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
-  }, []);
+  }, [isAuthenticated, isLoading]);
 
   // Only redirect once loading is complete and user is authenticated
-  if (!isLoading && isAuthenticated) {
-    console.log("User is authenticated, redirecting to dashboard");
-    return <Navigate to="/dashboard" replace />;
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      console.log("User is authenticated, redirecting to dashboard");
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
+
+  // If still loading, show a simple loading message
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-center text-lg">Cargando...</p>
+      </div>
+    );
   }
 
   return (

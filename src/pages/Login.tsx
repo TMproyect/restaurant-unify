@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,8 +67,17 @@ const Login = () => {
     
     try {
       await login(email, password);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error handled locally:", err);
+      if (err.message.includes('Email not confirmed')) {
+        toast.error('El correo electrónico no ha sido confirmado', {
+          description: 'Por favor, revisa tu bandeja de entrada y confirma tu correo',
+        });
+      } else if (err.message.includes('Invalid login credentials')) {
+        toast.error('Credenciales inválidas', {
+          description: 'El correo o la contraseña son incorrectos',
+        });
+      }
     } finally {
       setTimeout(() => {
         setLocalLoading(false);
@@ -112,9 +122,16 @@ const Login = () => {
       await signup(email, password, name, 'admin');
       console.log("Signup successful, user should now be automatically logged in");
       // Don't switch to login tab if signup was successful - the user will be automatically logged in
-    } catch (err) {
+    } catch (err: any) {
       console.error("Signup error handled locally:", err);
       // Reset form only on error
+      if (err.message.includes('rate limit')) {
+        toast.error('Por motivos de seguridad, debe esperar 32 segundos antes de intentarlo nuevamente');
+      } else if (err.message.includes('User already registered')) {
+        toast.error('El usuario ya está registrado', {
+          description: 'Intenta iniciar sesión o utiliza otro correo electrónico',
+        });
+      }
       setPassword('');
       setConfirmPassword('');
     } finally {

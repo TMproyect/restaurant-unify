@@ -123,7 +123,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('Login error:', error.message);
-        toast.error('Error al iniciar sesión: ' + error.message);
+        if (error.message.includes('Email not confirmed')) {
+          toast.error('Error al iniciar sesión: El correo electrónico no ha sido confirmado');
+        } else {
+          toast.error('Error al iniciar sesión: ' + error.message);
+        }
         throw error;
       }
 
@@ -143,7 +147,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: any) {
       console.error('Error logging in:', error.message);
-      toast.error(error.message || 'Error al iniciar sesión');
       throw error;
     } finally {
       console.log("Login process completed, resetting loading state");
@@ -166,12 +169,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             name,
             role,
           },
+          emailRedirectTo: window.location.origin,
         },
       });
 
       if (error) {
         console.error('Signup error:', error.message);
-        toast.error('Error al crear la cuenta: ' + error.message);
+        if (error.message.includes('rate limit')) {
+          toast.error('Por motivos de seguridad, debe esperar 32 segundos antes de intentar nuevamente');
+        } else {
+          toast.error('Error al crear la cuenta: ' + error.message);
+        }
         throw error;
       }
 
@@ -209,7 +217,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setSession(data.session);
         
         toast.success('Cuenta creada con éxito', {
-          description: 'Bienvenido a RestaurantOS'
+          description: 'Por favor, verifica tu correo electrónico para confirmar tu cuenta'
         });
       }
       
@@ -217,7 +225,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
     } catch (error: any) {
       console.error('Error signing up:', error.message);
-      toast.error(error.message || 'Error al crear la cuenta');
       throw error;
     } finally {
       console.log("Signup process completed, resetting loading state");

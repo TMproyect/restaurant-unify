@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -79,13 +78,11 @@ const Staff = () => {
       console.log('Fetched profiles:', data);
       
       // Create usersWithEmail array with a default email when not available
-      const usersWithEmail: UserProfile[] = data.map((profile) => {
-        return {
-          ...profile,
-          email: profile.email || 'correo-no-disponible@ejemplo.com',
-          role: profile.role as UserRole,
-        };
-      });
+      const usersWithEmail: UserProfile[] = data.map((profile) => ({
+        ...profile,
+        email: 'correo-no-disponible@ejemplo.com',
+        role: profile.role as UserRole,
+      }));
       
       setStaffMembers(usersWithEmail);
       

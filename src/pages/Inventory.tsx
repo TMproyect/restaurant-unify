@@ -1,25 +1,52 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Plus, Filter, AlertTriangle } from 'lucide-react';
-
-// Datos de ejemplo para inventario
-const inventoryItems = [
-  { id: 1, name: 'Pollo', category: 'Carnes', stock: 30, unit: 'kg', minStock: 10, price: '5,50 €' },
-  { id: 2, name: 'Tomates', category: 'Vegetales', stock: 15, unit: 'kg', minStock: 20, price: '2,20 €' },
-  { id: 3, name: 'Aceite de oliva', category: 'Aceites', stock: 45, unit: 'l', minStock: 10, price: '7,80 €' },
-  { id: 4, name: 'Harina', category: 'Panadería', stock: 100, unit: 'kg', minStock: 30, price: '1,50 €' },
-  { id: 5, name: 'Huevos', category: 'Lácteos', stock: 200, unit: 'unidad', minStock: 50, price: '0,25 €' },
-  { id: 6, name: 'Queso mozzarella', category: 'Lácteos', stock: 8, unit: 'kg', minStock: 10, price: '10,30 €' },
-  { id: 7, name: 'Ajo', category: 'Condimentos', stock: 5, unit: 'kg', minStock: 2, price: '4,25 €' },
-  { id: 8, name: 'Sal', category: 'Condimentos', stock: 20, unit: 'kg', minStock: 5, price: '0,80 €' },
-];
+import { useToast } from '@/hooks/use-toast';
+import { fetchInventoryItems } from '@/services/inventoryService';
+import { useQuery } from '@tanstack/react-query';
 
 const Inventory = () => {
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const { data: inventoryItems = [], isLoading, error } = useQuery({
+    queryKey: ['inventoryItems'],
+    queryFn: fetchInventoryItems
+  });
+  
+  // Filter items based on search term
+  const filteredItems = searchTerm 
+    ? inventoryItems.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.category_id && item.category_id.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    : inventoryItems;
+    
+  // Calculate stats
+  const totalItems = inventoryItems.length;
+  const outOfStockItems = inventoryItems.filter(item => item.stock_quantity <= 0).length;
+  const lowStockItems = inventoryItems.filter(item => 
+    item.stock_quantity > 0 && 
+    item.min_stock_level && 
+    item.stock_quantity < item.min_stock_level
+  ).length;
+  
+  // Calculate total inventory value - rough estimate
+  const totalValue = inventoryItems.reduce((sum, item) => sum + (Number(item.stock_quantity) || 0), 0);
+
+  if (error) {
+    toast({
+      title: "Error al cargar inventario",
+      description: "No se pudo obtener los datos del inventario",
+      variant: "destructive"
+    });
+  }
+
   return (
     <Layout>
       <div className="space-y-4">
@@ -34,7 +61,7 @@ const Inventory = () => {
               <CardTitle className="text-muted-foreground text-sm">Total Productos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{inventoryItems.length}</p>
+              <p className="text-2xl font-bold">{totalItems}</p>
             </CardContent>
           </Card>
           <Card>
@@ -42,7 +69,7 @@ const Inventory = () => {
               <CardTitle className="text-muted-foreground text-sm">Valor del Inventario</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">3.548,20 €</p>
+              <p className="text-2xl font-bold">{totalValue.toFixed(2)}</p>
             </CardContent>
           </Card>
           <Card>
@@ -50,7 +77,7 @@ const Inventory = () => {
               <CardTitle className="text-muted-foreground text-sm">Productos Agotados</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-2xl font-bold">{outOfStockItems}</p>
             </CardContent>
           </Card>
           <Card>
@@ -58,8 +85,10 @@ const Inventory = () => {
               <CardTitle className="text-muted-foreground text-sm">Stock Bajo</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center">
-              <p className="text-2xl font-bold text-amber-500">2</p>
-              <AlertTriangle className="ml-2 h-5 w-5 text-amber-500" />
+              <p className="text-2xl font-bold text-amber-500">{lowStockItems}</p>
+              {lowStockItems > 0 && (
+                <AlertTriangle className="ml-2 h-5 w-5 text-amber-500" />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -75,6 +104,8 @@ const Inventory = () => {
                     type="search"
                     placeholder="Buscar productos..."
                     className="pl-8 w-[250px]"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <Button variant="outline" size="icon">
@@ -84,40 +115,53 @@ const Inventory = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Unidad</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inventoryItems.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>{item.stock}</TableCell>
-                    <TableCell>{item.unit}</TableCell>
-                    <TableCell>{item.price}</TableCell>
-                    <TableCell>
-                      {item.stock < item.minStock ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                          <AlertTriangle className="mr-1 h-3 w-3" /> Stock bajo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Normal
-                        </span>
-                      )}
-                    </TableCell>
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p>Cargando inventario...</p>
+              </div>
+            ) : filteredItems.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Producto</TableHead>
+                    <TableHead>Categoría</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Unidad</TableHead>
+                    <TableHead>Estado</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.category_id ? item.category_id.name : 'Sin categoría'}</TableCell>
+                      <TableCell>{item.stock_quantity}</TableCell>
+                      <TableCell>{item.unit}</TableCell>
+                      <TableCell>
+                        {item.stock_quantity <= 0 ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <AlertTriangle className="mr-1 h-3 w-3" /> Agotado
+                          </span>
+                        ) : item.min_stock_level && item.stock_quantity < item.min_stock_level ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            <AlertTriangle className="mr-1 h-3 w-3" /> Stock bajo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Normal
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No se encontraron productos</p>
+                <p className="text-sm mt-1">Intenta con otra búsqueda o añade nuevos productos</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

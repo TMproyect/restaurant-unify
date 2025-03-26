@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
@@ -38,7 +39,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
   }
 };
 
-// Login helper - Keeping this for backwards compatibility but moving direct implementation to AuthContext
+// Login helper
 export const loginUser = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

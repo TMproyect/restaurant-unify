@@ -155,6 +155,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Signup started with role:", role);
       
+      // First, sign up the user in Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -172,28 +173,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
 
-      // Explicitly insert into profiles table to ensure the role is set correctly
+      console.log("Auth signup successful, creating profile...");
+      
+      // Then manually insert into profiles table
       if (data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .upsert([
+          .insert([
             {
               id: data.user.id,
               name,
-              role: role,
+              role,
               avatar: null,
             }
-          ], { onConflict: 'id' });
+          ]);
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
-          toast.error('Error al crear el perfil de usuario');
+          toast.error('Error al crear el perfil de usuario: ' + profileError.message);
           throw profileError;
         }
+        
+        console.log("Profile created successfully for user:", data.user.id);
+        
+        // For instant login after signup, set the user and session
+        const profile: AuthUser = {
+          id: data.user.id,
+          name,
+          email: data.user.email || '',
+          role,
+        };
+        
+        setUser(profile);
+        setSession(data.session);
       }
 
-      toast.success('Cuenta creada con éxito. Por favor, verifica tu correo electrónico.');
-      console.log("Signup successful with role:", role);
+      toast.success('Cuenta creada con éxito');
+      console.log("Signup complete with role:", role);
+      
     } catch (error: any) {
       console.error('Error signing up:', error.message);
       toast.error(error.message || 'Error al crear la cuenta');
@@ -204,13 +221,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Función para crear usuarios por parte del administrador - Updated default role to admin
+  // Function to create users by admin - Updated default role to admin
   const createUser = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<void> => {
     try {
       setIsLoading(true);
       console.log("Create user started with role:", role);
       
-      // Crear usuario en Supabase Authentication
+      // Create user in Supabase Authentication
       const { data, error } = await supabase.auth.admin.createUser({
         email,
         password,
@@ -227,7 +244,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
 
-      // Crear manualmente el perfil ya que el trigger podría no activarse para creaciones admin
+      // Manually create the profile since the trigger might not activate for admin creations
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([
@@ -257,7 +274,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Nueva función para actualizar el rol de un usuario
+  // Function to update user role
   const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
     try {
       setIsLoading(true);
@@ -274,7 +291,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
 
-      // Si el usuario cuyo rol se está actualizando es el usuario actual, actualizamos también el estado
+      // If the user being updated is the current user, update the state
       if (user && userId === user.id) {
         setUser(prev => prev ? { ...prev, role: newRole } : null);
         toast.success(`Tu rol ha sido actualizado a ${newRole}`);

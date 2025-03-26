@@ -22,6 +22,7 @@ const Login = () => {
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
   useEffect(() => {
+    // Reset local loading state when auth loading state changes
     if (!isLoading) {
       setLocalLoading(false);
       setTimeout(() => {
@@ -30,6 +31,7 @@ const Login = () => {
     }
   }, [isLoading]);
 
+  // Auto-reset button state after timeout to prevent permanent disabled state
   useEffect(() => {
     let timer: number | undefined;
     
@@ -67,6 +69,7 @@ const Login = () => {
       await login(email, password);
     } catch (err) {
       console.error("Login error handled locally:", err);
+    } finally {
       setTimeout(() => {
         setLocalLoading(false);
         setButtonDisabled(false);
@@ -106,16 +109,17 @@ const Login = () => {
     }
     
     try {
-      // Siempre usar 'admin' como rol predeterminado para nuevos usuarios
+      // Always use 'admin' as the default role for new users
       await signup(email, password, name, 'admin');
-      setActiveTab('login');
-      setPassword('');
-      setConfirmPassword('');
+      // Don't switch to login tab if signup was successful - the user will be automatically logged in
       toast.success('Cuenta creada exitosamente', {
-        description: 'Por favor inicia sesión con tus credenciales',
+        description: 'Ya puedes acceder al sistema',
       });
     } catch (err) {
       console.error("Signup error handled locally:", err);
+      // Reset form only on error
+      setPassword('');
+      setConfirmPassword('');
     } finally {
       setTimeout(() => {
         setLocalLoading(false);

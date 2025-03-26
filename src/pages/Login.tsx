@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,7 @@ const Login = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const navigate = useNavigate();
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   useEffect(() => {
     // Check for auth-related URL parameters (for email verification, etc.)
@@ -30,21 +31,27 @@ const Login = () => {
     }
     
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
-  }, [isAuthenticated, isLoading]);
+  }, []);
 
-  // Only redirect once loading is complete and user is authenticated
+  // Handle redirection with safety mechanism
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && !redirectAttempted) {
       console.log("User is authenticated, redirecting to dashboard");
+      setRedirectAttempted(true);
       navigate('/dashboard', { replace: true });
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
 
-  // If still loading, show a simple loading message
+  // Show content based on loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <p className="text-center text-lg">Cargando...</p>
+        <div className="text-center">
+          <p className="text-lg mb-2">Cargando...</p>
+          <div className="h-1 w-32 bg-gray-200 mx-auto rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 animate-pulse rounded-full"></div>
+          </div>
+        </div>
       </div>
     );
   }

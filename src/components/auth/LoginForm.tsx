@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,23 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Safety timeout to prevent infinite loading
+  useEffect(() => {
+    let timer: number | null = null;
+    
+    if (loading) {
+      // Auto-reset loading after 10 seconds as a failsafe
+      timer = window.setTimeout(() => {
+        console.log("Safety timeout triggered to reset loading state");
+        setLoading(false);
+      }, 10000);
+    }
+    
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [loading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

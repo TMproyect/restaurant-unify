@@ -4,21 +4,21 @@ import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MenuManager from '@/components/menu/MenuManager';
 import CategoryManager from '@/components/menu/CategoryManager';
-import InventoryManager from '@/components/inventory/InventoryManager';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Tag, Package } from 'lucide-react';
+import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menuService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categoriesTab, setCategoriesTab] = useState(false);
-  const [inventoryTab, setInventoryTab] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
   const loadCategories = async () => {
     try {
+      setLoading(true);
       const categoriesData = await fetchMenuCategories();
       setCategories(categoriesData);
     } catch (error) {
@@ -28,6 +28,8 @@ const Menu: React.FC = () => {
         description: "No se pudieron cargar las categorías",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,7 +45,6 @@ const Menu: React.FC = () => {
     
     // Dispatch events to update other components
     window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
-    window.dispatchEvent(new CustomEvent('inventoryItemsUpdated'));
   };
 
   const handleCategoriesUpdated = () => {
@@ -60,9 +61,7 @@ const Menu: React.FC = () => {
           <h1 className="text-2xl font-bold">
             {categoriesTab 
               ? "Gestión de Categorías" 
-              : inventoryTab 
-                ? "Gestión de Inventario" 
-                : "Gestión de Menú"}
+              : "Gestión de Menú"}
           </h1>
           <Button onClick={handleSynchronize}>
             Sincronizar Cambios
@@ -91,19 +90,6 @@ const Menu: React.FC = () => {
                 </div>
                 <CategoryManager onCategoriesUpdated={handleCategoriesUpdated} />
               </div>
-            ) : inventoryTab ? (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setInventoryTab(false)}
-                    className="mb-4"
-                  >
-                    Volver a Productos
-                  </Button>
-                </div>
-                <InventoryManager />
-              </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
@@ -115,16 +101,8 @@ const Menu: React.FC = () => {
                     <Tag className="mr-2 h-4 w-4" />
                     Gestionar Categorías
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setInventoryTab(true)}
-                    className="mb-4"
-                  >
-                    <Package className="mr-2 h-4 w-4" />
-                    Gestionar Inventario
-                  </Button>
                 </div>
-                <MenuManager />
+                <MenuManager categories={categories} isLoading={loading} />
               </div>
             )}
           </TabsContent>

@@ -38,12 +38,14 @@ const Login = () => {
     
     try {
       await login(email, password);
-      toast.success('Inicio de sesión exitoso', {
-        description: 'Bienvenido al sistema de gestión de restaurante',
-      });
     } catch (err) {
-      // Error is handled in the login function
-      setLocalLoading(false);
+      // Error already handled in login function
+      console.error("Login error handled by context:", err);
+    } finally {
+      // Ensure loading state is reset if login function doesn't reset it
+      setTimeout(() => {
+        setLocalLoading(false);
+      }, 500);
     }
   };
 
@@ -74,8 +76,12 @@ const Login = () => {
       });
     } catch (err) {
       // Error is handled in the signup function
+      console.error("Signup error handled by context:", err);
     } finally {
-      setLocalLoading(false);
+      // Ensure loading state is reset
+      setTimeout(() => {
+        setLocalLoading(false);
+      }, 500);
     }
   };
 
@@ -127,7 +133,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full mb-4" 
-                    disabled={localLoading}
+                    disabled={localLoading || isLoading}
                   >
                     {localLoading ? (
                       <>
@@ -199,7 +205,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={localLoading}
+                    disabled={localLoading || isLoading}
                   >
                     {localLoading ? (
                       <>

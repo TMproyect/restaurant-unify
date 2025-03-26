@@ -115,14 +115,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (data.user) {
         const profile = await fetchUserProfile(data.user.id);
+        
+        if (!profile) {
+          throw new Error('No se pudo recuperar el perfil de usuario');
+        }
+        
         setUser(profile);
+        toast.success('Inicio de sesión exitoso', {
+          description: `Bienvenido, ${profile.name}`,
+        });
       }
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       toast.error(error.message || 'Error al iniciar sesión');
-      throw error;
-    } finally {
+      // Importante: asegurarse de que isLoading se ponga en false cuando hay error
       setIsLoading(false);
+      throw error;
     }
   };
 

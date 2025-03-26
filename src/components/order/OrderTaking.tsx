@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Select,
@@ -245,7 +246,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-full overflow-hidden">
       {/* Sección de Menú */}
       <Card className="h-full flex flex-col">
         <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
@@ -286,26 +287,26 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
 
       {/* Sección de Orden */}
       <Card className="h-full flex flex-col">
-        <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
-          <h2 className="text-lg font-semibold mb-4">Orden</h2>
-          <div className="mb-4">
-            <Label htmlFor="kitchen">Cocina Destino</Label>
-            <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
-              <SelectTrigger id="kitchen">
-                <SelectValue placeholder="Seleccionar cocina" />
-              </SelectTrigger>
-              <SelectContent>
-                {kitchens.map((kitchen) => (
-                  <SelectItem key={kitchen.id} value={kitchen.id}>
-                    {kitchen.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex-grow flex flex-col overflow-hidden">
-            <ScrollArea className="flex-grow rounded-md border mb-4">
+        <ScrollArea className="h-full">
+          <CardContent className="p-4 flex flex-col">
+            <h2 className="text-lg font-semibold mb-4">Orden</h2>
+            <div className="mb-4">
+              <Label htmlFor="kitchen">Cocina Destino</Label>
+              <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
+                <SelectTrigger id="kitchen">
+                  <SelectValue placeholder="Seleccionar cocina" />
+                </SelectTrigger>
+                <SelectContent>
+                  {kitchens.map((kitchen) => (
+                    <SelectItem key={kitchen.id} value={kitchen.id}>
+                      {kitchen.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="border rounded-md mb-4">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -369,53 +370,67 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
                   )}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
 
-            <div className="mt-auto border-t pt-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>Subtotal</span>
-                  <span>${calculateSubtotal().toFixed(2)}</span>
-                </div>
+            <div className="mb-4">
+              <Label htmlFor="order-notes" className="mb-2 block">Notas de la orden</Label>
+              <Textarea 
+                id="order-notes"
+                placeholder="Añadir notas para toda la orden..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
 
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span>Descuento</span>
-                    <Select 
-                      value={discountType} 
-                      onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
-                    >
-                      <SelectTrigger className="h-7 w-16">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">%</SelectItem>
-                        <SelectItem value="fixed">$</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input 
-                      type="number" 
-                      value={discount}
-                      onChange={(e) => setDiscount(Number(e.target.value))}
-                      className="w-20 h-7"
-                      min="0"
-                    />
-                  </div>
-                  <span>-${calculateDiscount().toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center font-bold text-lg">
-                  <span>Total</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
-                </div>
+            <div className="space-y-2 mt-4">
+              <div className="flex justify-between items-center">
+                <span>Subtotal</span>
+                <span>${calculateSubtotal().toFixed(2)}</span>
               </div>
 
-              <Button className="w-full mt-4" onClick={handleSubmitOrder} disabled={orderItems.length === 0}>
-                Enviar a Cocina
-              </Button>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span>Descuento</span>
+                  <Select 
+                    value={discountType} 
+                    onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
+                  >
+                    <SelectTrigger className="h-7 w-16">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">%</SelectItem>
+                      <SelectItem value="fixed">$</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input 
+                    type="number" 
+                    value={discount}
+                    onChange={(e) => setDiscount(Number(e.target.value))}
+                    className="w-20 h-7"
+                    min="0"
+                  />
+                </div>
+                <span>-${calculateDiscount().toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between items-center font-bold text-lg">
+                <span>Total</span>
+                <span>${calculateTotal().toFixed(2)}</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
+
+            <Button 
+              className="w-full mt-6" 
+              onClick={handleSubmitOrder} 
+              disabled={orderItems.length === 0}
+              size="lg"
+            >
+              Enviar a Cocina
+            </Button>
+          </CardContent>
+        </ScrollArea>
       </Card>
 
       {/* Hoja lateral para notas */}

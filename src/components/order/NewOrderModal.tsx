@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Select,
   SelectContent,
@@ -132,89 +133,91 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[95vw] md:max-w-[80vw] lg:max-w-[1100px] h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="sm:max-w-[95vw] md:max-w-[80vw] lg:max-w-[1100px] h-[85vh] max-h-[85vh] p-0 flex flex-col">
         <DialogHeader className="p-4 border-b">
           <DialogTitle>Nueva Orden</DialogTitle>
         </DialogHeader>
         
-        <div className="flex-grow overflow-hidden p-4">
-          {orderStep === 'details' ? (
-            <div className="space-y-4 py-4 max-w-md mx-auto">
-              <RadioGroup
-                defaultValue={orderType}
-                value={orderType}
-                onValueChange={(value) => setOrderType(value as 'table' | 'delivery')}
-                className="flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="table" id="r1" />
-                  <Label htmlFor="r1">Mesa</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="delivery" id="r2" />
-                  <Label htmlFor="r2">Delivery</Label>
-                </div>
-              </RadioGroup>
+        <ScrollArea className="flex-grow">
+          <div className="p-4">
+            {orderStep === 'details' ? (
+              <div className="space-y-4 py-4 max-w-md mx-auto">
+                <RadioGroup
+                  defaultValue={orderType}
+                  value={orderType}
+                  onValueChange={(value) => setOrderType(value as 'table' | 'delivery')}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="table" id="r1" />
+                    <Label htmlFor="r1">Mesa</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="delivery" id="r2" />
+                    <Label htmlFor="r2">Delivery</Label>
+                  </div>
+                </RadioGroup>
 
-              {orderType === 'table' && (
+                {orderType === 'table' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="table">Mesa</Label>
+                    <Select 
+                      value={selectedTable} 
+                      onValueChange={setSelectedTable}
+                    >
+                      <SelectTrigger id="table">
+                        <SelectValue placeholder="Seleccionar mesa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tables.map((table) => (
+                          <SelectItem key={table.id} value={table.id}>
+                            Mesa {table.number} - {table.zone}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="table">Mesa</Label>
-                  <Select 
-                    value={selectedTable} 
-                    onValueChange={setSelectedTable}
-                  >
-                    <SelectTrigger id="table">
-                      <SelectValue placeholder="Seleccionar mesa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tables.map((table) => (
-                        <SelectItem key={table.id} value={table.id}>
-                          Mesa {table.number} - {table.zone}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="customer">Nombre del Cliente</Label>
+                  <Input
+                    id="customer"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Ej: Carlos Mendez"
+                  />
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="customer">Nombre del Cliente</Label>
-                <Input
-                  id="customer"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Ej: Carlos Mendez"
-                />
+                <DialogFooter className="mt-6">
+                  <Button variant="outline" onClick={onClose}>Cancelar</Button>
+                  <Button onClick={handleContinue}>Continuar</Button>
+                </DialogFooter>
               </div>
-
-              <DialogFooter className="mt-6">
-                <Button variant="outline" onClick={onClose}>Cancelar</Button>
-                <Button onClick={handleContinue}>Continuar</Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="h-full flex flex-col overflow-hidden">
-              <div className="bg-secondary/20 p-3 rounded flex justify-between items-center mb-4">
-                <div>
-                  <p className="text-sm font-medium">
-                    {orderType === 'table' ? `Mesa ${getSelectedTableNumber()}` : 'Delivery'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Cliente: {customerName}</p>
+            ) : (
+              <div className="h-full flex flex-col">
+                <div className="bg-secondary/20 p-3 rounded flex justify-between items-center mb-4">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {orderType === 'table' ? `Mesa ${getSelectedTableNumber()}` : 'Delivery'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Cliente: {customerName}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleBack}>
+                    Cambiar
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleBack}>
-                  Cambiar
-                </Button>
+                
+                <div className="flex-grow h-[60vh]">
+                  <OrderTaking 
+                    tableId={orderType === 'table' ? String(getSelectedTableNumber()) : 'Delivery'} 
+                    onOrderComplete={handleOrderComplete} 
+                  />
+                </div>
               </div>
-              
-              <div className="flex-grow overflow-hidden">
-                <OrderTaking 
-                  tableId={orderType === 'table' ? String(getSelectedTableNumber()) : 'Delivery'} 
-                  onOrderComplete={handleOrderComplete} 
-                />
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

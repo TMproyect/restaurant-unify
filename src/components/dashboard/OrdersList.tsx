@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Define order status types
+// Define order status types for UI purposes
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
 
 // Status badge component
-const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
-  const statusConfig = {
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const statusConfig: Record<string, { label: string, classes: string }> = {
     pending: {
       label: 'Pendiente',
       classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -40,7 +40,11 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
     },
   };
 
-  const { label, classes } = statusConfig[status];
+  // Default case for unexpected status values
+  const { label, classes } = statusConfig[status] || {
+    label: status,
+    classes: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+  };
 
   return (
     <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', classes)}>
@@ -94,7 +98,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
   }, []);
   
   // Actualizar una orden
-  const handleOrderStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
     await updateOrderStatus(orderId, newStatus);
     loadOrders();
     if (onRefresh) onRefresh();
@@ -158,7 +162,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                     {order.customer_name}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    <StatusBadge status={order.status as OrderStatus} />
+                    <StatusBadge status={order.status} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm">
                     <span className="px-2 py-1 bg-secondary/40 rounded text-xs">

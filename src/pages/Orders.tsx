@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Filter } from 'lucide-react';
-import OrdersList, { OrderStatus } from '@/components/dashboard/OrdersList';
+import OrdersList from '@/components/dashboard/OrdersList';
 import NewOrderModal from '@/components/order/NewOrderModal';
 import { useToast } from '@/hooks/use-toast';
 import { getOrders } from '@/services/orderService';
 
 const Orders = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTab, setSelectedTab] = useState<OrderStatus | 'all'>('all');
+  const [selectedTab, setSelectedTab] = useState<string>('all');
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [ordersCount, setOrdersCount] = useState({
     all: 0,
@@ -74,7 +74,7 @@ const Orders = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue="all" value={selectedTab} onValueChange={(value) => setSelectedTab(value as any)}>
+        <Tabs defaultValue="all" value={selectedTab} onValueChange={(value) => setSelectedTab(value)}>
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all" className="relative">
               Todas

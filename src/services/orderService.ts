@@ -17,7 +17,7 @@ export interface Order {
   table_id?: string;
   table_number?: number;
   customer_name: string;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: string; // Changed from union type to string to match database response
   total: number;
   items_count: number;
   is_delivery: boolean;

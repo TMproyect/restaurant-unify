@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Search, Plus, MoreHorizontal, UserPlus, ChevronDown } from 'lucide-react';
-import { useAuth, UserRole } from '@/contexts/auth/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { UserRole } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 

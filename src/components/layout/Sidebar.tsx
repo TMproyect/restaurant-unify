@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, ShoppingCart, Users, Package, FileText, ChartBar, Settings, ArrowLeft, ArrowRight, Menu, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth, UserRole } from '@/contexts/auth/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { UserRole } from '@/contexts/auth/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Define menu items with role permissions

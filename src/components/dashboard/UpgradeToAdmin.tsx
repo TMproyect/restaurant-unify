@@ -17,7 +17,9 @@ const UpgradeToAdmin = () => {
   const handleUpgradeToAdmin = async () => {
     try {
       await updateUserRole(user.id, 'admin');
+      toast.success('¡Felicidades! Ahora tienes permisos de administrador');
     } catch (error) {
+      console.error('Error al actualizar rol:', error);
       toast.error('Error al actualizar tu rol a administrador');
     }
   };

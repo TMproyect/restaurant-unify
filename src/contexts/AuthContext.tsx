@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +25,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
-  createUser: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
+  createUser: (email: string, password: string, name: string, role?: UserRole) => Promise<void>;
   updateUserRole: (userId: string, newRole: UserRole) => Promise<void>;
 }
 
@@ -148,7 +149,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function - Modified to make 'admin' the default role
+  // Signup function - Setting 'admin' as the default role
   const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     try {
       setIsLoading(true);
@@ -171,6 +172,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
 
+      // Explicitly insert into profiles table to ensure the role is set correctly
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert([
+            {
+              id: data.user.id,
+              name,
+              role: role,
+              avatar: null,
+            }
+          ], { onConflict: 'id' });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          toast.error('Error al crear el perfil de usuario');
+        }
+      }
+
       toast.success('Cuenta creada con éxito. Por favor, verifica tu correo electrónico.');
       console.log("Signup successful with role:", role);
     } catch (error: any) {
@@ -183,7 +203,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Función para crear usuarios por parte del administrador - Updated default role
+  // Función para crear usuarios por parte del administrador - Updated default role to admin
   const createUser = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<void> => {
     try {
       setIsLoading(true);

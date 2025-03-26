@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,6 +106,7 @@ const Login = () => {
     }
     
     try {
+      // Siempre usar 'admin' como rol predeterminado para nuevos usuarios
       await signup(email, password, name, 'admin');
       setActiveTab('login');
       setPassword('');

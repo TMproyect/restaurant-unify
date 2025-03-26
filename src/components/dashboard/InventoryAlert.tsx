@@ -3,8 +3,31 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertTriangle } from 'lucide-react';
 
-interface InventoryItemAlert {
+// Inventory items in alert status
+const alertItems = [
+  {
+    name: "Tomates",
+    current: 15,
+    minimum: 20,
+    unit: "kg"
+  },
+  {
+    name: "Queso mozzarella",
+    current: 8,
+    minimum: 10,
+    unit: "kg"
+  },
+  {
+    name: "Aceite de oliva",
+    current: 5,
+    minimum: 10,
+    unit: "l"
+  }
+];
+
+export interface InventoryItemAlert {
   name: string;
   current: number;
   minimum: number;
@@ -12,10 +35,10 @@ interface InventoryItemAlert {
 }
 
 interface InventoryAlertProps {
-  item: InventoryItemAlert;
+  item?: InventoryItemAlert;
 }
 
-const InventoryAlert: React.FC<InventoryAlertProps> = ({ item }) => {
+const AlertItem: React.FC<{ item: InventoryItemAlert }> = ({ item }) => {
   const { toast } = useToast();
 
   const handleRequestMore = () => {
@@ -30,7 +53,7 @@ const InventoryAlert: React.FC<InventoryAlertProps> = ({ item }) => {
   };
 
   return (
-    <Card className="border-l-4 border-l-red-500">
+    <Card className="border-l-4 border-l-red-500 mb-4">
       <CardHeader className="pb-2">
         <CardTitle className="text-xl text-red-700 dark:text-red-400">{item.name}</CardTitle>
       </CardHeader>
@@ -46,6 +69,24 @@ const InventoryAlert: React.FC<InventoryAlertProps> = ({ item }) => {
         </Button>
       </CardContent>
     </Card>
+  );
+};
+
+const InventoryAlert: React.FC<InventoryAlertProps> = () => {
+  if (alertItems.length === 0) {
+    return (
+      <div className="text-center p-6 bg-gray-100 rounded-lg">
+        <p className="text-gray-500">No hay alertas de inventario</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {alertItems.map((item, index) => (
+        <AlertItem key={index} item={item} />
+      ))}
+    </div>
   );
 };
 

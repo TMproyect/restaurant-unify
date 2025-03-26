@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -147,7 +148,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Keep existing signup, createUser, updateUserRole, and logout functions
+  // Signup function with improved error handling
   const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     try {
       setIsLoading(true);
@@ -167,11 +168,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('Signup error:', error.message);
-        if (error.message.includes('rate limit')) {
-          toast.error('Por motivos de seguridad, debe esperar 32 segundos antes de intentar nuevamente');
-        } else {
-          toast.error('Error al crear la cuenta: ' + error.message);
-        }
+        toast.error('Error al crear la cuenta: ' + error.message);
         throw error;
       }
 
@@ -179,16 +176,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Then manually insert into profiles table
       if (data.user) {
-        await createUserProfile(data.user.id, name, role);
-        
-        console.log("Profile created successfully for user:", data.user.id);
-        
-        toast.success('Cuenta creada con éxito', {
-          description: 'Por favor, verifica tu correo electrónico para confirmar tu cuenta'
-        });
+        try {
+          await createUserProfile(data.user.id, name, role);
+          console.log("Profile created successfully for user:", data.user.id);
+        } catch (profileError) {
+          console.error('Error creating profile:', profileError);
+          toast.error('La cuenta se creó pero hubo un problema con tu perfil');
+        }
+      } else {
+        console.log("No user data returned from signup, possibly email confirmation required");
       }
       
       console.log("Signup complete with role:", role);
+      return data;
       
     } catch (error: any) {
       console.error('Error signing up:', error.message);

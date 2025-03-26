@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,23 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
   const [name, setName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Safety timeout to prevent infinite loading
+  useEffect(() => {
+    let timer: number | null = null;
+    
+    if (loading) {
+      // Auto-reset loading after 1 second as a failsafe
+      timer = window.setTimeout(() => {
+        console.log("Safety timeout triggered in SignupForm to reset loading state");
+        setLoading(false);
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [loading]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +45,8 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
       return;
     }
     
+    console.log("Iniciando proceso de registro");
     setLoading(true);
-    console.log("Signup button clicked, state set to loading");
     
     if (password !== confirmPassword) {
       toast.error('Las contraseñas no coinciden');
@@ -45,23 +62,35 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
     
     try {
       // Always use 'admin' as the default role for new users
+      console.log("Llamando a la función signup con:", { email, name, role: 'admin' });
       await signup(email, password, name, 'admin');
-      console.log("Signup successful, user should now be automatically logged in");
+      
+      console.log("Registro exitoso");
+      toast.success('Cuenta creada con éxito', {
+        description: 'Por favor, verifica tu correo electrónico para confirmar tu cuenta',
+      });
+      
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      console.error("Signup error handled locally:", err);
+      console.error("Error en registro:", err);
+      
       // Reset form only on error
-      if (err.message.includes('rate limit')) {
+      if (err.message?.includes('rate limit')) {
         toast.error('Por motivos de seguridad, debe esperar 32 segundos antes de intentarlo nuevamente');
-      } else if (err.message.includes('User already registered')) {
+      } else if (err.message?.includes('User already registered')) {
         toast.error('El usuario ya está registrado', {
           description: 'Intenta iniciar sesión o utiliza otro correo electrónico',
         });
+      } else {
+        toast.error('Error al crear la cuenta', {
+          description: err.message || 'Intente nuevamente más tarde',
+        });
       }
+      
       setPassword('');
       setConfirmPassword('');
     } finally {
-      console.log("Signup process completed, resetting loading state");
+      console.log("Proceso de registro completado, reseteando estado de carga");
       setLoading(false);
     }
   };

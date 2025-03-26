@@ -16,7 +16,6 @@ import {
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableFooter,
   TableHead,
@@ -246,7 +245,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[80vh] overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-hidden">
       {/* Sección de Menú */}
       <Card className="h-full flex flex-col">
         <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
@@ -305,114 +304,117 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
             </Select>
           </div>
           
-          <ScrollArea className="flex-grow rounded-md border mb-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-24 text-center">Cant.</TableHead>
-                  <TableHead className="w-24 text-right">Precio</TableHead>
-                  <TableHead className="w-24 text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orderItems.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <div>
-                        <div>{item.name}</div>
-                        {item.notes && (
-                          <div className="text-xs text-muted-foreground truncate max-w-[120px]">
-                            {item.notes}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center">
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => handleQuantityChange(index, 'decrease')}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="mx-2">{item.quantity}</span>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => handleQuantityChange(index, 'increase')}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => openNoteSheet(item)}>
-                        Notas
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => handleRemoveItem(index)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {orderItems.length === 0 && (
+          <div className="flex-grow flex flex-col overflow-hidden">
+            <ScrollArea className="flex-grow rounded-md border mb-4">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                      Aún no hay items en la orden
-                    </TableCell>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-24 text-center">Cant.</TableHead>
+                    <TableHead className="w-24 text-right">Precio</TableHead>
+                    <TableHead className="w-24 text-right">Acciones</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-              <TableFooter>
-                <TableRow>
-                  <TableCell colSpan={2}>Subtotal</TableCell>
-                  <TableCell className="text-right" colSpan={2}>${calculateSubtotal().toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={2}>
-                    <div className="flex items-center gap-2">
-                      <span>Descuento</span>
-                      <Select 
-                        value={discountType} 
-                        onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
-                      >
-                        <SelectTrigger className="h-7 w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">%</SelectItem>
-                          <SelectItem value="fixed">$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input 
-                        type="number" 
-                        value={discount}
-                        onChange={(e) => setDiscount(Number(e.target.value))}
-                        className="w-20 h-7"
-                        min="0"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right" colSpan={2}>
-                    -${calculateDiscount().toFixed(2)}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={2} className="font-bold">Total</TableCell>
-                  <TableCell className="text-right font-bold" colSpan={2}>${calculateTotal().toFixed(2)}</TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </ScrollArea>
+                </TableHeader>
+                <TableBody>
+                  {orderItems.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div>
+                          <div>{item.name}</div>
+                          {item.notes && (
+                            <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                              {item.notes}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-6 w-6"
+                            onClick={() => handleQuantityChange(index, 'decrease')}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="mx-2">{item.quantity}</span>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-6 w-6"
+                            onClick={() => handleQuantityChange(index, 'increase')}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => openNoteSheet(item)}>
+                          Notas
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => handleRemoveItem(index)}>
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {orderItems.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        Aún no hay items en la orden
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
 
-          <Button className="w-full mt-2" onClick={handleSubmitOrder} disabled={orderItems.length === 0}>
-            Enviar a Cocina
-          </Button>
+            <div className="mt-auto border-t pt-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span>Subtotal</span>
+                  <span>${calculateSubtotal().toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span>Descuento</span>
+                    <Select 
+                      value={discountType} 
+                      onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
+                    >
+                      <SelectTrigger className="h-7 w-16">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">%</SelectItem>
+                        <SelectItem value="fixed">$</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input 
+                      type="number" 
+                      value={discount}
+                      onChange={(e) => setDiscount(Number(e.target.value))}
+                      className="w-20 h-7"
+                      min="0"
+                    />
+                  </div>
+                  <span>-${calculateDiscount().toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center font-bold text-lg">
+                  <span>Total</span>
+                  <span>${calculateTotal().toFixed(2)}</span>
+                </div>
+              </div>
+
+              <Button className="w-full mt-4" onClick={handleSubmitOrder} disabled={orderItems.length === 0}>
+                Enviar a Cocina
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

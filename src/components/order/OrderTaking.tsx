@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/sheet";
 import { OrderItem } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash, Minus, Plus } from 'lucide-react';
+import { Trash, Minus, Plus, ShoppingBag } from 'lucide-react';
 
 interface OrderTakingProps {
   tableId: string;
@@ -247,7 +247,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-full overflow-hidden">
-      {/* Sección de Menú */}
+      {/* Menu Section */}
       <Card className="h-full flex flex-col">
         <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
           <div className="mb-4">
@@ -285,7 +285,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
         </CardContent>
       </Card>
 
-      {/* Sección de Orden */}
+      {/* Order Section */}
       <Card className="h-full flex flex-col">
         <ScrollArea className="h-full">
           <CardContent className="p-4 flex flex-col">
@@ -420,17 +420,21 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
                 <span>${calculateTotal().toFixed(2)}</span>
               </div>
             </div>
-
-            <Button 
-              className="w-full mt-6" 
-              onClick={handleSubmitOrder} 
-              disabled={orderItems.length === 0}
-              size="lg"
-            >
-              Enviar a Cocina
-            </Button>
           </CardContent>
         </ScrollArea>
+        
+        {/* Fixed position button at the bottom */}
+        <div className="p-4 border-t">
+          <Button 
+            className="w-full" 
+            onClick={handleSubmitOrder} 
+            disabled={orderItems.length === 0}
+            size="lg"
+          >
+            <ShoppingBag className="mr-2 h-5 w-5" />
+            Crear Pedido
+          </Button>
+        </div>
       </Card>
 
       {/* Hoja lateral para notas */}

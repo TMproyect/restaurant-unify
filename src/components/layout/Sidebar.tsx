@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, ShoppingCart, Users, Package, FileText, ChartBar, Settings, ArrowLeft, ArrowRight, Menu as MenuIcon, User, Utensils } from 'lucide-react';
@@ -7,7 +6,6 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { UserRole } from '@/contexts/auth/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-// Define menu items with role permissions
 interface MenuItem {
   title: string;
   icon: React.ElementType;
@@ -80,14 +78,12 @@ const Sidebar = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
-  // Close mobile menu when navigating
   useEffect(() => {
     if (isMobile) {
       setMobileMenuOpen(false);
     }
   }, [location.pathname, isMobile]);
 
-  // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter(
     (item) => user && item.allowedRoles.includes(user.role)
   );
@@ -99,7 +95,6 @@ const Sidebar = () => {
     }
   };
 
-  // Mobile menu button for small screens
   if (isMobile) {
     return (
       <>
@@ -108,10 +103,9 @@ const Sidebar = () => {
           className="fixed top-3 left-3 z-50 p-2 bg-primary text-primary-foreground rounded-md shadow-md"
           aria-label="Menú principal"
         >
-          <Menu size={24} />
+          <MenuIcon size={24} />
         </button>
         
-        {/* Mobile sidebar overlay */}
         {mobileMenuOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40"
@@ -119,7 +113,6 @@ const Sidebar = () => {
           />
         )}
         
-        {/* Mobile sidebar */}
         <div 
           className={cn(
             "fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out",
@@ -166,7 +159,6 @@ const Sidebar = () => {
     );
   }
 
-  // Desktop sidebar
   return (
     <div
       className={cn(

@@ -31,7 +31,7 @@ const Login = () => {
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   }, []);
 
-  // If user is authenticated, redirect to dashboard
+  // Only redirect once loading is complete and user is authenticated
   if (isAuthenticated && !isLoading) {
     console.log("User is authenticated, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;

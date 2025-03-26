@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,29 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
 
+  // Reset local loading state when auth loading changes
+  useEffect(() => {
+    if (!authLoading) {
+      setLocalLoading(false);
+    }
+  }, [authLoading]);
+
+  // Safety timeout to prevent permanent loading state
+  useEffect(() => {
+    let timer: number;
+    
+    if (localLoading) {
+      timer = window.setTimeout(() => {
+        console.log("Auto-reset loading state after timeout");
+        setLocalLoading(false);
+      }, 10000); // 10 second timeout as a fallback
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [localLoading]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -33,12 +56,13 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       return;
     }
     
-    setLocalLoading(true);
-    console.log("Login button clicked, state set to loading");
-    
     try {
-      await login(email, password);
-      console.log("Login successful");
+      console.log("Setting local loading state to true");
+      setLocalLoading(true);
+      
+      const result = await login(email, password);
+      console.log("Login completed", result);
+      
       if (onSuccess) onSuccess();
     } catch (err: any) {
       console.error("Login error:", err);
@@ -56,8 +80,8 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         });
       }
     } finally {
+      console.log("Login process completed, resetting local loading state");
       setLocalLoading(false);
-      console.log("Login process completed, loading state reset");
     }
   };
 
@@ -76,7 +100,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@restaurante.com"
             required
-            disabled={localLoading || authLoading}
+            disabled={isButtonDisabled}
           />
         </div>
         
@@ -89,7 +113,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
-            disabled={localLoading || authLoading}
+            disabled={isButtonDisabled}
           />
         </div>
       </CardContent>
@@ -100,7 +124,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           className="w-full mb-4" 
           disabled={isButtonDisabled}
         >
-          {(localLoading || authLoading) ? (
+          {isButtonDisabled ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Iniciando sesión...

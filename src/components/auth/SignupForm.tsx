@@ -19,14 +19,11 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
   const [name, setName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
-  const [buttonDisabled, setButtonDisabled] = useState(false);
 
+  // Reset local loading when auth loading changes
   useEffect(() => {
     if (!authLoading) {
       setLocalLoading(false);
-      setTimeout(() => {
-        setButtonDisabled(false);
-      }, 100);
     }
   }, [authLoading]);
 
@@ -34,47 +31,38 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
   useEffect(() => {
     let timer: number | undefined;
     
-    if (buttonDisabled || localLoading) {
+    if (localLoading) {
       timer = window.setTimeout(() => {
-        console.log("Auto-resetting button state");
-        setButtonDisabled(false);
+        console.log("Auto-resetting loading state after timeout");
         setLocalLoading(false);
-      }, 3000);
+      }, 10000); // 10 second safety timeout
     }
     
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [buttonDisabled, localLoading]);
+  }, [localLoading]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (localLoading || buttonDisabled) {
-      console.log("Button click prevented: already loading");
+    if (localLoading || authLoading) {
+      console.log("Signup already in progress, ignoring request");
       return;
     }
     
     setLocalLoading(true);
-    setButtonDisabled(true);
-    
     console.log("Signup button clicked, state set to loading");
     
     if (password !== confirmPassword) {
       toast.error('Las contraseñas no coinciden');
-      setTimeout(() => {
-        setLocalLoading(false);
-        setButtonDisabled(false);
-      }, 500);
+      setLocalLoading(false);
       return;
     }
 
     if (password.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres');
-      setTimeout(() => {
-        setLocalLoading(false);
-        setButtonDisabled(false);
-      }, 500);
+      setLocalLoading(false);
       return;
     }
     
@@ -96,12 +84,12 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
       setPassword('');
       setConfirmPassword('');
     } finally {
-      setTimeout(() => {
-        setLocalLoading(false);
-        setButtonDisabled(false);
-      }, 500);
+      console.log("Signup process completed, resetting loading state");
+      setLocalLoading(false);
     }
   };
+
+  const isButtonDisabled = localLoading || authLoading;
 
   return (
     <form onSubmit={handleSignup}>
@@ -115,7 +103,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setName(e.target.value)}
             placeholder="Juan Pérez"
             required
-            disabled={localLoading || buttonDisabled}
+            disabled={isButtonDisabled}
           />
         </div>
         
@@ -128,7 +116,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@restaurante.com"
             required
-            disabled={localLoading || buttonDisabled}
+            disabled={isButtonDisabled}
           />
         </div>
         
@@ -141,7 +129,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mínimo 6 caracteres"
             required
-            disabled={localLoading || buttonDisabled}
+            disabled={isButtonDisabled}
           />
         </div>
         
@@ -154,7 +142,7 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirmar contraseña"
             required
-            disabled={localLoading || buttonDisabled}
+            disabled={isButtonDisabled}
           />
         </div>
       </CardContent>
@@ -163,9 +151,9 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
         <Button 
           type="submit" 
           className="w-full" 
-          disabled={localLoading || buttonDisabled}
+          disabled={isButtonDisabled}
         >
-          {localLoading ? (
+          {isButtonDisabled ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Registrando...

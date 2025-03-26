@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -97,10 +98,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error("Email and password are required");
     }
     
+    console.log("Login started for email:", email);
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-      console.log("Login started for email:", email);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

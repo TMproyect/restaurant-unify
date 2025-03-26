@@ -64,7 +64,8 @@ const Login = () => {
     }
     
     try {
-      await signup(email, password, name);
+      // Aquí usamos 'waiter' como rol predeterminado para nuevos registros
+      await signup(email, password, name, 'waiter');
       setActiveTab('login');
       setPassword('');
       setConfirmPassword('');

@@ -126,8 +126,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function - modificada para usar 'admin' como rol predeterminado SIEMPRE
-  const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
+  // Signup function - modificada para aceptar cualquier rol (waiter por defecto)
+  const signup = async (email: string, password: string, name: string, role: UserRole = 'waiter') => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
@@ -26,6 +25,8 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     const sessionResponse = await supabase.auth.getSession();
     const email = sessionResponse.data.session?.user?.email || '';
 
+    console.log('Profile data found:', data);
+    
     return {
       id: data.id,
       name: data.name,
@@ -41,17 +42,29 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
 
 // Login helper
 export const loginUser = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    console.log('Attempting to login with email:', email);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) {
-    console.error('Login error:', error.message);
+    if (error) {
+      console.error('Login error:', error.message);
+      throw error;
+    }
+
+    if (!data.user) {
+      console.error('No user returned from login');
+      throw new Error('No se pudo iniciar sesión');
+    }
+
+    console.log('Login successful, user ID:', data.user.id);
+    return data;
+  } catch (error) {
+    console.error('Error in loginUser:', error);
     throw error;
   }
-
-  return data;
 };
 
 // Signup helper
@@ -146,5 +159,11 @@ export const updateUserRoleById = async (userId: string, newRole: UserRole) => {
 
 // Logout helper
 export const logoutUser = async () => {
-  await supabase.auth.signOut();
+  console.log('Logging out user');
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error('Logout error:', error.message);
+    throw error;
+  }
+  console.log('Logout successful');
 };

@@ -30,7 +30,13 @@ import {
   IceCream,
   Pizza,
   Salad,
-  Book
+  ChefHat,
+  Sandwich,
+  CupSoda,
+  Cake,
+  Fish,
+  Soup,
+  Croissant
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -54,7 +60,13 @@ const categoryIcons: Record<string, React.ReactNode> = {
   postres: <IceCream className="h-4 w-4" />,
   pizzas: <Pizza className="h-4 w-4" />,
   ensaladas: <Salad className="h-4 w-4" />,
-  menu: <Book className="h-4 w-4" />
+  menu: <ChefHat className="h-4 w-4" />,
+  sandwich: <Sandwich className="h-4 w-4" />,
+  refrescos: <CupSoda className="h-4 w-4" />,
+  pasteles: <Cake className="h-4 w-4" />,
+  pescados: <Fish className="h-4 w-4" />,
+  sopas: <Soup className="h-4 w-4" />,
+  panaderia: <Croissant className="h-4 w-4" />
 };
 
 // Opciones de iconos para seleccionar
@@ -65,7 +77,13 @@ const iconOptions = [
   { value: 'postres', label: 'Postres', icon: <IceCream className="h-4 w-4" /> },
   { value: 'pizzas', label: 'Pizzas', icon: <Pizza className="h-4 w-4" /> },
   { value: 'ensaladas', label: 'Ensaladas', icon: <Salad className="h-4 w-4" /> },
-  { value: 'menu', label: 'Menú', icon: <Book className="h-4 w-4" /> }
+  { value: 'menu', label: 'Menú General', icon: <ChefHat className="h-4 w-4" /> },
+  { value: 'sandwich', label: 'Sandwiches', icon: <Sandwich className="h-4 w-4" /> },
+  { value: 'refrescos', label: 'Refrescos', icon: <CupSoda className="h-4 w-4" /> },
+  { value: 'pasteles', label: 'Pasteles', icon: <Cake className="h-4 w-4" /> },
+  { value: 'pescados', label: 'Pescados', icon: <Fish className="h-4 w-4" /> },
+  { value: 'sopas', label: 'Sopas', icon: <Soup className="h-4 w-4" /> },
+  { value: 'panaderia', label: 'Panadería', icon: <Croissant className="h-4 w-4" /> }
 ];
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }) => {
@@ -205,7 +223,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
     }
     
     // Icono por defecto
-    return <Book className="h-4 w-4" />;
+    return <ChefHat className="h-4 w-4" />;
   };
 
   return (

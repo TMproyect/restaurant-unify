@@ -27,6 +27,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let isMounted = true;
     
+    console.log("AuthProvider initialized, setting up auth state listener");
+    
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
@@ -40,6 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const profile = await fetchUserProfile(currentSession.user.id);
             if (profile) {
               setUser(profile);
+              console.log("User profile fetched successfully:", profile);
             } else {
               console.error('No profile found for user:', currentSession.user.id);
               setUser(null);
@@ -68,11 +71,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const profile = await fetchUserProfile(currentSession.user.id);
           if (profile) {
             setUser(profile);
+            console.log("Initial user profile fetched successfully:", profile);
           } else {
             console.error('No profile found for user:', currentSession.user.id);
+            setUser(null);
           }
         } catch (error) {
-          console.error('Error fetching profile:', error);
+          console.error('Error fetching initial profile:', error);
+          setUser(null);
         }
       }
       
@@ -80,6 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return () => {
+      console.log("AuthProvider cleanup, unsubscribing from auth state changes");
       isMounted = false;
       subscription.unsubscribe();
     };
@@ -87,9 +94,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Login function
   const login = async (email: string, password: string) => {
+    if (!email || !password) {
+      console.error("Email and password are required");
+      throw new Error("Email and password are required");
+    }
+    
     try {
       setIsLoading(true);
-      console.log("Login started...");
+      console.log("Login started for email:", email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -98,21 +110,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('Login error:', error.message);
-        if (error.message.includes('Email not confirmed')) {
-          toast.error('Error al iniciar sesión: El correo electrónico no ha sido confirmado');
-        } else if (error.message.includes('Invalid login credentials')) {
-          toast.error('Error al iniciar sesión: Credenciales inválidas');
-        } else {
-          toast.error('Error al iniciar sesión: ' + error.message);
-        }
         throw error;
       }
 
       if (data.user) {
+        console.log("Auth successful, fetching user profile");
         const profile = await fetchUserProfile(data.user.id);
         
         if (!profile) {
-          toast.error('No se pudo recuperar el perfil de usuario');
+          console.error("No profile found for user after login");
           throw new Error('No se pudo recuperar el perfil de usuario');
         }
         
@@ -120,8 +126,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         toast.success('Inicio de sesión exitoso', {
           description: `Bienvenido, ${profile.name}`,
         });
-        console.log("Login successful:", profile);
+        console.log("Login successful, user profile set:", profile);
+      } else {
+        console.error("No user data returned from auth");
+        throw new Error("No user data returned from auth");
       }
+      
+      return data;
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       throw error;

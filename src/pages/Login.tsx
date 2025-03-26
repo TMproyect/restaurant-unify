@@ -27,9 +27,13 @@ const Login = () => {
         description: message,
       });
     }
+    
+    console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   }, []);
 
-  if (isAuthenticated) {
+  // If user is authenticated, redirect to dashboard
+  if (isAuthenticated && !isLoading) {
+    console.log("User is authenticated, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 

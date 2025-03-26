@@ -21,7 +21,8 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (localLoading) {
+    if (localLoading || authLoading) {
+      console.log("Login already in progress, ignoring request");
       return;
     }
     
@@ -34,11 +35,11 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       if (onSuccess) onSuccess();
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.message.includes('Email not confirmed')) {
+      if (err.message?.includes('Email not confirmed')) {
         toast.error('El correo electrónico no ha sido confirmado', {
           description: 'Por favor, revisa tu bandeja de entrada y confirma tu correo',
         });
-      } else if (err.message.includes('Invalid login credentials')) {
+      } else if (err.message?.includes('Invalid login credentials')) {
         toast.error('Credenciales inválidas', {
           description: 'El correo o la contraseña son incorrectos',
         });
@@ -49,8 +50,12 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       }
     } finally {
       setLocalLoading(false);
+      console.log("Login process completed, loading state reset");
     }
   };
+
+  // Determine if the button should be disabled
+  const isButtonDisabled = localLoading || authLoading || !email || !password;
 
   return (
     <form onSubmit={handleLogin}>
@@ -64,7 +69,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@restaurante.com"
             required
-            disabled={localLoading}
+            disabled={localLoading || authLoading}
           />
         </div>
         
@@ -77,7 +82,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
-            disabled={localLoading}
+            disabled={localLoading || authLoading}
           />
         </div>
       </CardContent>
@@ -86,9 +91,9 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         <Button 
           type="submit" 
           className="w-full mb-4" 
-          disabled={localLoading || authLoading}
+          disabled={isButtonDisabled}
         >
-          {localLoading ? (
+          {(localLoading || authLoading) ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Iniciando sesión...

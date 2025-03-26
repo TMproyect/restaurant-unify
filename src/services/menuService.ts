@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 export interface MenuCategory {
   id: string;
   name: string;
+  icon?: string;
 }
 
 export interface MenuItem {
@@ -23,6 +24,7 @@ export interface MenuItem {
 
 export const fetchMenuCategories = async (): Promise<MenuCategory[]> => {
   try {
+    console.log('Fetching menu categories...');
     const { data, error } = await supabase
       .from('menu_categories')
       .select('*')
@@ -33,6 +35,7 @@ export const fetchMenuCategories = async (): Promise<MenuCategory[]> => {
       throw error;
     }
 
+    console.log('Menu categories fetched:', data);
     return data || [];
   } catch (error) {
     console.error('Error in fetchMenuCategories:', error);
@@ -41,8 +44,9 @@ export const fetchMenuCategories = async (): Promise<MenuCategory[]> => {
   }
 };
 
-export const createMenuCategory = async (category: { name: string }): Promise<MenuCategory | null> => {
+export const createMenuCategory = async (category: { name: string, icon?: string }): Promise<MenuCategory | null> => {
   try {
+    console.log('Creating menu category:', category);
     const { data, error } = await supabase
       .from('menu_categories')
       .insert([category])
@@ -54,6 +58,7 @@ export const createMenuCategory = async (category: { name: string }): Promise<Me
       throw error;
     }
 
+    console.log('Menu category created:', data);
     return data;
   } catch (error) {
     console.error('Error in createMenuCategory:', error);
@@ -64,6 +69,7 @@ export const createMenuCategory = async (category: { name: string }): Promise<Me
 
 export const updateMenuCategory = async (id: string, updates: Partial<MenuCategory>): Promise<MenuCategory | null> => {
   try {
+    console.log('Updating menu category:', id, updates);
     const { data, error } = await supabase
       .from('menu_categories')
       .update(updates)
@@ -76,6 +82,7 @@ export const updateMenuCategory = async (id: string, updates: Partial<MenuCatego
       throw error;
     }
 
+    console.log('Menu category updated:', data);
     return data;
   } catch (error) {
     console.error('Error in updateMenuCategory:', error);
@@ -86,6 +93,7 @@ export const updateMenuCategory = async (id: string, updates: Partial<MenuCatego
 
 export const deleteMenuCategory = async (id: string): Promise<boolean> => {
   try {
+    console.log('Deleting menu category:', id);
     const { error } = await supabase
       .from('menu_categories')
       .delete()
@@ -96,6 +104,7 @@ export const deleteMenuCategory = async (id: string): Promise<boolean> => {
       throw error;
     }
 
+    console.log('Menu category deleted successfully');
     return true;
   } catch (error) {
     console.error('Error in deleteMenuCategory:', error);

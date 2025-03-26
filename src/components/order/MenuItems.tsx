@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus,
@@ -11,11 +11,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { MenuItem, menuItems, menuCategories } from '@/data/menuData';
 import { CartItem } from './OrderCart';
+import { fetchMenuItems, fetchMenuCategories, MenuItem, MenuCategory } from '@/services/menuService';
+import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemsProps {
   onAddToCart: (item: CartItem) => void;
+}
+
+interface MenuItemOption {
+  name: string;
+  choices: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
+}
+
+interface ExtendedMenuItem extends MenuItem {
+  options?: MenuItemOption[];
 }
 
 const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
@@ -26,6 +40,55 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
   const [itemNotes, setItemNotes] = useState('');
   const [additionalItems, setAdditionalItems] = useState<string[]>([]);
   const [additionalItemText, setAdditionalItemText] = useState('');
+  const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Fetch menu items and categories from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [itemsData, categoriesData] = await Promise.all([
+          fetchMenuItems(),
+          fetchMenuCategories()
+        ]);
+        
+        // Add mock options data for testing
+        const itemsWithOptions = itemsData.map((item: MenuItem) => {
+          return {
+            ...item,
+            options: []
+          } as ExtendedMenuItem;
+        });
+        
+        setMenuItems(itemsWithOptions);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error loading menu data:', error);
+        toast({
+          title: "Error de carga",
+          description: "No se pudieron cargar los elementos del menú",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+    
+    // Listen for menu updates from other components
+    const handleMenuUpdated = () => {
+      loadData();
+    };
+    
+    window.addEventListener('menuItemsUpdated', handleMenuUpdated);
+    return () => {
+      window.removeEventListener('menuItemsUpdated', handleMenuUpdated);
+    };
+  }, [toast]);
 
   // Filtrar items del menú
   const filteredItems = menuItems.filter(item => {
@@ -33,7 +96,7 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
     if (!item.available) return false;
 
     // Filtro por categoría
-    if (selectedCategory && item.category !== selectedCategory) return false;
+    if (selectedCategory && item.category_id !== selectedCategory) return false;
     
     // Filtro por término de búsqueda
     if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
@@ -90,13 +153,18 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
     setAdditionalItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddToCart = (item: MenuItem) => {
+  const handleAddToCart = (item: ExtendedMenuItem) => {
     // Si el ítem está activo y tiene opciones, verificar que todas estén seleccionadas
-    if (activeItemId === item.id && item.options) {
+    if (activeItemId === item.id && item.options && item.options.length > 0) {
       const allOptionsSelected = item.options.every(option => selectedOptions[option.name]);
       
       if (!allOptionsSelected) {
         // Alerta: seleccionar todas las opciones
+        toast({
+          title: "Opciones incompletas",
+          description: "Por favor selecciona todas las opciones requeridas",
+          variant: "destructive"
+        });
         return;
       }
     }
@@ -141,9 +209,13 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
     setAdditionalItemText('');
   };
 
-  const getActiveItem = () => {
-    return activeItemId ? menuItems.find(item => item.id === activeItemId) : null;
-  };
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <p>Cargando menú...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -161,7 +233,7 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
 
       {/* Categorías */}
       <div className="flex flex-wrap gap-2 pb-2">
-        {menuCategories.map(category => (
+        {categories.map(category => (
           <Button
             key={category.id}
             variant={selectedCategory === category.id ? "default" : "outline"}

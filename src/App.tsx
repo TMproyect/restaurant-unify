@@ -17,6 +17,7 @@ import Sales from "./pages/Sales";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Staff from "./pages/Staff";
+import Tables from "./pages/Tables";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function App() {
               <Route path="/kitchen" element={<Kitchen />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/menu" element={<Menu />} />
+              <Route path="/tables" element={<Tables />} />
               <Route path="/delivery" element={<Delivery />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/reports" element={<Reports />} />

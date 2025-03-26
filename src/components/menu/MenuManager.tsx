@@ -37,63 +37,88 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { menuCategories, MenuItem } from '@/data/menuData';
+import { 
+  MenuItem, 
+  MenuCategory, 
+  fetchMenuItems, 
+  fetchMenuCategories, 
+  createMenuItem, 
+  updateMenuItem, 
+  deleteMenuItem,
+  uploadMenuItemImage
+} from '@/services/menuService';
 
-// Function to get menu items from localStorage or sample data
-const getMenuItems = (): MenuItem[] => {
-  const savedItems = localStorage.getItem('restaurantMenuItems');
-  if (savedItems) {
-    return JSON.parse(savedItems);
-  }
-  
-  // If no saved items, import from menuData
-  const { menuItems } = require('@/data/menuData');
-  return menuItems;
-};
+interface MenuItemOption {
+  name: string;
+  choices: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
+}
 
-// Function to save menu items to localStorage
-const saveMenuItems = (items: MenuItem[]) => {
-  localStorage.setItem('restaurantMenuItems', JSON.stringify(items));
-  // Dispatch a custom event to notify other components about the update
-  window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
-};
+interface ExtendedMenuItem extends MenuItem {
+  options?: MenuItemOption[];
+}
 
 const MenuManager: React.FC = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
+  const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [filteredItems, setFilteredItems] = useState<ExtendedMenuItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
   // Form state for adding/editing menu items
-  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
-  const [newItem, setNewItem] = useState<Partial<MenuItem>>({
+  const [editingItem, setEditingItem] = useState<ExtendedMenuItem | null>(null);
+  const [newItem, setNewItem] = useState<Partial<ExtendedMenuItem>>({
     name: '',
     description: '',
     price: 0,
-    category: 'entradas',
+    category_id: '',
     available: true,
     allergens: [],
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
   
-  // Initialize menu items from localStorage or sample data
+  // Fetch menu items and categories from Supabase
   useEffect(() => {
-    setMenuItems(getMenuItems());
-    setFilteredItems(getMenuItems());
-    setIsLoading(false);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [itemsData, categoriesData] = await Promise.all([
+          fetchMenuItems(),
+          fetchMenuCategories()
+        ]);
+        
+        setMenuItems(itemsData as ExtendedMenuItem[]);
+        setFilteredItems(itemsData as ExtendedMenuItem[]);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error loading menu data:', error);
+        toast({
+          title: "Error de carga",
+          description: "No se pudieron cargar los datos del menú",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
     
     // Listen for menu updates from other components
     const handleMenuUpdated = () => {
-      setMenuItems(getMenuItems());
-      setFilteredItems(getMenuItems());
+      loadData();
     };
     
     window.addEventListener('menuItemsUpdated', handleMenuUpdated);
     return () => {
       window.removeEventListener('menuItemsUpdated', handleMenuUpdated);
     };
-  }, []);
+  }, [toast]);
   
   // Filter menu items when search term or category changes
   useEffect(() => {
@@ -107,15 +132,15 @@ const MenuManager: React.FC = () => {
     }
     
     if (selectedCategory) {
-      filtered = filtered.filter(item => item.category === selectedCategory);
+      filtered = filtered.filter(item => item.category_id === selectedCategory);
     }
     
     setFilteredItems(filtered);
   }, [menuItems, searchTerm, selectedCategory]);
   
   // Handle adding a new menu item
-  const handleAddItem = () => {
-    if (!newItem.name || !newItem.description || !newItem.category) {
+  const handleAddItem = async () => {
+    if (!newItem.name || !newItem.description || !newItem.category_id) {
       toast({
         title: "Error al guardar",
         description: "Por favor complete todos los campos requeridos",
@@ -124,125 +149,149 @@ const MenuManager: React.FC = () => {
       return;
     }
     
-    const newId = `${Date.now()}`;
-    const itemToAdd: MenuItem = {
-      id: newId,
-      name: newItem.name || '',
+    // Handle image upload if provided
+    let imageUrl = newItem.image_url;
+    if (imageFile) {
+      const uploadedUrl = await uploadMenuItemImage(imageFile);
+      if (uploadedUrl) {
+        imageUrl = uploadedUrl;
+      }
+    }
+    
+    const itemToAdd = {
+      name: newItem.name,
       description: newItem.description || '',
       price: newItem.price || 0,
-      category: newItem.category || 'entradas',
+      category_id: newItem.category_id,
       available: newItem.available !== undefined ? newItem.available : true,
       popular: newItem.popular || false,
       allergens: newItem.allergens || [],
-      options: newItem.options || [],
-      image: newItem.image || undefined
+      image_url: imageUrl
     };
     
-    const updatedItems = [...menuItems, itemToAdd];
-    setMenuItems(updatedItems);
-    saveMenuItems(updatedItems);
+    const createdItem = await createMenuItem(itemToAdd);
     
-    // Reset form
-    setNewItem({
-      name: '',
-      description: '',
-      price: 0,
-      category: 'entradas',
-      available: true,
-      allergens: [],
-    });
-    
-    toast({
-      title: "Plato añadido",
-      description: `${itemToAdd.name} ha sido añadido al menú`
-    });
+    if (createdItem) {
+      setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
+      
+      // Reset form
+      setNewItem({
+        name: '',
+        description: '',
+        price: 0,
+        category_id: '',
+        available: true,
+        allergens: [],
+      });
+      setImageFile(null);
+      
+      toast({
+        title: "Plato añadido",
+        description: `${createdItem.name} ha sido añadido al menú`
+      });
+    }
   };
   
   // Handle editing a menu item
-  const handleEditItem = (item: MenuItem) => {
+  const handleEditItem = (item: ExtendedMenuItem) => {
     setEditingItem(item);
     setNewItem({
       name: item.name,
       description: item.description,
       price: item.price,
-      category: item.category,
+      category_id: item.category_id,
       available: item.available,
       popular: item.popular,
       allergens: item.allergens,
-      options: item.options,
-      image: item.image
+      image_url: item.image_url
     });
+    setImageFile(null);
   };
   
   // Handle saving edited menu item
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingItem) return;
     
-    const updatedItems = menuItems.map(item => 
-      item.id === editingItem.id
-        ? {
-            ...item,
-            name: newItem.name || item.name,
-            description: newItem.description || item.description,
-            price: newItem.price !== undefined ? newItem.price : item.price,
-            category: newItem.category || item.category,
-            available: newItem.available !== undefined ? newItem.available : item.available,
-            popular: newItem.popular !== undefined ? newItem.popular : item.popular,
-            allergens: newItem.allergens || item.allergens,
-            options: newItem.options || item.options,
-            image: newItem.image || item.image
-          }
-        : item
-    );
+    // Handle image upload if provided
+    let imageUrl = newItem.image_url;
+    if (imageFile) {
+      const uploadedUrl = await uploadMenuItemImage(imageFile);
+      if (uploadedUrl) {
+        imageUrl = uploadedUrl;
+      }
+    }
     
-    setMenuItems(updatedItems);
-    saveMenuItems(updatedItems);
-    setEditingItem(null);
+    const updates = {
+      name: newItem.name,
+      description: newItem.description,
+      price: newItem.price,
+      category_id: newItem.category_id,
+      available: newItem.available,
+      popular: newItem.popular,
+      allergens: newItem.allergens,
+      image_url: imageUrl
+    };
     
-    // Reset form
-    setNewItem({
-      name: '',
-      description: '',
-      price: 0,
-      category: 'entradas',
-      available: true,
-      allergens: [],
-    });
+    const updatedItem = await updateMenuItem(editingItem.id, updates);
     
-    toast({
-      title: "Plato actualizado",
-      description: `${newItem.name} ha sido actualizado`
-    });
+    if (updatedItem) {
+      setMenuItems(prev => 
+        prev.map(item => 
+          item.id === editingItem.id ? { ...updatedItem, options: item.options } as ExtendedMenuItem : item
+        )
+      );
+      
+      setEditingItem(null);
+      
+      // Reset form
+      setNewItem({
+        name: '',
+        description: '',
+        price: 0,
+        category_id: '',
+        available: true,
+        allergens: [],
+      });
+      setImageFile(null);
+      
+      toast({
+        title: "Plato actualizado",
+        description: `${updatedItem.name} ha sido actualizado`
+      });
+    }
   };
   
   // Handle deleting a menu item
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     const itemToDelete = menuItems.find(item => item.id === id);
     if (!itemToDelete) return;
     
-    const updatedItems = menuItems.filter(item => item.id !== id);
-    setMenuItems(updatedItems);
-    saveMenuItems(updatedItems);
+    const success = await deleteMenuItem(id);
     
-    toast({
-      title: "Plato eliminado",
-      description: `${itemToDelete.name} ha sido eliminado del menú`
-    });
+    if (success) {
+      setMenuItems(prev => prev.filter(item => item.id !== id));
+      
+      toast({
+        title: "Plato eliminado",
+        description: `${itemToDelete.name} ha sido eliminado del menú`
+      });
+    }
   };
   
   // Handle toggling availability
-  const handleToggleAvailability = (id: string) => {
-    const updatedItems = menuItems.map(item => 
-      item.id === id
-        ? { ...item, available: !item.available }
-        : item
-    );
+  const handleToggleAvailability = async (id: string) => {
+    const item = menuItems.find(item => item.id === id);
+    if (!item) return;
     
-    setMenuItems(updatedItems);
-    saveMenuItems(updatedItems);
+    const updatedItem = await updateMenuItem(id, { available: !item.available });
     
-    const updatedItem = updatedItems.find(item => item.id === id);
     if (updatedItem) {
+      setMenuItems(prev => 
+        prev.map(item => 
+          item.id === id ? { ...updatedItem, options: item.options } as ExtendedMenuItem : item
+        )
+      );
+      
       toast({
         title: updatedItem.available ? "Plato disponible" : "Plato no disponible",
         description: `${updatedItem.name} ahora está ${updatedItem.available ? 'disponible' : 'no disponible'}`
@@ -250,23 +299,16 @@ const MenuManager: React.FC = () => {
     }
   };
   
-  // Mock function for handling image upload
-  // In a real implementation, this would upload to Supabase storage
+  // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Mock image URL - in a real implementation, this would be the Supabase URL
-    const mockImageUrl = `https://example.com/images/${file.name}`;
-    
-    setNewItem({
-      ...newItem,
-      image: mockImageUrl
-    });
+    setImageFile(file);
     
     toast({
-      title: "Imagen subida",
-      description: "La imagen ha sido subida correctamente"
+      title: "Imagen seleccionada",
+      description: "La imagen será subida al guardar el plato"
     });
   };
   
@@ -326,14 +368,14 @@ const MenuManager: React.FC = () => {
                 <div className="grid gap-2">
                   <Label htmlFor="category">Categoría</Label>
                   <Select
-                    value={newItem.category || 'entradas'}
-                    onValueChange={(value) => setNewItem({ ...newItem, category: value })}
+                    value={newItem.category_id || ''}
+                    onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
                   >
                     <SelectTrigger id="category">
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
                     <SelectContent>
-                      {menuCategories.map((category) => (
+                      {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -391,9 +433,11 @@ const MenuManager: React.FC = () => {
                     <ImagePlus className="h-4 w-4" />
                   </Button>
                 </div>
-                {newItem.image && (
+                {(newItem.image_url || imageFile) && (
                   <p className="text-xs text-muted-foreground">
-                    Imagen seleccionada: {newItem.image.split('/').pop()}
+                    {imageFile 
+                      ? `Imagen seleccionada: ${imageFile.name}` 
+                      : `Imagen actual: ${newItem.image_url?.split('/').pop()}`}
                   </p>
                 )}
               </div>
@@ -444,7 +488,7 @@ const MenuManager: React.FC = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">Todas las categorías</SelectItem>
-            {menuCategories.map((category) => (
+            {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 {category.name}
               </SelectItem>
@@ -479,7 +523,7 @@ const MenuManager: React.FC = () => {
                     <div className="flex items-center mt-1">
                       <Tag className="h-3 w-3 mr-1 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">
-                        {menuCategories.find(c => c.id === item.category)?.name || item.category}
+                        {categories.find(c => c.id === item.category_id)?.name || 'Sin categoría'}
                       </span>
                     </div>
                   </div>

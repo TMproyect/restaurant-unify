@@ -19,6 +19,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from '@/integrations/supabase/client';
+import { getOrderWithItems, updateOrderStatus, subscribeToOrders } from '@/services/orderService';
 
 // Kitchen options constants
 const kitchenOptions = [
@@ -28,163 +30,137 @@ const kitchenOptions = [
   { id: "pastry", name: "Pastelería" },
 ];
 
-// Initial orders data - in a real app, this would come from an API
-const initialOrders = [
-  { 
-    id: 1, 
-    table: '5', 
-    customerName: 'Carlos',
-    time: '10:30', 
-    kitchenId: 'main',
-    items: [
-      { name: 'Pollo a la parrilla', notes: 'Sin salsa', status: 'pending' },
-      { name: 'Ensalada César', notes: 'Sin crutones', status: 'pending' },
-      { name: 'Papas fritas', notes: 'Extra crujientes', status: 'pending' },
-    ]
-  },
-  { 
-    id: 2, 
-    table: '3', 
-    customerName: 'María',
-    time: '10:15', 
-    kitchenId: 'cold',
-    items: [
-      { name: 'Pasta Carbonara', notes: 'Extra queso', status: 'pending' },
-      { name: 'Pan de ajo', notes: '', status: 'pending' },
-    ]
-  },
-  { 
-    id: 3, 
-    table: 'Delivery', 
-    customerName: 'Juan',
-    time: '10:25', 
-    kitchenId: 'grill',
-    items: [
-      { name: 'Pizza Margherita', notes: 'Sin albahaca', status: 'pending' },
-      { name: 'Alitas de pollo', notes: 'Salsa picante', status: 'pending' },
-      { name: 'Tiramisu', notes: '', status: 'pending' },
-    ]
-  },
-  { 
-    id: 4, 
-    table: '7', 
-    customerName: 'Alberto',
-    time: '10:40', 
-    kitchenId: 'pastry',
-    items: [
-      { name: 'Tarta de chocolate', notes: 'Con helado', status: 'pending' },
-      { name: 'Brownie', notes: 'Caliente', status: 'pending' },
-    ]
-  },
-];
-
 const Kitchen = () => {
   const [selectedKitchen, setSelectedKitchen] = useState("main");
   const [orderStatus, setOrderStatus] = useState<'pending' | 'preparing' | 'completed'>('pending');
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Effect to load orders from localStorage on component mount
+  // Efecto para cargar órdenes
   useEffect(() => {
-    const savedOrders = localStorage.getItem('kitchenOrders');
-    if (savedOrders) {
-      setOrders(JSON.parse(savedOrders));
-    }
-  }, []);
-
-  // Effect to save orders to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('kitchenOrders', JSON.stringify(orders));
-  }, [orders]);
-
-  // Filter orders by kitchen selected and status
-  const filteredOrders = orders
-    .filter(order => order.kitchenId === selectedKitchen)
-    .filter(order => {
-      if (orderStatus === 'pending') {
-        return order.items.some(item => item.status === 'pending');
-      } else if (orderStatus === 'preparing') {
-        return order.items.some(item => item.status === 'preparing');
-      } else if (orderStatus === 'completed') {
-        return order.items.some(item => item.status === 'completed');
-      }
-      return false;
-    });
-
-  // Function to update the status of an item
-  const updateItemStatus = (orderId: number, itemIndex: number, newStatus: 'pending' | 'preparing' | 'completed') => {
-    setOrders(prevOrders => {
-      const updatedOrders = [...prevOrders];
-      const orderIndex = updatedOrders.findIndex(o => o.id === orderId);
+    loadOrders();
+    
+    // Suscribirse a cambios en órdenes
+    const unsubscribe = subscribeToOrders((payload) => {
+      console.log('Realtime kitchen update:', payload);
+      loadOrders();
       
-      if (orderIndex !== -1 && updatedOrders[orderIndex].items[itemIndex]) {
-        // Create a new items array with the updated status
-        const updatedItems = [...updatedOrders[orderIndex].items];
-        updatedItems[itemIndex] = {
-          ...updatedItems[itemIndex],
-          status: newStatus
-        };
-        
-        // Update the order with the new items array
-        updatedOrders[orderIndex] = {
-          ...updatedOrders[orderIndex],
-          items: updatedItems
-        };
-        
-        // Show notification
-        const statusText = newStatus === 'preparing' ? 'preparación' : 'completado';
+      if (payload.eventType === 'INSERT' && payload.new.kitchen_id === selectedKitchen) {
         toast({
-          title: `Item en ${statusText}`,
-          description: `${updatedItems[itemIndex].name} para la mesa ${updatedOrders[orderIndex].table} actualizado`,
+          title: "Nueva orden",
+          description: `Se ha recibido una nueva orden ${payload.new.is_delivery ? 'Delivery' : 'Mesa ' + payload.new.table_number}`
         });
-        
-        return updatedOrders;
       }
-      
-      return prevOrders;
     });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [selectedKitchen]);
+
+  // Cargar órdenes desde Supabase
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      
+      // Obtener las órdenes de la cocina seleccionada
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          table_number,
+          customer_name,
+          status,
+          is_delivery,
+          kitchen_id,
+          created_at,
+          order_items (
+            id,
+            name,
+            quantity,
+            notes
+          )
+        `)
+        .eq('kitchen_id', selectedKitchen)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Formatear las órdenes para el componente
+      const formattedOrders = data.map(order => ({
+        id: order.id,
+        table: order.is_delivery ? 'Delivery' : String(order.table_number),
+        customerName: order.customer_name,
+        time: new Date(order.created_at).toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        kitchenId: order.kitchen_id,
+        status: order.status,
+        items: order.order_items.map((item: any) => ({
+          name: item.name,
+          notes: item.notes || '',
+          status: item.status || 'pending',
+          id: item.id,
+          quantity: item.quantity
+        }))
+      }));
+      
+      setOrders(formattedOrders);
+    } catch (error) {
+      console.error('Error cargando órdenes:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las órdenes",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Reset all orders to initial state (for demo purposes)
-  const resetOrders = () => {
-    setOrders(initialOrders);
-    toast({
-      title: "Órdenes reiniciadas",
-      description: "Todas las órdenes han sido reiniciadas a su estado inicial",
-    });
+  // Function to update the status of an order
+  const updateOrderStatusInKitchen = async (orderId: string, newStatus: string) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      loadOrders();
+      
+      toast({
+        title: "Orden actualizada",
+        description: `Estado de la orden actualizado a "${newStatus}"`
+      });
+    } catch (error) {
+      console.error('Error actualizando estado de orden:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la orden",
+        variant: "destructive"
+      });
+    }
   };
 
   // Get statistics for the selected kitchen
-  const getKitchenStats = (kitchenId: string) => {
-    const kitchenOrders = orders.filter(order => order.kitchenId === kitchenId);
-    
-    const pendingItems = kitchenOrders.flatMap(order => 
-      order.items.filter(item => item.status === 'pending')
-    ).length;
-    
-    const preparingItems = kitchenOrders.flatMap(order => 
-      order.items.filter(item => item.status === 'preparing')
-    ).length;
-    
-    const completedItems = kitchenOrders.flatMap(order => 
-      order.items.filter(item => item.status === 'completed')
-    ).length;
-    
-    const totalItems = pendingItems + preparingItems + completedItems;
+  const getKitchenStats = () => {
+    const pendingOrders = orders.filter(order => order.status === 'pending');
+    const preparingOrders = orders.filter(order => order.status === 'preparing');
+    const completedOrders = orders.filter(order => 
+      order.status === 'ready' || order.status === 'delivered'
+    );
     
     return { 
-      pendingItems, 
-      preparingItems, 
-      completedItems,
-      totalItems
+      pendingItems: pendingOrders.length, 
+      preparingItems: preparingOrders.length, 
+      completedItems: completedOrders.length,
+      totalItems: orders.length
     };
   };
 
-  const stats = getKitchenStats(selectedKitchen);
+  const stats = getKitchenStats();
   
   // Calculate average preparation time (mock data for demo)
   const getAverageTime = () => {
-    // In a real app, this would be calculated from actual timing data
+    // En una app real, esto se calcularía de datos reales
     const times = {
       'main': 15,
       'grill': 18,
@@ -200,6 +176,22 @@ const Kitchen = () => {
     const kitchen = kitchenOptions.find(k => k.id === kitchenId);
     return kitchen ? kitchen.name : 'Desconocida';
   };
+
+  // Filtrar órdenes por estado
+  const getFilteredOrders = () => {
+    return orders.filter(order => {
+      if (orderStatus === 'pending') {
+        return order.status === 'pending';
+      } else if (orderStatus === 'preparing') {
+        return order.status === 'preparing';
+      } else if (orderStatus === 'completed') {
+        return order.status === 'ready' || order.status === 'delivered';
+      }
+      return false;
+    });
+  };
+
+  const filteredOrders = getFilteredOrders();
 
   return (
     <Layout>
@@ -249,14 +241,6 @@ const Kitchen = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button 
-              variant="outline" 
-              onClick={resetOrders} 
-              className="h-10"
-              title="Reiniciar órdenes (Solo para demostración)"
-            >
-              Reiniciar
-            </Button>
           </div>
         </div>
 
@@ -288,166 +272,168 @@ const Kitchen = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="pending" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map(order => (
-                <Card key={order.id} className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Orden #{order.id} - {order.table}</CardTitle>
-                      <span className="text-sm text-muted-foreground">{order.time}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
-                      <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
-                        {getKitchenName(order.kitchenId)}
-                      </p>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {order.items.filter(item => item.status === 'pending').map((item, index) => {
-                        // Find the actual index in the original items array
-                        const originalIndex = order.items.findIndex(i => i.name === item.name && i.notes === item.notes);
-                        
-                        return (
-                          <li key={index} className="p-3 rounded bg-secondary/30">
-                            <div className="flex justify-between items-start mb-1">
-                              <div>
-                                <p className="font-medium">{item.name}</p>
-                                {item.notes && (
-                                  <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
-                                    <AlertCircle size={12} />
-                                    <p>{item.notes}</p>
-                                  </div>
-                                )}
-                              </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8"
-                                onClick={() => updateItemStatus(order.id, originalIndex, 'preparing')}
-                              >
-                                <ChefHat size={14} className="mr-1" /> Preparar
-                              </Button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-2 text-center py-10 text-muted-foreground">
-                No hay órdenes pendientes para {kitchenOptions.find(k => k.id === selectedKitchen)?.name}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="preparing" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map(order => (
-                <Card key={order.id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Orden #{order.id} - {order.table}</CardTitle>
-                      <span className="text-sm text-muted-foreground">{order.time}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
-                      <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
-                        {getKitchenName(order.kitchenId)}
-                      </p>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {order.items.filter(item => item.status === 'preparing').map((item, index) => {
-                        // Find the actual index in the original items array
-                        const originalIndex = order.items.findIndex(i => i.name === item.name && i.notes === item.notes);
-                        
-                        return (
-                          <li key={index} className="p-3 rounded bg-secondary/30">
-                            <div className="flex justify-between items-start mb-1">
-                              <div>
-                                <p className="font-medium">{item.name}</p>
-                                {item.notes && (
-                                  <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
-                                    <AlertCircle size={12} />
-                                    <p>{item.notes}</p>
-                                  </div>
-                                )}
-                              </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8"
-                                onClick={() => updateItemStatus(order.id, originalIndex, 'completed')}
-                              >
-                                <Check size={14} className="mr-1" /> Listo
-                              </Button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-2 text-center py-10 text-muted-foreground">
-                No hay órdenes en preparación para {kitchenOptions.find(k => k.id === selectedKitchen)?.name}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="completed" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map(order => (
-                <Card key={order.id} className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Orden #{order.id} - {order.table}</CardTitle>
-                      <span className="text-sm text-muted-foreground">{order.time}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
-                      <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
-                        {getKitchenName(order.kitchenId)}
-                      </p>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {order.items.filter(item => item.status === 'completed').map((item, index) => (
-                        <li key={index} className="p-3 rounded bg-secondary/30">
-                          <div className="flex justify-between items-start mb-1">
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              {item.notes && (
-                                <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
-                                  <AlertCircle size={12} />
-                                  <p>{item.notes}</p>
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
-                              Completado
-                            </span>
+          {loading ? (
+            <div className="mt-8 flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <>
+              <TabsContent value="pending" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map(order => (
+                    <Card key={order.id} className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle>Orden #{order.id.substring(0, 4)} - {order.table}</CardTitle>
+                          <span className="text-sm text-muted-foreground">{order.time}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                          <div className="flex gap-2">
+                            <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
+                              {getKitchenName(order.kitchenId)}
+                            </p>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7"
+                              onClick={() => updateOrderStatusInKitchen(order.id, 'preparing')}
+                            >
+                              <ChefHat size={14} className="mr-1" /> Preparar
+                            </Button>
                           </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-2 text-center py-10 text-muted-foreground">
-                No hay órdenes completadas para {kitchenOptions.find(k => k.id === selectedKitchen)?.name}
-              </div>
-            )}
-          </TabsContent>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {order.items.map((item: any, index: number) => (
+                            <li key={index} className="p-3 rounded bg-secondary/30">
+                              <div className="flex justify-between items-start mb-1">
+                                <div>
+                                  <p className="font-medium">{item.name} {item.quantity > 1 && `(x${item.quantity})`}</p>
+                                  {item.notes && (
+                                    <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                                      <AlertCircle size={12} />
+                                      <p>{item.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-center py-10 text-muted-foreground">
+                    No hay órdenes pendientes para {kitchenOptions.find(k => k.id === selectedKitchen)?.name}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="preparing" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map(order => (
+                    <Card key={order.id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle>Orden #{order.id.substring(0, 4)} - {order.table}</CardTitle>
+                          <span className="text-sm text-muted-foreground">{order.time}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                          <div className="flex gap-2">
+                            <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
+                              {getKitchenName(order.kitchenId)}
+                            </p>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7"
+                              onClick={() => updateOrderStatusInKitchen(order.id, 'ready')}
+                            >
+                              <Check size={14} className="mr-1" /> Completado
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {order.items.map((item: any, index: number) => (
+                            <li key={index} className="p-3 rounded bg-secondary/30">
+                              <div className="flex justify-between items-start mb-1">
+                                <div>
+                                  <p className="font-medium">{item.name} {item.quantity > 1 && `(x${item.quantity})`}</p>
+                                  {item.notes && (
+                                    <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                                      <AlertCircle size={12} />
+                                      <p>{item.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-center py-10 text-muted-foreground">
+                    No hay órdenes en preparación para {kitchenOptions.find(k => k.id === selectedKitchen)?.name}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="completed" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map(order => (
+                    <Card key={order.id} className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle>Orden #{order.id.substring(0, 4)} - {order.table}</CardTitle>
+                          <span className="text-sm text-muted-foreground">{order.time}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                          <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
+                            {getKitchenName(order.kitchenId)}
+                          </p>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {order.items.map((item: any, index: number) => (
+                            <li key={index} className="p-3 rounded bg-secondary/30">
+                              <div className="flex justify-between items-start mb-1">
+                                <div>
+                                  <p className="font-medium">{item.name} {item.quantity > 1 && `(x${item.quantity})`}</p>
+                                  {item.notes && (
+                                    <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                                      <AlertCircle size={12} />
+                                      <p>{item.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+                                  Completado
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-center py-10 text-muted-foreground">
+                    No hay órdenes completadas para {kitchenOptions.find(k => k.id === selectedKitchen)?.name}
+                  </div>
+                )}
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </div>
     </Layout>

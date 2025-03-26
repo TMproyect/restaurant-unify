@@ -10,6 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createOrder } from '@/services/orderService';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 interface OrderTakingProps {
   tableId: string;
@@ -27,10 +30,16 @@ const kitchenOptions = [
 const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedKitchen, setSelectedKitchen] = useState("main");
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
 
   const handleAddToCart = (item: CartItem) => {
-    setCartItems(prev => [...prev, item]);
+    // Generar un ID único para el item del carrito
+    const cartItem = {
+      ...item,
+      id: uuidv4() // Asegura que cada item tenga un ID único en el carrito
+    };
+    setCartItems(prev => [...prev, cartItem]);
     toast({
       title: "Producto añadido",
       description: `${item.name} añadido al pedido`
@@ -64,7 +73,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     }
   };
 
-  const handleSendToKitchen = () => {
+  const handleSendToKitchen = async () => {
     if (cartItems.length === 0) {
       toast({
         title: "No hay productos",
@@ -74,20 +83,91 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
       return;
     }
 
-    // Get the kitchen name for the toast message
-    const kitchenName = kitchenOptions.find(k => k.id === selectedKitchen)?.name || "Cocina";
-    
-    // Simulación de envío de orden a la cocina seleccionada
-    toast({
-      title: "Pedido enviado a cocina",
-      description: `Pedido para Mesa ${tableId} enviado a ${kitchenName}`
-    });
-    
-    // Reiniciar el carrito
-    setCartItems([]);
-    
-    // Notificar que la orden está completa
-    onOrderComplete();
+    setProcessing(true);
+
+    try {
+      // Calcular el total del pedido
+      const subtotal = cartItems.reduce((sum, item) => {
+        const itemTotal = item.price * item.quantity;
+        const optionsTotal = item.options ? 
+          item.options.reduce((acc, opt) => acc + opt.choice.price, 0) * item.quantity : 0;
+        return sum + itemTotal + optionsTotal;
+      }, 0);
+      
+      // Impuesto y servicio
+      const tax = subtotal * 0.18; // 18% impuesto
+      const serviceCharge = subtotal * 0.10; // 10% servicio
+      const total = subtotal + tax + serviceCharge;
+      
+      // Obtener datos de la mesa si es necesario
+      let tableNumber = null;
+      let tableDbId = null;
+      
+      if (tableId !== 'Delivery') {
+        // Buscar mesa por número
+        const { data: tableData } = await supabase
+          .from('restaurant_tables')
+          .select('id, number')
+          .eq('number', parseInt(tableId))
+          .single();
+          
+        if (tableData) {
+          tableNumber = tableData.number;
+          tableDbId = tableData.id;
+        }
+      }
+      
+      // Objeto de orden
+      const order = {
+        table_id: tableDbId,
+        table_number: tableNumber,
+        customer_name: "Cliente Mesa " + tableId,
+        status: 'pending' as const,
+        total: Number(total.toFixed(2)),
+        items_count: cartItems.length,
+        is_delivery: tableId === 'Delivery',
+        kitchen_id: selectedKitchen
+      };
+      
+      // Preparar items de la orden
+      const orderItems = cartItems.map(item => ({
+        menu_item_id: item.menuItemId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        notes: item.notes
+      }));
+      
+      // Crear la orden en la base de datos
+      const result = await createOrder(order, orderItems);
+      
+      if (result) {
+        // Get the kitchen name for the toast message
+        const kitchenName = kitchenOptions.find(k => k.id === selectedKitchen)?.name || "Cocina";
+        
+        toast({
+          title: "Pedido enviado a cocina",
+          description: `Pedido para ${tableId === 'Delivery' ? 'Delivery' : 'Mesa ' + tableId} enviado a ${kitchenName}`
+        });
+        
+        // Reiniciar el carrito
+        setCartItems([]);
+        
+        // Notificar que la orden está completa
+        onOrderComplete();
+      } else {
+        throw new Error("No se pudo crear la orden");
+      }
+    } catch (error) {
+      console.error("Error al crear la orden:", error);
+      toast({
+        title: "Error al crear la orden",
+        description: "Ha ocurrido un error al procesar el pedido",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -116,8 +196,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
               <button 
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium mt-2"
                 onClick={handleSendToKitchen}
+                disabled={processing || cartItems.length === 0}
               >
-                Enviar a Cocina
+                {processing ? "Procesando..." : "Enviar a Cocina"}
               </button>
             </div>
           </div>

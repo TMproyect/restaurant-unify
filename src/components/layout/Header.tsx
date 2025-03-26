@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Bell, Moon, Sun, MessageSquare } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 

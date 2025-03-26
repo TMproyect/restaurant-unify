@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { UserRole } from '@/contexts/AuthContext';
+import { UserRole } from '@/contexts/auth/types';
 
 // Role-specific colors
 const roleColors: Record<UserRole, string> = {

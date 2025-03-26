@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import AlertsBanner from '@/components/dashboard/AlertsBanner';
 import OrdersList from '@/components/dashboard/OrdersList';
 import InventoryAlert from '@/components/dashboard/InventoryAlert';
 import UpgradeToAdmin from '@/components/dashboard/UpgradeToAdmin';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 
 const Dashboard = () => {
   const { user } = useAuth();

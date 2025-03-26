@@ -1,42 +1,62 @@
 
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserRole } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 const Login = () => {
-  const { isAuthenticated, login } = useAuth();
-  const { toast } = useToast();
-  const [email, setEmail] = useState('waiter@restaurant.com');
-  const [password, setPassword] = useState('password');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { isAuthenticated, login, signup, isLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [activeTab, setActiveTab] = useState('login');
 
   // Redirect if already authenticated
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
     
     try {
       await login(email, password);
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "Bienvenido al sistema de gestión de restaurante",
+      toast.success('Inicio de sesión exitoso', {
+        description: 'Bienvenido al sistema de gestión de restaurante',
       });
     } catch (err) {
-      setError('Credenciales inválidas. Por favor, intente de nuevo.');
-      toast({
-        title: "Error de inicio de sesión",
-        description: "Las credenciales proporcionadas no son válidas",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      // Error is handled in the login function
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    try {
+      await signup(email, password, name);
+      setActiveTab('login');
+      setPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      // Error is handled in the signup function
     }
   };
   
@@ -56,82 +76,160 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 border border-border animate-fade-in">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              RestaurantOS
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Plataforma unificada de gestión
-            </p>
-          </div>
+        <Card className="animate-fade-in">
+          <CardHeader className="text-center space-y-1">
+            <CardTitle className="text-2xl font-bold">RestaurantOS</CardTitle>
+            <CardDescription>Plataforma unificada de gestión</CardDescription>
+          </CardHeader>
           
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-300 text-sm">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Correo Electrónico
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="ejemplo@restaurante.com"
-                required
-              />
-            </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full mb-4">
+              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+              <TabsTrigger value="signup">Registrarse</TabsTrigger>
+            </TabsList>
             
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="••••••••"
-                required
-              />
-            </div>
+            {/* Login Tab */}
+            <TabsContent value="login">
+              <form onSubmit={handleLogin}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ejemplo@restaurante.com"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                </CardContent>
+                
+                <CardFooter className="flex flex-col">
+                  <Button 
+                    type="submit" 
+                    className="w-full mb-4" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Iniciando sesión...
+                      </>
+                    ) : (
+                      'Iniciar Sesión'
+                    )}
+                  </Button>
+                  
+                  <div className="w-full">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 text-center">
+                      Cuentas demo para probar el sistema:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {demoAccounts.map((account) => (
+                        <button
+                          key={account.email}
+                          type="button"
+                          onClick={() => setDemoAccount(account.email)}
+                          className="px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <span className="font-medium">{account.role}</span>
+                          <span className="block text-gray-500 dark:text-gray-400 mt-1 truncate">
+                            {account.email}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </CardFooter>
+              </form>
+            </TabsContent>
             
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors disabled:opacity-70"
-            >
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </button>
-          </form>
-          
-          <div className="mt-8">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 text-center">
-              Cuentas demo para probar el sistema:
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((account) => (
-                <button
-                  key={account.email}
-                  onClick={() => setDemoAccount(account.email)}
-                  className="px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <span className="font-medium">{account.role}</span>
-                  <span className="block text-gray-500 dark:text-gray-400 mt-1 truncate">
-                    {account.email}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+            {/* Signup Tab */}
+            <TabsContent value="signup">
+              <form onSubmit={handleSignup}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Nombre Completo</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Juan Pérez"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Correo Electrónico</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ejemplo@restaurante.com"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Contraseña</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirmar contraseña"
+                      required
+                    />
+                  </div>
+                </CardContent>
+                
+                <CardFooter>
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Registrando...
+                      </>
+                    ) : (
+                      'Registrarse'
+                    )}
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </Card>
         
         <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
           Sistema de gestión unificado para restaurantes

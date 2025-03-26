@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Select,
   SelectContent,
@@ -76,8 +75,8 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
   const handleContinue = () => {
     if (orderType === 'table' && !selectedTable) {
       toast({
-        title: "Mesa requerida",
-        description: "Por favor, seleccione una mesa para la orden",
+        title: "Error",
+        description: "Por favor seleccione una mesa",
         variant: "destructive"
       });
       return;
@@ -85,8 +84,8 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
 
     if (!customerName.trim()) {
       toast({
-        title: "Nombre de cliente requerido",
-        description: "Por favor, ingrese el nombre del cliente",
+        title: "Error",
+        description: "Por favor ingrese el nombre del cliente",
         variant: "destructive"
       });
       return;
@@ -95,129 +94,86 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
     setOrderStep('items');
   };
 
-  const handleOrderComplete = async () => {
-    try {
-      // Actualizar el estado de la mesa si se eligió una
-      if (orderType === 'table' && selectedTable) {
-        await supabase
-          .from('restaurant_tables')
-          .update({ status: 'occupied' })
-          .eq('id', selectedTable);
-      }
-      
-      onSuccess();
-      onClose();
-      
-      toast({
-        title: "Orden creada",
-        description: "La orden ha sido enviada a cocina"
-      });
-    } catch (error) {
-      console.error('Error actualizando mesa:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado de la mesa",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleBack = () => {
-    setOrderStep('details');
-  };
-
-  const getSelectedTableNumber = () => {
-    const table = tables.find(t => t.id === selectedTable);
-    return table ? table.number : 'N/A';
+  const handleOrderComplete = () => {
+    onSuccess();
+    onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[95vw] md:max-w-[80vw] lg:max-w-[1100px] h-[85vh] max-h-[85vh] p-0 flex flex-col">
-        <DialogHeader className="p-4 border-b">
-          <DialogTitle>Nueva Orden</DialogTitle>
+      <DialogContent className="max-w-4xl p-0">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle>{orderStep === 'details' ? 'Nueva Orden' : `Mesa ${selectedTable} - ${customerName}`}</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow">
-          <div className="p-4">
-            {orderStep === 'details' ? (
-              <div className="space-y-4 py-4 max-w-md mx-auto">
-                <RadioGroup
-                  defaultValue={orderType}
-                  value={orderType}
-                  onValueChange={(value) => setOrderType(value as 'table' | 'delivery')}
-                  className="flex space-x-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="table" id="r1" />
-                    <Label htmlFor="r1">Mesa</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="delivery" id="r2" />
-                    <Label htmlFor="r2">Delivery</Label>
-                  </div>
-                </RadioGroup>
-
-                {orderType === 'table' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="table">Mesa</Label>
-                    <Select 
-                      value={selectedTable} 
-                      onValueChange={setSelectedTable}
-                    >
-                      <SelectTrigger id="table">
-                        <SelectValue placeholder="Seleccionar mesa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tables.map((table) => (
-                          <SelectItem key={table.id} value={table.id}>
-                            Mesa {table.number} - {table.zone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="customer">Nombre del Cliente</Label>
-                  <Input
-                    id="customer"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Ej: Carlos Mendez"
-                  />
+        {orderStep === 'details' ? (
+          <div className="p-6 space-y-4">
+            <div>
+              <Label htmlFor="orderType">Tipo de Orden</Label>
+              <RadioGroup
+                value={orderType}
+                onValueChange={(value) => setOrderType(value as 'table' | 'delivery')}
+                className="flex space-x-4 mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="table" id="table" />
+                  <Label htmlFor="table">Mesa</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="delivery" id="delivery" />
+                  <Label htmlFor="delivery">Delivery</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
-                <DialogFooter className="mt-6">
-                  <Button variant="outline" onClick={onClose}>Cancelar</Button>
-                  <Button onClick={handleContinue}>Continuar</Button>
-                </DialogFooter>
-              </div>
-            ) : (
-              <div className="h-full flex flex-col">
-                <div className="bg-secondary/20 p-3 rounded flex justify-between items-center mb-4">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {orderType === 'table' ? `Mesa ${getSelectedTableNumber()}` : 'Delivery'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Cliente: {customerName}</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleBack}>
-                    Cambiar
-                  </Button>
-                </div>
-                
-                <div className="flex-grow h-[60vh]">
-                  <OrderTaking 
-                    tableId={orderType === 'table' ? String(getSelectedTableNumber()) : 'Delivery'} 
-                    onOrderComplete={handleOrderComplete} 
-                  />
-                </div>
+            {orderType === 'table' && (
+              <div>
+                <Label htmlFor="table">Mesa</Label>
+                <Select value={selectedTable} onValueChange={setSelectedTable}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar mesa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loading ? (
+                      <div className="p-2 text-center">Cargando mesas...</div>
+                    ) : tables.length > 0 ? (
+                      tables.map((table) => (
+                        <SelectItem key={table.id} value={table.id.toString()}>
+                          Mesa {table.number}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center">No hay mesas disponibles</div>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             )}
+
+            <div>
+              <Label htmlFor="customerName">Nombre del Cliente</Label>
+              <Input
+                id="customerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Ingrese el nombre del cliente"
+              />
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleContinue}>
+                Continuar
+              </Button>
+            </div>
           </div>
-        </ScrollArea>
+        ) : (
+          <div className="p-6">
+            <OrderTaking 
+              tableId={selectedTable} 
+              onOrderComplete={handleOrderComplete}
+            />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

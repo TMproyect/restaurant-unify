@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
@@ -22,13 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { OrderItem } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
@@ -62,8 +54,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [noteItem, setNoteItem] = useState<OrderItem | null>(null);
-  const [isNoteSheetOpen, setIsNoteSheetOpen] = useState(false);
 
   useEffect(() => {
     loadMenuItems();
@@ -143,7 +133,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     }
   };
 
-  const handleQuantityChange = (index: number, action: 'increase' | 'decrease' | 'set', value?: number) => {
+  const handleQuantityChange = (index: number, action: 'increase' | 'decrease') => {
     const newOrderItems = [...orderItems];
     
     if (action === 'increase') {
@@ -151,10 +141,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     } else if (action === 'decrease') {
       if (newOrderItems[index].quantity > 1) {
         newOrderItems[index].quantity -= 1;
-      }
-    } else if (action === 'set' && value !== undefined) {
-      if (value > 0) {
-        newOrderItems[index].quantity = value;
       }
     }
     
@@ -167,24 +153,10 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     setOrderItems(newOrderItems);
   };
 
-  const openNoteSheet = (item: OrderItem) => {
-    setNoteItem(item);
-    setIsNoteSheetOpen(true);
-  };
-
-  const handleNotesChange = (notes: string) => {
-    if (noteItem) {
-      const index = orderItems.findIndex(item => 
-        item.menu_item_id === noteItem.menu_item_id && 
-        item.name === noteItem.name
-      );
-      
-      if (index !== -1) {
-        const newOrderItems = [...orderItems];
-        newOrderItems[index].notes = notes;
-        setOrderItems(newOrderItems);
-      }
-    }
+  const handleItemNotesChange = (index: number, notes: string) => {
+    const newOrderItems = [...orderItems];
+    newOrderItems[index].notes = notes;
+    setOrderItems(newOrderItems);
   };
 
   const calculateSubtotal = () => {
@@ -241,106 +213,103 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Menu Section */}
-      <Card className="h-full flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
-          <div className="mb-4">
-            <Label htmlFor="category">Categoría</Label>
-            <Select onValueChange={setSelectedCategory} value={selectedCategory}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Seleccionar categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-grow overflow-auto">
-            <ScrollArea className="h-[calc(100vh-350px)] rounded-md border">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-                {loading ? (
-                  <div className="col-span-2 text-center py-8">Cargando...</div>
-                ) : menuItems.length === 0 ? (
-                  <div className="col-span-2 text-center py-8 text-muted-foreground">
-                    No hay items disponibles en esta categoría
+      <div className="overflow-hidden">
+        <Card className="h-full flex flex-col">
+          <CardContent className="p-4 flex-grow">
+            <div className="mb-4">
+              <Label htmlFor="category">Categoría</Label>
+              <Select onValueChange={setSelectedCategory} value={selectedCategory}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto max-h-[calc(100vh-350px)]">
+              {loading ? (
+                <div className="col-span-2 text-center py-8">Cargando...</div>
+              ) : menuItems.length === 0 ? (
+                <div className="col-span-2 text-center py-8 text-muted-foreground">
+                  No hay items disponibles en esta categoría
+                </div>
+              ) : (
+                menuItems.map((item) => (
+                  <div 
+                    key={item.id} 
+                    className="border rounded-md p-3 hover:bg-secondary/50 cursor-pointer transition-colors" 
+                    onClick={() => handleAddItem(item)}
+                  >
+                    <img 
+                      src={item.image_url || 'https://via.placeholder.com/150'} 
+                      alt={item.name} 
+                      className="w-full h-32 object-cover rounded-md mb-2" 
+                    />
+                    <h3 className="font-semibold text-sm">{item.name}</h3>
+                    <p className="text-muted-foreground text-xs truncate">{item.description}</p>
+                    <p className="text-sm font-medium mt-1">${item.price.toFixed(2)}</p>
                   </div>
-                ) : (
-                  menuItems.map((item) => (
-                    <div 
-                      key={item.id} 
-                      className="border rounded-md p-3 hover:bg-secondary/50 cursor-pointer transition-colors" 
-                      onClick={() => handleAddItem(item)}
-                    >
-                      <img 
-                        src={item.image_url || 'https://via.placeholder.com/150'} 
-                        alt={item.name} 
-                        className="w-full h-32 object-cover rounded-md mb-2" 
-                      />
-                      <h3 className="font-semibold text-sm">{item.name}</h3>
-                      <p className="text-muted-foreground text-xs truncate">{item.description}</p>
-                      <p className="text-sm font-medium mt-1">${item.price.toFixed(2)}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Order Section */}
-      <Card className="h-full flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col">
-          <h2 className="text-lg font-semibold mb-4">Orden - Mesa {tableId}</h2>
-          
-          <div className="mb-4">
-            <Label htmlFor="kitchen">Cocina Destino</Label>
-            <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
-              <SelectTrigger id="kitchen">
-                <SelectValue placeholder="Seleccionar cocina" />
-              </SelectTrigger>
-              <SelectContent>
-                {kitchens.map((kitchen) => (
-                  <SelectItem key={kitchen.id} value={kitchen.id}>
-                    {kitchen.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex-grow overflow-auto mb-4">
-            <ScrollArea className="h-[calc(100vh-450px)] border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="w-24 text-center">Cant.</TableHead>
-                    <TableHead className="w-24 text-right">Precio</TableHead>
-                    <TableHead className="w-24 text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orderItems.length === 0 ? (
+      <div className="overflow-hidden">
+        <Card className="h-full flex flex-col">
+          <CardContent className="p-4 flex flex-col h-full">
+            <h2 className="text-lg font-semibold mb-4">Orden - Mesa {tableId}</h2>
+            
+            <div className="mb-4">
+              <Label htmlFor="kitchen">Cocina Destino</Label>
+              <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
+                <SelectTrigger id="kitchen">
+                  <SelectValue placeholder="Seleccionar cocina" />
+                </SelectTrigger>
+                <SelectContent>
+                  {kitchens.map((kitchen) => (
+                    <SelectItem key={kitchen.id} value={kitchen.id}>
+                      {kitchen.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex-grow overflow-auto mb-4">
+              {orderItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-md">
+                  No hay items en la orden
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                        No hay items en la orden
-                      </TableCell>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="w-24 text-center">Cant.</TableHead>
+                      <TableHead className="w-24 text-right">Precio</TableHead>
+                      <TableHead className="w-20 text-right">Acciones</TableHead>
                     </TableRow>
-                  ) : (
-                    orderItems.map((item, index) => (
+                  </TableHeader>
+                  <TableBody>
+                    {orderItems.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell>
                           <div>
                             <div className="font-medium">{item.name}</div>
                             {item.notes && (
-                              <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                              <div className="text-xs text-muted-foreground">
                                 {item.notes}
                               </div>
                             )}
@@ -368,15 +337,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
                           </div>
                         </TableCell>
                         <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
-                        <TableCell className="text-right space-x-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2" 
-                            onClick={() => openNoteSheet(item)}
-                          >
-                            Notas
-                          </Button>
+                        <TableCell className="text-right">
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -387,103 +348,75 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
-
-          <div className="mb-4">
-            <Label htmlFor="order-notes" className="mb-2 block">Notas de la orden</Label>
-            <Textarea 
-              id="order-notes"
-              placeholder="Añadir notas para toda la orden..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[80px]"
-            />
-          </div>
-
-          <div className="space-y-2 mt-4 border-t pt-4">
-            <div className="flex justify-between items-center">
-              <span>Subtotal</span>
-              <span>${calculateSubtotal().toFixed(2)}</span>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </div>
 
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span>Descuento</span>
-                <Select 
-                  value={discountType} 
-                  onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
-                >
-                  <SelectTrigger className="h-7 w-16">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">%</SelectItem>
-                    <SelectItem value="fixed">$</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input 
-                  type="number" 
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                  className="w-20 h-7"
-                  min="0"
-                />
+            <div className="mb-4">
+              <Label htmlFor="order-notes" className="mb-2 block">Notas de la orden</Label>
+              <Textarea 
+                id="order-notes"
+                placeholder="Añadir notas para toda la orden..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="space-y-2 mt-4 border-t pt-4">
+              <div className="flex justify-between items-center">
+                <span>Subtotal</span>
+                <span>${calculateSubtotal().toFixed(2)}</span>
               </div>
-              <span>-${calculateDiscount().toFixed(2)}</span>
-            </div>
 
-            <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
-              <span>Total</span>
-              <span>${calculateTotal().toFixed(2)}</span>
-            </div>
-          </div>
-        </CardContent>
-        
-        {/* Fixed position button at the bottom */}
-        <div className="p-4 border-t mt-auto">
-          <Button 
-            className="w-full" 
-            onClick={handleSubmitOrder} 
-            disabled={orderItems.length === 0}
-            size="lg"
-            variant="default"
-          >
-            <ShoppingBag className="mr-2 h-5 w-5" />
-            Crear Pedido
-          </Button>
-        </div>
-      </Card>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span>Descuento</span>
+                  <Select 
+                    value={discountType} 
+                    onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
+                  >
+                    <SelectTrigger className="h-7 w-16">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">%</SelectItem>
+                      <SelectItem value="fixed">$</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input 
+                    type="number" 
+                    value={discount}
+                    onChange={(e) => setDiscount(Number(e.target.value))}
+                    className="w-20 h-7"
+                    min="0"
+                  />
+                </div>
+                <span>-${calculateDiscount().toFixed(2)}</span>
+              </div>
 
-      {/* Hoja lateral para notas */}
-      <Sheet open={isNoteSheetOpen} onOpenChange={setIsNoteSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Notas para {noteItem?.name}</SheetTitle>
-            <SheetDescription>
-              Añade notas o instrucciones especiales para este item.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6">
-            <Textarea
-              className="min-h-[150px]"
-              placeholder="Añadir notas especiales..."
-              value={noteItem?.notes || ''}
-              onChange={(e) => handleNotesChange(e.target.value)}
-            />
+              <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
+                <span>Total</span>
+                <span>${calculateTotal().toFixed(2)}</span>
+              </div>
+            </div>
+            
+            {/* Botón para crear la orden */}
             <Button 
               className="w-full mt-4" 
-              onClick={() => setIsNoteSheetOpen(false)}
+              onClick={handleSubmitOrder} 
+              disabled={orderItems.length === 0}
+              size="lg"
+              variant="default"
             >
-              Guardar Notas
+              <ShoppingBag className="mr-2 h-5 w-5" />
+              Crear Pedido
             </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

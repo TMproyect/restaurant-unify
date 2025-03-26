@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Select,
   SelectContent,
@@ -37,6 +36,16 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
   useEffect(() => {
     if (open) {
       loadAvailableTables();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      // Reset form when modal closes
+      setOrderType('table');
+      setSelectedTable('');
+      setCustomerName('');
+      setOrderStep('details');
     }
   }, [open]);
 
@@ -98,12 +107,6 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
       onSuccess();
       onClose();
       
-      // Reiniciar formulario
-      setOrderType('table');
-      setSelectedTable('');
-      setCustomerName('');
-      setOrderStep('details');
-      
       toast({
         title: "Orden creada",
         description: "La orden ha sido enviada a cocina"
@@ -129,7 +132,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[1200px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Nueva Orden</DialogTitle>
         </DialogHeader>
@@ -189,7 +192,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
             </DialogFooter>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 flex-grow overflow-hidden flex flex-col">
             <div className="bg-secondary/20 p-3 rounded flex justify-between items-center">
               <div>
                 <p className="text-sm font-medium">
@@ -202,10 +205,12 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
               </Button>
             </div>
             
-            <OrderTaking 
-              tableId={orderType === 'table' ? String(getSelectedTableNumber()) : 'Delivery'} 
-              onOrderComplete={handleOrderComplete} 
-            />
+            <div className="flex-grow overflow-hidden">
+              <OrderTaking 
+                tableId={orderType === 'table' ? String(getSelectedTableNumber()) : 'Delivery'} 
+                onOrderComplete={handleOrderComplete} 
+              />
+            </div>
           </div>
         )}
       </DialogContent>

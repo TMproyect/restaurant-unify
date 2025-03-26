@@ -23,8 +23,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { OrderItem } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
+import { Trash, Minus, Plus } from 'lucide-react';
 
 interface OrderTakingProps {
   tableId: string;
@@ -39,17 +47,29 @@ interface MenuItem {
   image_url: string | null;
 }
 
+interface Kitchen {
+  id: string;
+  name: string;
+}
+
 const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [kitchens, setKitchens] = useState<Kitchen[]>([]);
+  const [selectedKitchen, setSelectedKitchen] = useState<string>('');
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [noteItem, setNoteItem] = useState<OrderItem | null>(null);
+  const [isNoteSheetOpen, setIsNoteSheetOpen] = useState(false);
 
   useEffect(() => {
     loadMenuItems();
     loadMenuCategories();
+    loadKitchens();
   }, []);
 
   const loadMenuItems = async () => {
@@ -86,6 +106,21 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     }
   };
 
+  const loadKitchens = async () => {
+    try {
+      // Simulamos datos de cocinas - en un caso real se cargarían desde la base de datos
+      setKitchens([
+        { id: 'kitchen1', name: 'Cocina Principal' },
+        { id: 'kitchen2', name: 'Cocina de Postres' },
+        { id: 'kitchen3', name: 'Cocina de Bebidas' }
+      ]);
+      setSelectedKitchen('kitchen1'); // Seleccionamos la primera cocina por defecto
+    } catch (error) {
+      console.error('Error cargando cocinas:', error);
+      toast.error('Error al cargar las cocinas');
+    }
+  };
+
   useEffect(() => {
     loadMenuItems();
   }, [selectedCategory]);
@@ -109,11 +144,21 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     }
   };
 
-  const handleQuantityChange = (index: number, quantity: number) => {
-    if (quantity < 0) return;
-
+  const handleQuantityChange = (index: number, action: 'increase' | 'decrease' | 'set', value?: number) => {
     const newOrderItems = [...orderItems];
-    newOrderItems[index].quantity = quantity;
+    
+    if (action === 'increase') {
+      newOrderItems[index].quantity += 1;
+    } else if (action === 'decrease') {
+      if (newOrderItems[index].quantity > 1) {
+        newOrderItems[index].quantity -= 1;
+      }
+    } else if (action === 'set' && value !== undefined) {
+      if (value > 0) {
+        newOrderItems[index].quantity = value;
+      }
+    }
+    
     setOrderItems(newOrderItems);
   };
 
@@ -123,19 +168,53 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     setOrderItems(newOrderItems);
   };
 
-  const handleNotesChange = (index: number, notes: string) => {
-    const newOrderItems = [...orderItems];
-    newOrderItems[index].notes = notes;
-    setOrderItems(newOrderItems);
+  const openNoteSheet = (item: OrderItem) => {
+    setNoteItem(item);
+    setIsNoteSheetOpen(true);
+  };
+
+  const handleNotesChange = (notes: string) => {
+    if (noteItem) {
+      const index = orderItems.findIndex(item => 
+        item.menu_item_id === noteItem.menu_item_id && 
+        item.name === noteItem.name
+      );
+      
+      if (index !== -1) {
+        const newOrderItems = [...orderItems];
+        newOrderItems[index].notes = notes;
+        setOrderItems(newOrderItems);
+      }
+    }
+  };
+
+  const calculateSubtotal = () => {
+    return orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const calculateDiscount = () => {
+    const subtotal = calculateSubtotal();
+    if (discountType === 'percentage') {
+      return (subtotal * discount) / 100;
+    } else {
+      return discount;
+    }
   };
 
   const calculateTotal = () => {
-    return orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const subtotal = calculateSubtotal();
+    const discountAmount = calculateDiscount();
+    return subtotal - discountAmount;
   };
 
   const handleSubmitOrder = async () => {
     if (orderItems.length === 0) {
       toast.error('Debe agregar al menos un item a la orden');
+      return;
+    }
+
+    if (!selectedKitchen) {
+      toast.error('Debe seleccionar una cocina');
       return;
     }
 
@@ -148,12 +227,14 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
       //   total: calculateTotal(),
       //   items_count: orderItems.length,
       //   is_delivery: false,
+      //   kitchen_id: selectedKitchen
       // }, orderItems);
 
       // if (orderData) {
         toast.success('Orden enviada a cocina');
         setOrderItems([]);
         setNotes('');
+        setDiscount(0);
         onOrderComplete();
       // } else {
       //   toast.error('Error al crear la orden');
@@ -165,10 +246,10 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[80vh] overflow-hidden">
       {/* Sección de Menú */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="h-full flex flex-col">
+        <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
           <div className="mb-4">
             <Label htmlFor="category">Categoría</Label>
             <Select onValueChange={setSelectedCategory} value={selectedCategory}>
@@ -185,7 +266,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
               </SelectContent>
             </Select>
           </div>
-          <ScrollArea className="h-[500px] w-full rounded-md border">
+          <ScrollArea className="flex-grow rounded-md border">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
               {loading ? (
                 <div className="col-span-2 text-center">Cargando...</div>
@@ -205,68 +286,161 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
       </Card>
 
       {/* Sección de Orden */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="h-full flex flex-col">
+        <CardContent className="p-4 flex-grow overflow-hidden flex flex-col">
           <h2 className="text-lg font-semibold mb-4">Orden</h2>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Cantidad</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orderItems.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleQuantityChange(index, parseInt(e.target.value))}
-                      className="w-20"
-                    />
+          <div className="mb-4">
+            <Label htmlFor="kitchen">Cocina Destino</Label>
+            <Select onValueChange={setSelectedKitchen} value={selectedKitchen}>
+              <SelectTrigger id="kitchen">
+                <SelectValue placeholder="Seleccionar cocina" />
+              </SelectTrigger>
+              <SelectContent>
+                {kitchens.map((kitchen) => (
+                  <SelectItem key={kitchen.id} value={kitchen.id}>
+                    {kitchen.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <ScrollArea className="flex-grow rounded-md border mb-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="w-24 text-center">Cant.</TableHead>
+                  <TableHead className="w-24 text-right">Precio</TableHead>
+                  <TableHead className="w-24 text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderItems.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <div>
+                        <div>{item.name}</div>
+                        {item.notes && (
+                          <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                            {item.notes}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => handleQuantityChange(index, 'decrease')}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="mx-2">{item.quantity}</span>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => handleQuantityChange(index, 'increase')}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => openNoteSheet(item)}>
+                        Notas
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => handleRemoveItem(index)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {orderItems.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                      Aún no hay items en la orden
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={2}>Subtotal</TableCell>
+                  <TableCell className="text-right" colSpan={2}>${calculateSubtotal().toFixed(2)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={2}>
+                    <div className="flex items-center gap-2">
+                      <span>Descuento</span>
+                      <Select 
+                        value={discountType} 
+                        onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}
+                      >
+                        <SelectTrigger className="h-7 w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">%</SelectItem>
+                          <SelectItem value="fixed">$</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input 
+                        type="number" 
+                        value={discount}
+                        onChange={(e) => setDiscount(Number(e.target.value))}
+                        className="w-20 h-7"
+                        min="0"
+                      />
+                    </div>
                   </TableCell>
-                  <TableCell>${(item.price * item.quantity).toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleRemoveItem(index)}>
-                      Eliminar
-                    </Button>
+                  <TableCell className="text-right" colSpan={2}>
+                    -${calculateDiscount().toFixed(2)}
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={3}>Total</TableCell>
-                <TableCell className="font-medium">${calculateTotal().toFixed(2)}</TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
+                <TableRow>
+                  <TableCell colSpan={2} className="font-bold">Total</TableCell>
+                  <TableCell className="text-right font-bold" colSpan={2}>${calculateTotal().toFixed(2)}</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </ScrollArea>
 
-          <div className="mt-4">
-            <Label htmlFor="notes">Notas adicionales</Label>
-            {orderItems.map((item, index) => (
-              <div key={index} className="mb-2">
-                <p className="text-sm font-medium">{item.name}</p>
-                <Input
-                  type="text"
-                  placeholder="Agregar notas..."
-                  value={item.notes || ''}
-                  onChange={(e) => handleNotesChange(index, e.target.value)}
-                  className="w-full"
-                />
-              </div>
-            ))}
-          </div>
-
-          <Button className="w-full mt-4" onClick={handleSubmitOrder}>
+          <Button className="w-full mt-2" onClick={handleSubmitOrder} disabled={orderItems.length === 0}>
             Enviar a Cocina
           </Button>
         </CardContent>
       </Card>
+
+      {/* Hoja lateral para notas */}
+      <Sheet open={isNoteSheetOpen} onOpenChange={setIsNoteSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Notas para {noteItem?.name}</SheetTitle>
+            <SheetDescription>
+              Añade notas o instrucciones especiales para este item.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            <textarea
+              className="w-full p-2 border rounded-md h-40"
+              placeholder="Añadir notas especiales..."
+              value={noteItem?.notes || ''}
+              onChange={(e) => handleNotesChange(e.target.value)}
+            />
+            <Button 
+              className="w-full mt-4" 
+              onClick={() => setIsNoteSheetOpen(false)}
+            >
+              Guardar Notas
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

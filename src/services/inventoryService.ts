@@ -1,18 +1,39 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category_id?: string;
+  stock_quantity: number;
+  min_stock_level?: number;
+  unit?: string;
+  created_at: string;
+  // Add a field to store the joined category
+  category?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface InventoryCategory {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 // Fetch all inventory items
-export const fetchInventoryItems = async () => {
+export const fetchInventoryItems = async (): Promise<InventoryItem[]> => {
   const { data, error } = await supabase
     .from('inventory_items')
-    .select('*, category_id(id, name)');
+    .select('*, category:category_id(id, name)');
     
   if (error) throw error;
   return data;
 };
 
 // Fetch inventory categories
-export const fetchInventoryCategories = async () => {
+export const fetchInventoryCategories = async (): Promise<InventoryCategory[]> => {
   const { data, error } = await supabase
     .from('inventory_categories')
     .select('*');
@@ -22,18 +43,18 @@ export const fetchInventoryCategories = async () => {
 };
 
 // Create a new inventory item
-export const createInventoryItem = async (item) => {
+export const createInventoryItem = async (item: Omit<InventoryItem, 'id' | 'created_at'>): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
     .insert(item)
     .select();
     
   if (error) throw error;
-  return data;
+  return data[0];
 };
 
 // Update an inventory item
-export const updateInventoryItem = async (id, updates) => {
+export const updateInventoryItem = async (id: string, updates: Partial<Omit<InventoryItem, 'id' | 'created_at'>>): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
     .update(updates)
@@ -41,11 +62,11 @@ export const updateInventoryItem = async (id, updates) => {
     .select();
     
   if (error) throw error;
-  return data;
+  return data[0];
 };
 
 // Delete an inventory item
-export const deleteInventoryItem = async (id) => {
+export const deleteInventoryItem = async (id: string): Promise<boolean> => {
   const { error } = await supabase
     .from('inventory_items')
     .delete()

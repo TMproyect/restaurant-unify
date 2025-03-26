@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Plus, Filter, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchInventoryItems } from '@/services/inventoryService';
+import { fetchInventoryItems, InventoryItem } from '@/services/inventoryService';
 import { useQuery } from '@tanstack/react-query';
 
 const Inventory = () => {
@@ -23,7 +23,7 @@ const Inventory = () => {
   const filteredItems = searchTerm 
     ? inventoryItems.filter(item => 
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.category_id && item.category_id.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        (item.category && item.category.name.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     : inventoryItems;
     
@@ -134,7 +134,7 @@ const Inventory = () => {
                   {filteredItems.map(item => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.category_id ? item.category_id.name : 'Sin categoría'}</TableCell>
+                      <TableCell>{item.category ? item.category.name : 'Sin categoría'}</TableCell>
                       <TableCell>{item.stock_quantity}</TableCell>
                       <TableCell>{item.unit}</TableCell>
                       <TableCell>

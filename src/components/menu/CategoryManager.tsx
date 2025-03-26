@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -54,36 +53,36 @@ interface CategoryManagerProps {
 
 // Objeto de mapeo de iconos por nombre
 const categoryIcons: Record<string, React.ReactNode> = {
-  bebidas: <Coffee className="h-4 w-4" />,
-  platos: <Utensils className="h-4 w-4" />,
-  vinos: <Wine className="h-4 w-4" />,
-  postres: <IceCream className="h-4 w-4" />,
-  pizzas: <Pizza className="h-4 w-4" />,
-  ensaladas: <Salad className="h-4 w-4" />,
-  menu: <ChefHat className="h-4 w-4" />,
-  sandwich: <Sandwich className="h-4 w-4" />,
-  refrescos: <CupSoda className="h-4 w-4" />,
-  pasteles: <Cake className="h-4 w-4" />,
-  pescados: <Fish className="h-4 w-4" />,
-  sopas: <Soup className="h-4 w-4" />,
-  panaderia: <Croissant className="h-4 w-4" />
+  bebidas: <Coffee className="h-5 w-5" />,
+  platos: <Utensils className="h-5 w-5" />,
+  vinos: <Wine className="h-5 w-5" />,
+  postres: <IceCream className="h-5 w-5" />,
+  pizzas: <Pizza className="h-5 w-5" />,
+  ensaladas: <Salad className="h-5 w-5" />,
+  menu: <ChefHat className="h-5 w-5" />,
+  sandwich: <Sandwich className="h-5 w-5" />,
+  refrescos: <CupSoda className="h-5 w-5" />,
+  pasteles: <Cake className="h-5 w-5" />,
+  pescados: <Fish className="h-5 w-5" />,
+  sopas: <Soup className="h-5 w-5" />,
+  panaderia: <Croissant className="h-5 w-5" />
 };
 
 // Opciones de iconos para seleccionar
 const iconOptions = [
-  { value: 'bebidas', label: 'Bebidas', icon: <Coffee className="h-4 w-4" /> },
-  { value: 'platos', label: 'Platos', icon: <Utensils className="h-4 w-4" /> },
-  { value: 'vinos', label: 'Vinos', icon: <Wine className="h-4 w-4" /> },
-  { value: 'postres', label: 'Postres', icon: <IceCream className="h-4 w-4" /> },
-  { value: 'pizzas', label: 'Pizzas', icon: <Pizza className="h-4 w-4" /> },
-  { value: 'ensaladas', label: 'Ensaladas', icon: <Salad className="h-4 w-4" /> },
-  { value: 'menu', label: 'Menú General', icon: <ChefHat className="h-4 w-4" /> },
-  { value: 'sandwich', label: 'Sandwiches', icon: <Sandwich className="h-4 w-4" /> },
-  { value: 'refrescos', label: 'Refrescos', icon: <CupSoda className="h-4 w-4" /> },
-  { value: 'pasteles', label: 'Pasteles', icon: <Cake className="h-4 w-4" /> },
-  { value: 'pescados', label: 'Pescados', icon: <Fish className="h-4 w-4" /> },
-  { value: 'sopas', label: 'Sopas', icon: <Soup className="h-4 w-4" /> },
-  { value: 'panaderia', label: 'Panadería', icon: <Croissant className="h-4 w-4" /> }
+  { value: 'bebidas', label: 'Bebidas', icon: <Coffee className="h-5 w-5" /> },
+  { value: 'platos', label: 'Platos', icon: <Utensils className="h-5 w-5" /> },
+  { value: 'vinos', label: 'Vinos', icon: <Wine className="h-5 w-5" /> },
+  { value: 'postres', label: 'Postres', icon: <IceCream className="h-5 w-5" /> },
+  { value: 'pizzas', label: 'Pizzas', icon: <Pizza className="h-5 w-5" /> },
+  { value: 'ensaladas', label: 'Ensaladas', icon: <Salad className="h-5 w-5" /> },
+  { value: 'menu', label: 'Menú General', icon: <ChefHat className="h-5 w-5" /> },
+  { value: 'sandwich', label: 'Sandwiches', icon: <Sandwich className="h-5 w-5" /> },
+  { value: 'refrescos', label: 'Refrescos', icon: <CupSoda className="h-5 w-5" /> },
+  { value: 'pasteles', label: 'Pasteles', icon: <Cake className="h-5 w-5" /> },
+  { value: 'pescados', label: 'Pescados', icon: <Fish className="h-5 w-5" /> },
+  { value: 'sopas', label: 'Sopas', icon: <Soup className="h-5 w-5" /> },
+  { value: 'panaderia', label: 'Panadería', icon: <Croissant className="h-5 w-5" /> }
 ];
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }) => {
@@ -131,7 +130,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
     try {
       const categoryData = {
         name: newCategoryName,
-        icon: newCategoryIcon // Almacenamos el ícono como metadata
+        icon: newCategoryIcon
       };
       await createMenuCategory(categoryData);
       toast({
@@ -208,22 +207,18 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
     }
   };
 
-  // Determinar icono para una categoría
   const getCategoryIcon = (category: MenuCategory) => {
-    // Si la categoría tiene un ícono almacenado, usamos ese
     if ((category as any).icon && categoryIcons[(category as any).icon]) {
       return categoryIcons[(category as any).icon];
     }
     
-    // Si no, intentamos encontrar un ícono según el nombre
     for (const [key, icon] of Object.entries(categoryIcons)) {
       if (category.name.toLowerCase().includes(key)) {
         return icon;
       }
     }
     
-    // Icono por defecto
-    return <ChefHat className="h-4 w-4" />;
+    return <ChefHat className="h-5 w-5" />;
   };
 
   return (
@@ -264,14 +259,19 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
                   onValueChange={setNewCategoryIcon}
                 >
                   <SelectTrigger id="categoryIcon" className="w-full">
-                    <SelectValue placeholder="Selecciona un icono" />
+                    <SelectValue>
+                      {categoryIcons[newCategoryIcon]}
+                    </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60 overflow-y-auto grid grid-cols-4 gap-1 p-2 w-auto">
                     {iconOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value} className="flex items-center">
-                        <div className="flex items-center">
+                      <SelectItem 
+                        key={option.value} 
+                        value={option.value} 
+                        className="flex items-center justify-center h-10 w-10 p-0"
+                      >
+                        <div className="flex items-center justify-center">
                           {option.icon}
-                          <span className="ml-2">{option.label}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -351,14 +351,19 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
                           onValueChange={(value) => setEditingCategory(prev => prev ? { ...prev, icon: value } : null)}
                         >
                           <SelectTrigger id="editCategoryIcon" className="w-full">
-                            <SelectValue placeholder="Selecciona un icono" />
+                            <SelectValue>
+                              {editingCategory?.icon ? categoryIcons[editingCategory.icon] : <ChefHat className="h-5 w-5" />}
+                            </SelectValue>
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-60 overflow-y-auto grid grid-cols-4 gap-1 p-2 w-auto">
                             {iconOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value} className="flex items-center">
-                                <div className="flex items-center">
+                              <SelectItem 
+                                key={option.value} 
+                                value={option.value} 
+                                className="flex items-center justify-center h-10 w-10 p-0"
+                              >
+                                <div className="flex items-center justify-center">
                                   {option.icon}
-                                  <span className="ml-2">{option.label}</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -402,3 +407,4 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
 };
 
 export default CategoryManager;
+

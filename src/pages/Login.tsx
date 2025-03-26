@@ -59,19 +59,6 @@ const Login = () => {
       // Error is handled in the signup function
     }
   };
-  
-  // Demo accounts for easy login
-  const demoAccounts = [
-    { email: 'waiter@restaurant.com', password: 'password', role: 'Mesero' },
-    { email: 'kitchen@restaurant.com', password: 'password', role: 'Cocina' },
-    { email: 'delivery@restaurant.com', password: 'password', role: 'Delivery' },
-    { email: 'admin@restaurant.com', password: 'password', role: 'Admin' },
-  ];
-  
-  const setDemoAccount = (email: string) => {
-    setEmail(email);
-    setPassword('password');
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
@@ -132,27 +119,6 @@ const Login = () => {
                       'Iniciar Sesión'
                     )}
                   </Button>
-                  
-                  <div className="w-full">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 text-center">
-                      Cuentas demo para probar el sistema:
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {demoAccounts.map((account) => (
-                        <button
-                          key={account.email}
-                          type="button"
-                          onClick={() => setDemoAccount(account.email)}
-                          className="px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          <span className="font-medium">{account.role}</span>
-                          <span className="block text-gray-500 dark:text-gray-400 mt-1 truncate">
-                            {account.email}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </CardFooter>
               </form>
             </TabsContent>

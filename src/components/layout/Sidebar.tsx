@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, ShoppingCart, Users, Package, FileText, ChartBar, Settings, ArrowLeft, ArrowRight, Menu } from 'lucide-react';
+import { Calendar, ShoppingCart, Users, Package, FileText, ChartBar, Settings, ArrowLeft, ArrowRight, Menu, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -49,6 +48,12 @@ const menuItems: MenuItem[] = [
     title: 'Informes',
     icon: FileText,
     path: '/reports',
+    allowedRoles: ['admin', 'manager'],
+  },
+  {
+    title: 'Personal',
+    icon: User,
+    path: '/staff',
     allowedRoles: ['admin', 'manager'],
   },
   {

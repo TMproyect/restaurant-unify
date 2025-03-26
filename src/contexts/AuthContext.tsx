@@ -25,6 +25,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  createUser: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
 }
 
 // Create context
@@ -124,8 +125,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function
-  const signup = async (email: string, password: string, name: string, role: UserRole = 'waiter') => {
+  // Signup function - modificada para usar 'admin' como rol predeterminado
+  const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -145,6 +146,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       console.error('Error signing up:', error.message);
       toast.error(error.message || 'Error al crear la cuenta');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Función para crear usuarios por parte del administrador
+  const createUser = async (email: string, password: string, name: string, role: UserRole) => {
+    setIsLoading(true);
+    try {
+      // Crear usuario en Supabase Authentication
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          name,
+          role,
+        },
+      });
+
+      if (error) throw error;
+
+      // Crear manualmente el perfil ya que el trigger podría no activarse para creaciones admin
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: data.user.id,
+            name,
+            role,
+            avatar: null,
+          },
+        ]);
+
+      if (profileError) throw profileError;
+
+      toast.success(`Usuario ${name} creado correctamente con rol ${role}`);
+      return data.user;
+    } catch (error: any) {
+      console.error('Error creating user:', error.message);
+      toast.error(error.message || 'Error al crear el usuario');
       throw error;
     } finally {
       setIsLoading(false);
@@ -171,6 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     isAuthenticated: !!user,
     isLoading,
+    createUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

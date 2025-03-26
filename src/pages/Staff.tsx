@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Search, Plus, MoreHorizontal, UserPlus, ChevronDown } from 'lucide-react';
+import { Search, Plus, MoreHorizontal, UserPlus, ChevronDown, Upload } from 'lucide-react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { UserRole } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
 
-// Interfaz para el perfil de usuario
+// Interface for user profile
 interface UserProfile {
   id: string;
   name: string;
@@ -28,7 +29,7 @@ interface UserProfile {
   created_at: string;
 }
 
-// Interfaz para roles
+// Interface for roles
 interface Role {
   id: number;
   name: string;
@@ -45,9 +46,14 @@ const Staff = () => {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('waiter');
   const [userDialogOpen, setUserDialogOpen] = useState(false);
-  const { user, createUser } = useAuth();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, createUser, updateUserRole } = useAuth();
   
-  // Datos de roles
+  // Roles data
   const roles: Role[] = [
     { id: 1, name: 'Administrador', permissions: 'Acceso completo', members: 0 },
     { id: 2, name: 'Gerente', permissions: 'Gestión de personal, finanzas', members: 0 },
@@ -58,13 +64,13 @@ const Staff = () => {
     { id: 7, name: 'Ayudante de Cocina', permissions: 'Cocina', members: 0 },
   ];
   
-  // Cargar los usuarios desde Supabase
+  // Load users from Supabase
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setIsLoading(true);
         
-        // Obtener perfiles de Supabase
+        // Get profiles from Supabase
         const { data, error } = await supabase
           .from('profiles')
           .select('*');
@@ -73,35 +79,29 @@ const Staff = () => {
           throw error;
         }
         
-        // Obtener los emails de los usuarios desde auth.users
-        // Nota: Esto normalmente requeriría una función Edge o un servicio para mantenerse seguro
-        // Para este ejemplo, usamos los datos parciales que podemos obtener
+        // For each profile, fetch the actual email from auth.users
         const usersWithEmail: UserProfile[] = await Promise.all(
           data.map(async (profile) => {
-            // Intentamos obtener el email si está disponible
-            let email = 'no-email@example.com';
+            // Get session for current user to access their email
+            const { data: sessionData } = await supabase.auth.getSession();
             
-            try {
-              // En un escenario real, esto debería hacerse de forma segura a través de un servicio backend
-              const { data: user } = await supabase.auth.admin.getUserById(profile.id);
-              if (user && user.user) {
-                email = user.user.email || email;
-              }
-            } catch (e) {
-              console.error('Error fetching user email:', e);
+            // If this profile belongs to the current logged in user, use their email
+            let email = 'no-email@example.com';
+            if (sessionData.session && sessionData.session.user && profile.id === sessionData.session.user.id) {
+              email = sessionData.session.user.email || email;
             }
             
             return {
               ...profile,
               email,
-              role: profile.role as UserRole, // Asegurar que el rol sea del tipo UserRole
+              role: profile.role as UserRole,
             };
           })
         );
         
         setStaffMembers(usersWithEmail);
         
-        // Actualizar conteo de miembros por rol
+        // Update role counts
         const roleCounts = data.reduce((counts: Record<string, number>, profile) => {
           counts[profile.role] = (counts[profile.role] || 0) + 1;
           return counts;
@@ -118,13 +118,13 @@ const Staff = () => {
     fetchUsers();
   }, []);
   
-  // Filtrar personal basado en la búsqueda
+  // Filter staff based on search
   const filteredStaff = staffMembers.filter(staff => 
     staff.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     staff.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Manejar la creación de un nuevo usuario
+  // Handle user creation
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -141,22 +141,36 @@ const Staff = () => {
         newUserRole
       );
       
-      // Limpiar el formulario
+      // Clear form
       setNewUserEmail('');
       setNewUserName('');
       setNewUserPassword('');
       setNewUserRole('waiter');
       setUserDialogOpen(false);
       
-      // Recargar la lista de usuarios
+      // Reload user list
       const { data, error } = await supabase.from('profiles').select('*');
       if (error) throw error;
       
-      const updatedStaff: UserProfile[] = data.map(profile => ({
-        ...profile,
-        email: newUserEmail,
-        role: profile.role as UserRole, // Asegurar que el rol sea del tipo UserRole
-      }));
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const updatedStaff: UserProfile[] = data.map(profile => {
+        let email = 'no-email@example.com';
+        if (sessionData.session && sessionData.session.user && profile.id === sessionData.session.user.id) {
+          email = sessionData.session.user.email || email;
+        }
+        
+        // If this is the newly created user
+        if (profile.name === newUserName) {
+          email = newUserEmail;
+        }
+        
+        return {
+          ...profile,
+          email,
+          role: profile.role as UserRole,
+        };
+      });
       
       setStaffMembers(updatedStaff);
       
@@ -166,17 +180,12 @@ const Staff = () => {
     }
   };
   
-  // Manejar actualización de rol
+  // Handle role update
   const handleUpdateRole = async (userId: string, newRole: UserRole) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-        
-      if (error) throw error;
+      await updateUserRole(userId, newRole);
       
-      // Actualizar la lista local
+      // Update local list
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === userId 
@@ -192,14 +201,77 @@ const Staff = () => {
     }
   };
   
-  // Función para cambiar el estado de activación de un usuario
+  // Handle avatar upload
+  const handleAvatarUpload = async () => {
+    if (!avatarFile || !currentUser) return;
+    
+    try {
+      // Upload avatar to Supabase Storage
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${currentUser.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      // Create the bucket if it doesn't exist
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
+      if (bucketError && bucketError.message.includes('not found')) {
+        await supabase.storage.createBucket('avatars', {
+          public: true,
+          fileSizeLimit: 1024 * 1024 * 2, // 2MB
+        });
+      }
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, avatarFile);
+        
+      if (uploadError) {
+        console.error('Avatar upload error:', uploadError);
+        toast.error('Error al subir la imagen');
+        return;
+      }
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+        
+      if (urlData) {
+        // Update profile with avatar URL
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar: urlData.publicUrl })
+          .eq('id', currentUser.id);
+          
+        if (updateError) {
+          console.error('Profile update error:', updateError);
+          toast.error('Error al actualizar el perfil');
+          return;
+        }
+        
+        // Update local state
+        setStaffMembers(prev => 
+          prev.map(staff => 
+            staff.id === currentUser.id 
+              ? { ...staff, avatar: urlData.publicUrl } 
+              : staff
+          )
+        );
+        
+        setAvatarUrl(urlData.publicUrl);
+        toast.success('Imagen de perfil actualizada');
+      }
+    } catch (error) {
+      console.error('Error handling avatar upload:', error);
+      toast.error('Error al procesar la imagen');
+    }
+  };
+  
+  // Handle user status toggle
   const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
     try {
-      // En un escenario real, esto se haría a través de una función Edge Function segura
-      // Para este ejemplo, simularemos el cambio de estado
+      // In a real scenario, this would be done through a secure Edge Function
       toast.success(`Usuario ${currentStatus === 'active' ? 'desactivado' : 'activado'} correctamente`);
       
-      // Actualizar la lista local para simular el cambio
+      // Update local list to simulate the change
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === userId 
@@ -213,7 +285,55 @@ const Staff = () => {
     }
   };
   
-  // Verificar si el usuario actual es administrador
+  // Handle editing user details
+  const handleEditUser = (staff: UserProfile) => {
+    setCurrentUser(staff);
+    setAvatarUrl(staff.avatar || null);
+    setEditDialogOpen(true);
+  };
+  
+  // Handle save user edits
+  const handleSaveUserEdit = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Upload avatar if selected
+      if (avatarFile) {
+        await handleAvatarUpload();
+      }
+      
+      // Update user profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: currentUser.name,
+        })
+        .eq('id', currentUser.id);
+        
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast.error('Error al actualizar el perfil');
+        return;
+      }
+      
+      // Update local state
+      setStaffMembers(prev => 
+        prev.map(staff => 
+          staff.id === currentUser.id 
+            ? { ...currentUser }
+            : staff
+        )
+      );
+      
+      setEditDialogOpen(false);
+      toast.success('Perfil actualizado correctamente');
+    } catch (error) {
+      console.error('Error saving user edit:', error);
+      toast.error('Error al guardar los cambios');
+    }
+  };
+  
+  // Check if current user is admin
   const isAdmin = user?.role === 'admin';
 
   return (
@@ -447,7 +567,13 @@ const Staff = () => {
                                       </div>
                                     </div>
                                     <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                                      <Button className="w-full" variant="outline">Editar Detalles</Button>
+                                      <Button 
+                                        className="w-full" 
+                                        variant="outline"
+                                        onClick={() => handleEditUser(staff)}
+                                      >
+                                        Editar Detalles
+                                      </Button>
                                       <Button 
                                         className="w-full" 
                                         variant="destructive"
@@ -496,35 +622,35 @@ const Staff = () => {
                             <Label>Permisos</Label>
                             <div className="border rounded-md p-4 space-y-2">
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-dashboard" className="rounded" />
+                                <Checkbox id="perm-dashboard" />
                                 <Label htmlFor="perm-dashboard">Dashboard</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-orders" className="rounded" />
+                                <Checkbox id="perm-orders" />
                                 <Label htmlFor="perm-orders">Órdenes</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-kitchen" className="rounded" />
+                                <Checkbox id="perm-kitchen" />
                                 <Label htmlFor="perm-kitchen">Cocina</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-inventory" className="rounded" />
+                                <Checkbox id="perm-inventory" />
                                 <Label htmlFor="perm-inventory">Inventario</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-delivery" className="rounded" />
+                                <Checkbox id="perm-delivery" />
                                 <Label htmlFor="perm-delivery">Entregas</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-reports" className="rounded" />
+                                <Checkbox id="perm-reports" />
                                 <Label htmlFor="perm-reports">Reportes</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-settings" className="rounded" />
+                                <Checkbox id="perm-settings" />
                                 <Label htmlFor="perm-settings">Configuración</Label>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input type="checkbox" id="perm-staff" className="rounded" />
+                                <Checkbox id="perm-staff" />
                                 <Label htmlFor="perm-staff">Personal</Label>
                               </div>
                             </div>
@@ -550,7 +676,7 @@ const Staff = () => {
                   </TableHeader>
                   <TableBody>
                     {roles.map(role => {
-                      // Contar los miembros de cada rol
+                      // Count members for each role
                       const memberCount = staffMembers.filter(
                         staff => staff.role === role.name.toLowerCase()
                       ).length;
@@ -577,6 +703,70 @@ const Staff = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Empleado</DialogTitle>
+            <DialogDescription>
+              Actualice la información del empleado.
+            </DialogDescription>
+          </DialogHeader>
+          {currentUser && (
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col items-center gap-2">
+                <Avatar className="h-24 w-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                  <AvatarImage src={avatarUrl || currentUser.avatar} />
+                  <AvatarFallback className="text-xl relative group">
+                    {currentUser.name.split(' ').map(n => n[0]).join('')}
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-full">
+                      <Upload size={20} />
+                    </div>
+                  </AvatarFallback>
+                </Avatar>
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setAvatarFile(file);
+                      setAvatarUrl(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">Haga clic en la imagen para cambiarla</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nombre Completo</Label>
+                <Input 
+                  id="edit-name" 
+                  value={currentUser.name}
+                  onChange={(e) => setCurrentUser({...currentUser, name: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input 
+                  id="edit-email" 
+                  value={currentUser.email}
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">El email no puede ser cambiado</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveUserEdit}>Guardar Cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

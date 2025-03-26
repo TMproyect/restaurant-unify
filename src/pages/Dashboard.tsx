@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import DashboardCard from '@/components/dashboard/DashboardCard';
@@ -8,6 +7,7 @@ import { Avatar, AvatarGroup } from '@/components/ui/Avatars';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import OrderTaking from '@/components/order/OrderTaking';
 import { 
   MessageSquare, 
   AlertTriangle, 
@@ -212,6 +212,10 @@ const WaiterDashboard = () => {
   const [openChatDialog, setOpenChatDialog] = useState(false);
   const [openSOSDialog, setOpenSOSDialog] = useState(false);
   
+  // Estado para mostrar el formulario de toma de pedidos
+  const [showOrderTaking, setShowOrderTaking] = useState(false);
+  const [selectedTableId, setSelectedTableId] = useState('');
+  
   // Estado para mensajes de chat
   const [chatMessages, setMessages] = useState([
     { sender: 'Cocina', text: 'Necesitamos más detalles para la orden #35', time: '09:45' },
@@ -267,13 +271,16 @@ const WaiterDashboard = () => {
   const createNewOrder = () => {
     if (newOrder.tableId === '') return;
     
-    toast({
-      title: "Orden creada",
-      description: `Orden creada para Mesa ${newOrder.tableId}`,
-    });
-    
-    setNewOrder({ tableId: '', items: [] });
+    // Mostrar el formulario de toma de pedidos
+    setSelectedTableId(newOrder.tableId);
+    setShowOrderTaking(true);
     setOpenOrderDialog(false);
+  };
+  
+  // Función para completar la orden
+  const handleOrderComplete = () => {
+    setShowOrderTaking(false);
+    setSelectedTableId('');
   };
   
   // Función para generar cuenta
@@ -285,6 +292,21 @@ const WaiterDashboard = () => {
     
     setOpenBillDialog(false);
   };
+
+  // Si se está mostrando la toma de pedidos, mostrar solo esa vista
+  if (showOrderTaking) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl md:text-2xl font-semibold">Tomar Pedido - Mesa {selectedTableId}</h1>
+          <Button variant="outline" onClick={() => setShowOrderTaking(false)}>
+            Cancelar
+          </Button>
+        </div>
+        <OrderTaking tableId={selectedTableId} onOrderComplete={handleOrderComplete} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -325,13 +347,9 @@ const WaiterDashboard = () => {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <p className="text-sm">Esta funcionalidad permite tomar órdenes a los clientes.</p>
-                    <p className="text-sm text-muted-foreground mt-1">En una implementación completa, aquí podrías ver el menú y agregar items a la orden.</p>
-                  </div>
                 </div>
                 <DrawerFooter>
-                  <Button onClick={createNewOrder} disabled={!newOrder.tableId}>Crear Orden</Button>
+                  <Button onClick={createNewOrder} disabled={!newOrder.tableId}>Continuar</Button>
                 </DrawerFooter>
               </DrawerContent>
             </Drawer>
@@ -367,13 +385,9 @@ const WaiterDashboard = () => {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <p className="text-sm">Esta funcionalidad permite tomar órdenes a los clientes.</p>
-                    <p className="text-sm text-muted-foreground mt-1">En una implementación completa, aquí podrías ver el menú y agregar items a la orden.</p>
-                  </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={createNewOrder} disabled={!newOrder.tableId}>Crear Orden</Button>
+                  <Button onClick={createNewOrder} disabled={!newOrder.tableId}>Continuar</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

@@ -63,9 +63,9 @@ const SignupForm = ({ onSuccess }: SignupFormProps) => {
     try {
       // Always use 'admin' as the default role for new users
       console.log("Llamando a la función signup con:", { email, name, role: 'admin' });
-      await signup(email, password, name, 'admin');
+      const result = await signup(email, password, name, 'admin');
       
-      console.log("Registro exitoso");
+      console.log("Registro exitoso", result);
       toast.success('Cuenta creada con éxito', {
         description: 'Por favor, verifica tu correo electrónico para confirmar tu cuenta',
       });

@@ -15,6 +15,7 @@ interface Order {
   items: number;
   total: number;
   time: string;
+  kitchen?: string; // Added kitchen assignment
 }
 
 // Sample orders for demo
@@ -27,6 +28,7 @@ const SAMPLE_ORDERS: Order[] = [
     items: 4,
     total: 47.50,
     time: '10:30 AM',
+    kitchen: 'Cocina Principal',
   },
   {
     id: '46',
@@ -36,6 +38,7 @@ const SAMPLE_ORDERS: Order[] = [
     items: 2,
     total: 23.75,
     time: '10:40 AM',
+    kitchen: 'Parrilla',
   },
   {
     id: '47',
@@ -45,6 +48,7 @@ const SAMPLE_ORDERS: Order[] = [
     items: 3,
     total: 35.20,
     time: '10:25 AM',
+    kitchen: 'Cocina Fría',
   },
   {
     id: '44',
@@ -54,6 +58,7 @@ const SAMPLE_ORDERS: Order[] = [
     items: 5,
     total: 68.90,
     time: '10:15 AM',
+    kitchen: 'Pastelería',
   },
 ];
 
@@ -123,6 +128,9 @@ const OrdersList: React.FC<OrdersListProps> = ({
               Estado
             </th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+              Cocina
+            </th>
+            <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
               Total
             </th>
             <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
@@ -147,6 +155,11 @@ const OrdersList: React.FC<OrdersListProps> = ({
               </td>
               <td className="whitespace-nowrap px-3 py-4 text-sm">
                 <StatusBadge status={order.status} />
+              </td>
+              <td className="whitespace-nowrap px-3 py-4 text-sm">
+                <span className="px-2 py-1 bg-secondary/40 rounded text-xs">
+                  {order.kitchen || 'Sin asignar'}
+                </span>
               </td>
               <td className="whitespace-nowrap px-3 py-4 text-sm font-medium">
                 ${order.total.toFixed(2)}

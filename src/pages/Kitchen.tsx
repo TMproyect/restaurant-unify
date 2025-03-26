@@ -49,8 +49,8 @@ const initialOrders = [
     time: '10:15', 
     kitchenId: 'cold',
     items: [
-      { name: 'Pasta Carbonara', notes: 'Extra queso', status: 'completed' },
-      { name: 'Pan de ajo', notes: '', status: 'completed' },
+      { name: 'Pasta Carbonara', notes: 'Extra queso', status: 'pending' },
+      { name: 'Pan de ajo', notes: '', status: 'pending' },
     ]
   },
   { 
@@ -60,9 +60,9 @@ const initialOrders = [
     time: '10:25', 
     kitchenId: 'grill',
     items: [
-      { name: 'Pizza Margherita', notes: 'Sin albahaca', status: 'preparing' },
+      { name: 'Pizza Margherita', notes: 'Sin albahaca', status: 'pending' },
       { name: 'Alitas de pollo', notes: 'Salsa picante', status: 'pending' },
-      { name: 'Tiramisu', notes: '', status: 'completed' },
+      { name: 'Tiramisu', notes: '', status: 'pending' },
     ]
   },
   { 
@@ -101,11 +101,14 @@ const Kitchen = () => {
   const filteredOrders = orders
     .filter(order => order.kitchenId === selectedKitchen)
     .filter(order => {
-      return order.items.some(item => 
-        (orderStatus === 'pending' && item.status === 'pending') ||
-        (orderStatus === 'preparing' && item.status === 'preparing') ||
-        (orderStatus === 'completed' && item.status === 'completed')
-      );
+      if (orderStatus === 'pending') {
+        return order.items.some(item => item.status === 'pending');
+      } else if (orderStatus === 'preparing') {
+        return order.items.some(item => item.status === 'preparing');
+      } else if (orderStatus === 'completed') {
+        return order.items.some(item => item.status === 'completed');
+      }
+      return false;
     });
 
   // Function to update the status of an item
@@ -190,6 +193,12 @@ const Kitchen = () => {
     };
     
     return times[selectedKitchen as keyof typeof times] || 15;
+  };
+
+  // Get kitchen name from ID
+  const getKitchenName = (kitchenId: string) => {
+    const kitchen = kitchenOptions.find(k => k.id === kitchenId);
+    return kitchen ? kitchen.name : 'Desconocida';
   };
 
   return (
@@ -288,7 +297,12 @@ const Kitchen = () => {
                       <CardTitle>Orden #{order.id} - {order.table}</CardTitle>
                       <span className="text-sm text-muted-foreground">{order.time}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                      <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
+                        {getKitchenName(order.kitchenId)}
+                      </p>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
@@ -340,7 +354,12 @@ const Kitchen = () => {
                       <CardTitle>Orden #{order.id} - {order.table}</CardTitle>
                       <span className="text-sm text-muted-foreground">{order.time}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                      <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
+                        {getKitchenName(order.kitchenId)}
+                      </p>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
@@ -392,7 +411,12 @@ const Kitchen = () => {
                       <CardTitle>Orden #{order.id} - {order.table}</CardTitle>
                       <span className="text-sm text-muted-foreground">{order.time}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+                      <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
+                        {getKitchenName(order.kitchenId)}
+                      </p>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">

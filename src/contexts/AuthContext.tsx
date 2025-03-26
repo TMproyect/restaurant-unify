@@ -111,12 +111,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        setIsLoading(false); // Asegurarse que isLoading se restablezca siempre
+        throw error;
+      }
 
       if (data.user) {
         const profile = await fetchUserProfile(data.user.id);
         
         if (!profile) {
+          setIsLoading(false); // Asegurarse que isLoading se restablezca siempre
           throw new Error('No se pudo recuperar el perfil de usuario');
         }
         
@@ -125,6 +129,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           description: `Bienvenido, ${profile.name}`,
         });
       }
+      
+      // Asegurarse de que isLoading se restablezca al finalizar correctamente
+      setIsLoading(false);
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       toast.error(error.message || 'Error al iniciar sesión');
@@ -149,7 +156,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        setIsLoading(false);
+        throw error;
+      }
 
       toast.success('Cuenta creada con éxito. Por favor, verifica tu correo electrónico.');
     } catch (error: any) {
@@ -176,7 +186,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        setIsLoading(false);
+        throw error;
+      }
 
       // Crear manualmente el perfil ya que el trigger podría no activarse para creaciones admin
       const { error: profileError } = await supabase
@@ -190,7 +203,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           },
         ]);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        setIsLoading(false);
+        throw profileError;
+      }
 
       toast.success(`Usuario ${name} creado correctamente con rol ${role}`);
     } catch (error: any) {
@@ -211,7 +227,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .update({ role: newRole })
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        setIsLoading(false);
+        throw error;
+      }
 
       // Si el usuario cuyo rol se está actualizando es el usuario actual, actualizamos también el estado
       if (user && userId === user.id) {

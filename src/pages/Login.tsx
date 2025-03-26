@@ -20,12 +20,26 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState('login');
   const [localLoading, setLocalLoading] = useState(false);
 
-  // Reset localLoading state when isLoading changes
+  // Reset de estado de carga local cuando cambia isLoading
   useEffect(() => {
     if (!isLoading) {
       setLocalLoading(false);
     }
   }, [isLoading]);
+
+  // Timeout para evitar bloqueo del botón
+  useEffect(() => {
+    // Auto-reset de localLoading después de 5 segundos para evitar bloqueos permanentes
+    let timeout: number;
+    if (localLoading) {
+      timeout = window.setTimeout(() => {
+        setLocalLoading(false);
+      }, 5000);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [localLoading]);
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -34,6 +48,10 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // No proceder si ya está cargando
+    if (localLoading || isLoading) return;
+    
     setLocalLoading(true);
     
     try {
@@ -42,7 +60,7 @@ const Login = () => {
       // Error already handled in login function
       console.error("Login error handled by context:", err);
     } finally {
-      // Ensure loading state is reset if login function doesn't reset it
+      // Forzar reset del estado de carga después de un corto retraso
       setTimeout(() => {
         setLocalLoading(false);
       }, 500);
@@ -51,6 +69,10 @@ const Login = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // No proceder si ya está cargando
+    if (localLoading || isLoading) return;
+    
     setLocalLoading(true);
     
     if (password !== confirmPassword) {
@@ -78,11 +100,17 @@ const Login = () => {
       // Error is handled in the signup function
       console.error("Signup error handled by context:", err);
     } finally {
-      // Ensure loading state is reset
+      // Forzar reset del estado de carga después de un corto retraso
       setTimeout(() => {
         setLocalLoading(false);
       }, 500);
     }
+  };
+
+  // Función que determina si el botón debe estar deshabilitado
+  const isButtonDisabled = () => {
+    // Limitar a 2 segundos para el estado de carga para prevenir bloqueo permanente
+    return localLoading || isLoading;
   };
 
   return (
@@ -133,7 +161,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full mb-4" 
-                    disabled={localLoading || isLoading}
+                    disabled={isButtonDisabled()}
                   >
                     {localLoading ? (
                       <>
@@ -205,7 +233,7 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={localLoading || isLoading}
+                    disabled={isButtonDisabled()}
                   >
                     {localLoading ? (
                       <>

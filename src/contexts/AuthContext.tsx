@@ -223,6 +223,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Logout function
   const logout = async () => {
+    setIsLoading(true);
     try {
       await supabase.auth.signOut();
       setUser(null);
@@ -230,6 +231,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       console.error('Error logging out:', error.message);
       toast.error('Error al cerrar sesión');
+    } finally {
+      setIsLoading(false);
     }
   };
 

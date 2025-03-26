@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -18,6 +18,14 @@ const Login = () => {
   const [name, setName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [activeTab, setActiveTab] = useState('login');
+  const [localLoading, setLocalLoading] = useState(false);
+
+  // Reset localLoading state when isLoading changes
+  useEffect(() => {
+    if (!isLoading) {
+      setLocalLoading(false);
+    }
+  }, [isLoading]);
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -26,6 +34,7 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalLoading(true);
     
     try {
       await login(email, password);
@@ -34,19 +43,23 @@ const Login = () => {
       });
     } catch (err) {
       // Error is handled in the login function
+      setLocalLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalLoading(true);
     
     if (password !== confirmPassword) {
       toast.error('Las contraseñas no coinciden');
+      setLocalLoading(false);
       return;
     }
 
     if (password.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres');
+      setLocalLoading(false);
       return;
     }
     
@@ -55,8 +68,13 @@ const Login = () => {
       setActiveTab('login');
       setPassword('');
       setConfirmPassword('');
+      toast.success('Cuenta creada exitosamente', {
+        description: 'Por favor inicia sesión con tus credenciales',
+      });
     } catch (err) {
       // Error is handled in the signup function
+    } finally {
+      setLocalLoading(false);
     }
   };
 
@@ -108,9 +126,9 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full mb-4" 
-                    disabled={isLoading}
+                    disabled={localLoading}
                   >
-                    {isLoading ? (
+                    {localLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Iniciando sesión...
@@ -180,9 +198,9 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={isLoading}
+                    disabled={localLoading}
                   >
-                    {isLoading ? (
+                    {localLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Registrando...

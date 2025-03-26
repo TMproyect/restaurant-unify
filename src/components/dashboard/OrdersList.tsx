@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
 
 // Define order type
-interface Order {
+export interface Order {
   id: string;
   table?: string;
   delivery?: boolean;
@@ -15,52 +15,60 @@ interface Order {
   items: number;
   total: number;
   time: string;
-  kitchen?: string; // Added kitchen assignment
+  kitchen?: string; // Kitchen assignment
 }
 
-// Sample orders for demo
-const SAMPLE_ORDERS: Order[] = [
-  {
-    id: '45',
-    table: '3',
-    customer: 'Carlos Mendez',
-    status: 'preparing',
-    items: 4,
-    total: 47.50,
-    time: '10:30 AM',
-    kitchen: 'Cocina Principal',
-  },
-  {
-    id: '46',
-    table: '5',
-    customer: 'Maria Lopez',
-    status: 'pending',
-    items: 2,
-    total: 23.75,
-    time: '10:40 AM',
-    kitchen: 'Parrilla',
-  },
-  {
-    id: '47',
-    delivery: true,
-    customer: 'Juan Perez',
-    status: 'ready',
-    items: 3,
-    total: 35.20,
-    time: '10:25 AM',
-    kitchen: 'Cocina Fría',
-  },
-  {
-    id: '44',
-    table: '2',
-    customer: 'Sofia Reyes',
-    status: 'delivered',
-    items: 5,
-    total: 68.90,
-    time: '10:15 AM',
-    kitchen: 'Pastelería',
-  },
-];
+// Get orders from localStorage or use sample data
+const getOrders = (): Order[] => {
+  const savedOrders = localStorage.getItem('restaurantOrders');
+  if (savedOrders) {
+    return JSON.parse(savedOrders);
+  }
+  
+  // Sample orders for demo if no saved orders exist
+  return [
+    {
+      id: '45',
+      table: '3',
+      customer: 'Carlos Mendez',
+      status: 'preparing',
+      items: 4,
+      total: 47.50,
+      time: '10:30 AM',
+      kitchen: 'Cocina Principal',
+    },
+    {
+      id: '46',
+      table: '5',
+      customer: 'Maria Lopez',
+      status: 'pending',
+      items: 2,
+      total: 23.75,
+      time: '10:40 AM',
+      kitchen: 'Parrilla',
+    },
+    {
+      id: '47',
+      delivery: true,
+      customer: 'Juan Perez',
+      status: 'ready',
+      items: 3,
+      total: 35.20,
+      time: '10:25 AM',
+      kitchen: 'Cocina Fría',
+    },
+    {
+      id: '44',
+      table: '2',
+      customer: 'Sofia Reyes',
+      status: 'delivered',
+      items: 5,
+      total: 68.90,
+      time: '10:15 AM',
+      kitchen: 'Pastelería',
+    },
+  ];
+};
 
 // Status badge component
 const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
@@ -105,8 +113,11 @@ const OrdersList: React.FC<OrdersListProps> = ({
   filter = 'all',
   limit = 10
 }) => {
+  // Get orders from localStorage or sample data
+  const orders = getOrders();
+  
   // Filter orders based on filter type
-  const filteredOrders = SAMPLE_ORDERS.filter(order => {
+  const filteredOrders = orders.filter(order => {
     if (filter === 'all') return true;
     if (filter === 'table') return !!order.table;
     if (filter === 'delivery') return !!order.delivery;

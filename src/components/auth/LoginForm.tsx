@@ -17,23 +17,29 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Safety timeout to prevent infinite loading
   useEffect(() => {
     let timer: number | null = null;
     
     if (loading) {
-      // Auto-reset loading after 15 seconds as a failsafe
+      // Auto-reset loading after 8 seconds as a failsafe
       timer = window.setTimeout(() => {
         console.log("Safety timeout triggered to reset loading state");
         setLoading(false);
-      }, 15000); // Increased to 15s for slower connections
+      }, 8000);
     }
     
     return () => {
       if (timer) window.clearTimeout(timer);
     };
   }, [loading]);
+
+  // Check network connectivity
+  const checkNetworkConnectivity = () => {
+    return navigator.onLine;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +52,14 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     if (!email || !password) {
       toast.error('Datos requeridos', {
         description: 'Por favor ingrese su correo y contraseña',
+      });
+      return;
+    }
+
+    // Check network connectivity first
+    if (!checkNetworkConnectivity()) {
+      toast.error('Error de conexión', {
+        description: 'Verifique su conexión a internet e intente nuevamente',
       });
       return;
     }
@@ -63,11 +77,8 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       });
       
       if (onSuccess) {
-        console.log("Esperando 3 segundos antes de ejecutar callback de éxito");
-        setTimeout(() => {
-          console.log("Ejecutando callback de éxito para redirección");
-          onSuccess();
-        }, 3000); // Increased to allow more time for auth to settle
+        console.log("Ejecutando callback de éxito para redirección");
+        onSuccess();
       }
     } catch (err: any) {
       console.error("Error en login:", err);
@@ -77,6 +88,19 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         errorMessage = 'Por favor, revisa tu bandeja de entrada y confirma tu correo';
       } else if (err.message?.includes('Invalid login credentials')) {
         errorMessage = 'El correo o la contraseña son incorrectos';
+      } else if (err.message?.includes('Failed to fetch') || err.status === 0) {
+        errorMessage = 'Error de conexión con el servidor. Compruebe su conexión a internet.';
+        
+        // Auto-retry once for network errors
+        if (retryCount < 1) {
+          setRetryCount(prevCount => prevCount + 1);
+          setTimeout(() => {
+            console.log("Reintentando login automáticamente");
+            setLoading(false);
+            handleLogin(e);
+          }, 1500);
+          return;
+        }
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -86,11 +110,8 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       });
     } finally {
       console.log("Proceso de login finalizado, reseteando estado de carga");
-      // Don't reset loading immediately if login was successful
-      // to avoid UI flicker during redirect
-      setTimeout(() => {
-        if (loading) setLoading(false);
-      }, 2000);
+      setLoading(false);
+      setRetryCount(0);
     }
   };
 

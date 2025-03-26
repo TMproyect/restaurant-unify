@@ -15,7 +15,7 @@ const Login = () => {
   const [redirectAttempted, setRedirectAttempted] = useState(false);
   const [showContent, setShowContent] = useState(false);
 
-  // Mostrar el contenido después de un breve retraso para evitar parpadeos
+  // Show content after a brief delay to avoid flickering
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowContent(true);
@@ -47,26 +47,44 @@ const Login = () => {
     if (!isLoading && isAuthenticated && !redirectAttempted) {
       console.log("User is authenticated, redirecting to dashboard");
       setRedirectAttempted(true);
-      // Aumentar el delay para permitir que el estado se actualice completamente
-      setTimeout(() => {
-        console.log("Ejecutando redirección a dashboard");
-        navigate('/dashboard', { replace: true });
-      }, 3000); // Increased to 3 seconds to ensure profile data is fully loaded
+      navigate('/dashboard', { replace: true });
     }
   }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
 
-  // Mejorado el estado de carga con un timeout de seguridad
+  // Improved loading state with a safety timeout
   useEffect(() => {
-    // Safety timeout - si después de 8 segundos seguimos cargando, mostrar la página de login de todos modos
+    // Safety timeout - if still loading after 8 seconds, show login form anyway
     if (isLoading) {
       const safetyTimer = setTimeout(() => {
         console.log("Safety timeout triggered - showing login form");
         setShowContent(true);
-      }, 8000); // Increased timeout for slower connections
+      }, 8000);
       
       return () => clearTimeout(safetyTimer);
     }
   }, [isLoading]);
+
+  // Network connectivity check
+  useEffect(() => {
+    const handleOnlineStatusChange = () => {
+      if (navigator.onLine) {
+        console.log("Internet connection restored");
+      } else {
+        console.log("Internet connection lost");
+        toast.error('Error de conexión', {
+          description: 'Se ha perdido la conexión a internet',
+        });
+      }
+    };
+
+    window.addEventListener('online', handleOnlineStatusChange);
+    window.addEventListener('offline', handleOnlineStatusChange);
+
+    return () => {
+      window.removeEventListener('online', handleOnlineStatusChange);
+      window.removeEventListener('offline', handleOnlineStatusChange);
+    };
+  }, []);
 
   // Show loading indicator
   if (!showContent || (isLoading && !redirectAttempted)) {
@@ -102,10 +120,7 @@ const Login = () => {
               <LoginForm 
                 onSuccess={() => {
                   console.log("LoginForm success callback executed");
-                  setTimeout(() => {
-                    console.log("Navegando a dashboard desde callback");
-                    navigate('/dashboard', { replace: true });
-                  }, 3000); // Increased to ensure all auth state is settled
+                  navigate('/dashboard', { replace: true });
                 }}
               />
             </TabsContent>

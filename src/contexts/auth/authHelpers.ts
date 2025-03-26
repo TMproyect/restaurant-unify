@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
@@ -7,6 +6,10 @@ import { toast } from 'sonner';
 export const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
     console.log('Fetching profile for user:', userId);
+    
+    // Checking Supabase connection before proceeding
+    console.log('Verifying Supabase connection...');
+    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -50,17 +53,29 @@ export const loginUser = async (email: string, password: string) => {
     console.log('Attempting to login with email:', email);
     console.log('Calling supabase.auth.signInWithPassword...');
     
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Add timeout for login request
+    const loginPromise = supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Login request timed out')), 7000)
+    );
+    
+    // Race the login request against the timeout
+    const { data, error } = await Promise.race([
+      loginPromise,
+      timeoutPromise
+    ]) as any;
 
     if (error) {
       console.error('Login error from Supabase:', error.message);
       throw error;
     }
 
-    if (!data.user) {
+    if (!data || !data.user) {
       console.error('No user returned from login');
       throw new Error('No se pudo iniciar sesión');
     }

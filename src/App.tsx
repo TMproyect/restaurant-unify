@@ -3,14 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/auth/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Orders from "./pages/Orders";
 import Kitchen from "./pages/Kitchen";
-import Inventory from "./pages/Inventory";
 import Menu from "./pages/Menu";
 import Delivery from "./pages/Delivery";
 import Sales from "./pages/Sales";
@@ -35,7 +34,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/kitchen" element={<Kitchen />} />
-              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/inventory" element={<Navigate to="/menu" replace />} />
               <Route path="/menu" element={<Menu />} />
               <Route path="/tables" element={<Tables />} />
               <Route path="/delivery" element={<Delivery />} />

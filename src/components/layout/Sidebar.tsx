@@ -1,6 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, ShoppingCart, Users, Package, FileText, ChartBar, Settings, ArrowLeft, ArrowRight, Menu as MenuIcon, User, Utensils } from 'lucide-react';
+import { 
+  Calendar, 
+  ShoppingCart, 
+  Users, 
+  FileText, 
+  ChartBar, 
+  Settings, 
+  ArrowLeft, 
+  ArrowRight, 
+  Menu as MenuIcon, 
+  User, 
+  Utensils 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { UserRole } from '@/contexts/auth/types';
@@ -43,12 +56,6 @@ const menuItems: MenuItem[] = [
     icon: Utensils,
     path: '/menu',
     allowedRoles: ['admin', 'manager', 'kitchen', 'waiter'],
-  },
-  {
-    title: 'Inventario',
-    icon: Package,
-    path: '/inventory',
-    allowedRoles: ['admin', 'manager', 'kitchen'],
   },
   {
     title: 'Informes',

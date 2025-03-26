@@ -1,15 +1,33 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoginForm from '@/components/auth/LoginForm';
 import SignupForm from '@/components/auth/SignupForm';
+import { toast } from 'sonner';
 
 const Login = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
+
+  useEffect(() => {
+    // Check for auth-related URL parameters (for email verification, etc.)
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const message = params.get('message');
+    
+    if (error) {
+      toast.error('Error de autenticación', {
+        description: message || error,
+      });
+    } else if (message) {
+      toast.success('Información', {
+        description: message,
+      });
+    }
+  }, []);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;

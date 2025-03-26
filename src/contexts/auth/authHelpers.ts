@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
@@ -6,6 +5,7 @@ import { toast } from 'sonner';
 // Fetch user profile data
 export const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
+    console.log('Fetching profile for user:', userId);
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -17,7 +17,10 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       return null;
     }
 
-    if (!data) return null;
+    if (!data) {
+      console.error('No profile data found for user:', userId);
+      return null;
+    }
 
     const sessionResponse = await supabase.auth.getSession();
     const email = sessionResponse.data.session?.user?.email || '';
@@ -35,7 +38,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
   }
 };
 
-// Login helper
+// Login helper - Keeping this for backwards compatibility but moving direct implementation to AuthContext
 export const loginUser = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -44,11 +47,6 @@ export const loginUser = async (email: string, password: string) => {
 
   if (error) {
     console.error('Login error:', error.message);
-    if (error.message.includes('Email not confirmed')) {
-      toast.error('Error al iniciar sesión: El correo electrónico no ha sido confirmado');
-    } else {
-      toast.error('Error al iniciar sesión: ' + error.message);
-    }
     throw error;
   }
 
@@ -71,11 +69,6 @@ export const signupUser = async (email: string, password: string, name: string, 
 
   if (error) {
     console.error('Signup error:', error.message);
-    if (error.message.includes('rate limit')) {
-      toast.error('Por motivos de seguridad, debe esperar 32 segundos antes de intentar nuevamente');
-    } else {
-      toast.error('Error al crear la cuenta: ' + error.message);
-    }
     throw error;
   }
 
@@ -84,6 +77,7 @@ export const signupUser = async (email: string, password: string, name: string, 
 
 // Create profile helper
 export const createUserProfile = async (userId: string, name: string, role: UserRole) => {
+  console.log('Creating user profile for:', userId, name, role);
   const { error } = await supabase
     .from('profiles')
     .insert([

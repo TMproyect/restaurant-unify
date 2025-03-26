@@ -33,14 +33,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('Auth state changed:', event, currentSession?.user?.id);
         if (!isMounted) return;
         
+        setSession(currentSession);
+        
         if (currentSession) {
-          const profile = await fetchUserProfile(currentSession.user.id);
-          setUser(profile);
+          try {
+            const profile = await fetchUserProfile(currentSession.user.id);
+            if (profile) {
+              setUser(profile);
+            } else {
+              console.error('No profile found for user:', currentSession.user.id);
+              setUser(null);
+            }
+          } catch (error) {
+            console.error('Error fetching profile:', error);
+            setUser(null);
+          }
         } else {
           setUser(null);
         }
         
-        setSession(currentSession);
         setIsLoading(false);
       }
     );
@@ -53,8 +64,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(currentSession);
       
       if (currentSession) {
-        const profile = await fetchUserProfile(currentSession.user.id);
-        setUser(profile);
+        try {
+          const profile = await fetchUserProfile(currentSession.user.id);
+          if (profile) {
+            setUser(profile);
+          } else {
+            console.error('No profile found for user:', currentSession.user.id);
+          }
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+        }
       }
       
       setIsLoading(false);
@@ -72,7 +91,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Login started...");
       
-      const data = await loginUser(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error.message);
+        if (error.message.includes('Email not confirmed')) {
+          toast.error('Error al iniciar sesión: El correo electrónico no ha sido confirmado');
+        } else if (error.message.includes('Invalid login credentials')) {
+          toast.error('Error al iniciar sesión: Credenciales inválidas');
+        } else {
+          toast.error('Error al iniciar sesión: ' + error.message);
+        }
+        throw error;
+      }
 
       if (data.user) {
         const profile = await fetchUserProfile(data.user.id);
@@ -103,8 +137,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Signup started with role:", role);
       
-      // First, sign up the user in Supabase Auth
-      const data = await signupUser(email, password, name, role);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            role,
+          },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      if (error) {
+        console.error('Signup error:', error.message);
+        if (error.message.includes('rate limit')) {
+          toast.error('Por motivos de seguridad, debe esperar 32 segundos antes de intentar nuevamente');
+        } else {
+          toast.error('Error al crear la cuenta: ' + error.message);
+        }
+        throw error;
+      }
 
       console.log("Auth signup successful, creating profile...");
       
@@ -113,17 +166,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await createUserProfile(data.user.id, name, role);
         
         console.log("Profile created successfully for user:", data.user.id);
-        
-        // For instant login after signup, set the user and session
-        const profile: AuthUser = {
-          id: data.user.id,
-          name,
-          email: data.user.email || '',
-          role,
-        };
-        
-        setUser(profile);
-        setSession(data.session);
         
         toast.success('Cuenta creada con éxito', {
           description: 'Por favor, verifica tu correo electrónico para confirmar tu cuenta'

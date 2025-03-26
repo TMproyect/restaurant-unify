@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,52 +17,23 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
-  const [buttonDisabled, setButtonDisabled] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading) {
-      setLocalLoading(false);
-      setTimeout(() => {
-        setButtonDisabled(false);
-      }, 100);
-    }
-  }, [authLoading]);
-
-  // Auto-reset button state after timeout to prevent permanent disabled state
-  useEffect(() => {
-    let timer: number | undefined;
-    
-    if (buttonDisabled || localLoading) {
-      timer = window.setTimeout(() => {
-        console.log("Auto-resetting button state");
-        setButtonDisabled(false);
-        setLocalLoading(false);
-      }, 3000);
-    }
-    
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [buttonDisabled, localLoading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (localLoading || buttonDisabled) {
-      console.log("Button click prevented: already loading");
+    if (localLoading) {
       return;
     }
     
     setLocalLoading(true);
-    setButtonDisabled(true);
-    
     console.log("Login button clicked, state set to loading");
     
     try {
       await login(email, password);
+      console.log("Login successful");
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      console.error("Login error handled locally:", err);
+      console.error("Login error:", err);
       if (err.message.includes('Email not confirmed')) {
         toast.error('El correo electrónico no ha sido confirmado', {
           description: 'Por favor, revisa tu bandeja de entrada y confirma tu correo',
@@ -71,12 +42,13 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         toast.error('Credenciales inválidas', {
           description: 'El correo o la contraseña son incorrectos',
         });
+      } else {
+        toast.error('Error al iniciar sesión', {
+          description: err.message || 'Intente nuevamente más tarde',
+        });
       }
     } finally {
-      setTimeout(() => {
-        setLocalLoading(false);
-        setButtonDisabled(false);
-      }, 500);
+      setLocalLoading(false);
     }
   };
 
@@ -92,7 +64,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@restaurante.com"
             required
-            disabled={localLoading || buttonDisabled}
+            disabled={localLoading}
           />
         </div>
         
@@ -105,7 +77,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
-            disabled={localLoading || buttonDisabled}
+            disabled={localLoading}
           />
         </div>
       </CardContent>
@@ -114,7 +86,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         <Button 
           type="submit" 
           className="w-full mb-4" 
-          disabled={localLoading || buttonDisabled}
+          disabled={localLoading || authLoading}
         >
           {localLoading ? (
             <>

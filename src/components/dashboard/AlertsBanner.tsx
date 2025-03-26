@@ -2,7 +2,7 @@
 import React from 'react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { X, AlertCircle, Bell } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,7 +28,7 @@ const AlertsBanner = () => {
     }
   ];
 
-  const handleActionClick = (alertId: string, action: string) => {
+  const handleActionClick = (alertId: string) => {
     // Handle different actions based on the alert type
     switch(alertId) {
       case 'alert-1':
@@ -54,7 +54,6 @@ const AlertsBanner = () => {
 
   const handleDismiss = (alertId: string) => {
     // In a real application, you would update state to remove this alert
-    // For now, we'll just show a toast notification
     toast({
       title: "Alerta descartada",
       description: "La notificación ha sido eliminada",
@@ -83,7 +82,7 @@ const AlertsBanner = () => {
             </div>
             <div className="flex items-center gap-2 ml-4">
               <Button 
-                onClick={() => handleActionClick(alert.id, alert.action)}
+                onClick={() => handleActionClick(alert.id)}
                 variant="outline" 
                 size="sm"
               >

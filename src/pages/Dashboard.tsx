@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,23 +64,31 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Load orders from localStorage on component mount
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('kitchenOrders');
+    if (savedOrders) {
+      setOrders(JSON.parse(savedOrders));
+    }
+  }, []);
+
+  // Save orders to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('kitchenOrders', JSON.stringify(orders));
+  }, [orders]);
+
   // Function to start food preparation
   const handleStartPreparation = (orderId: string) => {
     // Update the order status in state
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'preparing' } 
-          : order
-      )
-    );
-
-    // Save updated orders to localStorage to persist between pages
     const updatedOrders = orders.map(order => 
       order.id === orderId 
         ? { ...order, status: 'preparing' } 
         : order
     );
+    
+    setOrders(updatedOrders);
+    
+    // Save updated orders to localStorage to persist between pages
     localStorage.setItem('kitchenOrders', JSON.stringify(updatedOrders));
     
     // Show notification
@@ -96,20 +104,15 @@ const Dashboard = () => {
   // Function to mark order as ready
   const handleMarkAsReady = (orderId: string) => {
     // Update the order status in state
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'completed' } 
-          : order
-      )
-    );
-
-    // Save updated orders to localStorage to persist between pages
     const updatedOrders = orders.map(order => 
       order.id === orderId 
         ? { ...order, status: 'completed' } 
         : order
     );
+    
+    setOrders(updatedOrders);
+
+    // Save updated orders to localStorage to persist between pages
     localStorage.setItem('kitchenOrders', JSON.stringify(updatedOrders));
     
     // Show notification

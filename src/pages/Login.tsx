@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,10 +110,8 @@ const Login = () => {
     try {
       // Always use 'admin' as the default role for new users
       await signup(email, password, name, 'admin');
+      console.log("Signup successful, user should now be automatically logged in");
       // Don't switch to login tab if signup was successful - the user will be automatically logged in
-      toast.success('Cuenta creada exitosamente', {
-        description: 'Ya puedes acceder al sistema',
-      });
     } catch (err) {
       console.error("Signup error handled locally:", err);
       // Reset form only on error

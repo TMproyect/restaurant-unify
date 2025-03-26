@@ -74,6 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log('Auth state changed:', event, currentSession?.user?.id);
         if (!isMounted) return;
         
         if (currentSession) {
@@ -90,6 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      console.log('Initial session check:', currentSession?.user?.id);
       if (!isMounted) return;
       
       setSession(currentSession);
@@ -184,7 +186,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               id: data.user.id,
               name,
               role,
-              avatar: null,
             }
           ]);
 
@@ -206,9 +207,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setUser(profile);
         setSession(data.session);
+        
+        toast.success('Cuenta creada con éxito', {
+          description: 'Bienvenido a RestaurantOS'
+        });
       }
-
-      toast.success('Cuenta creada con éxito');
+      
       console.log("Signup complete with role:", role);
       
     } catch (error: any) {

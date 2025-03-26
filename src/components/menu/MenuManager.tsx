@@ -40,7 +40,6 @@ import {
   MenuItem, 
   MenuCategory, 
   fetchMenuItems, 
-  fetchMenuCategories, 
   createMenuItem, 
   updateMenuItem, 
   deleteMenuItem,
@@ -60,13 +59,16 @@ interface ExtendedMenuItem extends MenuItem {
   options?: MenuItemOption[];
 }
 
-const MenuManager: React.FC = () => {
+interface MenuManagerProps {
+  categories: MenuCategory[];
+  isLoading: boolean;
+}
+
+const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [filteredItems, setFilteredItems] = useState<ExtendedMenuItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -83,19 +85,14 @@ const MenuManager: React.FC = () => {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   
-  // Fetch menu items and categories from Supabase
+  // Fetch menu items from Supabase
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
       try {
-        const [itemsData, categoriesData] = await Promise.all([
-          fetchMenuItems(),
-          fetchMenuCategories()
-        ]);
+        const itemsData = await fetchMenuItems();
         
         setMenuItems(itemsData as ExtendedMenuItem[]);
         setFilteredItems(itemsData as ExtendedMenuItem[]);
-        setCategories(categoriesData);
       } catch (error) {
         console.error('Error loading menu data:', error);
         toast({
@@ -103,8 +100,6 @@ const MenuManager: React.FC = () => {
           description: "No se pudieron cargar los datos del menú",
           variant: "destructive"
         });
-      } finally {
-        setIsLoading(false);
       }
     };
     
@@ -193,7 +188,7 @@ const MenuManager: React.FC = () => {
         description: `${createdItem.name} ha sido añadido al menú`
       });
       
-      // Close dialog if requested
+      // Close dialog
       setIsAddDialogOpen(false);
       resetForm();
     }
@@ -809,4 +804,3 @@ const MenuManager: React.FC = () => {
 };
 
 export default MenuManager;
-

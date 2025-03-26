@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from 'sonner';
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -40,7 +41,7 @@ interface MenuItem {
 
 const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [notes, setNotes] = useState<string>('');
@@ -55,7 +56,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
     setLoading(true);
     try {
       let query = supabase.from('menu_items').select('id, name, price, description, image_url');
-      if (selectedCategory) {
+      if (selectedCategory && selectedCategory !== 'all') {
         query = query.eq('category_id', selectedCategory);
       }
       const { data, error } = await query;
@@ -170,12 +171,12 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, onOrderComplete }) =
         <CardContent className="p-4">
           <div className="mb-4">
             <Label htmlFor="category">Categoría</Label>
-            <Select onValueChange={setSelectedCategory}>
+            <Select onValueChange={setSelectedCategory} value={selectedCategory}>
               <SelectTrigger id="category">
                 <SelectValue placeholder="Seleccionar categoría" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}

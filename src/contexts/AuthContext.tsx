@@ -188,6 +188,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (profileError) {
           console.error('Error creating profile:', profileError);
           toast.error('Error al crear el perfil de usuario');
+          throw profileError;
         }
       }
 

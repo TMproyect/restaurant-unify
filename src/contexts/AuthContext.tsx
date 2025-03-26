@@ -26,6 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   createUser: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
+  updateUserRole: (userId: string, newRole: UserRole) => Promise<void>;
 }
 
 // Create context
@@ -125,7 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Signup function - modificada para usar 'admin' como rol predeterminado
+  // Signup function - modificada para usar 'admin' como rol predeterminado SIEMPRE
   const signup = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
     setIsLoading(true);
     try {
@@ -193,6 +194,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Nueva función para actualizar el rol de un usuario
+  const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Si el usuario cuyo rol se está actualizando es el usuario actual, actualizamos también el estado
+      if (user && userId === user.id) {
+        setUser(prev => prev ? { ...prev, role: newRole } : null);
+        toast.success(`Tu rol ha sido actualizado a ${newRole}`);
+      } else {
+        toast.success(`Rol de usuario actualizado correctamente a ${newRole}`);
+      }
+    } catch (error: any) {
+      console.error('Error updating user role:', error.message);
+      toast.error(error.message || 'Error al actualizar el rol del usuario');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Logout function
   const logout = async () => {
     try {
@@ -214,6 +242,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated: !!user,
     isLoading,
     createUser,
+    updateUserRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

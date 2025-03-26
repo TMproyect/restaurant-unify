@@ -1,217 +1,114 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowUpRight, DollarSign, Package, UserRound, Utensils } from 'lucide-react';
 import AlertsBanner from '@/components/dashboard/AlertsBanner';
 import OrdersList from '@/components/dashboard/OrdersList';
 import InventoryAlert from '@/components/dashboard/InventoryAlert';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
-
-// Sample data - In a real app, this would come from your backend
-const inventoryAlerts = [
-  {
-    name: 'Tomates',
-    current: 2,
-    minimum: 5,
-    unit: 'kg'
-  },
-  {
-    name: 'Queso Mozzarella',
-    current: 1.5,
-    minimum: 3,
-    unit: 'kg'
-  }
-];
-
-// Initial orders state
-const initialOrders = [
-  {
-    id: '45',
-    table: 'Mesa 3',
-    customer: 'Carlos',
-    time: '10:30 AM',
-    items: [
-      '2x Hamburguesa Clásica',
-      '1x Ensalada César',
-      '1x Papas Fritas (extra crujientes)'
-    ]
-  },
-  {
-    id: '46',
-    table: 'Mesa 5',
-    customer: 'Sofia',
-    time: '10:40 AM',
-    items: []
-  },
-  {
-    id: '47',
-    table: 'Delivery',
-    customer: 'Juan',
-    time: '10:25 AM',
-    items: [
-      '1x Pizza Margherita',
-      '1x Lasaña',
-      '1x Tiramisú'
-    ],
-    status: 'preparing'
-  }
-];
+import UpgradeToAdmin from '@/components/dashboard/UpgradeToAdmin';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
-  const [orders, setOrders] = useState(initialOrders);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  // Load orders from localStorage on component mount
-  useEffect(() => {
-    const savedOrders = localStorage.getItem('kitchenOrders');
-    if (savedOrders) {
-      setOrders(JSON.parse(savedOrders));
-    }
-  }, []);
-
-  // Save orders to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('kitchenOrders', JSON.stringify(orders));
-  }, [orders]);
-
-  // Function to start food preparation
-  const handleStartPreparation = (orderId: string) => {
-    // Update the order status in state
-    const updatedOrders = orders.map(order => 
-      order.id === orderId 
-        ? { ...order, status: 'preparing' } 
-        : order
-    );
-    
-    setOrders(updatedOrders);
-    
-    // Save updated orders to localStorage to persist between pages
-    localStorage.setItem('kitchenOrders', JSON.stringify(updatedOrders));
-    
-    // Show notification
-    toast({
-      title: "Preparación iniciada",
-      description: `La orden #${orderId} ha comenzado su preparación`,
-    });
-    
-    // Navigate to kitchen page
-    navigate('/kitchen');
-  };
-
-  // Function to mark order as ready
-  const handleMarkAsReady = (orderId: string) => {
-    // Update the order status in state
-    const updatedOrders = orders.map(order => 
-      order.id === orderId 
-        ? { ...order, status: 'completed' } 
-        : order
-    );
-    
-    setOrders(updatedOrders);
-
-    // Save updated orders to localStorage to persist between pages
-    localStorage.setItem('kitchenOrders', JSON.stringify(updatedOrders));
-    
-    // Show notification
-    toast({
-      title: "Orden lista",
-      description: `La orden #${orderId} ha sido marcada como lista`,
-    });
-    
-    // Navigate to kitchen page
-    navigate('/kitchen');
-  };
+  const { user } = useAuth();
 
   return (
     <Layout>
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         
+        {/* Banner de actualización a Admin */}
+        <UpgradeToAdmin />
+        
+        {/* Alertas y notificaciones */}
         <AlertsBanner />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card className="border-l-4 border-l-yellow-500">
-            <CardHeader>
-              <CardTitle>Pendientes ({orders.filter(o => !o.status).length})</CardTitle>
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Ventas del Día
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {orders.filter(o => !o.status).map(order => (
-                  <div key={order.id} className="p-4 bg-secondary/30 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-medium">Orden #{order.id}</h3>
-                        <p className="text-sm text-muted-foreground">{order.table} - {order.customer}</p>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{order.time}</span>
-                    </div>
-                    <ul className="text-sm space-y-1 mb-3">
-                      {order.items.map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      onClick={() => handleStartPreparation(order.id)}
-                    >
-                      Iniciar Preparación
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              <div className="text-2xl font-bold">$18,450</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <span className="text-green-600 flex items-center gap-0.5">
+                  +20.1% <ArrowUpRight className="h-3 w-3" />
+                </span> 
+                desde ayer
+              </p>
             </CardContent>
           </Card>
-
-          <Card className="border-l-4 border-l-blue-500">
-            <CardHeader>
-              <CardTitle>En Preparación ({orders.filter(o => o.status === 'preparing').length})</CardTitle>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pedidos Activos
+              </CardTitle>
+              <Utensils className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {orders.filter(o => o.status === 'preparing').map(order => (
-                  <div key={order.id} className="p-4 bg-secondary/30 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-medium">Orden #{order.id}</h3>
-                        <p className="text-sm text-muted-foreground">{order.table} - {order.customer}</p>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{order.time}</span>
-                    </div>
-                    <ul className="text-sm space-y-1 mb-3">
-                      {order.items.map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      onClick={() => handleMarkAsReady(order.id)}
-                    >
-                      Marcar como Listo
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              <div className="text-2xl font-bold">24</div>
+              <p className="text-xs text-muted-foreground mt-1">12 en cocina, 8 listos, 4 entregados</p>
             </CardContent>
           </Card>
-
-          <Card className="border-l-4 border-l-red-500">
-            <CardHeader>
-              <CardTitle>Inventario Bajo</CardTitle>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Inventario Bajo
+              </CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {inventoryAlerts.map((item, index) => (
-                  <InventoryAlert key={index} item={item} />
-                ))}
-              </div>
+              <div className="text-2xl font-bold">7</div>
+              <p className="text-xs text-muted-foreground mt-1">3 ingredientes críticos</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Clientes Hoy
+              </CardTitle>
+              <UserRound className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">142</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <span className="text-green-600 flex items-center gap-0.5">
+                  +12% <ArrowUpRight className="h-3 w-3" />
+                </span> 
+                desde la semana pasada
+              </p>
             </CardContent>
           </Card>
         </div>
-
-        <OrdersList />
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          {/* Lista de pedidos recientes - 4 columnas */}
+          <Card className="lg:col-span-4">
+            <CardHeader>
+              <CardTitle>Pedidos Recientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrdersList />
+            </CardContent>
+          </Card>
+          
+          {/* Alertas de inventario - 3 columnas */}
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Alertas de Inventario</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InventoryAlert />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </Layout>
   );

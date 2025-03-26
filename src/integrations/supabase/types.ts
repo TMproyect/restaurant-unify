@@ -160,6 +160,57 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_tables: {
+        Row: {
+          capacity: number
+          created_at: string
+          id: string
+          number: number
+          status: string
+          updated_at: string
+          zone: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          number: number
+          status?: string
+          updated_at?: string
+          zone?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          number?: number
+          status?: string
+          updated_at?: string
+          zone?: string
+        }
+        Relationships: []
+      }
+      table_zones: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

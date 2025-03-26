@@ -6,8 +6,9 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Utensils, Tag } from 'lucide-react';
+import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menuService';
+import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
@@ -37,36 +38,25 @@ const Menu: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Check for inventory alerts on component mount
-    const alertItems = [
-      {
-        name: "Tomates",
-        current: 15,
-        minimum: 20,
-        unit: "kg"
-      },
-      {
-        name: "Queso mozzarella",
-        current: 8,
-        minimum: 10,
-        unit: "kg"
-      },
-      {
-        name: "Aceite de oliva",
-        current: 5,
-        minimum: 10,
-        unit: "l"
+    // Load low stock alerts from Supabase
+    const showInventoryAlerts = async () => {
+      try {
+        const lowStockItems = await getLowStockItems();
+        
+        // Show toast notifications for each alert item
+        lowStockItems.forEach(item => {
+          toast({
+            title: `Alerta de inventario: ${item.name}`,
+            description: `Quedan ${item.stock_quantity}${item.unit || ''} (Mínimo: ${item.min_stock_level}${item.unit || ''})`,
+            variant: "destructive"
+          });
+        });
+      } catch (error) {
+        console.error('Error loading inventory alerts:', error);
       }
-    ];
+    };
 
-    // Show toast notifications for each alert item
-    alertItems.forEach(item => {
-      toast({
-        title: `Alerta de inventario: ${item.name}`,
-        description: `Quedan ${item.current}${item.unit} (Mínimo: ${item.minimum}${item.unit})`,
-        variant: "destructive"
-      });
-    });
+    showInventoryAlerts();
   }, [toast]);
 
   const handleSynchronize = () => {
@@ -109,15 +99,7 @@ const Menu: React.FC = () => {
           </TabsList>
           
           <TabsContent value="menu" className="mt-4">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Añadir Plato
-                </Button>
-              </div>
-              <MenuManager categories={categories} isLoading={loading} />
-            </div>
+            <MenuManager categories={categories} isLoading={loading} />
           </TabsContent>
           
           <TabsContent value="categories" className="mt-4">

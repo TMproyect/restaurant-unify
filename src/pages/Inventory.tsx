@@ -6,17 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Plus, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchInventoryItems, InventoryItem } from '@/services/inventoryService';
-import { useQuery } from '@tanstack/react-query';
+import { 
+  fetchInventoryItems, 
+  fetchInventoryCategories, 
+  createInventoryItem, 
+  updateInventoryItem, 
+  deleteInventoryItem, 
+  updateInventoryItemStock,
+  InventoryItem 
+} from '@/services/inventoryService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { fetchInventoryCategories } from '@/services/inventoryService';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const Inventory = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({
@@ -27,13 +35,13 @@ const Inventory = () => {
     unit: 'kg'
   });
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   // Fetch inventory items
   const { 
     data: inventoryItems = [], 
     isLoading: itemsLoading, 
     error: itemsError,
-    refetch: refetchItems 
   } = useQuery({
     queryKey: ['inventoryItems'],
     queryFn: fetchInventoryItems
@@ -46,6 +54,106 @@ const Inventory = () => {
   } = useQuery({
     queryKey: ['inventoryCategories'],
     queryFn: fetchInventoryCategories
+  });
+  
+  // Create item mutation
+  const createItemMutation = useMutation({
+    mutationFn: createInventoryItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      setIsAddDialogOpen(false);
+      setNewItem({
+        name: '',
+        category_id: '',
+        stock_quantity: 0,
+        min_stock_level: 0,
+        unit: 'kg'
+      });
+      setEditingItem(null);
+      toast({
+        title: "Producto añadido",
+        description: `${newItem.name} ha sido añadido al inventario`
+      });
+    },
+    onError: (error) => {
+      console.error('Error creating item:', error);
+      toast({
+        title: "Error al guardar",
+        description: "No se pudo guardar el producto en el inventario",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update item mutation
+  const updateItemMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: Partial<InventoryItem> }) => 
+      updateInventoryItem(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      setIsAddDialogOpen(false);
+      setNewItem({
+        name: '',
+        category_id: '',
+        stock_quantity: 0,
+        min_stock_level: 0,
+        unit: 'kg'
+      });
+      setEditingItem(null);
+      toast({
+        title: "Producto actualizado",
+        description: `El producto ha sido actualizado exitosamente`
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating item:', error);
+      toast({
+        title: "Error al actualizar",
+        description: "No se pudo actualizar el producto",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Delete item mutation
+  const deleteItemMutation = useMutation({
+    mutationFn: deleteInventoryItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      toast({
+        title: "Producto eliminado",
+        description: "El producto ha sido eliminado del inventario"
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el producto del inventario",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update stock mutation
+  const updateStockMutation = useMutation({
+    mutationFn: ({ id, newQuantity }: { id: string, newQuantity: number }) => 
+      updateInventoryItemStock(id, newQuantity),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      toast({
+        title: "Stock actualizado",
+        description: `${data.name}: ${data.stock_quantity} ${data.unit || 'unidades'}`
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating stock:', error);
+      toast({
+        title: "Error al actualizar",
+        description: "No se pudo actualizar el stock del producto",
+        variant: "destructive"
+      });
+    }
   });
   
   // Filter items based on search term and category
@@ -110,24 +218,16 @@ const Inventory = () => {
         return;
       }
 
-      // TODO: Add code to create/update item in Supabase
-      // This will be implemented in the inventoryService
-      
-      // Reset form and refetch data
-      setNewItem({
-        name: '',
-        category_id: '',
-        stock_quantity: 0,
-        min_stock_level: 0,
-        unit: 'kg'
-      });
-      setEditingItem(null);
-      refetchItems();
-      
-      toast({
-        title: editingItem ? "Producto actualizado" : "Producto añadido",
-        description: `${newItem.name} ha sido ${editingItem ? 'actualizado' : 'añadido'} al inventario`
-      });
+      if (editingItem) {
+        // Update existing item
+        updateItemMutation.mutate({ 
+          id: editingItem.id, 
+          updates: newItem 
+        });
+      } else {
+        // Create new item
+        createItemMutation.mutate(newItem as Omit<InventoryItem, 'id' | 'created_at'>);
+      }
     } catch (error) {
       console.error('Error saving inventory item:', error);
       toast({
@@ -148,26 +248,15 @@ const Inventory = () => {
       min_stock_level: item.min_stock_level || 0,
       unit: item.unit || 'kg'
     });
+    setIsAddDialogOpen(true);
   };
 
   // Delete item
   const handleDelete = async (id: string) => {
     try {
-      // TODO: Add code to delete item from Supabase
-      // This will be implemented in the inventoryService
-      
-      refetchItems();
-      toast({
-        title: "Producto eliminado",
-        description: "El producto ha sido eliminado del inventario"
-      });
+      deleteItemMutation.mutate(id);
     } catch (error) {
       console.error('Error deleting inventory item:', error);
-      toast({
-        title: "Error al eliminar",
-        description: "No se pudo eliminar el producto del inventario",
-        variant: "destructive"
-      });
     }
   };
 
@@ -180,21 +269,9 @@ const Inventory = () => {
       const newQuantity = item.stock_quantity + amount;
       if (newQuantity < 0) return;
       
-      // TODO: Add code to update item stock in Supabase
-      // This will be implemented in the inventoryService
-      
-      refetchItems();
-      toast({
-        title: "Stock actualizado",
-        description: `${item.name}: ${newQuantity} ${item.unit || 'unidades'}`
-      });
+      updateStockMutation.mutate({ id, newQuantity });
     } catch (error) {
       console.error('Error updating stock:', error);
-      toast({
-        title: "Error al actualizar",
-        description: "No se pudo actualizar el stock del producto",
-        variant: "destructive"
-      });
     }
   };
 
@@ -212,7 +289,7 @@ const Inventory = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Inventario</h1>
           
-          <Dialog>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button><Plus size={18} className="mr-2" /> Añadir Producto</Button>
             </DialogTrigger>

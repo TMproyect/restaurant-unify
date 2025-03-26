@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Orders from "./pages/Orders";
 import Kitchen from "./pages/Kitchen";
 import Menu from "./pages/Menu";
+import Inventory from "./pages/Inventory";
 import Delivery from "./pages/Delivery";
 import Sales from "./pages/Sales";
 import Reports from "./pages/Reports";
@@ -34,7 +35,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/kitchen" element={<Kitchen />} />
-              <Route path="/inventory" element={<Navigate to="/menu" replace />} />
+              <Route path="/inventory" element={<Inventory />} />
               <Route path="/menu" element={<Menu />} />
               <Route path="/tables" element={<Tables />} />
               <Route path="/delivery" element={<Delivery />} />

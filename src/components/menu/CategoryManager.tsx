@@ -263,18 +263,18 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
                       {categoryIcons[newCategoryIcon]}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto grid grid-cols-4 gap-1 p-2 w-auto">
-                    {iconOptions.map(option => (
-                      <SelectItem 
-                        key={option.value} 
-                        value={option.value} 
-                        className="flex items-center justify-center h-10 w-10 p-0"
-                      >
-                        <div className="flex items-center justify-center">
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    <div className="grid grid-cols-4 gap-2 p-2">
+                      {iconOptions.map(option => (
+                        <SelectItem 
+                          key={option.value} 
+                          value={option.value} 
+                          className="flex items-center justify-center h-10 w-10 p-0"
+                        >
                           {option.icon}
-                        </div>
-                      </SelectItem>
-                    ))}
+                        </SelectItem>
+                      ))}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
@@ -355,18 +355,18 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
                               {editingCategory?.icon ? categoryIcons[editingCategory.icon] : <ChefHat className="h-5 w-5" />}
                             </SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="max-h-60 overflow-y-auto grid grid-cols-4 gap-1 p-2 w-auto">
-                            {iconOptions.map(option => (
-                              <SelectItem 
-                                key={option.value} 
-                                value={option.value} 
-                                className="flex items-center justify-center h-10 w-10 p-0"
-                              >
-                                <div className="flex items-center justify-center">
+                          <SelectContent className="max-h-60 overflow-y-auto">
+                            <div className="grid grid-cols-4 gap-2 p-2">
+                              {iconOptions.map(option => (
+                                <SelectItem 
+                                  key={option.value} 
+                                  value={option.value} 
+                                  className="flex items-center justify-center h-10 w-10 p-0"
+                                >
                                   {option.icon}
-                                </div>
-                              </SelectItem>
-                            ))}
+                                </SelectItem>
+                              ))}
+                            </div>
                           </SelectContent>
                         </Select>
                       </div>
@@ -407,4 +407,3 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesUpdated }
 };
 
 export default CategoryManager;
-

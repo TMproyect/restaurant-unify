@@ -12,7 +12,8 @@ import {
   ArrowRight, 
   Menu as MenuIcon, 
   User, 
-  Utensils 
+  Utensils,
+  PackageOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -56,6 +57,12 @@ const menuItems: MenuItem[] = [
     icon: Utensils,
     path: '/menu',
     allowedRoles: ['admin', 'manager', 'kitchen', 'waiter'],
+  },
+  {
+    title: 'Inventario',
+    icon: PackageOpen,
+    path: '/inventory',
+    allowedRoles: ['admin', 'manager', 'kitchen'],
   },
   {
     title: 'Informes',

@@ -26,6 +26,13 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       return;
     }
     
+    if (!email || !password) {
+      toast.error('Datos requeridos', {
+        description: 'Por favor ingrese su correo y contraseña',
+      });
+      return;
+    }
+    
     setLocalLoading(true);
     console.log("Login button clicked, state set to loading");
     
@@ -55,7 +62,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   };
 
   // Determine if the button should be disabled
-  const isButtonDisabled = localLoading || authLoading || !email || !password;
+  const isButtonDisabled = localLoading || authLoading;
 
   return (
     <form onSubmit={handleLogin}>

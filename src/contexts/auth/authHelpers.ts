@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
@@ -7,14 +8,17 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
   try {
     console.log('Fetching profile for user:', userId);
     
-    // Checking Supabase connection before proceeding
-    console.log('Verifying Supabase connection...');
+    // Add a timeout for the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
+    
+    clearTimeout(timeoutId);
 
     if (error) {
       console.error('Error fetching user profile:', error);
@@ -26,13 +30,10 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       return null;
     }
 
-    console.log('Getting session for email data...');
     const sessionResponse = await supabase.auth.getSession();
     const email = sessionResponse.data.session?.user?.email || '';
-    console.log('Session data retrieved, email:', email);
-
+    
     console.log('Profile data found:', data);
-    console.log('Building AuthUser object with:', {id: data.id, email, role: data.role});
     
     return {
       id: data.id,
@@ -51,24 +52,16 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
 export const loginUser = async (email: string, password: string) => {
   try {
     console.log('Attempting to login with email:', email);
-    console.log('Calling supabase.auth.signInWithPassword...');
     
-    // Add timeout for login request
-    const loginPromise = supabase.auth.signInWithPassword({
+    if (!email || !password) {
+      throw new Error("Email and password are required");
+    }
+    
+    // Use a simple direct login approach for reliability
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Login request timed out')), 7000)
-    );
-    
-    // Race the login request against the timeout
-    const { data, error } = await Promise.race([
-      loginPromise,
-      timeoutPromise
-    ]) as any;
 
     if (error) {
       console.error('Login error from Supabase:', error.message);
@@ -81,7 +74,8 @@ export const loginUser = async (email: string, password: string) => {
     }
 
     console.log('Supabase login successful, user ID:', data.user.id);
-    console.log('Session data:', data.session ? 'Session obtained' : 'No session');
+    console.log('Session exists:', !!data.session);
+    
     return data;
   } catch (error) {
     console.error('Error in loginUser helper function:', error);

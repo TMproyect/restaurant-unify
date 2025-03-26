@@ -12,19 +12,15 @@ const Login = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const navigate = useNavigate();
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
   const [showContent, setShowContent] = useState(false);
 
   // Show content after a brief delay to avoid flickering
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowContent(true);
-    }, 100);
-    return () => clearTimeout(timer);
+    setShowContent(true);
   }, []);
 
+  // Check for auth-related URL parameters
   useEffect(() => {
-    // Check for auth-related URL parameters (for email verification, etc.)
     const params = new URLSearchParams(window.location.search);
     const error = params.get('error');
     const message = params.get('message');
@@ -42,35 +38,18 @@ const Login = () => {
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   }, []);
 
-  // Handle redirection with safety mechanism
+  // Handle redirection
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !redirectAttempted) {
+    if (isAuthenticated) {
       console.log("User is authenticated, redirecting to dashboard");
-      setRedirectAttempted(true);
       navigate('/dashboard', { replace: true });
     }
-  }, [isLoading, isAuthenticated, navigate, redirectAttempted]);
-
-  // Improved loading state with a safety timeout
-  useEffect(() => {
-    // Safety timeout - if still loading after 8 seconds, show login form anyway
-    if (isLoading) {
-      const safetyTimer = setTimeout(() => {
-        console.log("Safety timeout triggered - showing login form");
-        setShowContent(true);
-      }, 8000);
-      
-      return () => clearTimeout(safetyTimer);
-    }
-  }, [isLoading]);
+  }, [isAuthenticated, navigate]);
 
   // Network connectivity check
   useEffect(() => {
     const handleOnlineStatusChange = () => {
-      if (navigator.onLine) {
-        console.log("Internet connection restored");
-      } else {
-        console.log("Internet connection lost");
+      if (!navigator.onLine) {
         toast.error('Error de conexión', {
           description: 'Se ha perdido la conexión a internet',
         });
@@ -87,7 +66,7 @@ const Login = () => {
   }, []);
 
   // Show loading indicator
-  if (!showContent || (isLoading && !redirectAttempted)) {
+  if (isLoading || !showContent) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center">

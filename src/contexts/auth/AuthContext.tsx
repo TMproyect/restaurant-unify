@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,42 +25,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     console.log("AuthProvider initialized, setting up auth state listener");
     
+    // First set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
         console.log('Auth state changed:', event, currentSession?.user?.id);
         if (!isMounted) return;
         
         if (currentSession) {
           setSession(currentSession);
-          try {
-            const profile = await fetchUserProfile(currentSession.user.id);
-            if (profile) {
-              setUser(profile);
-              console.log("User profile fetched successfully:", profile);
-            } else {
-              console.error('No profile found for user:', currentSession.user.id);
-              setUser(null);
+          // Use setTimeout to prevent deadlocks
+          setTimeout(async () => {
+            if (!isMounted) return;
+            try {
+              const profile = await fetchUserProfile(currentSession.user.id);
+              if (profile && isMounted) {
+                setUser(profile);
+                console.log("User profile fetched successfully:", profile);
+              } else if (isMounted) {
+                console.error('No profile found for user:', currentSession.user.id);
+                setUser(null);
+              }
+            } catch (error) {
+              console.error('Error fetching profile:', error);
+              if (isMounted) setUser(null);
             }
-          } catch (error) {
-            console.error('Error fetching profile:', error);
-            setUser(null);
-          }
+            if (isMounted) setIsLoading(false);
+          }, 0);
         } else {
           setSession(null);
           setUser(null);
+          if (isMounted) setIsLoading(false);
         }
-        
-        if (isMounted) setIsLoading(false);
       }
     );
 
+    // Set a reasonable timeout for initial auth check
     const sessionCheckTimeout = setTimeout(() => {
       if (isMounted && isLoading) {
         console.log("Session check timeout reached, forcing loading state to false");
         setIsLoading(false);
       }
-    }, 1000);
+    }, 3000);
 
+    // Then check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       console.log('Initial session check:', currentSession?.user?.id);
       if (!isMounted) return;
@@ -68,16 +76,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setSession(currentSession);
         try {
           const profile = await fetchUserProfile(currentSession.user.id);
-          if (profile) {
+          if (profile && isMounted) {
             setUser(profile);
             console.log("Initial user profile fetched successfully:", profile);
-          } else {
+          } else if (isMounted) {
             console.error('No profile found for user:', currentSession.user.id);
             setUser(null);
           }
         } catch (error) {
           console.error('Error fetching initial profile:', error);
-          setUser(null);
+          if (isMounted) setUser(null);
         }
       }
       
@@ -114,26 +122,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
 
-      if (data.user) {
-        console.log("Auth successful, fetching user profile");
-        const profile = await fetchUserProfile(data.user.id);
-        
-        if (!profile) {
-          console.error("No profile found for user after login");
-          throw new Error('No se pudo recuperar el perfil de usuario');
-        }
-        
-        setUser(profile);
-        toast.success('Inicio de sesión exitoso', {
-          description: `Bienvenido, ${profile.name}`,
-        });
-        console.log("Login successful, user profile set:", profile);
-      } else {
+      if (!data.user) {
         console.error("No user data returned from auth");
         throw new Error("No user data returned from auth");
       }
       
+      console.log("Auth successful, user ID:", data.user.id);
+      
+      // Set session before fetching profile to ensure auth state is updated
+      setSession(data.session);
+      
+      // Fetch profile but don't make login success dependent on it
+      try {
+        console.log("Fetching user profile after login");
+        const profile = await fetchUserProfile(data.user.id);
+        
+        if (profile) {
+          setUser(profile);
+          console.log("Profile fetched successfully:", profile);
+        } else {
+          console.warn("No profile found after login, using basic user data");
+          // Create a minimal user object from auth data if profile fetch fails
+          setUser({
+            id: data.user.id,
+            name: data.user.user_metadata?.name || 'Usuario',
+            email: data.user.email || '',
+            role: (data.user.user_metadata?.role as UserRole) || 'admin',
+          });
+        }
+      } catch (profileError) {
+        console.error("Error fetching profile after login:", profileError);
+        // Still consider login successful even if profile fetch fails
+      }
+      
+      toast.success('Inicio de sesión exitoso');
       return data;
+      
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       throw error;

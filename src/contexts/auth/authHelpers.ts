@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -67,9 +66,8 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
       return { error };
     }
 
-    // Create a user profile after successful signup
-    if (data.user) {
-      // Fix: Check if data.user exists before accessing its properties
+    // Fix: Properly check and type the data.user to avoid "never" type issues
+    if (data && data.user && data.user.id) {
       const userId = data.user.id;
       
       const { error: profileError } = await supabase

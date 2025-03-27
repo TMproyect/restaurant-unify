@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { OrderItem } from '@/services/orderService';
+import { OrderItem, createOrder } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, Minus, Plus, ShoppingBag, Users } from 'lucide-react';
 
@@ -56,6 +56,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadMenuItems();
@@ -155,12 +156,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
     setOrderItems(newOrderItems);
   };
 
-  const handleItemNotesChange = (index: number, notes: string) => {
-    const newOrderItems = [...orderItems];
-    newOrderItems[index].notes = notes;
-    setOrderItems(newOrderItems);
-  };
-
   const calculateSubtotal = () => {
     return orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
@@ -192,26 +187,33 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
     }
 
     try {
-      // En un caso real, aquí se enviaría la orden a la base de datos
-      // const orderData = await createOrder({
-      //   table_id: tableId,
-      //   customer_name: customerName,
-      //   status: 'pending',
-      //   total: calculateTotal(),
-      //   items_count: orderItems.length,
-      //   is_delivery: false,
-      //   kitchen_id: selectedKitchen,
-      //   table_number: Number(tableNumber)
-      // }, orderItems);
+      setSubmitting(true);
+      // Ahora sí enviamos realmente la orden a la base de datos
+      const orderData = await createOrder({
+        table_id: tableId,
+        customer_name: customerName,
+        status: 'pending',
+        total: calculateTotal(),
+        items_count: orderItems.length,
+        is_delivery: false,
+        kitchen_id: selectedKitchen,
+        table_number: Number(tableNumber)
+      }, orderItems);
 
-      toast.success('Orden enviada a cocina');
-      setOrderItems([]);
-      setNotes('');
-      setDiscount(0);
-      onOrderComplete();
+      if (orderData) {
+        toast.success('Orden enviada a cocina');
+        setOrderItems([]);
+        setNotes('');
+        setDiscount(0);
+        onOrderComplete();
+      } else {
+        throw new Error('No se pudo crear la orden');
+      }
     } catch (error) {
       console.error('Error al enviar la orden:', error);
       toast.error('Error al enviar la orden');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -425,12 +427,12 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
               <Button 
                 className="w-full mt-4" 
                 onClick={handleSubmitOrder} 
-                disabled={orderItems.length === 0}
+                disabled={orderItems.length === 0 || submitting}
                 size="lg"
                 variant="default"
               >
                 <ShoppingBag className="mr-2 h-5 w-5" />
-                Crear Pedido
+                {submitting ? 'Creando Pedido...' : 'Crear Pedido'}
               </Button>
             </CardContent>
           </Card>

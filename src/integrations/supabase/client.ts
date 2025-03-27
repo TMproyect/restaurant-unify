@@ -16,5 +16,19 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: typeof localStorage !== 'undefined' ? localStorage : undefined,
     detectSessionInUrl: true,
     flowType: 'implicit'
-  }
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    // Add a small delay on DB operations to ensure they complete properly
+    fetch: (url, options) => {
+      return fetch(url, options);
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 });

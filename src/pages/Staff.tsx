@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -48,12 +47,10 @@ const Staff = () => {
       setIsLoading(true);
       console.log('Iniciando obtención de usuarios...');
       
-      // Use the AuthContext's fetchAllUsers function
       const users = await fetchAllUsers();
       console.log('Usuarios obtenidos desde AuthContext:', users);
       
       if (users.length === 0) {
-        // Fallback to direct query if the context method fails
         console.log('No users found, trying direct query...');
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
@@ -75,15 +72,12 @@ const Staff = () => {
         
         console.log('Perfiles obtenidos directamente:', profilesData.length, profilesData);
         
-        // Create email placeholders for all profiles
         const usersWithPlaceholderEmails = profilesData.map(profile => {
           let email = '';
           
-          // For the current user, we can use the email from the session
           if (profile.id === session?.user?.id && session?.user?.email) {
             email = session.user.email;
           } else {
-            // For other users, create a placeholder email based on their name
             email = `${profile.name.toLowerCase().replace(/\s+/g, '.')}@ejemplo.com`;
           }
           
@@ -95,11 +89,9 @@ const Staff = () => {
         
         setStaffMembers(usersWithPlaceholderEmails);
       } else {
-        // Use the users from the AuthContext
         setStaffMembers(users);
       }
       
-      // Count roles for the Roles tab
       const updatedRoles = [...roles];
       staffMembers.forEach(member => {
         const roleIndex = updatedRoles.findIndex(r => r.key === member.role);
@@ -119,7 +111,6 @@ const Staff = () => {
   useEffect(() => {
     fetchUsersData();
     
-    // Listen for realtime changes to profiles
     const channel = supabase
       .channel('public:profiles')
       .on('postgres_changes', { 
@@ -181,7 +172,6 @@ const Staff = () => {
       setNewUserRole('waiter');
       setUserDialogOpen(false);
       
-      // Refresh after a short delay to allow the database to update
       setTimeout(() => {
         fetchUsersData();
       }, 1500);
@@ -217,20 +207,18 @@ const Staff = () => {
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${currentUser.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
-      // Check if avatars bucket exists and create it if it doesn't
       try {
         const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
         if (bucketError && bucketError.message.includes('not found')) {
           await supabase.storage.createBucket('avatars', {
             public: true,
-            fileSizeLimit: 1024 * 1024 * 2, // 2MB limit
+            fileSizeLimit: 1024 * 1024 * 2,
           });
         }
       } catch (error) {
         console.error('Error checking/creating avatars bucket:', error);
       }
       
-      // Upload the avatar
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, avatarFile);
@@ -241,13 +229,11 @@ const Staff = () => {
         return;
       }
       
-      // Get the public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
         
       if (urlData) {
-        // Update the profile
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ avatar: urlData.publicUrl })
@@ -259,7 +245,6 @@ const Staff = () => {
           return;
         }
         
-        // Update local state
         setStaffMembers(prev => 
           prev.map(staff => 
             staff.id === currentUser.id 
@@ -281,7 +266,6 @@ const Staff = () => {
     try {
       toast.success(`Usuario ${currentStatus === 'active' ? 'desactivado' : 'activado'} correctamente`);
       
-      // Update the user status in the local state
       setStaffMembers(prev => 
         prev.map(staff => 
           staff.id === userId 
@@ -339,6 +323,25 @@ const Staff = () => {
   };
   
   const isAdmin = user?.role === 'admin';
+
+  const formatCreationDate = (dateString: string | undefined): string => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida';
+      }
+      return date.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Error de formato';
+    }
+  };
 
   return (
     <Layout>
@@ -510,7 +513,7 @@ const Staff = () => {
                             <TableCell>
                               <div className="text-sm">
                                 <p>{staff.email}</p>
-                                <p className="text-muted-foreground">Creado: {new Date(staff.created_at).toLocaleDateString()}</p>
+                                <p className="text-muted-foreground">Creado: {formatCreationDate(staff.created_at)}</p>
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -685,7 +688,6 @@ const Staff = () => {
                   </TableHeader>
                   <TableBody>
                     {roles.map(role => {
-                      // Count members with this role
                       const memberCount = staffMembers.filter(
                         staff => staff.role === role.key
                       ).length;

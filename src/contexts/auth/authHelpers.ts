@@ -88,7 +88,8 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
         name: profile.name,
         email: email,
         role: profile.role as UserRole, 
-        avatar: profile.avatar
+        avatar: profile.avatar,
+        created_at: profile.created_at // Make sure we grab the creation date
       };
     });
     
@@ -175,23 +176,37 @@ export const createUserProfile = async (userId: string, name: string, role: User
       return;
     }
     
-    const { error } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          id: userId,
-          name,
-          role,
-        }
-      ]);
-
-    if (error) {
-      console.error('Error creating profile:', error);
-      toast.error('Error al crear el perfil de usuario: ' + error.message);
-      throw error;
-    }
+    // Add retry logic to ensure the profile is created
+    let attempts = 0;
+    const maxAttempts = 3;
+    let success = false;
     
-    console.log('Profile created successfully for user:', userId);
+    while (attempts < maxAttempts && !success) {
+      const { error } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            name,
+            role,
+            created_at: new Date().toISOString() // Explicitly set creation date
+          }
+        ]);
+
+      if (error) {
+        console.error(`Error creating profile (attempt ${attempts + 1}):`, error);
+        attempts++;
+        if (attempts >= maxAttempts) {
+          toast.error('Error al crear el perfil de usuario: ' + error.message);
+          throw error;
+        }
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        console.log('Profile created successfully for user:', userId);
+        success = true;
+      }
+    }
   } catch (error) {
     console.error('Error in createUserProfile:', error);
     throw error;
@@ -225,7 +240,32 @@ export const createUserByAdmin = async (email: string, password: string, name: s
   // pero por ahora simplemente creamos el perfil para el usuario
   if (data.user) {
     try {
+      // Wait a small amount of time to allow the auth user to be fully created
+      await new Promise(resolve => setTimeout(resolve, 500));
       await createUserProfile(data.user.id, name, role);
+      
+      // Verify profile was created and retry if needed
+      let profileCreated = false;
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (!profileCreated && attempts < maxAttempts) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (profileData) {
+          profileCreated = true;
+          console.log('Verified profile was created:', profileData);
+        } else {
+          console.log(`Profile not found (attempt ${attempts + 1}), retrying creation...`);
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await createUserProfile(data.user.id, name, role);
+        }
+      }
     } catch (profileError) {
       console.error('Error creating profile after signup:', profileError);
     }

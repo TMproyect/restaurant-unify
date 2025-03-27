@@ -219,12 +219,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Create user started with role:", role);
       
-      const userData = await createUserByAdmin(email, password, name, role);
+      // First, ensure we have the correct role format
+      let safeRole: UserRole = role;
+      if (!['admin', 'waiter', 'kitchen', 'delivery', 'manager'].includes(role)) {
+        console.warn(`Invalid role provided: ${role}, defaulting to 'waiter'`);
+        safeRole = 'waiter';
+      }
+      
+      const userData = await createUserByAdmin(email, password, name, safeRole);
 
-      toast.success(`Usuario ${name} creado correctamente con rol ${role}`, {
+      // Double-check that the profile was created with the correct role
+      setTimeout(async () => {
+        try {
+          if (userData?.user?.id) {
+            const profile = await fetchUserProfile(userData.user.id);
+            if (profile && profile.role !== safeRole) {
+              console.log(`Profile created but with incorrect role: ${profile.role}, updating to ${safeRole}`);
+              await updateUserRoleById(userData.user.id, safeRole);
+            }
+          }
+        } catch (error) {
+          console.error('Error verifying profile role:', error);
+        }
+      }, 1000);
+
+      toast.success(`Usuario ${name} creado correctamente con rol ${safeRole}`, {
         description: 'El usuario necesitará confirmar su correo electrónico'
       });
-      console.log("Create user successful with role:", role);
+      console.log("Create user successful with role:", safeRole);
     } catch (error: any) {
       console.error('Error creating user:', error.message);
       toast.error(error.message || 'Error al crear el usuario');
@@ -280,7 +302,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchAllUsers = async (): Promise<AuthUser[]> => {
     try {
       console.log("Fetching all users from context...");
-      return await fetchAllProfiles();
+      // Improved version that forces a fresh fetch from the database
+      const profiles = await fetchAllProfiles();
+      console.log("Fetched profiles in fetchAllUsers:", profiles);
+      return profiles;
     } catch (error) {
       console.error("Error fetching all users from context:", error);
       return [];

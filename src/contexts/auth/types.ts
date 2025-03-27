@@ -11,6 +11,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   avatar?: string;
+  created_at?: string;
 }
 
 // Define auth context type

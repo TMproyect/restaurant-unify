@@ -61,10 +61,13 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           description: 'Redirigiendo al dashboard...',
         });
         
-        if (onSuccess) {
-          console.log("Ejecutando callback de éxito para redirección");
-          onSuccess();
-        }
+        // Dar un pequeño tiempo para que se actualice el estado de autenticación
+        setTimeout(() => {
+          if (onSuccess) {
+            console.log("Ejecutando callback de éxito para redirección");
+            onSuccess();
+          }
+        }, 300);
       } else {
         throw new Error('No se recibieron datos de usuario después del login');
       }

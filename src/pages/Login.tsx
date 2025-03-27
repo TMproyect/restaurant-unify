@@ -16,7 +16,10 @@ const Login = () => {
 
   // Show content after a brief delay to avoid flickering
   useEffect(() => {
-    setShowContent(true);
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   // Check for auth-related URL parameters
@@ -38,13 +41,26 @@ const Login = () => {
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   }, []);
 
-  // Handle redirection
+  // Handle redirection - with a small delay to ensure context is fully initialized
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log("User is authenticated, redirecting to dashboard");
-      navigate('/dashboard', { replace: true });
+    let redirectTimeout: number | undefined;
+    
+    if (isAuthenticated && !isLoading) {
+      console.log("User is authenticated, preparing to redirect to dashboard...");
+      
+      // Use a small timeout to ensure auth state is stable
+      redirectTimeout = window.setTimeout(() => {
+        console.log("Executing redirect to dashboard now");
+        navigate('/dashboard', { replace: true });
+      }, 500);
     }
-  }, [isAuthenticated, navigate]);
+    
+    return () => {
+      if (redirectTimeout) {
+        window.clearTimeout(redirectTimeout);
+      }
+    };
+  }, [isAuthenticated, isLoading, navigate]);
 
   // Network connectivity check
   useEffect(() => {
@@ -98,8 +114,11 @@ const Login = () => {
             <TabsContent value="login">
               <LoginForm 
                 onSuccess={() => {
-                  console.log("LoginForm success callback executed");
-                  navigate('/dashboard', { replace: true });
+                  console.log("LoginForm success callback executed, preparing to navigate");
+                  // Use a small timeout to ensure state updates have processed
+                  setTimeout(() => {
+                    navigate('/dashboard', { replace: true });
+                  }, 300);
                 }}
               />
             </TabsContent>

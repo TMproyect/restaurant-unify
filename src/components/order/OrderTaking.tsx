@@ -23,7 +23,7 @@ import {
 import { OrderItem, createOrder } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, Minus, Plus, ShoppingBag, Users } from 'lucide-react';
-import { mapArrayResponse } from '@/utils/supabaseHelpers';
+import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
 
 interface OrderTakingProps {
   tableId: string;
@@ -69,7 +69,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
     try {
       let query = supabase.from('menu_items').select('id, name, price, description, image_url');
       if (selectedCategory && selectedCategory !== 'all') {
-        query = query.eq('category_id', selectedCategory);
+        query = query.eq('category_id', filterValue(selectedCategory));
       }
       const { data, error } = await query;
 

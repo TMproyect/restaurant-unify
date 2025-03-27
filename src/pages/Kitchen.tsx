@@ -19,8 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
-import { getOrderWithItems, updateOrderStatus, subscribeToOrders } from '@/services/orderService';
-import { mapArrayResponse } from '@/utils/supabaseHelpers';
+import { getOrderWithItems, updateOrderStatus, subscribeToOrders, Order } from '@/services/orderService';
+import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
 
 // Kitchen options constants
 const kitchenOptions = [
@@ -98,7 +98,7 @@ const Kitchen = () => {
             notes
           )
         `)
-        .eq('kitchen_id', selectedKitchen)
+        .eq('kitchen_id', filterValue(selectedKitchen))
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -108,18 +108,22 @@ const Kitchen = () => {
         return;
       }
       
+      // Map and ensure we have data with proper type
+      type ExtendedOrder = Order & { order_items: any[] };
+      const typedData = mapArrayResponse<ExtendedOrder>(data, 'Failed to map orders for kitchen');
+      
       // Formatear las órdenes para el componente
-      const formattedOrders: OrderDisplay[] = data.map(order => ({
-        id: order.id,
+      const formattedOrders: OrderDisplay[] = typedData.map(order => ({
+        id: order.id || '',
         table: order.is_delivery ? 'Delivery' : String(order.table_number),
         customerName: order.customer_name,
-        time: new Date(order.created_at).toLocaleTimeString('es-ES', { 
+        time: new Date(order.created_at || '').toLocaleTimeString('es-ES', { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
-        kitchenId: order.kitchen_id,
+        kitchenId: order.kitchen_id || '',
         status: order.status,
-        items: order.order_items.map((item: any) => ({
+        items: (order.order_items || []).map((item: any) => ({
           name: item.name,
           notes: item.notes || '',
           status: item.status || 'pending',

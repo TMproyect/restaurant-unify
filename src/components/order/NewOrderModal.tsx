@@ -17,7 +17,7 @@ import { RestaurantTable } from '@/types/tables';
 import { createOrder } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
 import OrderTaking from './OrderTaking';
-import { mapArrayResponse } from '@/utils/supabaseHelpers';
+import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
 
 interface NewOrderModalProps {
   open: boolean;
@@ -58,7 +58,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
       const { data, error } = await supabase
         .from('restaurant_tables')
         .select('*')
-        .eq('status', 'available')
+        .eq('status', filterValue('available'))
         .order('number', { ascending: true });
       
       if (error) throw error;

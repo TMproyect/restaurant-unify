@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult } from '@/utils/supabaseHelpers';
+import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult, filterValue } from '@/utils/supabaseHelpers';
 
 export interface Order {
   id?: string;
@@ -54,7 +54,7 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select('*')
-      .eq('id', orderId)
+      .eq('id', filterValue(orderId))
       .single();
 
     if (orderError) {
@@ -66,7 +66,7 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('*')
-      .eq('order_id', orderId);
+      .eq('order_id', filterValue(orderId));
 
     if (itemsError) {
       console.error('Error fetching order items:', itemsError);
@@ -92,7 +92,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
     // First, create the order
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .insert(prepareInsertData(orderData))
+      .insert(prepareInsertData(orderData) as any)
       .select()
       .single();
 
@@ -119,7 +119,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
 
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItems as any);
 
       if (itemsError) {
         console.error('Error creating order items:', itemsError);
@@ -143,8 +143,8 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
       .update({ 
         status: status,
         updated_at: now
-      })
-      .eq('id', orderId);
+      } as any)
+      .eq('id', filterValue(orderId));
 
     if (error) {
       console.error('Error updating order status:', error);

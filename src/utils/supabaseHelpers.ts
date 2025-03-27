@@ -91,3 +91,8 @@ export function processSingleResult<T>(response: { data: any; error: any }, erro
   
   return response.data as T;
 }
+
+// Type casting for filters
+export function filterValue(value: any): any {
+  return value; // This bypasses type issues with filter parameters
+}

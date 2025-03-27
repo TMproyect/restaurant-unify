@@ -455,36 +455,49 @@ export const getUserFromProfiles = async (userId: string): Promise<AuthUser | nu
   }
 };
 
-export const getUserFromTable = async (table: string, userId: string): Promise<AuthUser | null> => {
+export const getUserFromTable = async (tableName: string, userId: string): Promise<AuthUser | null> => {
   try {
-    console.log(`Getting user from ${table}, ID:`, userId);
+    console.log(`Getting user from ${tableName}, ID:`, userId);
+    
+    // Validate table name to prevent SQL injection and type errors
+    const allowedTables = ['profiles']; // Only allow specific tables
+    if (!allowedTables.includes(tableName)) {
+      console.error(`Invalid table name: ${tableName}`);
+      return null;
+    }
     
     const { data, error } = await supabase
-      .from(table)
+      .from(tableName)
       .select('*')
       .eq('id', filterValue(userId))
       .single();
       
     if (error) {
-      console.error(`Error getting user from ${table}:`, error);
+      console.error(`Error getting user from ${tableName}:`, error);
       return null;
     }
     
     if (!data) {
-      console.log(`No user found in ${table} for ID:`, userId);
+      console.log(`No user found in ${tableName} for ID:`, userId);
       return null;
     }
     
-    return {
-      id: data.id,
-      name: data.name || 'Unknown',
-      email: data.email || '',
-      role: data.role as UserRole,
-      avatar: data.avatar,
-      created_at: data.created_at
-    };
+    // Ensure we handle profile data correctly
+    if (tableName === 'profiles') {
+      return {
+        id: data.id,
+        name: data.name || 'Unknown',
+        email: '', // Email is not stored in profiles table
+        role: data.role as UserRole, // Cast to UserRole type
+        avatar: data.avatar,
+        created_at: data.created_at
+      };
+    }
+    
+    // For other tables (if we add more in the future)
+    return null;
   } catch (error) {
-    console.error(`Error in getUserFromTable (${table}):`, error);
+    console.error(`Error in getUserFromTable (${tableName}):`, error);
     return null;
   }
 };

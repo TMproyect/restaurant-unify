@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AuthUser } from '@/contexts/auth/types';
+import { AuthUser, UserRole } from '@/contexts/auth/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAdmin } from '@/hooks/use-admin';
 import { toast } from 'sonner';
@@ -47,12 +46,12 @@ const UserRoleInfo = () => {
           
           if (data) {
             console.log("UserRoleInfo: Direct query returned", data.length, "profiles");
-            // Map the profile data to AuthUser format
+            // Map the profile data to AuthUser format, ensuring role is cast to UserRole
             users = data.map(profile => ({
               id: profile.id,
               name: profile.name || 'Sin nombre',
               email: '', // We can't get emails directly this way
-              role: profile.role,
+              role: profile.role as UserRole, // Cast string to UserRole
               avatar: profile.avatar,
               created_at: profile.created_at
             }));

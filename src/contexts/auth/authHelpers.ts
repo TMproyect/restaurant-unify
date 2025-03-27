@@ -414,7 +414,6 @@ export const createUserWithEdgeFunction = async (email: string, password: string
 };
 
 // Add the missing functions that AuthContext.tsx is expecting
-export const fetchUserProfile = getProfile;
 export const signupUser = signup;
 export const createUserProfile = createProfileIfNotExists;
 export const createUserByAdmin = createUserWithEdgeFunction; // Replace with the edge function version

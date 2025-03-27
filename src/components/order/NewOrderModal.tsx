@@ -1,23 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { supabase } from '@/integrations/supabase/client';
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from 'sonner';
 import { RestaurantTable } from '@/types/tables';
-import { createOrder } from '@/services/orderService';
-import { useToast } from '@/hooks/use-toast';
-import OrderTaking from './OrderTaking';
-import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
+import { supabase } from '@/integrations/supabase/client';
+import { filterValue, mapArrayResponse } from '@/utils/supabaseHelpers';
 
 interface NewOrderModalProps {
   open: boolean;
@@ -31,19 +22,18 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
   const [tableNumber, setTableNumber] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
   const [tables, setTables] = useState<RestaurantTable[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [tablesLoading, setTablesLoading] = useState(false);
   const [orderStep, setOrderStep] = useState<'details' | 'items'>('details');
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
-      loadAvailableTables();
+      fetchAvailableTables();
     }
   }, [open]);
 
   useEffect(() => {
     if (!open) {
-      // Reset form when modal closes
       setOrderType('table');
       setSelectedTable('');
       setTableNumber('');
@@ -52,28 +42,24 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
     }
   }, [open]);
 
-  const loadAvailableTables = async () => {
+  const fetchAvailableTables = async () => {
     try {
-      setLoading(true);
+      setTablesLoading(true);
       const { data, error } = await supabase
         .from('restaurant_tables')
         .select('*')
-        .eq('status', filterValue('available'))
-        .order('number', { ascending: true });
-      
-      if (error) throw error;
-      
-      const mappedTables = mapArrayResponse<RestaurantTable>(data, 'Failed to map restaurant tables');
-      setTables(mappedTables);
+        .eq('status', filterValue('available'));
+
+      if (error) {
+        throw error;
+      }
+
+      setTables(mapArrayResponse<RestaurantTable>(data, 'Failed to map tables'));
     } catch (error) {
-      console.error('Error cargando mesas disponibles:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las mesas disponibles",
-        variant: "destructive"
-      });
+      console.error('Error fetching tables:', error);
+      toast.error('Error al cargar mesas disponibles');
     } finally {
-      setLoading(false);
+      setTablesLoading(false);
     }
   };
 
@@ -96,7 +82,6 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
       return;
     }
 
-    // Guardar el número de mesa para mostrarlo claramente
     if (orderType === 'table' && selectedTable) {
       const selectedTableObj = tables.find(table => table.id.toString() === selectedTable);
       if (selectedTableObj) {
@@ -149,7 +134,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
                     <SelectValue placeholder="Seleccionar mesa" />
                   </SelectTrigger>
                   <SelectContent>
-                    {loading ? (
+                    {tablesLoading ? (
                       <div className="p-2 text-center">Cargando mesas...</div>
                     ) : tables.length > 0 ? (
                       tables.map((table) => (

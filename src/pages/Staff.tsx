@@ -1,782 +1,471 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Layout from '@/components/layout/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Search, Plus, MoreHorizontal, UserPlus, ChevronDown, Upload, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { UserRole } from '@/contexts/auth/types';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { Checkbox } from '@/components/ui/checkbox';
 
-const Staff = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [staffMembers, setStaffMembers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('waiter');
-  const [userDialogOpen, setUserDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import Layout from '@/components/layout/Layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import { UserPlus, PencilIcon, UserCog, UploadIcon } from 'lucide-react';
+
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { AuthUser, UserRole } from '@/contexts/auth/types';
+import { supabase } from '@/integrations/supabase/client';
+import { mapArrayResponse } from '@/utils/supabaseHelpers';
+
+interface StaffFormValues {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}
+
+interface EditRoleValues {
+  role: UserRole;
+}
+
+const ROLES = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'manager', label: 'Gerente' },
+  { value: 'waiter', label: 'Mesero' },
+  { value: 'kitchen', label: 'Cocina' },
+  { value: 'delivery', label: 'Delivery' }
+];
+
+const Staff: React.FC = () => {
+  const { user, createUser, updateUserRole, fetchAllUsers } = useAuth();
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [currentUserEdit, setCurrentUserEdit] = useState<AuthUser | null>(null);
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tab, setTab] = useState("all");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, createUser, updateUserRole, session, fetchAllUsers } = useAuth();
-  
-  const roles = [
-    { id: 1, name: 'Administrador', permissions: 'Acceso completo', members: 0, key: 'admin' },
-    { id: 2, name: 'Gerente', permissions: 'Gestión de personal, finanzas', members: 0, key: 'manager' },
-    { id: 3, name: 'Cocina', permissions: 'Cocina, inventario', members: 0, key: 'kitchen' },
-    { id: 4, name: 'Mesero', permissions: 'Órdenes, mesas', members: 0, key: 'waiter' },
-    { id: 5, name: 'Repartidor', permissions: 'Entregas', members: 0, key: 'delivery' },
-  ];
-  
-  const fetchUsersData = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Iniciando obtención de usuarios...');
-      
-      const users = await fetchAllUsers();
-      console.log('Usuarios obtenidos desde AuthContext:', users);
-      
-      if (users.length === 0) {
-        console.log('No users found, trying direct query...');
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (profilesError) {
-          console.error('Error al obtener perfiles directamente:', profilesError);
-          toast.error('Error al cargar los perfiles de usuario');
-          setStaffMembers([]);
-          return;
-        }
-        
-        if (!profilesData || profilesData.length === 0) {
-          console.warn('No se encontraron perfiles en la base de datos');
-          setStaffMembers([]);
-          return;
-        }
-        
-        console.log('Perfiles obtenidos directamente:', profilesData.length, profilesData);
-        
-        const usersWithPlaceholderEmails = profilesData.map(profile => {
-          let email = '';
-          
-          if (profile.id === session?.user?.id && session?.user?.email) {
-            email = session.user.email;
-          } else {
-            email = `${profile.name.toLowerCase().replace(/\s+/g, '.')}@ejemplo.com`;
-          }
-          
-          return {
-            ...profile,
-            email,
-          };
-        });
-        
-        setStaffMembers(usersWithPlaceholderEmails);
-      } else {
-        setStaffMembers(users);
-      }
-      
-      const updatedRoles = [...roles];
-      staffMembers.forEach(member => {
-        const roleIndex = updatedRoles.findIndex(r => r.key === member.role);
-        if (roleIndex >= 0) {
-          updatedRoles[roleIndex].members += 1;
-        }
-      });
-      
-    } catch (error) {
-      console.error('Error al obtener usuarios:', error);
-      toast.error('Error al cargar los usuarios');
-    } finally {
-      setIsLoading(false);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setAvatarFile(e.target.files[0]);
     }
   };
-  
+
+  // Adding the form hook
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<StaffFormValues>();
+  const editForm = useForm<EditRoleValues>();
+
+  // Load users on mount
   useEffect(() => {
-    fetchUsersData();
-    
-    const channel = supabase
-      .channel('public:profiles')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'profiles' 
-      }, (payload) => {
-        console.log('Cambio en perfiles detectado:', payload);
-        fetchUsersData();
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session]);
-  
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const refreshParam = params.get('refresh');
-    
-    if (refreshParam === 'true') {
-      fetchUsersData();
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
+    loadUsers();
   }, []);
-  
-  const filteredStaff = staffMembers.filter(staff => 
-    staff.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    staff.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newUserEmail || !newUserName || !newUserPassword || !newUserRole) {
-      toast.error('Por favor complete todos los campos');
-      return;
-    }
-    
+
+  const loadUsers = async () => {
+    setLoading(true);
     try {
-      console.log('Creando usuario con rol:', newUserRole);
-      await createUser(
-        newUserEmail,
-        newUserPassword,
-        newUserName,
-        newUserRole
-      );
-      
-      toast.success('Usuario creado exitosamente', {
-        description: 'El usuario necesitará confirmar su correo electrónico para acceder.'
-      });
-      
-      setNewUserEmail('');
-      setNewUserName('');
-      setNewUserPassword('');
-      setNewUserRole('waiter');
-      setUserDialogOpen(false);
-      
-      setTimeout(() => {
-        fetchUsersData();
-      }, 1500);
-    } catch (error: any) {
-      console.error('Error al crear usuario:', error);
-      toast.error(error.message || 'Error al crear el usuario');
+      const staffUsers = await fetchAllUsers();
+      setUsers(staffUsers);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      toast.error('Error al cargar usuarios');
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleUpdateRole = async (userId: string, newRole: UserRole) => {
+
+  const onAddStaff = async (data: StaffFormValues) => {
     try {
-      await updateUserRole(userId, newRole);
-      
-      setStaffMembers(prev => 
-        prev.map(staff => 
-          staff.id === userId 
-            ? { ...staff, role: newRole } 
-            : staff
-        )
-      );
-      
-      toast.success('Rol actualizado correctamente');
+      setIsSubmitting(true);
+      await createUser(data.email, data.password, data.name, data.role);
+      await loadUsers();
+      setShowAddDialog(false);
+      reset();
+      toast.success(`Usuario ${data.name} creado con rol ${data.role}`);
     } catch (error: any) {
-      console.error('Error al actualizar rol:', error);
-      toast.error(error.message || 'Error al actualizar el rol');
+      console.error('Error adding staff:', error);
+      toast.error(error.message || 'Error al crear usuario');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
-  const handleAvatarUpload = async () => {
-    if (!avatarFile || !currentUser) return;
+
+  const onEditRole = async (data: EditRoleValues) => {
+    if (!currentUserEdit) return;
     
     try {
+      setIsSubmitting(true);
+      await updateUserRole(currentUserEdit.id, data.role);
+      // Update local state after successful API call
+      setUsers(users.map(u => 
+        u.id === currentUserEdit.id 
+          ? { ...u, role: data.role }
+          : u
+      ));
+      setShowEditDialog(false);
+      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast.error(error.message || 'Error al actualizar rol');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startEditRole = (user: AuthUser) => {
+    setCurrentUserEdit(user);
+    editForm.setValue('role', user.role);
+    setShowEditDialog(true);
+  };
+
+  const uploadAvatar = async () => {
+    if (!avatarFile || !currentUserEdit) return;
+
+    try {
+      setUploading(true);
+      
+      // Generate a unique file name
       const fileExt = avatarFile.name.split('.').pop();
-      const fileName = `${currentUser.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${currentUserEdit.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
       
-      try {
-        const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
-        if (bucketError && bucketError.message.includes('not found')) {
-          await supabase.storage.createBucket('avatars', {
-            public: true,
-            fileSizeLimit: 1024 * 1024 * 2,
-          });
-        }
-      } catch (error) {
-        console.error('Error checking/creating avatars bucket:', error);
-      }
-      
+      // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, avatarFile);
+        .upload(filePath, avatarFile);
         
-      if (uploadError) {
-        console.error('Error al subir avatar:', uploadError);
-        toast.error('Error al subir la imagen');
-        return;
-      }
+      if (uploadError) throw uploadError;
       
-      const { data: urlData } = supabase.storage
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
         .from('avatars')
-        .getPublicUrl(fileName);
+        .getPublicUrl(filePath);
         
-      if (urlData) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ avatar: urlData.publicUrl })
-          .eq('id', currentUser.id);
-          
-        if (updateError) {
-          console.error('Error al actualizar perfil:', updateError);
-          toast.error('Error al actualizar el perfil');
-          return;
-        }
-        
-        setStaffMembers(prev => 
-          prev.map(staff => 
-            staff.id === currentUser.id 
-              ? { ...staff, avatar: urlData.publicUrl } 
-              : staff
-          )
-        );
-        
-        setAvatarUrl(urlData.publicUrl);
-        toast.success('Imagen de perfil actualizada');
-      }
-    } catch (error) {
-      console.error('Error al procesar la imagen:', error);
-      toast.error('Error al procesar la imagen');
-    }
-  };
-  
-  const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
-    try {
-      toast.success(`Usuario ${currentStatus === 'active' ? 'desactivado' : 'activado'} correctamente`);
-      
-      setStaffMembers(prev => 
-        prev.map(staff => 
-          staff.id === userId 
-            ? { ...staff, status: currentStatus === 'active' ? 'inactive' : 'active' } 
-            : staff
-        )
-      );
-    } catch (error: any) {
-      console.error('Error al cambiar estado del usuario:', error);
-      toast.error(error.message || 'Error al cambiar el estado del usuario');
-    }
-  };
-  
-  const handleEditUser = (staff: any) => {
-    setCurrentUser(staff);
-    setAvatarUrl(staff.avatar || null);
-    setEditDialogOpen(true);
-  };
-  
-  const handleSaveUserEdit = async () => {
-    if (!currentUser) return;
-    
-    try {
-      if (avatarFile) {
-        await handleAvatarUpload();
-      }
-      
-      const { error } = await supabase
+      // Update the user's avatar in the profiles table
+      const { error: updateError } = await supabase
         .from('profiles')
-        .update({
-          name: currentUser.name,
-        })
-        .eq('id', currentUser.id);
+        .update({ avatar: publicUrl } as any)
+        .eq('id', currentUserEdit.id);
         
-      if (error) {
-        console.error('Error al actualizar perfil:', error);
-        toast.error('Error al actualizar el perfil');
-        return;
-      }
+      if (updateError) throw updateError;
       
-      setStaffMembers(prev => 
-        prev.map(staff => 
-          staff.id === currentUser.id 
-            ? { ...currentUser }
-            : staff
-        )
-      );
+      // Update the local state
+      setUsers(users.map(u => 
+        u.id === currentUserEdit.id 
+          ? { ...u, avatar: publicUrl }
+          : u
+      ));
       
-      setEditDialogOpen(false);
-      toast.success('Perfil actualizado correctamente');
-    } catch (error) {
-      console.error('Error al guardar cambios:', error);
-      toast.error('Error al guardar los cambios');
+      // Set the avatar URL for preview
+      setAvatarUrl(publicUrl);
+      
+      toast.success('Avatar actualizado correctamente');
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      toast.error(error.message || 'Error al subir avatar');
+    } finally {
+      setUploading(false);
     }
   };
-  
-  const isAdmin = user?.role === 'admin';
 
-  const formatCreationDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
-    
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return 'Fecha inválida';
-      }
-      return date.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Error de formato';
-    }
+  // Filter users based on the selected tab
+  const filteredUsers = tab === 'all' 
+    ? users 
+    : users.filter(u => u.role === tab);
+
+  const canEdit = user?.role === 'admin' || user?.role === 'manager';
+
+  const getUserRoleLabel = (role: UserRole) => {
+    const roleObj = ROLES.find(r => r.value === role);
+    return roleObj ? roleObj.label : role;
   };
+
+  const renderAddStaffDialog = () => (
+    <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit(onAddStaff)}>
+          <DialogHeader>
+            <DialogTitle>Agregar nuevo usuario</DialogTitle>
+            <DialogDescription>
+              Crea una nueva cuenta de personal para el restaurante.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nombre</Label>
+              <Input
+                id="name"
+                placeholder="Nombre completo"
+                {...register("name", { required: "El nombre es obligatorio" })}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name.message}</p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Correo Electrónico</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="correo@ejemplo.com"
+                {...register("email", { 
+                  required: "El correo es obligatorio",
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: "Correo electrónico inválido"
+                  }
+                })}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="********"
+                {...register("password", { 
+                  required: "La contraseña es obligatoria",
+                  minLength: {
+                    value: 6,
+                    message: "La contraseña debe tener al menos 6 caracteres"
+                  }
+                })}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="role">Rol</Label>
+              <Select 
+                onValueChange={(value) => setValue('role', value as UserRole)} 
+                defaultValue="waiter"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar Rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.role && (
+                <p className="text-sm text-red-500">{errors.role.message}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAddDialog(false)} 
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Agregar Usuario"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const renderEditRoleDialog = () => (
+    <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={editForm.handleSubmit(onEditRole)}>
+          <DialogHeader>
+            <DialogTitle>Editar Rol de Usuario</DialogTitle>
+            <DialogDescription>
+              Cambiar el rol de {currentUserEdit?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="role">Rol</Label>
+              <Select 
+                onValueChange={(value) => editForm.setValue('role', value as UserRole)} 
+                defaultValue={currentUserEdit?.role}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar Rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2 mt-4">
+              <Label>Avatar</Label>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={avatarUrl || currentUserEdit?.avatar || ''} />
+                  <AvatarFallback>
+                    {currentUserEdit?.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                  />
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    onClick={uploadAvatar}
+                    disabled={!avatarFile || uploading}
+                    className="w-full"
+                  >
+                    {uploading ? "Subiendo..." : "Subir Avatar"}
+                    <UploadIcon className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEditDialog(false)} 
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Actualizar Rol"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <Layout>
+      {renderAddStaffDialog()}
+      {renderEditRoleDialog()}
+      
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Personal</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={fetchUsersData}>
-              <RefreshCw size={18} className="mr-2" /> Actualizar
+          <h1 className="text-2xl font-bold">Gestión de Personal</h1>
+          
+          {canEdit && (
+            <Button 
+              onClick={() => {
+                reset();
+                setShowAddDialog(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <UserPlus size={18} />
+              Agregar Personal
             </Button>
-            {isAdmin && (
-              <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button><UserPlus size={18} className="mr-2" /> Añadir Empleado</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Añadir Nuevo Empleado</DialogTitle>
-                    <DialogDescription>
-                      Complete la información para crear una nueva cuenta de empleado.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateUser}>
-                    <div className="grid gap-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="new-name">Nombre Completo</Label>
-                        <Input 
-                          id="new-name" 
-                          placeholder="Ej. Juan Pérez" 
-                          value={newUserName}
-                          onChange={(e) => setNewUserName(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="new-email">Email</Label>
-                        <Input 
-                          id="new-email" 
-                          type="email" 
-                          placeholder="juan.perez@example.com" 
-                          value={newUserEmail}
-                          onChange={(e) => setNewUserEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="new-password">Contraseña</Label>
-                        <Input 
-                          id="new-password" 
-                          type="password" 
-                          placeholder="Mínimo 6 caracteres" 
-                          value={newUserPassword}
-                          onChange={(e) => setNewUserPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="new-role">Rol</Label>
-                        <Select 
-                          value={newUserRole} 
-                          onValueChange={(value) => setNewUserRole(value as UserRole)}
-                        >
-                          <SelectTrigger id="new-role">
-                            <SelectValue placeholder="Seleccionar rol" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="manager">Gerente</SelectItem>
-                            <SelectItem value="waiter">Mesero</SelectItem>
-                            <SelectItem value="kitchen">Cocina</SelectItem>
-                            <SelectItem value="delivery">Repartidor</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Crear Empleado</Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+          )}
         </div>
-
-        <Tabs defaultValue="employees">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="employees">Empleados</TabsTrigger>
-            <TabsTrigger value="roles">Roles</TabsTrigger>
+        
+        <Tabs defaultValue="all" value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            <TabsTrigger value="admin">Administradores</TabsTrigger>
+            <TabsTrigger value="manager">Gerentes</TabsTrigger>
+            <TabsTrigger value="waiter">Meseros</TabsTrigger>
+            <TabsTrigger value="kitchen">Cocina</TabsTrigger>
+            <TabsTrigger value="delivery">Delivery</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="employees" className="mt-4">
-            <Card>
-              <CardHeader className="p-4">
-                <div className="flex flex-col md:flex-row justify-between gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Buscar por nombre o rol..."
-                      className="pl-8"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Select defaultValue="all">
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filtrar por Rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos los Roles</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="manager">Gerente</SelectItem>
-                        <SelectItem value="waiter">Mesero</SelectItem>
-                        <SelectItem value="kitchen">Cocina</SelectItem>
-                        <SelectItem value="delivery">Repartidor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          <TabsContent value={tab} className="mt-0">
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredUsers.length === 0 ? (
+                  <div className="col-span-full text-center py-10 text-muted-foreground">
+                    No hay personal con el rol seleccionado.
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[250px]">Empleado</TableHead>
-                        <TableHead>Rol</TableHead>
-                        <TableHead>Contacto</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredStaff.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            No hay empleados que coincidan con la búsqueda
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredStaff.map(staff => (
-                          <TableRow key={staff.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar>
-                                  <AvatarImage src={staff.avatar} />
-                                  <AvatarFallback>{staff.name?.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">{staff.name}</p>
-                                  <p className="text-sm text-muted-foreground truncate max-w-[180px]">{staff.email}</p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {staff.role === 'admin' ? 'Administrador' : 
-                                 staff.role === 'manager' ? 'Gerente' : 
-                                 staff.role === 'waiter' ? 'Mesero' : 
-                                 staff.role === 'kitchen' ? 'Cocina' : 
-                                 staff.role === 'delivery' ? 'Repartidor' : staff.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                <p>{staff.email}</p>
-                                <p className="text-muted-foreground">Creado: {formatCreationDate(staff.created_at)}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {isAdmin && (
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Detalles del Empleado</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                      <div className="flex flex-col items-center gap-2">
-                                        <Avatar className="h-20 w-20">
-                                          <AvatarImage src={staff.avatar} />
-                                          <AvatarFallback className="text-xl">{staff.name?.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
-                                        </Avatar>
-                                        <h3 className="font-bold text-lg">{staff.name}</h3>
-                                        <Badge variant="outline">
-                                          {staff.role === 'admin' ? 'Administrador' : 
-                                           staff.role === 'manager' ? 'Gerente' : 
-                                           staff.role === 'waiter' ? 'Mesero' : 
-                                           staff.role === 'kitchen' ? 'Cocina' : 
-                                           staff.role === 'delivery' ? 'Repartidor' : staff.role}
-                                        </Badge>
-                                      </div>
-                                      
-                                      <Separator />
-                                      
-                                      <div className="space-y-2">
-                                        <div className="flex justify-between">
-                                          <span className="text-muted-foreground">Email</span>
-                                          <span>{staff.email}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-muted-foreground">Fecha creación</span>
-                                          <span>{new Date(staff.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                      </div>
-                                      
-                                      <Separator />
-                                      
-                                      <div className="space-y-2">
-                                        <Label>Cambiar Rol</Label>
-                                        <Select 
-                                          defaultValue={staff.role} 
-                                          onValueChange={(value) => handleUpdateRole(staff.id, value as UserRole)}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="admin">Administrador</SelectItem>
-                                            <SelectItem value="manager">Gerente</SelectItem>
-                                            <SelectItem value="waiter">Mesero</SelectItem>
-                                            <SelectItem value="kitchen">Cocina</SelectItem>
-                                            <SelectItem value="delivery">Repartidor</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
-                                    <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                                      <Button 
-                                        className="w-full" 
-                                        variant="outline"
-                                        onClick={() => handleEditUser(staff)}
-                                      >
-                                        Editar Detalles
-                                      </Button>
-                                      <Button 
-                                        className="w-full" 
-                                        variant="destructive"
-                                        onClick={() => handleToggleUserStatus(staff.id, 'active')}
-                                      >
-                                        Desactivar Cuenta
-                                      </Button>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="roles" className="mt-4">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Roles y Permisos</CardTitle>
-                  {isAdmin && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button><Plus size={18} className="mr-2" /> Crear Rol</Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle>Crear Nuevo Rol</DialogTitle>
-                          <DialogDescription>
-                            Defina un nuevo rol con permisos específicos.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="role-name">Nombre del Rol</Label>
-                            <Input id="role-name" placeholder="Ej. Supervisor" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Permisos</Label>
-                            <div className="border rounded-md p-4 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-dashboard" />
-                                <Label htmlFor="perm-dashboard">Dashboard</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-orders" />
-                                <Label htmlFor="perm-orders">Órdenes</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-kitchen" />
-                                <Label htmlFor="perm-kitchen">Cocina</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-inventory" />
-                                <Label htmlFor="perm-inventory">Inventario</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-delivery" />
-                                <Label htmlFor="perm-delivery">Entregas</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-reports" />
-                                <Label htmlFor="perm-reports">Reportes</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-settings" />
-                                <Label htmlFor="perm-settings">Configuración</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox id="perm-staff" />
-                                <Label htmlFor="perm-staff">Personal</Label>
-                              </div>
-                            </div>
+                  filteredUsers.map((staffUser) => (
+                    <Card key={staffUser.id} className="overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg">{staffUser.name}</CardTitle>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            staffUser.role === 'admin' 
+                              ? 'bg-red-100 text-red-600' 
+                              : staffUser.role === 'manager'
+                              ? 'bg-purple-100 text-purple-600'
+                              : staffUser.role === 'waiter'
+                              ? 'bg-blue-100 text-blue-600'
+                              : staffUser.role === 'kitchen'
+                              ? 'bg-yellow-100 text-yellow-600'
+                              : 'bg-green-100 text-green-600'
+                          }`}>
+                            {getUserRoleLabel(staffUser.role)}
+                          </span>
+                        </div>
+                        <CardDescription className="flex items-center mt-1">
+                          <span className="text-sm truncate">{staffUser.email || 'Sin correo'}</span>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-2">
+                        <div className="flex gap-4 items-center">
+                          <Avatar className="h-16 w-16 border border-border">
+                            <AvatarImage src={staffUser.avatar || ''} />
+                            <AvatarFallback className="text-lg">
+                              {staffUser.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              {staffUser.id === user?.id ? 'Tu cuenta' : 'ID: ' + staffUser.id.substring(0, 8)}
+                            </p>
+                            {staffUser.created_at && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Creado: {new Date(staffUser.created_at).toLocaleDateString()}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <DialogFooter>
-                          <Button type="submit">Crear Rol</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Rol</TableHead>
-                      <TableHead>Permisos</TableHead>
-                      <TableHead>Miembros</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {roles.map(role => {
-                      const memberCount = staffMembers.filter(
-                        staff => staff.role === role.key
-                      ).length;
-                      
-                      return (
-                        <TableRow key={role.id}>
-                          <TableCell className="font-medium">{role.name}</TableCell>
-                          <TableCell>{role.permissions}</TableCell>
-                          <TableCell>{memberCount}</TableCell>
-                          <TableCell className="text-right">
-                            {isAdmin && (
-                              <Button variant="ghost" size="sm" className="gap-1">
-                                Editar <ChevronDown size={14} />
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                      </CardContent>
+                      {canEdit && staffUser.id !== user?.id && (
+                        <CardFooter className="pt-0 flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="flex items-center gap-1"
+                            onClick={() => startEditRole(staffUser)}
+                          >
+                            <UserCog size={16} />
+                            Editar Rol
+                          </Button>
+                        </CardFooter>
+                      )}
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
-
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Editar Empleado</DialogTitle>
-            <DialogDescription>
-              Actualice la información del empleado.
-            </DialogDescription>
-          </DialogHeader>
-          {currentUser && (
-            <div className="grid gap-4 py-4">
-              <div className="flex flex-col items-center gap-2">
-                <Avatar className="h-24 w-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  <AvatarImage src={avatarUrl || currentUser.avatar} />
-                  <AvatarFallback className="text-xl relative group">
-                    {currentUser.name?.split(' ').map((n: string) => n[0]).join('')}
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-full">
-                      <Upload size={20} />
-                    </div>
-                  </AvatarFallback>
-                </Avatar>
-                <input 
-                  type="file" 
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setAvatarFile(file);
-                      setAvatarUrl(URL.createObjectURL(file));
-                    }
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">Haga clic en la imagen para cambiarla</p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Nombre Completo</Label>
-                <Input 
-                  id="edit-name" 
-                  value={currentUser.name}
-                  onChange={(e) => setCurrentUser({...currentUser, name: e.target.value})}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input 
-                  id="edit-email" 
-                  value={currentUser.email}
-                  disabled
-                />
-                <p className="text-xs text-muted-foreground">El email no puede ser cambiado</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveUserEdit}>Guardar Cambios</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 };

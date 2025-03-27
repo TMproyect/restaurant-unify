@@ -26,7 +26,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       return new Promise((resolve) => {
         setTimeout(() => {
           // Use proper Response type for TypeScript
-          resolve(fetch(url as RequestInfo, options as RequestInit));
+          resolve(fetch(url as RequestInfo, options as RequestInit) as Promise<Response>);
         }, 50); // Small delay to ensure operations have time to complete
       });
     },

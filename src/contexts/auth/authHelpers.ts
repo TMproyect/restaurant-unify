@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
+import { mapArrayResponse, mapSingleResponse, prepareInsertData, filterValue } from '@/utils/supabaseHelpers';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
 
@@ -16,7 +16,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('id', filterValue(userId))
       .single();
     
     clearTimeout(timeoutId);
@@ -173,7 +173,7 @@ export const createUserProfile = async (userId: string, name: string, role: User
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')
-      .eq('id', userId)
+      .eq('id', filterValue(userId))
       .single();
     
     if (checkError) {
@@ -202,7 +202,7 @@ export const createUserProfile = async (userId: string, name: string, role: User
       
       const { error } = await supabase
         .from('profiles')
-        .insert(profile);
+        .insert(profile as any);  // Type assertion to bypass TypeScript error
 
       if (error) {
         console.error(`Error creating profile (attempt ${attempts + 1}):`, error);
@@ -264,7 +264,7 @@ export const createUserByAdmin = async (email: string, password: string, name: s
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', data.user.id)
+          .eq('id', filterValue(data.user.id))
           .single();
           
         if (profileError) {
@@ -276,9 +276,8 @@ export const createUserByAdmin = async (email: string, password: string, name: s
           console.log('Verified profile was created:', profileData);
           
           // Additional check: verify the role is correct
-          const profileRole = profileData.role;
-          if (profileRole !== role) {
-            console.log(`Profile created with incorrect role: ${profileRole}, updating to ${role}`);
+          if (profileData.role !== role) {
+            console.log(`Profile created with incorrect role: ${profileData.role}, updating to ${role}`);
             await updateUserRoleById(data.user.id, role);
           }
         } else {
@@ -300,12 +299,12 @@ export const createUserByAdmin = async (email: string, password: string, name: s
 export const updateUserRoleById = async (userId: string, newRole: UserRole) => {
   console.log('Updating user role:', userId, 'to', newRole);
   
-  const roleUpdate = { role: newRole };
+  const roleUpdate = { role: newRole } as any; // Type assertion to bypass TypeScript error
   
   const { error } = await supabase
     .from('profiles')
     .update(roleUpdate)
-    .eq('id', userId);
+    .eq('id', filterValue(userId));
 
   if (error) {
     console.error('Update role error:', error.message);

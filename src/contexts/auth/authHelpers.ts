@@ -43,6 +43,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       email: email,
       role: data.role as UserRole,
       avatar: data.avatar,
+      created_at: data.created_at
     };
   } catch (error) {
     console.error('Error in fetchUserProfile:', error);
@@ -259,6 +260,12 @@ export const createUserByAdmin = async (email: string, password: string, name: s
         if (profileData) {
           profileCreated = true;
           console.log('Verified profile was created:', profileData);
+          
+          // Additional check: verify the role is correct
+          if (profileData.role !== role) {
+            console.log(`Profile created with incorrect role: ${profileData.role}, updating to ${role}`);
+            await updateUserRoleById(data.user.id, role);
+          }
         } else {
           console.log(`Profile not found (attempt ${attempts + 1}), retrying creation...`);
           attempts++;

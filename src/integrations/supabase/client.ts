@@ -23,7 +23,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     },
     // Add a small delay on DB operations to ensure they complete properly
     fetch: (url, options) => {
-      return fetch(url, options);
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(fetch(url, options));
+        }, 50); // Small delay to ensure operations have time to complete
+      });
     },
   },
   realtime: {

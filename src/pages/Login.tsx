@@ -41,7 +41,7 @@ const Login = () => {
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   }, []);
 
-  // Handle redirection - with a small delay to ensure context is fully initialized
+  // CENTRALIZADA: Handle redirection with a small delay to ensure context is fully initialized
   useEffect(() => {
     let redirectTimeout: number | undefined;
     
@@ -52,7 +52,7 @@ const Login = () => {
       redirectTimeout = window.setTimeout(() => {
         console.log("Executing redirect to dashboard now");
         navigate('/dashboard', { replace: true });
-      }, 500);
+      }, 100); // Reduced timeout to 100ms
     }
     
     return () => {
@@ -112,15 +112,7 @@ const Login = () => {
             </TabsList>
             
             <TabsContent value="login">
-              <LoginForm 
-                onSuccess={() => {
-                  console.log("LoginForm success callback executed, preparing to navigate");
-                  // Use a small timeout to ensure state updates have processed
-                  setTimeout(() => {
-                    navigate('/dashboard', { replace: true });
-                  }, 300);
-                }}
-              />
+              <LoginForm />
             </TabsContent>
             
             <TabsContent value="signup">

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -25,7 +24,42 @@ const processProfileData = (data: any, email?: string): AuthUser | null => {
   };
 };
 
-// Export all the functions that AuthContext.tsx expects
+// Export fetchUserProfile to get complete user profile
+export const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
+  try {
+    console.log('Fetching profile for user ID:', userId);
+    
+    // First get the profile
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', filterValue(userId))
+      .single();
+
+    if (error) {
+      console.error('Error in fetchUserProfile:', error.message);
+      throw error;
+    }
+
+    if (!data) {
+      console.error('No profile data found in fetchUserProfile');
+      return null;
+    }
+
+    console.log('Profile data retrieved:', data);
+
+    // Get the user's session to access email
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userEmail = sessionData?.session?.user?.email || '';
+
+    // Return profile with email from auth
+    return processProfileData(data, userEmail);
+  } catch (error: any) {
+    console.error('Error in fetchUserProfile:', error.message);
+    return null;
+  }
+};
+
 export const getProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
     // First get the profile

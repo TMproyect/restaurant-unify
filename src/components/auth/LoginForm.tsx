@@ -8,11 +8,7 @@ import { Label } from '@/components/ui/label';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
-interface LoginFormProps {
-  onSuccess?: () => void;
-}
-
-const LoginForm = ({ onSuccess }: LoginFormProps) => {
+const LoginForm = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,13 +57,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           description: 'Redirigiendo al dashboard...',
         });
         
-        // Dar un pequeño tiempo para que se actualice el estado de autenticación
-        setTimeout(() => {
-          if (onSuccess) {
-            console.log("Ejecutando callback de éxito para redirección");
-            onSuccess();
-          }
-        }, 300);
+        // No redirection here - Login.tsx will handle this
       } else {
         throw new Error('No se recibieron datos de usuario después del login');
       }

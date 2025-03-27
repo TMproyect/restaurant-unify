@@ -27,26 +27,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     // First set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         console.log('Auth state changed:', event, currentSession?.user?.id);
         if (!isMounted) return;
         
         if (currentSession) {
           setSession(currentSession);
-          // Use setTimeout to prevent deadlocks
+          
+          // Important: use setTimeout to prevent deadlocks with Supabase auth
           setTimeout(async () => {
             if (!isMounted) return;
             try {
+              console.log("Fetching user profile after auth state change");
               const profile = await fetchUserProfile(currentSession.user.id);
+              
               if (profile && isMounted) {
-                setUser(profile);
                 console.log("User profile fetched successfully:", profile);
+                setUser(profile);
               } else if (isMounted) {
                 console.error('No profile found for user:', currentSession.user.id);
                 setUser(null);
               }
             } catch (error) {
-              console.error('Error fetching profile:', error);
+              console.error('Error fetching profile after auth state change:', error);
               if (isMounted) setUser(null);
             }
             if (isMounted) setIsLoading(false);
@@ -132,14 +135,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Set session before fetching profile to ensure auth state is updated
       setSession(data.session);
       
-      // Fetch profile but don't make login success dependent on it
+      // Important: Fetch profile to get the user's role and other data
       try {
         console.log("Fetching user profile after login");
         const profile = await fetchUserProfile(data.user.id);
         
         if (profile) {
-          setUser(profile);
           console.log("Profile fetched successfully:", profile);
+          setUser(profile);
         } else {
           console.warn("No profile found after login, using basic user data");
           // Create a minimal user object from auth data if profile fetch fails
@@ -152,7 +155,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (profileError) {
         console.error("Error fetching profile after login:", profileError);
-        // Still consider login successful even if profile fetch fails
+        // Still consider login successful even if profile fetch fails,
+        // but log the error and create a minimal user object
+        setUser({
+          id: data.user.id,
+          name: data.user.user_metadata?.name || 'Usuario',
+          email: data.user.email || '',
+          role: (data.user.user_metadata?.role as UserRole) || 'admin',
+        });
       }
       
       toast.success('Inicio de sesión exitoso');

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -105,8 +106,7 @@ export const signup = async (email: string, name: string, password: string): Pro
         .insert([{ 
           id: userId, 
           name, 
-          role: 'admin' as UserRole,
-          email: email // También guardar el correo en la tabla de perfiles para facilitar el acceso
+          role: 'admin' as UserRole
         }]);
 
       if (profileError) {
@@ -268,7 +268,7 @@ export const updateUserName = async (userId: string, newName: string): Promise<b
   }
 };
 
-// Add a new function to fetch user auth details - usando métodos no administrativos
+// Add a new function to fetch user auth details
 export const getUserAuthData = async (userId: string): Promise<{ email: string } | null> => {
   try {
     // Obtenemos la sesión actual
@@ -289,7 +289,7 @@ export const getUserAuthData = async (userId: string): Promise<{ email: string }
   }
 };
 
-// Updated function to fetch all profiles with email data - sin usar funciones admin
+// Updated function to fetch all profiles with email data
 export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
   try {
     console.log('Fetching all profiles from Supabase...');
@@ -351,42 +351,38 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
   }
 };
 
+// Add new function to create user via the Edge Function
+export const createUserWithEdgeFunction = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<{ user?: any; error?: any }> => {
+  try {
+    console.log(`Creating user with edge function: ${email}, ${name}, ${role}`);
+    
+    const { data, error } = await supabase.functions.invoke('create-user-with-profile', {
+      method: 'POST',
+      body: { email, password, name, role }
+    });
+
+    if (error) {
+      console.error('Error calling edge function:', error);
+      return { error };
+    }
+
+    if (data.error) {
+      console.error('Error from edge function:', data.error);
+      return { error: data.error };
+    }
+
+    console.log('User created successfully via edge function:', data.user);
+    return { user: data.user };
+  } catch (error) {
+    console.error('Exception in createUserWithEdgeFunction:', error);
+    return { error };
+  }
+};
+
 // Add the missing functions that AuthContext.tsx is expecting
 export const fetchUserProfile = getProfile;
 export const signupUser = signup;
 export const createUserProfile = createProfileIfNotExists;
-export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
-  try {
-    // Utilizamos el método estándar de registro en lugar del método admin
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, role }
-      }
-    });
-
-    if (error) {
-      return { error };
-    }
-
-    if (!data || !data.user) {
-      return { error: new Error('No user data returned') };
-    }
-
-    // Create profile for the user
-    await createProfileIfNotExists(data.user.id, { 
-      name, 
-      role, 
-      email 
-    });
-
-    return { user: data.user };
-  } catch (err: any) {
-    console.error('Create user error:', err);
-    return { error: err.message };
-  }
-};
-
+export const createUserByAdmin = createUserWithEdgeFunction; // Replace with the edge function version
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;

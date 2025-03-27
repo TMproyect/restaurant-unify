@@ -226,6 +226,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         safeRole = 'waiter';
       }
       
+      // Use the Edge Function to create user with admin privileges
       const result = await createUserByAdmin(email, password, name, safeRole);
 
       // Handle the user creation result safely

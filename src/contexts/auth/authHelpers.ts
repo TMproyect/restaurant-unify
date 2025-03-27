@@ -68,7 +68,7 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
     }
 
     // Fix: Properly check and type the data and data.user to avoid "never" type issues
-    if (data && data.user && typeof data.user === 'object' && 'id' in data.user) {
+    if (data && data.user && typeof data.user === 'object' && 'id' in data.user && data.user.id) {
       const userId = data.user.id;
       
       const { error: profileError } = await supabase

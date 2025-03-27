@@ -93,6 +93,22 @@ export function processSingleResult<T>(response: { data: any; error: any }, erro
 }
 
 // Type casting for filters
-export function filterValue(value: any): any {
+export function filterValue<T>(value: T): T {
   return value; // This bypasses type issues with filter parameters
+}
+
+// Helper function to safely check for properties on possibly error objects
+export function safetyCheck<T, K extends keyof T>(obj: any, property: K, fallback: T[K]): T[K] {
+  if (obj && 
+      typeof obj === 'object' && 
+      !('error' in obj) && 
+      property in obj) {
+    return obj[property as string] as T[K];
+  }
+  return fallback;
+}
+
+// Alternative implementation of filterValue for boolean specifically
+export function filterBooleanValue(value: boolean): any {
+  return value as any; // Cast to any to bypass type checking for boolean filters
 }

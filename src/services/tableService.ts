@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { RestaurantTable, TableZone } from '@/types/tables';
+import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
 
 // Funciones para mesas
 export const getRestaurantTables = async (): Promise<RestaurantTable[]> => {
@@ -14,14 +15,14 @@ export const getRestaurantTables = async (): Promise<RestaurantTable[]> => {
     throw new Error(error.message);
   }
 
-  return data || [];
+  return mapArrayResponse<RestaurantTable>(data, 'Failed to map restaurant tables');
 };
 
 export const getTableById = async (id: string): Promise<RestaurantTable> => {
   const { data, error } = await supabase
     .from('restaurant_tables')
     .select('*')
-    .eq('id', id)
+    .eq('id', filterValue(id))
     .single();
 
   if (error) {
@@ -29,13 +30,13 @@ export const getTableById = async (id: string): Promise<RestaurantTable> => {
     throw new Error(error.message);
   }
 
-  return data;
+  return mapSingleResponse<RestaurantTable>(data, 'Failed to map table');
 };
 
 export const addRestaurantTable = async (table: Omit<RestaurantTable, 'id' | 'created_at' | 'updated_at'>): Promise<RestaurantTable> => {
   const { data, error } = await supabase
     .from('restaurant_tables')
-    .insert([table])
+    .insert([table as any])
     .select()
     .single();
 
@@ -44,7 +45,7 @@ export const addRestaurantTable = async (table: Omit<RestaurantTable, 'id' | 'cr
     throw new Error(error.message);
   }
 
-  return data;
+  return mapSingleResponse<RestaurantTable>(data, 'Failed to map new table');
 };
 
 export const updateRestaurantTable = async (
@@ -59,8 +60,8 @@ export const updateRestaurantTable = async (
 
   const { data, error } = await supabase
     .from('restaurant_tables')
-    .update(updates)
-    .eq('id', id)
+    .update(updates as any)
+    .eq('id', filterValue(id))
     .select()
     .single();
 
@@ -69,14 +70,14 @@ export const updateRestaurantTable = async (
     throw new Error(error.message);
   }
 
-  return data;
+  return mapSingleResponse<RestaurantTable>(data, 'Failed to map updated table');
 };
 
 export const deleteRestaurantTable = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('restaurant_tables')
     .delete()
-    .eq('id', id);
+    .eq('id', filterValue(id));
 
   if (error) {
     console.error('Error deleting restaurant table:', error);
@@ -96,14 +97,14 @@ export const getTableZones = async (): Promise<TableZone[]> => {
     throw new Error(error.message);
   }
 
-  return data || [];
+  return mapArrayResponse<TableZone>(data, 'Failed to map table zones');
 };
 
 export const getZoneById = async (id: string): Promise<TableZone> => {
   const { data, error } = await supabase
     .from('table_zones')
     .select('*')
-    .eq('id', id)
+    .eq('id', filterValue(id))
     .single();
 
   if (error) {
@@ -111,13 +112,13 @@ export const getZoneById = async (id: string): Promise<TableZone> => {
     throw new Error(error.message);
   }
 
-  return data;
+  return mapSingleResponse<TableZone>(data, 'Failed to map zone');
 };
 
 export const addTableZone = async (zone: Omit<TableZone, 'id' | 'created_at'>): Promise<TableZone> => {
   const { data, error } = await supabase
     .from('table_zones')
-    .insert([zone])
+    .insert([zone as any])
     .select()
     .single();
 
@@ -126,7 +127,7 @@ export const addTableZone = async (zone: Omit<TableZone, 'id' | 'created_at'>): 
     throw new Error(error.message);
   }
 
-  return data;
+  return mapSingleResponse<TableZone>(data, 'Failed to map new zone');
 };
 
 export const updateTableZone = async (
@@ -135,8 +136,8 @@ export const updateTableZone = async (
 ): Promise<TableZone> => {
   const { data, error } = await supabase
     .from('table_zones')
-    .update(zone)
-    .eq('id', id)
+    .update(zone as any)
+    .eq('id', filterValue(id))
     .select()
     .single();
 
@@ -145,14 +146,14 @@ export const updateTableZone = async (
     throw new Error(error.message);
   }
 
-  return data;
+  return mapSingleResponse<TableZone>(data, 'Failed to map updated zone');
 };
 
 export const deleteTableZone = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('table_zones')
     .delete()
-    .eq('id', id);
+    .eq('id', filterValue(id));
 
   if (error) {
     console.error('Error deleting table zone:', error);

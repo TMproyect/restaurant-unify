@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import OrderCart from './OrderCart';
 import { supabase } from '@/integrations/supabase/client';
-import { filterValue, mapArrayResponse } from '@/utils/supabaseHelpers';
+import { filterValue, filterBooleanValue, mapArrayResponse } from '@/utils/supabaseHelpers';
 
 interface MenuItem {
   id: string;
@@ -56,8 +57,8 @@ const OrderTaking = ({
         query = query.eq('category_id', filterValue(categoryId));
       }
       
-      // Only show available items
-      query = query.eq('available', true);
+      // Only show available items - using our custom filterBooleanValue helper
+      query = query.eq('available', filterBooleanValue(true));
       
       const { data, error } = await query;
       
@@ -136,8 +137,8 @@ const OrderTaking = ({
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           ) : (
-            categories.map(category => (
-              <TabsContent key={category.id} value={category.id} className="mt-0">
+            <>
+              <TabsContent value="all" className="mt-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredMenuItems.map(item => (
                     <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow">
@@ -155,17 +156,41 @@ const OrderTaking = ({
                   ))}
                 </div>
               </TabsContent>
-            ))
+              
+              {categories.map(category => (
+                <TabsContent key={category.id} value={category.id} className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredMenuItems.map(item => (
+                      <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <CardTitle>{item.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                          <p className="text-lg font-bold mt-2">${item.price.toFixed(2)}</p>
+                        </CardContent>
+                        <CardFooter className="justify-end">
+                          <Button size="sm" onClick={() => addToCart(item)}>Agregar</Button>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+              ))}
+            </>
           )}
         </Tabs>
       </div>
       <div className="w-1/3 p-4">
         <OrderCart 
-          cartItems={cartItems} 
-          removeFromCart={removeFromCart} 
-          clearCart={clearCart}
+          items={cartItems} 
+          onRemoveItem={(id) => removeFromCart(menuItems.find(item => item.id === id) as MenuItem)}
+          onUpdateQuantity={(id, quantity) => console.log(id, quantity)}
+          onSendToKitchen={onOrderComplete}
+          selectedKitchen={'main'}
+          onSelectKitchen={(kitchenId) => console.log(kitchenId)}
+          kitchenOptions={[{id: 'main', name: 'Principal'}]}
           tableId={tableId}
-          onOrderComplete={onOrderComplete}
         />
       </div>
     </div>

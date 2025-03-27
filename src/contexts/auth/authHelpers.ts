@@ -1,325 +1,228 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse, mapSingleResponse, prepareInsertData, filterValue } from '@/utils/supabaseHelpers';
-import { AuthUser, UserRole } from './types';
-import { toast } from 'sonner';
+import { UserProfile, UserRole, AuthError } from './types';
+import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
 
-// Fetch user profile data
-export const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
+export const getProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
-    console.log('Fetching profile for user:', userId);
-    
-    // Add a timeout for the fetch request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', filterValue(userId))
       .single();
-    
-    clearTimeout(timeoutId);
 
     if (error) {
-      console.error('Error fetching user profile:', error);
-      return null;
+      throw error;
     }
 
     if (!data) {
-      console.error('No profile data found for user:', userId);
       return null;
     }
 
-    const sessionResponse = await supabase.auth.getSession();
-    const email = sessionResponse.data.session?.user?.id === userId 
-      ? sessionResponse.data.session?.user?.email || ''
-      : '';
-    
-    console.log('Profile data found:', data);
-    
-    // Create AuthUser object manually with proper typing
-    const authUser: AuthUser = {
-      id: data.id,
-      name: data.name,
-      email: email,
-      role: data.role as UserRole,
-      avatar: data.avatar,
-      created_at: data.created_at
+    return {
+      id: safetyCheck<UserProfile, 'id'>(data, 'id', ''),
+      name: safetyCheck<UserProfile, 'name'>(data, 'name', ''),
+      // For enum types, provide a default value from the enum
+      role: safetyCheck<UserProfile, 'role'>(data, 'role', 'user' as UserRole),
+      avatar: safetyCheck<UserProfile, 'avatar'>(data, 'avatar', null),
+      created_at: safetyCheck<UserProfile, 'created_at'>(data, 'created_at', '')
     };
-    
-    return authUser;
   } catch (error) {
-    console.error('Error in fetchUserProfile:', error);
+    const authError = error as AuthError;
+    console.error('Error fetching profile:', authError);
     return null;
   }
 };
 
-// Fetch all user profiles with improved reliability
-export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
+export const login = async (email: string): Promise<{ user: any } | { error: any }> => {
   try {
-    console.log('Fetching all profiles...');
-    
-    // First get all profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-      
-    if (profilesError) {
-      console.error('Error fetching all profiles:', profilesError);
-      return [];
+    const { data, error } = await supabase.auth.signInWithOtp({ email });
+    if (error) {
+      return { error };
     }
-
-    if (!profilesData || profilesData.length === 0) {
-      console.warn('No profiles found in database');
-      return [];
-    }
-    
-    console.log('Fetched profiles:', profilesData.length);
-    
-    // Get current user's session to extract their email
-    const sessionResponse = await supabase.auth.getSession();
-    const currentUserEmail = sessionResponse.data.session?.user?.email;
-    const currentUserId = sessionResponse.data.session?.user?.id;
-    
-    // Map profiles to AuthUser objects
-    const users: AuthUser[] = profilesData.map(profile => {
-      // For the current user, we know the email from the session
-      const email = profile.id === currentUserId ? currentUserEmail || '' : '';
-      
-      return {
-        id: profile.id,
-        name: profile.name,
-        email: email,
-        role: profile.role as UserRole, 
-        avatar: profile.avatar,
-        created_at: profile.created_at // Make sure we grab the creation date
-      };
-    });
-    
-    console.log('Processed users with emails:', users);
-    
-    return users;
-  } catch (error) {
-    console.error('Error in fetchAllProfiles:', error);
-    return [];
+    return { user: data.user };
+  } catch (err: any) {
+    console.error('Login error:', err);
+    return { error: err.message };
   }
 };
 
-// Login helper
-export const loginUser = async (email: string, password: string) => {
+export const signup = async (email: string, name: string): Promise<{ user: any } | { error: any }> => {
   try {
-    console.log('Attempting to login with email:', email);
-    
-    if (!email || !password) {
-      throw new Error("Email and password are required");
-    }
-    
-    // Use a simple direct login approach for reliability
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithOtp({ email });
 
     if (error) {
-      console.error('Login error from Supabase:', error.message);
+      return { error };
+    }
+
+    // Create a user profile after successful signup
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([{ id: data.user?.id, name, email }]);
+
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+      return { error: profileError };
+    }
+
+    return { user: data.user };
+  } catch (err: any) {
+    console.error('Signup error:', err);
+    return { error: err.message };
+  }
+};
+
+export const refreshProfile = async (user: any): Promise<UserProfile | null> => {
+  if (!user || !user.id) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', filterValue(user.id))
+      .single();
+
+    if (error) {
       throw error;
     }
 
-    if (!data || !data.user) {
-      console.error('No user returned from login');
-      throw new Error('No se pudo iniciar sesión');
+    if (!data) {
+      return null;
     }
 
-    console.log('Supabase login successful, user ID:', data.user.id);
-    console.log('Session exists:', !!data.session);
-    
-    return data;
+    const profile: UserProfile = {
+      id: safetyCheck<UserProfile, 'id'>(data, 'id', ''),
+      name: safetyCheck<UserProfile, 'name'>(data, 'name', ''),
+      role: safetyCheck<UserProfile, 'role'>(data, 'role', 'user' as UserRole),
+      avatar: safetyCheck<UserProfile, 'avatar'>(data, 'avatar', null),
+      created_at: safetyCheck<UserProfile, 'created_at'>(data, 'created_at', '')
+    };
+
+    return profile;
   } catch (error) {
-    console.error('Error in loginUser helper function:', error);
-    throw error;
+    console.error('Error refreshing profile:', error);
+    return null;
   }
 };
 
-// Signup helper
-export const signupUser = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        name,
-        role,
-      },
-      emailRedirectTo: `${window.location.origin}/login`,
-    },
-  });
-
-  if (error) {
-    console.error('Signup error:', error.message);
-    throw error;
-  }
-
-  return data;
-};
-
-// Create profile helper
-export const createUserProfile = async (userId: string, name: string, role: UserRole) => {
-  console.log('Creating user profile for:', userId, name, role);
-  
+export const logout = async (): Promise<void> => {
   try {
-    // Verificamos si el perfil ya existe antes de crearlo
-    const { data: existingProfile, error: checkError } = await supabase
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
+
+export const createProfileIfNotExists = async (userId: string, userData: { name: string; role?: UserRole }): Promise<UserProfile | null> => {
+  try {
+    // First, check if profile already exists
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('*')
       .eq('id', filterValue(userId))
       .single();
-    
-    if (checkError) {
-      if (checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error checking for existing profile:', checkError);
-      }
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // Not found error code
+      throw fetchError;
     }
-    
+
     if (existingProfile) {
-      console.log('Profile already exists for user:', userId);
-      return;
-    }
-    
-    // Add retry logic to ensure the profile is created
-    let attempts = 0;
-    const maxAttempts = 3;
-    let success = false;
-    
-    while (attempts < maxAttempts && !success) {
-      const profile = {
-        id: userId,
-        name,
-        role,
-        created_at: new Date().toISOString() // Explicitly set creation date
+      // Profile exists, return it
+      return {
+        id: safetyCheck<UserProfile, 'id'>(existingProfile, 'id', ''),
+        name: safetyCheck<UserProfile, 'name'>(existingProfile, 'name', ''),
+        role: safetyCheck<UserProfile, 'role'>(existingProfile, 'role', 'user' as UserRole),
+        avatar: safetyCheck<UserProfile, 'avatar'>(existingProfile, 'avatar', null),
+        created_at: safetyCheck<UserProfile, 'created_at'>(existingProfile, 'created_at', '')
       };
-      
-      const { error } = await supabase
-        .from('profiles')
-        .insert(profile as any);  // Type assertion to bypass TypeScript error
-
-      if (error) {
-        console.error(`Error creating profile (attempt ${attempts + 1}):`, error);
-        attempts++;
-        if (attempts >= maxAttempts) {
-          toast.error('Error al crear el perfil de usuario: ' + error.message);
-          throw error;
-        }
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        console.log('Profile created successfully for user:', userId);
-        success = true;
-      }
     }
+
+    // Profile doesn't exist, create it
+    const now = new Date().toISOString();
+    const newProfile = {
+      id: userId,
+      name: userData.name,
+      role: userData.role || 'user',
+      created_at: now
+    };
+
+    const { data: createdProfile, error: createError } = await supabase
+      .from('profiles')
+      .insert([newProfile as any])
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
+
+    // Return the newly created profile
+    return {
+      id: safetyCheck<UserProfile, 'id'>(createdProfile, 'id', ''),
+      name: safetyCheck<UserProfile, 'name'>(createdProfile, 'name', ''),
+      role: safetyCheck<UserProfile, 'role'>(createdProfile, 'role', 'user' as UserRole),
+      avatar: safetyCheck<UserProfile, 'avatar'>(createdProfile, 'avatar', null),
+      created_at: safetyCheck<UserProfile, 'created_at'>(createdProfile, 'created_at', '')
+    };
   } catch (error) {
-    console.error('Error in createUserProfile:', error);
-    throw error;
+    console.error('Error creating profile:', error);
+    return null;
   }
 };
 
-// Crear usuario sin usar admin API
-export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
-  console.log('Creating new user with role:', role);
-  
-  // En lugar de usar la API admin, usamos el registro normal
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        name,
-        role,
-      },
-      emailRedirectTo: `${window.location.origin}/login`,
-    },
-  });
+export const getRoleFromProfile = async (userId: string): Promise<UserRole | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', filterValue(userId))
+      .single();
 
-  if (error) {
-    console.error('Create user error:', error.message);
-    toast.error('Error al crear el usuario: ' + error.message);
-    throw error;
-  }
-
-  // En un entorno real, necesitaríamos una función edge para esto
-  // pero por ahora simplemente creamos el perfil para el usuario
-  if (data.user) {
-    try {
-      // Wait a small amount of time to allow the auth user to be fully created
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await createUserProfile(data.user.id, name, role);
-      
-      // Verify profile was created and retry if needed
-      let profileCreated = false;
-      let attempts = 0;
-      const maxAttempts = 3;
-      
-      while (!profileCreated && attempts < maxAttempts) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', filterValue(data.user.id))
-          .single();
-          
-        if (profileError) {
-          console.error(`Error checking profile (attempt ${attempts + 1}):`, profileError);
-        }
-          
-        if (profileData) {
-          profileCreated = true;
-          console.log('Verified profile was created:', profileData);
-          
-          // Additional check: verify the role is correct
-          if (profileData.role !== role) {
-            console.log(`Profile created with incorrect role: ${profileData.role}, updating to ${role}`);
-            await updateUserRoleById(data.user.id, role);
-          }
-        } else {
-          console.log(`Profile not found (attempt ${attempts + 1}), retrying creation...`);
-          attempts++;
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          await createUserProfile(data.user.id, name, role);
-        }
-      }
-    } catch (profileError) {
-      console.error('Error creating profile after signup:', profileError);
+    if (error) {
+      throw error;
     }
-  }
 
-  return data;
-};
-
-// Update user role helper
-export const updateUserRoleById = async (userId: string, newRole: UserRole) => {
-  console.log('Updating user role:', userId, 'to', newRole);
-  
-  const roleUpdate = { role: newRole } as any; // Type assertion to bypass TypeScript error
-  
-  const { error } = await supabase
-    .from('profiles')
-    .update(roleUpdate)
-    .eq('id', filterValue(userId));
-
-  if (error) {
-    console.error('Update role error:', error.message);
-    toast.error('Error al actualizar el rol: ' + error.message);
-    throw error;
+    const role = safetyCheck<{ role: UserRole }, 'role'>(data, 'role', 'user' as UserRole);
+    return role === 'admin' ? 'admin' : role === 'staff' ? 'staff' : 'user';
+  } catch (error) {
+    console.error('Error getting role:', error);
+    return null;
   }
 };
 
-// Logout helper
-export const logoutUser = async () => {
-  console.log('Logging out user');
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    console.error('Logout error:', error.message);
-    throw error;
+export const updateUserRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole } as any)
+      .eq('id', filterValue(userId));
+
+    if (error) {
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return false;
   }
-  console.log('Logout successful');
+};
+
+export const updateUserName = async (userId: string, newName: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name: newName } as any)
+      .eq('id', filterValue(userId));
+
+    if (error) {
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating user name:', error);
+    return false;
+  }
 };

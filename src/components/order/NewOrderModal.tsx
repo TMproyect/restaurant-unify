@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from 'sonner';
 import { RestaurantTable } from '@/types/tables';
 import { supabase } from '@/integrations/supabase/client';
 import { filterValue, mapArrayResponse } from '@/utils/supabaseHelpers';
+import OrderTaking from './OrderTaking';
 
 interface NewOrderModalProps {
   open: boolean;
@@ -24,7 +27,6 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
   const [orderStep, setOrderStep] = useState<'details' | 'items'>('details');
-  const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
@@ -170,8 +172,6 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
           <div className="p-6">
             <OrderTaking 
               tableId={selectedTable}
-              tableNumber={tableNumber} 
-              customerName={customerName}
               onOrderComplete={handleOrderComplete}
             />
           </div>

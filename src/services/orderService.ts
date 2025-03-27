@@ -106,10 +106,16 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
       return null;
     }
     
+    const orderResult = mapSingleResponse<Order>(newOrder, 'Failed to map new order data');
+    if (!orderResult || !orderResult.id) {
+      console.error('Error mapping order data or missing order ID');
+      return null;
+    }
+    
     // Then, create the order items
     if (items.length > 0) {
       const orderItems = items.map(item => ({
-        order_id: newOrder.id,
+        order_id: orderResult.id,
         menu_item_id: item.menu_item_id,
         name: item.name,
         price: item.price,
@@ -127,7 +133,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
       }
     }
 
-    return mapSingleResponse<Order>(newOrder, 'Failed to map new order data');
+    return orderResult;
   } catch (error) {
     console.error('Error creating order:', error);
     return null;

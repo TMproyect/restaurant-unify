@@ -22,11 +22,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'Content-Type': 'application/json',
     },
     // Add a small delay on DB operations to ensure they complete properly
-    fetch: (url, options) => {
+    fetch: (url: RequestInfo | URL, options?: RequestInit) => {
       return new Promise((resolve) => {
         setTimeout(() => {
           // Use proper Response type for TypeScript
-          resolve(fetch(url as RequestInfo, options as RequestInit) as Promise<Response>);
+          resolve(fetch(url, options));
         }, 50); // Small delay to ensure operations have time to complete
       });
     },

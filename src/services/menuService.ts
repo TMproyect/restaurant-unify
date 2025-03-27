@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
 
 export interface MenuCategory {
   id: string;
@@ -36,7 +37,7 @@ export const fetchMenuCategories = async (): Promise<MenuCategory[]> => {
     }
 
     console.log('Menu categories fetched:', data);
-    return data || [];
+    return mapArrayResponse<MenuCategory>(data, 'Failed to map menu categories');
   } catch (error) {
     console.error('Error in fetchMenuCategories:', error);
     toast.error('Error al cargar las categorías del menú');
@@ -49,7 +50,7 @@ export const createMenuCategory = async (category: { name: string, icon?: string
     console.log('Creating menu category:', category);
     const { data, error } = await supabase
       .from('menu_categories')
-      .insert([category])
+      .insert([category as any])
       .select()
       .single();
 
@@ -59,7 +60,7 @@ export const createMenuCategory = async (category: { name: string, icon?: string
     }
 
     console.log('Menu category created:', data);
-    return data;
+    return mapSingleResponse<MenuCategory>(data, 'Failed to map created category');
   } catch (error) {
     console.error('Error in createMenuCategory:', error);
     toast.error('Error al crear la categoría');
@@ -72,8 +73,8 @@ export const updateMenuCategory = async (id: string, updates: Partial<MenuCatego
     console.log('Updating menu category:', id, updates);
     const { data, error } = await supabase
       .from('menu_categories')
-      .update(updates)
-      .eq('id', id)
+      .update(updates as any)
+      .eq('id', filterValue(id))
       .select()
       .single();
 
@@ -83,7 +84,7 @@ export const updateMenuCategory = async (id: string, updates: Partial<MenuCatego
     }
 
     console.log('Menu category updated:', data);
-    return data;
+    return mapSingleResponse<MenuCategory>(data, 'Failed to map updated category');
   } catch (error) {
     console.error('Error in updateMenuCategory:', error);
     toast.error('Error al actualizar la categoría');
@@ -97,7 +98,7 @@ export const deleteMenuCategory = async (id: string): Promise<boolean> => {
     const { error } = await supabase
       .from('menu_categories')
       .delete()
-      .eq('id', id);
+      .eq('id', filterValue(id));
 
     if (error) {
       console.error('Error deleting menu category:', error);
@@ -125,7 +126,7 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
       throw error;
     }
 
-    return data || [];
+    return mapArrayResponse<MenuItem>(data, 'Failed to map menu items');
   } catch (error) {
     console.error('Error in fetchMenuItems:', error);
     toast.error('Error al cargar los elementos del menú');
@@ -137,7 +138,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   try {
     const { data, error } = await supabase
       .from('menu_items')
-      .insert([item])
+      .insert([item as any])
       .select()
       .single();
 
@@ -146,7 +147,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
       throw error;
     }
 
-    return data;
+    return mapSingleResponse<MenuItem>(data, 'Failed to map created menu item');
   } catch (error) {
     console.error('Error in createMenuItem:', error);
     toast.error('Error al crear el elemento del menú');
@@ -156,10 +157,15 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
 
 export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
   try {
+    const updatesWithTimestamp = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('menu_items')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id)
+      .update(updatesWithTimestamp as any)
+      .eq('id', filterValue(id))
       .select()
       .single();
 
@@ -168,7 +174,7 @@ export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Pr
       throw error;
     }
 
-    return data;
+    return mapSingleResponse<MenuItem>(data, 'Failed to map updated menu item');
   } catch (error) {
     console.error('Error in updateMenuItem:', error);
     toast.error('Error al actualizar el elemento del menú');
@@ -181,7 +187,7 @@ export const deleteMenuItem = async (id: string): Promise<boolean> => {
     const { error } = await supabase
       .from('menu_items')
       .delete()
-      .eq('id', id);
+      .eq('id', filterValue(id));
 
     if (error) {
       console.error('Error deleting menu item:', error);

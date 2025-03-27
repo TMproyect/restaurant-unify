@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -56,11 +55,27 @@ const Staff: React.FC = () => {
     }
   };
 
-  // Adding the form hook
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<StaffFormValues>();
   const editForm = useForm<EditRoleValues>();
 
-  // Load users on mount
+  const fetchUserById = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', filterValue(id))
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      toast.error('Error al cargar el usuario');
+      return null;
+    }
+  };
+
   useEffect(() => {
     loadUsers();
   }, []);
@@ -100,7 +115,6 @@ const Staff: React.FC = () => {
     try {
       setIsSubmitting(true);
       await updateUserRole(currentUserEdit.id, data.role);
-      // Update local state after successful API call
       setUsers(users.map(u => 
         u.id === currentUserEdit.id 
           ? { ...u, role: data.role }
@@ -128,24 +142,20 @@ const Staff: React.FC = () => {
     try {
       setUploading(true);
       
-      // Generate a unique file name
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${currentUserEdit.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
       
-      // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, avatarFile);
         
       if (uploadError) throw uploadError;
       
-      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
         
-      // Update the user's avatar in the profiles table
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar: publicUrl } as any)
@@ -153,14 +163,12 @@ const Staff: React.FC = () => {
         
       if (updateError) throw updateError;
       
-      // Update the local state
       setUsers(users.map(u => 
         u.id === currentUserEdit.id 
           ? { ...u, avatar: publicUrl }
           : u
       ));
       
-      // Set the avatar URL for preview
       setAvatarUrl(publicUrl);
       
       toast.success('Avatar actualizado correctamente');
@@ -172,7 +180,6 @@ const Staff: React.FC = () => {
     }
   };
 
-  // Filter users based on the selected tab
   const filteredUsers = tab === 'all' 
     ? users 
     : users.filter(u => u.role === tab);

@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { filterValue, mapArrayResponse, mapSingleResponse } from "@/utils/supabaseHelpers";
 
 export interface InventoryItem {
   id: string;
@@ -29,7 +30,7 @@ export const fetchInventoryItems = async (): Promise<InventoryItem[]> => {
     .select('*, category:category_id(id, name)');
     
   if (error) throw error;
-  return data;
+  return mapArrayResponse<InventoryItem>(data, 'Failed to fetch inventory items');
 };
 
 // Fetch inventory categories
@@ -39,30 +40,30 @@ export const fetchInventoryCategories = async (): Promise<InventoryCategory[]> =
     .select('*');
     
   if (error) throw error;
-  return data;
+  return mapArrayResponse<InventoryCategory>(data, 'Failed to fetch inventory categories');
 };
 
 // Create a new inventory item
 export const createInventoryItem = async (item: Omit<InventoryItem, 'id' | 'created_at'>): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
-    .insert(item)
+    .insert([item as any])
     .select();
     
   if (error) throw error;
-  return data[0];
+  return mapSingleResponse<InventoryItem>(data[0], 'Failed to create inventory item');
 };
 
 // Update an inventory item
 export const updateInventoryItem = async (id: string, updates: Partial<Omit<InventoryItem, 'id' | 'created_at'>>): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
-    .update(updates)
-    .eq('id', id)
+    .update(updates as any)
+    .eq('id', filterValue(id))
     .select();
     
   if (error) throw error;
-  return data[0];
+  return mapSingleResponse<InventoryItem>(data[0], 'Failed to update inventory item');
 };
 
 // Delete an inventory item
@@ -70,7 +71,7 @@ export const deleteInventoryItem = async (id: string): Promise<boolean> => {
   const { error } = await supabase
     .from('inventory_items')
     .delete()
-    .eq('id', id);
+    .eq('id', filterValue(id));
     
   if (error) throw error;
   return true;
@@ -80,35 +81,35 @@ export const deleteInventoryItem = async (id: string): Promise<boolean> => {
 export const updateInventoryItemStock = async (id: string, newQuantity: number): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
-    .update({ stock_quantity: newQuantity })
-    .eq('id', id)
+    .update({ stock_quantity: newQuantity } as any)
+    .eq('id', filterValue(id))
     .select();
     
   if (error) throw error;
-  return data[0];
+  return mapSingleResponse<InventoryItem>(data[0], 'Failed to update inventory stock');
 };
 
 // Create a new inventory category
 export const createInventoryCategory = async (name: string): Promise<InventoryCategory> => {
   const { data, error } = await supabase
     .from('inventory_categories')
-    .insert({ name })
+    .insert([{ name } as any])
     .select();
     
   if (error) throw error;
-  return data[0];
+  return mapSingleResponse<InventoryCategory>(data[0], 'Failed to create inventory category');
 };
 
 // Update an inventory category
 export const updateInventoryCategory = async (id: string, name: string): Promise<InventoryCategory> => {
   const { data, error } = await supabase
     .from('inventory_categories')
-    .update({ name })
-    .eq('id', id)
+    .update({ name } as any)
+    .eq('id', filterValue(id))
     .select();
     
   if (error) throw error;
-  return data[0];
+  return mapSingleResponse<InventoryCategory>(data[0], 'Failed to update inventory category');
 };
 
 // Delete an inventory category
@@ -116,7 +117,7 @@ export const deleteInventoryCategory = async (id: string): Promise<boolean> => {
   const { error } = await supabase
     .from('inventory_categories')
     .delete()
-    .eq('id', id);
+    .eq('id', filterValue(id));
     
   if (error) throw error;
   return true;
@@ -131,7 +132,7 @@ export const getLowStockItems = async (): Promise<InventoryItem[]> => {
     .gt('stock_quantity', 0);
     
   if (error) throw error;
-  return data;
+  return mapArrayResponse<InventoryItem>(data, 'Failed to get low stock items');
 };
 
 // Get out of stock items
@@ -142,5 +143,5 @@ export const getOutOfStockItems = async (): Promise<InventoryItem[]> => {
     .lte('stock_quantity', 0);
     
   if (error) throw error;
-  return data;
+  return mapArrayResponse<InventoryItem>(data, 'Failed to get out of stock items');
 };

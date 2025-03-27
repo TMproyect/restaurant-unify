@@ -1,154 +1,178 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
+import { mapArrayResponse, mapSingleResponse, prepareInsertData } from '@/utils/supabaseHelpers';
+
+export interface Order {
+  id?: string;
+  table_number: number;
+  customer_name: string;
+  status: string;
+  total: number;
+  items_count: number;
+  is_delivery: boolean;
+  table_id?: string;
+  kitchen_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface OrderItem {
   id?: string;
   order_id?: string;
-  menu_item_id?: string;
+  menu_item_id: string;
   name: string;
   price: number;
   quantity: number;
-  notes?: string;
-}
-
-export interface Order {
-  id?: string;
-  table_id?: string;
-  table_number?: number;
-  customer_name: string;
-  status: string; // Changed from union type to string to match database response
-  total: number;
-  items_count: number;
-  is_delivery: boolean;
-  kitchen_id?: string;
+  notes: string;
   created_at?: string;
-  updated_at?: string;
-  items?: OrderItem[];
 }
 
-// Obtener todas las órdenes
-export const getOrders = async () => {
+// Get all orders
+export const getOrders = async (): Promise<Order[]> => {
   try {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data;
+    if (error) {
+      console.error('Error fetching orders:', error);
+      return [];
+    }
+
+    return mapArrayResponse<Order>(data, 'Failed to map orders data');
   } catch (error) {
-    console.error('Error obteniendo órdenes:', error);
-    toast.error('Error al cargar las órdenes');
+    console.error('Error getting orders:', error);
     return [];
   }
 };
 
-// Obtener una orden específica con sus items
-export const getOrderWithItems = async (orderId: string) => {
+// Get specific order with items
+export const getOrderWithItems = async (orderId: string): Promise<{ order: Order | null, items: OrderItem[] }> => {
   try {
-    // Obtener la orden
-    const { data: order, error: orderError } = await supabase
+    // Get order
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select('*')
       .eq('id', orderId)
       .single();
 
-    if (orderError) throw orderError;
+    if (orderError) {
+      console.error('Error fetching order:', orderError);
+      return { order: null, items: [] };
+    }
 
-    // Obtener los items de la orden
-    const { data: items, error: itemsError } = await supabase
+    // Get order items
+    const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('*')
       .eq('order_id', orderId);
 
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      console.error('Error fetching order items:', itemsError);
+      return { 
+        order: mapSingleResponse<Order>(orderData, 'Failed to map order data'), 
+        items: [] 
+      };
+    }
 
-    return { ...order, items };
+    return {
+      order: mapSingleResponse<Order>(orderData, 'Failed to map order data'),
+      items: mapArrayResponse<OrderItem>(itemsData, 'Failed to map order items')
+    };
   } catch (error) {
-    console.error('Error obteniendo orden con items:', error);
-    toast.error('Error al cargar los detalles de la orden');
-    return null;
+    console.error('Error getting order with items:', error);
+    return { order: null, items: [] };
   }
 };
 
-// Crear una nueva orden con sus items
-export const createOrder = async (order: Order, items: OrderItem[]) => {
+// Create a new order with items
+export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'updated_at'>, items: Omit<OrderItem, 'id' | 'order_id' | 'created_at'>[]): Promise<Order | null> => {
   try {
-    // Insertar la orden primero
-    const { data: orderData, error: orderError } = await supabase
+    // First, create the order
+    const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .insert({
-        table_id: order.table_id,
-        table_number: order.table_number,
-        customer_name: order.customer_name,
-        status: order.status,
-        total: order.total,
-        items_count: items.length,
-        is_delivery: order.is_delivery,
-        kitchen_id: order.kitchen_id
-      })
+      .insert(prepareInsertData(orderData))
       .select()
       .single();
 
-    if (orderError) throw orderError;
+    if (orderError) {
+      console.error('Error creating order:', orderError);
+      return null;
+    }
 
-    // Luego insertar los items de la orden
-    const orderItems = items.map(item => ({
-      order_id: orderData.id,
-      menu_item_id: item.menu_item_id,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-      notes: item.notes
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) throw itemsError;
-
-    return orderData;
-  } catch (error) {
-    console.error('Error creando orden:', error);
-    toast.error('Error al crear la orden');
-    return null;
-  }
-};
-
-// Actualizar el estado de una orden
-export const updateOrderStatus = async (orderId: string, status: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select()
-      .single();
-
-    if (error) throw error;
+    if (!newOrder) {
+      console.error('No data returned from order creation');
+      return null;
+    }
     
-    toast.success(`Orden actualizada a "${status}"`);
-    return data;
+    // Then, create the order items
+    if (items.length > 0) {
+      const orderItems = items.map(item => ({
+        order_id: newOrder.id,
+        menu_item_id: item.menu_item_id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        notes: item.notes
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Error creating order items:', itemsError);
+        // We don't return null here because the order was created successfully
+      }
+    }
+
+    return mapSingleResponse<Order>(newOrder, 'Failed to map new order data');
   } catch (error) {
-    console.error('Error actualizando estado de orden:', error);
-    toast.error('Error al actualizar el estado de la orden');
+    console.error('Error creating order:', error);
     return null;
   }
 };
 
-// Suscribirse a cambios en órdenes en tiempo real
+// Update order status
+export const updateOrderStatus = async (orderId: string, status: string): Promise<boolean> => {
+  try {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('orders')
+      .update({ 
+        status: status,
+        updated_at: now
+      })
+      .eq('id', orderId);
+
+    if (error) {
+      console.error('Error updating order status:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    return false;
+  }
+};
+
+// Subscribe to order changes
 export const subscribeToOrders = (callback: (payload: any) => void) => {
   const channel = supabase
-    .channel('orders-changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'orders'
-    }, callback)
+    .channel('orders-channel')
+    .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders' 
+        }, 
+        payload => {
+          callback(payload);
+        })
     .subscribe();
-  
+
   return () => {
     supabase.removeChannel(channel);
   };

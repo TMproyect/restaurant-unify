@@ -25,7 +25,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: (url, options) => {
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve(fetch(url, options));
+          resolve(fetch(url, options) as Promise<Response>);
         }, 50); // Small delay to ensure operations have time to complete
       });
     },
@@ -36,3 +36,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     },
   },
 });
+
+// Helper functions for type casting
+export const handleSupabaseResponse = <T>(data: any): T[] => {
+  if (!data || data.error) {
+    return [];
+  }
+  return data as T[];
+};
+
+export const handleSupabaseResponseSingle = <T>(data: any): T | null => {
+  if (!data || data.error) {
+    return null;
+  }
+  return data as T;
+};

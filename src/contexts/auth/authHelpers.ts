@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, handleSupabaseResponse, handleSupabaseResponseSingle } from '@/integrations/supabase/client';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
 
@@ -37,6 +37,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     
     console.log('Profile data found:', data);
     
+    // Safely cast the data
     return {
       id: data.id,
       name: data.name,
@@ -166,11 +167,17 @@ export const createUserProfile = async (userId: string, name: string, role: User
   
   try {
     // Verificamos si el perfil ya existe antes de crearlo
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', userId)
       .single();
+    
+    if (checkError) {
+      if (checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error checking for existing profile:', checkError);
+      }
+    }
     
     if (existingProfile) {
       console.log('Profile already exists for user:', userId);
@@ -185,14 +192,12 @@ export const createUserProfile = async (userId: string, name: string, role: User
     while (attempts < maxAttempts && !success) {
       const { error } = await supabase
         .from('profiles')
-        .insert([
-          {
-            id: userId,
-            name,
-            role,
-            created_at: new Date().toISOString() // Explicitly set creation date
-          }
-        ]);
+        .insert({
+          id: userId,
+          name,
+          role,
+          created_at: new Date().toISOString() // Explicitly set creation date
+        });
 
       if (error) {
         console.error(`Error creating profile (attempt ${attempts + 1}):`, error);
@@ -251,11 +256,15 @@ export const createUserByAdmin = async (email: string, password: string, name: s
       const maxAttempts = 3;
       
       while (!profileCreated && attempts < maxAttempts) {
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single();
+          
+        if (profileError) {
+          console.error(`Error checking profile (attempt ${attempts + 1}):`, profileError);
+        }
           
         if (profileData) {
           profileCreated = true;

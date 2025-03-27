@@ -67,20 +67,12 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
 
   const handleContinue = () => {
     if (orderType === 'table' && !selectedTable) {
-      toast({
-        title: "Error",
-        description: "Por favor seleccione una mesa",
-        variant: "destructive"
-      });
+      toast.error("Por favor seleccione una mesa");
       return;
     }
 
     if (!customerName.trim()) {
-      toast({
-        title: "Error",
-        description: "Por favor ingrese el nombre del cliente",
-        variant: "destructive"
-      });
+      toast.error("Por favor ingrese el nombre del cliente");
       return;
     }
 

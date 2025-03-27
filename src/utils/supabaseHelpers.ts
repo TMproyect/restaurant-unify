@@ -93,8 +93,8 @@ export function processSingleResult<T>(response: { data: any; error: any }, erro
 }
 
 // Type casting for filters
-export function filterValue<T>(value: T): T {
-  return value; // This bypasses type issues with filter parameters
+export function filterValue<T>(value: T): any {
+  return value as any; // Cast to any to bypass Supabase typing issues
 }
 
 // Helper function to safely check for properties on possibly error objects

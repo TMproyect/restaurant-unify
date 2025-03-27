@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { AuthUser, UserRole } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse } from '@/utils/supabaseHelpers';
+import { filterValue } from '@/utils/supabaseHelpers';
 
 interface StaffFormValues {
   name: string;

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import OrderCart from './OrderCart';
 import { supabase } from '@/integrations/supabase/client';
 import { filterValue, filterBooleanValue, mapArrayResponse } from '@/utils/supabaseHelpers';
+import { CartItem } from './CartItem';
 
 interface MenuItem {
   id: string;
@@ -39,7 +40,7 @@ const OrderTaking = ({
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [cartItems, setCartItems] = useState<MenuItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -90,10 +91,17 @@ const OrderTaking = ({
   };
 
   const addToCart = (item: MenuItem) => {
-    setCartItems([...cartItems, item]);
+    const cartItem: CartItem = {
+      id: crypto.randomUUID(),
+      menuItemId: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: 1
+    };
+    setCartItems([...cartItems, cartItem]);
   };
 
-  const removeFromCart = (item: MenuItem) => {
+  const removeFromCart = (item: CartItem) => {
     setCartItems(cartItems.filter(i => i.id !== item.id));
   };
 
@@ -184,8 +192,15 @@ const OrderTaking = ({
       <div className="w-1/3 p-4">
         <OrderCart 
           items={cartItems} 
-          onRemoveItem={(id) => removeFromCart(menuItems.find(item => item.id === id) as MenuItem)}
-          onUpdateQuantity={(id, quantity) => console.log(id, quantity)}
+          onRemoveItem={(id) => {
+            const item = cartItems.find(item => item.id === id);
+            if (item) removeFromCart(item);
+          }}
+          onUpdateQuantity={(id, quantity) => {
+            setCartItems(items => 
+              items.map(item => item.id === id ? {...item, quantity} : item)
+            );
+          }}
           onSendToKitchen={onOrderComplete}
           selectedKitchen={'main'}
           onSelectKitchen={(kitchenId) => console.log(kitchenId)}

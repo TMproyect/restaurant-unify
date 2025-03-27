@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -67,9 +66,20 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
       return { error };
     }
 
-    // Fix: Properly check and type the data and data.user to avoid "never" type issues
-    if (data && data.user && typeof data.user === 'object' && 'id' in data.user && data.user.id) {
-      const userId = data.user.id;
+    interface SupabaseUser {
+      id: string;
+      [key: string]: any;
+    }
+    
+    if (!data || !data.user) {
+      console.error('No user data returned from signup');
+      return { user: data?.user || null };
+    }
+    
+    const user = data.user as SupabaseUser;
+    
+    if (user && user.id) {
+      const userId = user.id;
       
       const { error: profileError } = await supabase
         .from('profiles')
@@ -83,6 +93,8 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
         console.error('Profile creation error:', profileError);
         return { error: profileError };
       }
+    } else {
+      console.warn('User object missing ID, profile not created');
     }
 
     return { user: data.user };
@@ -125,23 +137,20 @@ export const logout = async (): Promise<void> => {
 
 export const createProfileIfNotExists = async (userId: string, userData: { name: string; role?: UserRole }): Promise<AuthUser | null> => {
   try {
-    // First, check if profile already exists
     const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', filterValue(userId))
       .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') { // Not found error code
+    if (fetchError && fetchError.code !== 'PGRST116') {
       throw fetchError;
     }
 
     if (existingProfile) {
-      // Profile exists, return it
       return processProfileData(existingProfile);
     }
 
-    // Profile doesn't exist, create it
     const now = new Date().toISOString();
     const newProfile = {
       id: userId,
@@ -160,7 +169,6 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
       throw createError;
     }
 
-    // Return the newly created profile
     return processProfileData(createdProfile);
   } catch (error) {
     console.error('Error creating profile:', error);
@@ -182,16 +190,13 @@ export const getRoleFromProfile = async (userId: string): Promise<UserRole | nul
 
     if (!data) return null;
     
-    // Safely convert to UserRole
     const roleValue = safetyCheck<{ role: UserRole }, 'role'>(data, 'role', 'admin' as UserRole);
     
-    // Ensure role is one of the valid values
     if (roleValue === 'admin' || roleValue === 'waiter' || roleValue === 'kitchen' || 
         roleValue === 'delivery' || roleValue === 'manager') {
       return roleValue;
     }
     
-    // Default to admin for unknown roles
     return 'admin';
   } catch (error) {
     console.error('Error getting role:', error);
@@ -240,7 +245,6 @@ export const fetchUserProfile = getProfile;
 export const signupUser = signup;
 export const createUserProfile = createProfileIfNotExists;
 export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
-  // For now, just return a standard signup response
   return signup(email, name);
 };
 export const updateUserRoleById = updateUserRole;
@@ -259,7 +263,6 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       return [];
     }
 
-    // Map the data to the expected format with type checking
     return data.map(profile => ({
       id: profile?.id || '',
       name: profile?.name || '',

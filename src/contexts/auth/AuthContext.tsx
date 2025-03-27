@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,15 +21,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
+  // Debugging helper
+  const logAuthState = (prefix: string) => {
+    console.log(`${prefix} - Auth State:`, {
+      isLoading,
+      session: session ? {
+        user: {
+          id: session.user?.id,
+          email: session.user?.email
+        }
+      } : null,
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role
+      } : null,
+      isAuthenticated: !!user
+    });
+  };
+
   useEffect(() => {
     let isMounted = true;
     
     console.log("AuthProvider initialized, setting up auth state listener");
+    logAuthState("Initial state");
     
     // First set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log('Auth state changed:', event, currentSession?.user?.id);
+        logAuthState("Before auth state update");
+        
         if (!isMounted) return;
         
         if (currentSession) {
@@ -38,26 +61,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setTimeout(async () => {
             if (!isMounted) return;
             try {
-              console.log("Fetching user profile after auth state change");
+              console.log("Fetching user profile after auth state change for user:", currentSession.user.id);
               const profile = await fetchUserProfile(currentSession.user.id);
               
               if (profile && isMounted) {
                 console.log("User profile fetched successfully:", profile);
                 setUser(profile);
+                logAuthState("After setting user profile");
               } else if (isMounted) {
                 console.error('No profile found for user:', currentSession.user.id);
-                setUser(null);
+                
+                // Create a basic user object from auth data as fallback
+                const basicUser: AuthUser = {
+                  id: currentSession.user.id,
+                  name: currentSession.user.user_metadata?.name || 'Usuario',
+                  email: currentSession.user.email || '',
+                  role: (currentSession.user.user_metadata?.role as UserRole) || 'admin',
+                };
+                
+                console.log("Using basic user data as fallback:", basicUser);
+                setUser(basicUser);
+                logAuthState("After setting fallback user");
               }
             } catch (error) {
               console.error('Error fetching profile after auth state change:', error);
-              if (isMounted) setUser(null);
+              
+              if (isMounted) {
+                // Create a basic user object from auth data as fallback on error
+                const basicUser: AuthUser = {
+                  id: currentSession.user.id,
+                  name: currentSession.user.user_metadata?.name || 'Usuario',
+                  email: currentSession.user.email || '',
+                  role: (currentSession.user.user_metadata?.role as UserRole) || 'admin',
+                };
+                
+                console.log("Using basic user data as fallback due to error:", basicUser);
+                setUser(basicUser);
+                logAuthState("After setting fallback user due to error");
+              }
             }
-            if (isMounted) setIsLoading(false);
+            if (isMounted) {
+              setIsLoading(false);
+              logAuthState("After setting isLoading to false");
+            }
           }, 0);
         } else {
+          console.log("No session in auth state change, clearing user data");
           setSession(null);
           setUser(null);
-          if (isMounted) setIsLoading(false);
+          if (isMounted) {
+            setIsLoading(false);
+            logAuthState("After clearing user and session (no session)");
+          }
         }
       }
     );
@@ -67,6 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isMounted && isLoading) {
         console.log("Session check timeout reached, forcing loading state to false");
         setIsLoading(false);
+        logAuthState("After timeout forcing isLoading to false");
       }
     }, 3000);
 
@@ -78,24 +134,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (currentSession) {
         setSession(currentSession);
         try {
+          console.log("Fetching profile in initial session check for user:", currentSession.user.id);
           const profile = await fetchUserProfile(currentSession.user.id);
+          
           if (profile && isMounted) {
-            setUser(profile);
             console.log("Initial user profile fetched successfully:", profile);
+            setUser(profile);
+            logAuthState("After setting initial user profile");
           } else if (isMounted) {
-            console.error('No profile found for user:', currentSession.user.id);
-            setUser(null);
+            console.error('No profile found for user in initial check:', currentSession.user.id);
+            
+            // Create a basic user object from auth data as fallback
+            const basicUser: AuthUser = {
+              id: currentSession.user.id,
+              name: currentSession.user.user_metadata?.name || 'Usuario',
+              email: currentSession.user.email || '',
+              role: (currentSession.user.user_metadata?.role as UserRole) || 'admin',
+            };
+            
+            console.log("Using basic user data as fallback in initial check:", basicUser);
+            setUser(basicUser);
+            logAuthState("After setting fallback user in initial check");
           }
         } catch (error) {
           console.error('Error fetching initial profile:', error);
-          if (isMounted) setUser(null);
+          
+          if (isMounted) {
+            // Create a basic user object from auth data as fallback on error
+            const basicUser: AuthUser = {
+              id: currentSession.user.id,
+              name: currentSession.user.user_metadata?.name || 'Usuario',
+              email: currentSession.user.email || '',
+              role: (currentSession.user.user_metadata?.role as UserRole) || 'admin',
+            };
+            
+            console.log("Using basic user data as fallback due to initial error:", basicUser);
+            setUser(basicUser);
+            logAuthState("After setting fallback user due to initial error");
+          }
         }
+      } else {
+        console.log("No initial session found");
       }
       
-      if (isMounted) setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+        logAuthState("After initial session check completion");
+      }
     }).catch(error => {
       console.error('Error in getSession:', error);
-      if (isMounted) setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+        logAuthState("After getSession error");
+      }
     });
 
     return () => {
@@ -113,6 +204,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     console.log("Login started for email:", email);
+    logAuthState("Before login attempt");
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -137,32 +229,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Important: Fetch profile to get the user's role and other data
       try {
-        console.log("Fetching user profile after login");
+        console.log("Fetching user profile after login for user:", data.user.id);
         const profile = await fetchUserProfile(data.user.id);
         
         if (profile) {
-          console.log("Profile fetched successfully:", profile);
+          console.log("Profile fetched successfully after login:", profile);
           setUser(profile);
+          logAuthState("After setting user from profile");
         } else {
           console.warn("No profile found after login, using basic user data");
           // Create a minimal user object from auth data if profile fetch fails
-          setUser({
+          const basicUser: AuthUser = {
             id: data.user.id,
             name: data.user.user_metadata?.name || 'Usuario',
             email: data.user.email || '',
             role: (data.user.user_metadata?.role as UserRole) || 'admin',
-          });
+          };
+          console.log("Setting basic user as fallback:", basicUser);
+          setUser(basicUser);
+          logAuthState("After setting basic user fallback");
         }
       } catch (profileError) {
         console.error("Error fetching profile after login:", profileError);
         // Still consider login successful even if profile fetch fails,
         // but log the error and create a minimal user object
-        setUser({
+        const basicUser: AuthUser = {
           id: data.user.id,
           name: data.user.user_metadata?.name || 'Usuario',
           email: data.user.email || '',
           role: (data.user.user_metadata?.role as UserRole) || 'admin',
-        });
+        };
+        console.log("Setting basic user due to profile fetch error:", basicUser);
+        setUser(basicUser);
+        logAuthState("After setting basic user due to error");
       }
       
       toast.success('Inicio de sesión exitoso');

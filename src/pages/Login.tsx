@@ -9,10 +9,23 @@ import SignupForm from '@/components/auth/SignupForm';
 import { toast } from 'sonner';
 
 const Login = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
+
+  // Detailed debug logging
+  useEffect(() => {
+    console.log("Login page mount/update - Auth state:", {
+      isAuthenticated, 
+      isLoading, 
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role
+      } : null
+    });
+  }, [isAuthenticated, isLoading, user]);
 
   // Show content after a brief delay to avoid flickering
   useEffect(() => {
@@ -38,29 +51,36 @@ const Login = () => {
       });
     }
     
-    console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
+    console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading, "user:", user);
   }, []);
 
   // CENTRALIZADA: Handle redirection with a small delay to ensure context is fully initialized
   useEffect(() => {
     let redirectTimeout: number | undefined;
     
-    if (isAuthenticated && !isLoading) {
+    console.log("Redirect effect triggered - Auth state check:", { 
+      isAuthenticated, 
+      isLoading,
+      user: user ? { id: user.id, email: user.email, role: user.role } : null
+    });
+    
+    if (isAuthenticated && !isLoading && user) {
       console.log("User is authenticated, preparing to redirect to dashboard...");
       
       // Use a small timeout to ensure auth state is stable
       redirectTimeout = window.setTimeout(() => {
-        console.log("Executing redirect to dashboard now");
+        console.log("Executing redirect to dashboard now for user:", user.email);
         navigate('/dashboard', { replace: true });
-      }, 100); // Reduced timeout to 100ms
+      }, 300); // Increased timeout to ensure state is fully processed
     }
     
     return () => {
       if (redirectTimeout) {
+        console.log("Cleaning up redirect timeout");
         window.clearTimeout(redirectTimeout);
       }
     };
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, user]);
 
   // Network connectivity check
   useEffect(() => {
@@ -83,6 +103,7 @@ const Login = () => {
 
   // Show loading indicator
   if (isLoading || !showContent) {
+    console.log("Showing loading state on Login page");
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center">
@@ -95,7 +116,13 @@ const Login = () => {
     );
   }
 
+  // If user is authenticated, we should not render this page but be redirected
+  if (isAuthenticated && user) {
+    console.log("User is authenticated on Login page, should be redirected soon...", user);
+  }
+
   // Show login content
+  console.log("Rendering login form, isAuthenticated:", isAuthenticated);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">

@@ -44,25 +44,28 @@ const LoginForm = () => {
     }
     
     try {
-      console.log(`Iniciando proceso de login para: ${email} (intento #${retryCount + 1})`);
+      console.log(`LoginForm: Iniciando proceso de login para: ${email} (intento #${retryCount + 1})`);
       setLoading(true);
       
-      console.log("Enviando solicitud de login a supabase...");
+      console.log("LoginForm: Enviando solicitud de login a supabase...");
       const result = await login(email, password);
       
       if (result?.user) {
-        console.log("Login completado exitosamente con ID:", result.user.id);
+        console.log("LoginForm: Login completado exitosamente con ID:", result.user.id);
         
         toast.success('Inicio de sesión exitoso', {
           description: 'Redirigiendo al dashboard...',
         });
         
         // No redirection here - Login.tsx will handle this
+      } else if (result?.error) {
+        console.error("LoginForm: Error explícito en login:", result.error);
+        throw new Error(result.error.message || 'Error durante el inicio de sesión');
       } else {
         throw new Error('No se recibieron datos de usuario después del login');
       }
     } catch (err: any) {
-      console.error("Error en login:", err);
+      console.error("LoginForm: Error en login:", err);
       let errorMessage = 'Intente nuevamente más tarde';
       
       if (err.message?.includes('Email not confirmed')) {
@@ -76,7 +79,7 @@ const LoginForm = () => {
         if (retryCount < 1) {
           setRetryCount(prevCount => prevCount + 1);
           setTimeout(() => {
-            console.log("Reintentando login automáticamente");
+            console.log("LoginForm: Reintentando login automáticamente");
             setLoading(false);
             handleLogin(e);
           }, 1500);
@@ -90,7 +93,7 @@ const LoginForm = () => {
         description: errorMessage,
       });
     } finally {
-      console.log("Proceso de login finalizado, reseteando estado de carga");
+      console.log("LoginForm: Proceso de login finalizado, reseteando estado de carga");
       setLoading(false);
       setRetryCount(0);
     }

@@ -11,10 +11,11 @@ interface AuthError {
 // Helper function to safely process profile data
 const processProfileData = (data: any, email?: string): AuthUser | null => {
   if (!data || (typeof data === 'object' && 'error' in data)) {
+    console.log("processProfileData: Invalid data received:", data);
     return null;
   }
   
-  return {
+  const processedData = {
     id: safetyCheck<AuthUser, 'id'>(data, 'id', ''),
     name: safetyCheck<AuthUser, 'name'>(data, 'name', ''),
     email: email || safetyCheck<AuthUser, 'email'>(data, 'email', ''),
@@ -22,6 +23,9 @@ const processProfileData = (data: any, email?: string): AuthUser | null => {
     avatar: safetyCheck<AuthUser, 'avatar'>(data, 'avatar', null),
     created_at: safetyCheck<AuthUser, 'created_at'>(data, 'created_at', '')
   };
+  
+  console.log("processProfileData: Processed user data:", processedData);
+  return processedData;
 };
 
 // Export fetchUserProfile to get complete user profile
@@ -37,7 +41,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       .single();
 
     if (error) {
-      console.error('Error in fetchUserProfile:', error.message);
+      console.error('Error in fetchUserProfile:', error.message, error);
       throw error;
     }
 
@@ -51,17 +55,19 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     // Get the user's session to access email
     const { data: sessionData } = await supabase.auth.getSession();
     const userEmail = sessionData?.session?.user?.email || '';
+    console.log('User email from session:', userEmail);
 
     // Return profile with email from auth
     return processProfileData(data, userEmail);
   } catch (error: any) {
-    console.error('Error in fetchUserProfile:', error.message);
+    console.error('Error in fetchUserProfile:', error.message, error);
     return null;
   }
 };
 
 export const getProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
+    console.log('getProfile: Fetching profile for user ID:', userId);
     // First get the profile
     const { data, error } = await supabase
       .from('profiles')
@@ -70,15 +76,19 @@ export const getProfile = async (userId: string): Promise<AuthUser | null> => {
       .single();
 
     if (error) {
+      console.error('getProfile: Error fetching profile:', error);
       throw error;
     }
 
     // Get the user's session to access email
     const { data: sessionData } = await supabase.auth.getSession();
     const userEmail = sessionData?.session?.user?.email || '';
+    console.log('getProfile: User email from session:', userEmail);
 
     // Return profile with email from auth
-    return processProfileData(data, userEmail);
+    const profile = processProfileData(data, userEmail);
+    console.log('getProfile: Processed profile:', profile);
+    return profile;
   } catch (error) {
     const authError = error as AuthError;
     console.error('Error fetching profile:', authError);
@@ -88,14 +98,18 @@ export const getProfile = async (userId: string): Promise<AuthUser | null> => {
 
 export const login = async (email: string, password: string): Promise<{ user: any } | { error: any }> => {
   try {
+    console.log(`login: Starting login process for email: ${email}`);
     const { data, error } = await supabase.auth.signInWithPassword({ 
       email, 
       password 
     });
     
     if (error) {
+      console.error('login: Error during signInWithPassword:', error);
       return { error };
     }
+    
+    console.log('login: Authentication successful, user:', data.user);
     return { user: data.user };
   } catch (err: any) {
     console.error('Login error:', err);
@@ -416,6 +430,6 @@ export const createUserWithEdgeFunction = async (email: string, password: string
 // Add the missing functions that AuthContext.tsx is expecting
 export const signupUser = signup;
 export const createUserProfile = createProfileIfNotExists;
-export const createUserByAdmin = createUserWithEdgeFunction; // Replace with the edge function version
+export const createUserByAdmin = createUserWithEdgeFunction;
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;

@@ -69,13 +69,16 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
 
     // Create a user profile after successful signup
     if (data.user) {
+      // Fix: Check if data.user exists before accessing its properties
+      const userId = data.user.id;
+      
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{ 
-          id: data.user.id, 
+          id: userId, 
           name, 
           role: 'admin' as UserRole 
-        }] as any);
+        }]);
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
@@ -150,7 +153,7 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
 
     const { data: createdProfile, error: createError } = await supabase
       .from('profiles')
-      .insert([newProfile as any])
+      .insert([newProfile])
       .select()
       .single();
 
@@ -201,7 +204,7 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
   try {
     const { error } = await supabase
       .from('profiles')
-      .update({ role: newRole } as any)
+      .update({ role: newRole })
       .eq('id', filterValue(userId));
 
     if (error) {
@@ -219,7 +222,7 @@ export const updateUserName = async (userId: string, newName: string): Promise<b
   try {
     const { error } = await supabase
       .from('profiles')
-      .update({ name: newName } as any)
+      .update({ name: newName })
       .eq('id', filterValue(userId));
 
     if (error) {
@@ -257,13 +260,14 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       return [];
     }
 
+    // Map the data to the expected format with type checking
     return data.map(profile => ({
-      id: profile.id || '',
-      name: profile.name || '',
+      id: profile?.id || '',
+      name: profile?.name || '',
       email: '', // Add default email
-      role: (profile.role as UserRole) || 'admin',
-      avatar: profile.avatar,
-      created_at: profile.created_at || ''
+      role: (profile?.role as UserRole) || 'admin',
+      avatar: profile?.avatar,
+      created_at: profile?.created_at || ''
     }));
   } catch (error) {
     console.error('Error fetching all profiles:', error);

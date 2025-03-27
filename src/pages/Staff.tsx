@@ -49,6 +49,7 @@ const Staff: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -65,14 +66,47 @@ const Staff: React.FC = () => {
 
   const loadUsers = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      console.log('Requesting all users from context...');
-      const staffUsers = await fetchAllUsers();
-      console.log('Received users from context:', staffUsers);
+      console.log('Staff component: Requesting all users from context...');
+      
+      let staffUsers = await fetchAllUsers();
+      
+      if (!staffUsers || staffUsers.length === 0) {
+        console.log('Staff component: Context method returned no users, trying direct query...');
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          console.log('Staff component: Direct query returned', data.length, 'profiles');
+          
+          staffUsers = data.map(profile => ({
+            id: profile.id,
+            name: profile.name || 'Sin nombre',
+            email: '',
+            role: profile.role as UserRole,
+            avatar: profile.avatar,
+            created_at: profile.created_at
+          }));
+        }
+      } else {
+        console.log('Staff component: Received', staffUsers.length, 'users from context');
+      }
+      
       setUsers(staffUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      toast.error('Error al cargar usuarios');
+    } catch (error: any) {
+      console.error('Staff component: Error loading users:', error);
+      setError(error.message || 'Error al cargar la lista de personal');
+      toast.error('Error al cargar usuarios', {
+        description: error.message || 'No se pudieron cargar los datos del personal'
+      });
     } finally {
       setLoading(false);
     }
@@ -140,9 +174,27 @@ const Staff: React.FC = () => {
     try {
       setUploading(true);
       
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+        
+        if (!avatarBucketExists) {
+          console.log('Creating avatars bucket...');
+          const { error } = await supabase.storage.createBucket('avatars', {
+            public: true
+          });
+          
+          if (error) {
+            console.error('Error creating avatars bucket:', error);
+          }
+        }
+      } catch (e) {
+        console.error('Error checking/creating bucket:', e);
+      }
+      
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${currentUserEdit.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -188,6 +240,33 @@ const Staff: React.FC = () => {
     const roleObj = ROLES.find(r => r.value === role);
     return roleObj ? roleObj.label : role;
   };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto p-4">
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-500">Error</CardTitle>
+              <CardDescription>
+                Ocurrió un problema al cargar la información del personal
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>{error}</p>
+              <Button 
+                onClick={refreshUsers} 
+                className="mt-4"
+                variant="outline"
+              >
+                Intentar nuevamente
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   const renderAddStaffDialog = () => (
     <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

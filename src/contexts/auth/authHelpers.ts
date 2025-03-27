@@ -316,20 +316,16 @@ export const updateUserName = async (userId: string, newName: string): Promise<b
   }
 };
 
-// Add a new function to fetch user auth details
 export const getUserAuthData = async (userId: string): Promise<{ email: string } | null> => {
   try {
-    // Obtenemos la sesión actual
     const { data: sessionData } = await supabase.auth.getSession();
     
-    // Si el userId coincide con el usuario de la sesión, podemos obtener el email
     if (sessionData?.session?.user?.id === userId) {
       return { 
         email: sessionData.session.user.email || '' 
       };
     }
     
-    // If we don't have access to the user's email through session, return an empty email
     return { email: '' };
   } catch (error) {
     console.error('Error fetching user auth data:', error);
@@ -337,17 +333,16 @@ export const getUserAuthData = async (userId: string): Promise<{ email: string }
   }
 };
 
-// Updated function to fetch all profiles with email data
 export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
   try {
     console.log('Fetching all profiles from Supabase...');
     
-    // Primero obtenemos todos los perfiles
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('*');
 
     if (error) {
+      console.error('Error fetching profiles:', error);
       throw error;
     }
 
@@ -356,23 +351,18 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       return [];
     }
 
-    console.log(`Found ${profiles.length} profiles`);
+    console.log(`Found ${profiles.length} profiles:`, profiles);
     
-    // Obtenemos la sesión actual para tener acceso al email del usuario actual
     const { data: sessionData } = await supabase.auth.getSession();
     const currentUserId = sessionData?.session?.user?.id;
     const currentUserEmail = sessionData?.session?.user?.email || '';
     
-    // Procesamos cada perfil
     const usersWithData = await Promise.all(profiles.map(async (profile) => {
       let email = '';
       
-      // Para el usuario actual, usamos el email de la sesión
       if (profile.id === currentUserId) {
         email = currentUserEmail;
       } else {
-        // For other users, try to get their email directly from Supabase Auth
-        // Since we can't directly query auth.users, we'll rely on the user_metadata for email information
         try {
           const authData = await getUserAuthData(profile.id);
           email = authData?.email || '';
@@ -391,7 +381,7 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       };
     }));
 
-    console.log('Processed all profiles with email data');
+    console.log('Processed all profiles with email data:', usersWithData);
     return usersWithData;
   } catch (error) {
     console.error('Error fetching all profiles:', error);
@@ -399,7 +389,6 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
   }
 };
 
-// Add new function to create user via the Edge Function
 export const createUserWithEdgeFunction = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<{ user?: any; error?: any }> => {
   try {
     console.log(`Creating user with edge function: ${email}, ${name}, ${role}`);
@@ -427,7 +416,79 @@ export const createUserWithEdgeFunction = async (email: string, password: string
   }
 };
 
-// Add the missing functions that AuthContext.tsx is expecting
+export const getUserFromProfiles = async (userId: string): Promise<AuthUser | null> => {
+  try {
+    console.log('Getting user from profiles, ID:', userId);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', filterValue(userId))
+      .single();
+      
+    if (error) {
+      console.error('Error getting user from profiles:', error);
+      return null;
+    }
+    
+    if (!data) {
+      console.log('No profile found for user ID:', userId);
+      return null;
+    }
+    
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userEmail = sessionData?.session?.user?.id === userId 
+      ? sessionData.session.user.email || ''
+      : '';
+      
+    return {
+      id: data.id,
+      name: data.name,
+      email: userEmail,
+      role: data.role as UserRole,
+      avatar: data.avatar,
+      created_at: data.created_at
+    };
+  } catch (error) {
+    console.error('Error in getUserFromProfiles:', error);
+    return null;
+  }
+};
+
+export const getUserFromTable = async (table: string, userId: string): Promise<AuthUser | null> => {
+  try {
+    console.log(`Getting user from ${table}, ID:`, userId);
+    
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('id', filterValue(userId))
+      .single();
+      
+    if (error) {
+      console.error(`Error getting user from ${table}:`, error);
+      return null;
+    }
+    
+    if (!data) {
+      console.log(`No user found in ${table} for ID:`, userId);
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      name: data.name || 'Unknown',
+      email: data.email || '',
+      role: data.role as UserRole,
+      avatar: data.avatar,
+      created_at: data.created_at
+    };
+  } catch (error) {
+    console.error(`Error in getUserFromTable (${table}):`, error);
+    return null;
+  }
+};
+
 export const signupUser = signup;
 export const createUserProfile = createProfileIfNotExists;
 export const createUserByAdmin = createUserWithEdgeFunction;

@@ -1,6 +1,6 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { corsHeaders } from '../_shared/cors.ts';
+import { getEnv } from '../_shared/env.ts';
 
 interface CreateUserRequest {
   email: string;
@@ -16,16 +16,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-
-    if (!serviceRoleKey || !supabaseUrl) {
-      throw new Error('Missing environment variables for Supabase connection');
-    }
+    // Get environment variables with enhanced error handling
+    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv([
+      'SUPABASE_URL',
+      'SUPABASE_SERVICE_ROLE_KEY'
+    ]);
 
     // Initialize Supabase admin client with service role key
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -38,17 +39,12 @@ export const getProfile = async (userId: string): Promise<AuthUser | null> => {
       throw error;
     }
 
-    // Now get the user's email from auth
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
-    
-    if (userError) {
-      console.error('Error fetching user auth data:', userError);
-      // Still return the profile even if we can't get the email
-      return processProfileData(data);
-    }
+    // Get the user's session to access email
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userEmail = sessionData?.session?.user?.email || '';
 
     // Return profile with email from auth
-    return processProfileData(data, userData?.user?.email || '');
+    return processProfileData(data, userEmail);
   } catch (error) {
     const authError = error as AuthError;
     console.error('Error fetching profile:', authError);
@@ -56,9 +52,13 @@ export const getProfile = async (userId: string): Promise<AuthUser | null> => {
   }
 };
 
-export const login = async (email: string): Promise<{ user: any } | { error: any }> => {
+export const login = async (email: string, password: string): Promise<{ user: any } | { error: any }> => {
   try {
-    const { data, error } = await supabase.auth.signInWithOtp({ email });
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    });
+    
     if (error) {
       return { error };
     }
@@ -69,9 +69,18 @@ export const login = async (email: string): Promise<{ user: any } | { error: any
   }
 };
 
-export const signup = async (email: string, name: string): Promise<{ user: any } | { error: any }> => {
+export const signup = async (email: string, name: string, password: string): Promise<{ user: any } | { error: any }> => {
   try {
-    const { data, error } = await supabase.auth.signInWithOtp({ email });
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: {
+          name,
+          role: 'admin'
+        }
+      }
+    });
 
     if (error) {
       return { error };
@@ -98,7 +107,7 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
           id: userId, 
           name, 
           role: 'admin' as UserRole,
-          email: email // Also store email in profiles table for easy access
+          email: email // También guardar el correo en la tabla de perfiles para facilitar el acceso
         }]);
 
       if (profileError) {
@@ -132,7 +141,11 @@ export const refreshProfile = async (user: any): Promise<AuthUser | null> => {
       throw error;
     }
 
-    return processProfileData(data);
+    // Get the user's email from session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userEmail = sessionData?.session?.user?.email || '';
+
+    return processProfileData(data, userEmail);
   } catch (error) {
     console.error('Error refreshing profile:', error);
     return null;
@@ -160,8 +173,11 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
     }
 
     if (existingProfile) {
-      const { data: authData } = await supabase.auth.admin.getUserById(userId);
-      return processProfileData(existingProfile, authData?.user?.email || '');
+      // Get the user's session to access email
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userEmail = sessionData?.session?.user?.email || userData.email || '';
+      
+      return processProfileData(existingProfile, userEmail);
     }
 
     const now = new Date().toISOString();
@@ -254,21 +270,32 @@ export const updateUserName = async (userId: string, newName: string): Promise<b
   }
 };
 
-// Add a new function to fetch user auth details
+// Add a new function to fetch user auth details - usando métodos no administrativos
 export const getUserAuthData = async (userId: string): Promise<{ email: string } | null> => {
   try {
-    const { data, error } = await supabase.auth.admin.getUserById(userId);
+    // Obtenemos la sesión actual
+    const { data: sessionData } = await supabase.auth.getSession();
     
+    // Si el userId coincide con el usuario de la sesión, podemos obtener el email
+    if (sessionData?.session?.user?.id === userId) {
+      return { 
+        email: sessionData.session.user.email || '' 
+      };
+    }
+    
+    // Si estamos buscando otro usuario, intentamos obtener su email desde la tabla profiles
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', filterValue(userId))
+      .single();
+      
     if (error) {
       throw error;
     }
     
-    if (!data || !data.user) {
-      return null;
-    }
-    
     return { 
-      email: data.user.email || '' 
+      email: data?.email || '' 
     };
   } catch (error) {
     console.error('Error fetching user auth data:', error);
@@ -276,12 +303,12 @@ export const getUserAuthData = async (userId: string): Promise<{ email: string }
   }
 };
 
-// Updated function to fetch all profiles with email data
+// Updated function to fetch all profiles with email data - sin usar funciones admin
 export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
   try {
     console.log('Fetching all profiles from Supabase...');
     
-    // First get all profiles
+    // Primero obtenemos todos los perfiles
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('*');
@@ -297,24 +324,29 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
 
     console.log(`Found ${profiles.length} profiles`);
     
-    // Process profiles with auth data
-    const usersWithData = await Promise.all(
-      profiles.map(async (profile) => {
-        // Get auth data for each user
-        const { data: userData } = await supabase.auth.admin.getUserById(profile.id);
+    // Obtenemos la sesión actual para tener acceso al email del usuario actual
+    const { data: sessionData } = await supabase.auth.getSession();
+    const currentUserId = sessionData?.session?.user?.id;
+    const currentUserEmail = sessionData?.session?.user?.email || '';
+    
+    // Procesamos cada perfil
+    const usersWithData = profiles.map(profile => {
+      // Para el usuario actual, usamos el email de la sesión
+      const email = (profile.id === currentUserId) ? 
+        currentUserEmail : 
+        (profile.email || ''); // Para otros usuarios, usamos el email almacenado en la tabla profiles
         
-        return {
-          id: profile?.id || '',
-          name: profile?.name || '',
-          email: userData?.user?.email || '', // Use auth data for email
-          role: (profile?.role as UserRole) || 'admin',
-          avatar: profile?.avatar,
-          created_at: profile?.created_at || ''
-        };
-      })
-    );
+      return {
+        id: profile?.id || '',
+        name: profile?.name || '',
+        email: email,
+        role: (profile?.role as UserRole) || 'admin',
+        avatar: profile?.avatar,
+        created_at: profile?.created_at || ''
+      };
+    });
 
-    console.log('Processed all profiles with auth data');
+    console.log('Processed all profiles with email data');
     return usersWithData;
   } catch (error) {
     console.error('Error fetching all profiles:', error);
@@ -328,12 +360,13 @@ export const signupUser = signup;
 export const createUserProfile = createProfileIfNotExists;
 export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
   try {
-    // Create the user in auth
-    const { data, error } = await supabase.auth.admin.createUser({
+    // Utilizamos el método estándar de registro en lugar del método admin
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      email_confirm: true,
-      user_metadata: { name, role }
+      options: {
+        data: { name, role }
+      }
     });
 
     if (error) {
@@ -360,3 +393,4 @@ export const createUserByAdmin = async (email: string, password: string, name: s
 
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;
+

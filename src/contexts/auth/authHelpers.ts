@@ -460,14 +460,13 @@ export const getUserFromTable = async (tableName: string, userId: string): Promi
     console.log(`Getting user from ${tableName}, ID:`, userId);
     
     // Validate table name to prevent SQL injection and type errors
-    const allowedTables = ['profiles']; // Only allow specific tables
-    if (!allowedTables.includes(tableName)) {
-      console.error(`Invalid table name: ${tableName}`);
+    if (tableName !== 'profiles') {
+      console.error(`Invalid table name: ${tableName}, only 'profiles' is allowed`);
       return null;
     }
     
     const { data, error } = await supabase
-      .from(tableName)
+      .from('profiles')
       .select('*')
       .eq('id', filterValue(userId))
       .single();
@@ -482,20 +481,15 @@ export const getUserFromTable = async (tableName: string, userId: string): Promi
       return null;
     }
     
-    // Ensure we handle profile data correctly
-    if (tableName === 'profiles') {
-      return {
-        id: data.id,
-        name: data.name || 'Unknown',
-        email: '', // Email is not stored in profiles table
-        role: data.role as UserRole, // Cast to UserRole type
-        avatar: data.avatar,
-        created_at: data.created_at
-      };
-    }
-    
-    // For other tables (if we add more in the future)
-    return null;
+    // Now we know data is from the profiles table, so we can safely access its properties
+    return {
+      id: data.id,
+      name: data.name || 'Unknown',
+      email: '', // Email is not stored in profiles table
+      role: data.role as UserRole, // Cast to UserRole type
+      avatar: data.avatar,
+      created_at: data.created_at
+    };
   } catch (error) {
     console.error(`Error in getUserFromTable (${tableName}):`, error);
     return null;

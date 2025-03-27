@@ -9,6 +9,22 @@ interface AuthError {
   code?: string;
 }
 
+// Helper function to safely process profile data
+const processProfileData = (data: any): AuthUser | null => {
+  if (!data || (typeof data === 'object' && 'error' in data)) {
+    return null;
+  }
+  
+  return {
+    id: safetyCheck<AuthUser, 'id'>(data, 'id', ''),
+    name: safetyCheck<AuthUser, 'name'>(data, 'name', ''),
+    email: '', // Add a default empty email since profiles don't store this
+    role: safetyCheck<AuthUser, 'role'>(data, 'role', 'admin' as UserRole),
+    avatar: safetyCheck<AuthUser, 'avatar'>(data, 'avatar', null),
+    created_at: safetyCheck<AuthUser, 'created_at'>(data, 'created_at', '')
+  };
+};
+
 // Export all the functions that AuthContext.tsx expects
 export const getProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
@@ -22,19 +38,7 @@ export const getProfile = async (userId: string): Promise<AuthUser | null> => {
       throw error;
     }
 
-    if (!data) {
-      return null;
-    }
-
-    return {
-      id: safetyCheck<AuthUser, 'id'>(data, 'id', ''),
-      name: safetyCheck<AuthUser, 'name'>(data, 'name', ''),
-      email: '', // Add a default empty email since profiles don't store this
-      // For enum types, provide a default value from the enum
-      role: safetyCheck<AuthUser, 'role'>(data, 'role', 'admin' as UserRole),
-      avatar: safetyCheck<AuthUser, 'avatar'>(data, 'avatar', null),
-      created_at: safetyCheck<AuthUser, 'created_at'>(data, 'created_at', '')
-    };
+    return processProfileData(data);
   } catch (error) {
     const authError = error as AuthError;
     console.error('Error fetching profile:', authError);
@@ -67,7 +71,11 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
     if (data.user) {
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([{ id: data.user.id, name, email }] as any);
+        .insert([{ 
+          id: data.user.id, 
+          name, 
+          role: 'admin' as UserRole 
+        }] as any);
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
@@ -98,20 +106,7 @@ export const refreshProfile = async (user: any): Promise<AuthUser | null> => {
       throw error;
     }
 
-    if (!data) {
-      return null;
-    }
-
-    const profile: AuthUser = {
-      id: safetyCheck<AuthUser, 'id'>(data, 'id', ''),
-      name: safetyCheck<AuthUser, 'name'>(data, 'name', ''),
-      email: '', // Add a default email since profiles table doesn't store it
-      role: safetyCheck<AuthUser, 'role'>(data, 'role', 'admin' as UserRole),
-      avatar: safetyCheck<AuthUser, 'avatar'>(data, 'avatar', null),
-      created_at: safetyCheck<AuthUser, 'created_at'>(data, 'created_at', '')
-    };
-
-    return profile;
+    return processProfileData(data);
   } catch (error) {
     console.error('Error refreshing profile:', error);
     return null;
@@ -141,14 +136,7 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
 
     if (existingProfile) {
       // Profile exists, return it
-      return {
-        id: safetyCheck<AuthUser, 'id'>(existingProfile, 'id', ''),
-        name: safetyCheck<AuthUser, 'name'>(existingProfile, 'name', ''),
-        email: '', // Add a default email
-        role: safetyCheck<AuthUser, 'role'>(existingProfile, 'role', 'admin' as UserRole),
-        avatar: safetyCheck<AuthUser, 'avatar'>(existingProfile, 'avatar', null),
-        created_at: safetyCheck<AuthUser, 'created_at'>(existingProfile, 'created_at', '')
-      };
+      return processProfileData(existingProfile);
     }
 
     // Profile doesn't exist, create it
@@ -171,14 +159,7 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
     }
 
     // Return the newly created profile
-    return {
-      id: safetyCheck<AuthUser, 'id'>(createdProfile, 'id', ''),
-      name: safetyCheck<AuthUser, 'name'>(createdProfile, 'name', ''),
-      email: '', // Add a default email
-      role: safetyCheck<AuthUser, 'role'>(createdProfile, 'role', 'admin' as UserRole),
-      avatar: safetyCheck<AuthUser, 'avatar'>(createdProfile, 'avatar', null),
-      created_at: safetyCheck<AuthUser, 'created_at'>(createdProfile, 'created_at', '')
-    };
+    return processProfileData(createdProfile);
   } catch (error) {
     console.error('Error creating profile:', error);
     return null;
@@ -197,6 +178,8 @@ export const getRoleFromProfile = async (userId: string): Promise<UserRole | nul
       throw error;
     }
 
+    if (!data) return null;
+    
     // Safely convert to UserRole
     const roleValue = safetyCheck<{ role: UserRole }, 'role'>(data, 'role', 'admin' as UserRole);
     
@@ -270,11 +253,15 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       throw error;
     }
 
-    return (data || []).map(profile => ({
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+
+    return data.map(profile => ({
       id: profile.id || '',
       name: profile.name || '',
       email: '', // Add default email
-      role: profile.role as UserRole || 'admin',
+      role: (profile.role as UserRole) || 'admin',
       avatar: profile.avatar,
       created_at: profile.created_at || ''
     }));

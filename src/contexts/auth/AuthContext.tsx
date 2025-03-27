@@ -192,7 +192,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (data.user) {
         try {
-          await createUserProfile(data.user.id, name, role);
+          // Pass only userId and name to createUserProfile
+          await createUserProfile(data.user.id, { name, role });
           console.log("Profile created successfully for user:", data.user.id);
         } catch (profileError) {
           console.error('Error creating profile:', profileError);
@@ -228,20 +229,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       const userData = await createUserByAdmin(email, password, name, safeRole);
 
-      // Double-check that the profile was created with the correct role
-      setTimeout(async () => {
-        try {
-          if (userData?.user?.id) {
+      // Handle the user creation result safely
+      if (userData && 'user' in userData && userData.user) {
+        // Double-check that the profile was created with the correct role
+        setTimeout(async () => {
+          try {
             const profile = await fetchUserProfile(userData.user.id);
             if (profile && profile.role !== safeRole) {
               console.log(`Profile created but with incorrect role: ${profile.role}, updating to ${safeRole}`);
               await updateUserRoleById(userData.user.id, safeRole);
             }
+          } catch (error) {
+            console.error('Error verifying profile role:', error);
           }
-        } catch (error) {
-          console.error('Error verifying profile role:', error);
-        }
-      }, 1000);
+        }, 1000);
+      }
 
       toast.success(`Usuario ${name} creado correctamente con rol ${safeRole}`, {
         description: 'El usuario necesitará confirmar su correo electrónico'

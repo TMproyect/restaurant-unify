@@ -15,8 +15,7 @@ import { UserPlus, PencilIcon, UserCog, UploadIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { AuthUser, UserRole } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse } from '@/utils/supabaseHelpers';
-import { filterValue } from '@/utils/supabaseHelpers';
+import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
 
 interface StaffFormValues {
   name: string;
@@ -160,7 +159,7 @@ const Staff: React.FC = () => {
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar: publicUrl } as any)
-        .eq('id', currentUserEdit.id);
+        .eq('id', filterValue(currentUserEdit.id));
         
       if (updateError) throw updateError;
       

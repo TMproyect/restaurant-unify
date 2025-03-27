@@ -26,10 +26,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       return new Promise((resolve) => {
         setTimeout(() => {
           // Fix type issue with proper Response type
-          resolve(fetch(url, options) as Promise<Response>);
+          resolve(fetch(url, options));
         }, 50); // Small delay to ensure operations have time to complete
       });
-    } as typeof fetch,
+    },
   },
   realtime: {
     params: {

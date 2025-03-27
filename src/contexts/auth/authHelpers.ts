@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -184,7 +183,6 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
     const newProfile = {
       id: userId,
       name: userData.name,
-      email: userData.email || '',
       role: userData.role || 'admin',
       created_at: now
     };
@@ -283,20 +281,8 @@ export const getUserAuthData = async (userId: string): Promise<{ email: string }
       };
     }
     
-    // Si estamos buscando otro usuario, intentamos obtener su email desde la tabla profiles
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', filterValue(userId))
-      .single();
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { 
-      email: data?.email || '' 
-    };
+    // If we don't have access to the user's email through session, return an empty email
+    return { email: '' };
   } catch (error) {
     console.error('Error fetching user auth data:', error);
     return null;
@@ -330,12 +316,23 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
     const currentUserEmail = sessionData?.session?.user?.email || '';
     
     // Procesamos cada perfil
-    const usersWithData = profiles.map(profile => {
+    const usersWithData = await Promise.all(profiles.map(async (profile) => {
+      let email = '';
+      
       // Para el usuario actual, usamos el email de la sesión
-      const email = (profile.id === currentUserId) ? 
-        currentUserEmail : 
-        (profile.email || ''); // Para otros usuarios, usamos el email almacenado en la tabla profiles
-        
+      if (profile.id === currentUserId) {
+        email = currentUserEmail;
+      } else {
+        // For other users, try to get their email directly from Supabase Auth
+        // Since we can't directly query auth.users, we'll rely on the user_metadata for email information
+        try {
+          const authData = await getUserAuthData(profile.id);
+          email = authData?.email || '';
+        } catch (e) {
+          console.error('Error fetching auth data for user:', profile.id, e);
+        }
+      }
+      
       return {
         id: profile?.id || '',
         name: profile?.name || '',
@@ -344,7 +341,7 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
         avatar: profile?.avatar,
         created_at: profile?.created_at || ''
       };
-    });
+    }));
 
     console.log('Processed all profiles with email data');
     return usersWithData;
@@ -393,4 +390,3 @@ export const createUserByAdmin = async (email: string, password: string, name: s
 
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;
-

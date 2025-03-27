@@ -1,5 +1,6 @@
 
-import { supabase, handleSupabaseResponse, handleSupabaseResponseSingle } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
+import { mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
 import { AuthUser, UserRole } from './types';
 import { toast } from 'sonner';
 
@@ -37,8 +38,8 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     
     console.log('Profile data found:', data);
     
-    // Safely cast the data
-    return {
+    // Create AuthUser object manually with proper typing
+    const authUser: AuthUser = {
       id: data.id,
       name: data.name,
       email: email,
@@ -46,6 +47,8 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       avatar: data.avatar,
       created_at: data.created_at
     };
+    
+    return authUser;
   } catch (error) {
     console.error('Error in fetchUserProfile:', error);
     return null;
@@ -73,7 +76,7 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       return [];
     }
     
-    console.log('Fetched profiles:', profilesData.length, profilesData);
+    console.log('Fetched profiles:', profilesData.length);
     
     // Get current user's session to extract their email
     const sessionResponse = await supabase.auth.getSession();
@@ -190,14 +193,16 @@ export const createUserProfile = async (userId: string, name: string, role: User
     let success = false;
     
     while (attempts < maxAttempts && !success) {
+      const profile = {
+        id: userId,
+        name,
+        role,
+        created_at: new Date().toISOString() // Explicitly set creation date
+      };
+      
       const { error } = await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          name,
-          role,
-          created_at: new Date().toISOString() // Explicitly set creation date
-        });
+        .insert(profile);
 
       if (error) {
         console.error(`Error creating profile (attempt ${attempts + 1}):`, error);
@@ -271,8 +276,9 @@ export const createUserByAdmin = async (email: string, password: string, name: s
           console.log('Verified profile was created:', profileData);
           
           // Additional check: verify the role is correct
-          if (profileData.role !== role) {
-            console.log(`Profile created with incorrect role: ${profileData.role}, updating to ${role}`);
+          const profileRole = profileData.role;
+          if (profileRole !== role) {
+            console.log(`Profile created with incorrect role: ${profileRole}, updating to ${role}`);
             await updateUserRoleById(data.user.id, role);
           }
         } else {
@@ -294,9 +300,11 @@ export const createUserByAdmin = async (email: string, password: string, name: s
 export const updateUserRoleById = async (userId: string, newRole: UserRole) => {
   console.log('Updating user role:', userId, 'to', newRole);
   
+  const roleUpdate = { role: newRole };
+  
   const { error } = await supabase
     .from('profiles')
-    .update({ role: newRole })
+    .update(roleUpdate)
     .eq('id', userId);
 
   if (error) {

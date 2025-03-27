@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
 import { getOrderWithItems, updateOrderStatus, subscribeToOrders } from '@/services/orderService';
+import { mapArrayResponse } from '@/utils/supabaseHelpers';
 
 // Kitchen options constants
 const kitchenOptions = [
@@ -30,10 +30,26 @@ const kitchenOptions = [
   { id: "pastry", name: "Pastelería" },
 ];
 
+interface OrderDisplay {
+  id: string;
+  table: string;
+  customerName: string;
+  time: string;
+  kitchenId: string;
+  status: string;
+  items: {
+    name: string;
+    notes: string;
+    status: string;
+    id: string;
+    quantity: number;
+  }[];
+}
+
 const Kitchen = () => {
   const [selectedKitchen, setSelectedKitchen] = useState("main");
   const [orderStatus, setOrderStatus] = useState<'pending' | 'preparing' | 'completed'>('pending');
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -87,8 +103,13 @@ const Kitchen = () => {
       
       if (error) throw error;
       
+      if (!data) {
+        setOrders([]);
+        return;
+      }
+      
       // Formatear las órdenes para el componente
-      const formattedOrders = data.map(order => ({
+      const formattedOrders: OrderDisplay[] = data.map(order => ({
         id: order.id,
         table: order.is_delivery ? 'Delivery' : String(order.table_number),
         customerName: order.customer_name,
@@ -161,14 +182,14 @@ const Kitchen = () => {
   // Calculate average preparation time (mock data for demo)
   const getAverageTime = () => {
     // En una app real, esto se calcularía de datos reales
-    const times = {
+    const times: Record<string, number> = {
       'main': 15,
       'grill': 18,
       'cold': 10,
       'pastry': 20
     };
     
-    return times[selectedKitchen as keyof typeof times] || 15;
+    return times[selectedKitchen] || 15;
   };
 
   // Get kitchen name from ID
@@ -306,7 +327,7 @@ const Kitchen = () => {
                       </CardHeader>
                       <CardContent>
                         <ul className="space-y-2">
-                          {order.items.map((item: any, index: number) => (
+                          {order.items.map((item, index) => (
                             <li key={index} className="p-3 rounded bg-secondary/30">
                               <div className="flex justify-between items-start mb-1">
                                 <div>
@@ -360,7 +381,7 @@ const Kitchen = () => {
                       </CardHeader>
                       <CardContent>
                         <ul className="space-y-2">
-                          {order.items.map((item: any, index: number) => (
+                          {order.items.map((item, index) => (
                             <li key={index} className="p-3 rounded bg-secondary/30">
                               <div className="flex justify-between items-start mb-1">
                                 <div>
@@ -404,7 +425,7 @@ const Kitchen = () => {
                       </CardHeader>
                       <CardContent>
                         <ul className="space-y-2">
-                          {order.items.map((item: any, index: number) => (
+                          {order.items.map((item, index) => (
                             <li key={index} className="p-3 rounded bg-secondary/30">
                               <div className="flex justify-between items-start mb-1">
                                 <div>

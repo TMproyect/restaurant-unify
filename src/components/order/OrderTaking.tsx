@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +23,7 @@ import {
 import { OrderItem, createOrder } from '@/services/orderService';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, Minus, Plus, ShoppingBag, Users } from 'lucide-react';
+import { mapArrayResponse } from '@/utils/supabaseHelpers';
 
 interface OrderTakingProps {
   tableId: string;
@@ -74,7 +74,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
       const { data, error } = await query;
 
       if (error) throw error;
-      setMenuItems(data || []);
+      
+      const mappedItems = mapArrayResponse<MenuItem>(data, 'Failed to map menu items');
+      setMenuItems(mappedItems);
     } catch (error) {
       console.error('Error cargando items del menú:', error);
       toast.error('Error al cargar los items del menú');
@@ -91,7 +93,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ tableId, tableNumber, custome
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setCategories(data || []);
+      
+      const mappedCategories = mapArrayResponse<{ id: string; name: string }>(data, 'Failed to map menu categories');
+      setCategories(mappedCategories);
     } catch (error) {
       console.error('Error cargando categorías del menú:', error);
       toast.error('Error al cargar las categorías del menú');

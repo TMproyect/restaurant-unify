@@ -10,6 +10,12 @@ export function mapSingleResponse<T, R = any>(data: R | null, errorMessage: stri
     return null;
   }
   
+  // Check if data has an error property
+  if (typeof data === 'object' && data !== null && 'error' in data && data.error) {
+    console.error(errorMessage, data.error);
+    return null;
+  }
+  
   return data as unknown as T;
 }
 
@@ -17,6 +23,12 @@ export function mapSingleResponse<T, R = any>(data: R | null, errorMessage: stri
 export function mapArrayResponse<T, R = any>(data: R[] | null, errorMessage: string): T[] {
   if (!data) {
     console.error(errorMessage);
+    return [];
+  }
+  
+  // Check if data has an error property
+  if (typeof data === 'object' && data !== null && 'error' in data && data.error) {
+    console.error(errorMessage, data.error);
     return [];
   }
   
@@ -50,4 +62,32 @@ export function prepareInsertData<T>(data: Partial<T>): Record<string, any> {
       obj[key] = value;
       return obj;
     }, {} as Record<string, any>);
+}
+
+// Process a Supabase query response by extracting data or returning an empty array
+export function processQueryResult<T>(response: { data: any; error: any }, errorPrefix: string = "Query error"): T[] {
+  if (response.error) {
+    console.error(`${errorPrefix}:`, response.error);
+    return [];
+  }
+  
+  if (!response.data) {
+    return [];
+  }
+  
+  return response.data as T[];
+}
+
+// Process a single item Supabase query response
+export function processSingleResult<T>(response: { data: any; error: any }, errorPrefix: string = "Query error"): T | null {
+  if (response.error) {
+    console.error(`${errorPrefix}:`, response.error);
+    return null;
+  }
+  
+  if (!response.data) {
+    return null;
+  }
+  
+  return response.data as T;
 }

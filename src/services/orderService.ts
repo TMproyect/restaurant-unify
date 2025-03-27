@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse, mapSingleResponse, prepareInsertData } from '@/utils/supabaseHelpers';
+import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult } from '@/utils/supabaseHelpers';
 
 export interface Order {
   id?: string;

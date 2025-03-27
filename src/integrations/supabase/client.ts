@@ -25,7 +25,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: (url, options) => {
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve(fetch(url, options) as Promise<Response>);
+          resolve(fetch(url, options));
         }, 50); // Small delay to ensure operations have time to complete
       });
     },

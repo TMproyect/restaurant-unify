@@ -17,6 +17,7 @@ import { RestaurantTable } from '@/types/tables';
 import { createOrder } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
 import OrderTaking from './OrderTaking';
+import { mapArrayResponse } from '@/utils/supabaseHelpers';
 
 interface NewOrderModalProps {
   open: boolean;
@@ -61,7 +62,9 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
         .order('number', { ascending: true });
       
       if (error) throw error;
-      setTables(data || []);
+      
+      const mappedTables = mapArrayResponse<RestaurantTable>(data, 'Failed to map restaurant tables');
+      setTables(mappedTables);
     } catch (error) {
       console.error('Error cargando mesas disponibles:', error);
       toast({

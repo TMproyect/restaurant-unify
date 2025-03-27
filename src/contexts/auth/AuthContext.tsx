@@ -193,7 +193,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data.user) {
         try {
           // Pass only userId and name to createUserProfile
-          await createUserProfile(data.user.id, { name, role });
+          await createUserProfile(data.user.id, { name, role, email });
           console.log("Profile created successfully for user:", data.user.id);
         } catch (profileError) {
           console.error('Error creating profile:', profileError);
@@ -227,26 +227,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         safeRole = 'waiter';
       }
       
-      const userData = await createUserByAdmin(email, password, name, safeRole);
+      const result = await createUserByAdmin(email, password, name, safeRole);
 
       // Handle the user creation result safely
-      if (userData && 'user' in userData && userData.user) {
-        // Double-check that the profile was created with the correct role
-        setTimeout(async () => {
-          try {
-            const profile = await fetchUserProfile(userData.user.id);
-            if (profile && profile.role !== safeRole) {
-              console.log(`Profile created but with incorrect role: ${profile.role}, updating to ${safeRole}`);
-              await updateUserRoleById(userData.user.id, safeRole);
-            }
-          } catch (error) {
-            console.error('Error verifying profile role:', error);
-          }
-        }, 1000);
+      if (result && 'error' in result && result.error) {
+        throw result.error;
       }
 
       toast.success(`Usuario ${name} creado correctamente con rol ${safeRole}`, {
-        description: 'El usuario necesitará confirmar su correo electrónico'
+        description: 'El usuario ya puede iniciar sesión con las credenciales proporcionadas'
       });
       console.log("Create user successful with role:", safeRole);
     } catch (error: any) {
@@ -304,9 +293,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchAllUsers = async (): Promise<AuthUser[]> => {
     try {
       console.log("Fetching all users from context...");
-      // Improved version that forces a fresh fetch from the database
+      // Get all users with their profiles and email information
       const profiles = await fetchAllProfiles();
-      console.log("Fetched profiles in fetchAllUsers:", profiles);
+      console.log("Fetched profiles in fetchAllUsers:", profiles.length);
       return profiles;
     } catch (error) {
       console.error("Error fetching all users from context:", error);

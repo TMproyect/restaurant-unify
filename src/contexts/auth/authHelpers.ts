@@ -9,7 +9,7 @@ interface AuthError {
 }
 
 // Helper function to safely process profile data
-const processProfileData = (data: any): AuthUser | null => {
+const processProfileData = (data: any, email?: string): AuthUser | null => {
   if (!data || (typeof data === 'object' && 'error' in data)) {
     return null;
   }
@@ -17,7 +17,7 @@ const processProfileData = (data: any): AuthUser | null => {
   return {
     id: safetyCheck<AuthUser, 'id'>(data, 'id', ''),
     name: safetyCheck<AuthUser, 'name'>(data, 'name', ''),
-    email: '', // Add a default empty email since profiles don't store this
+    email: email || safetyCheck<AuthUser, 'email'>(data, 'email', ''),
     role: safetyCheck<AuthUser, 'role'>(data, 'role', 'admin' as UserRole),
     avatar: safetyCheck<AuthUser, 'avatar'>(data, 'avatar', null),
     created_at: safetyCheck<AuthUser, 'created_at'>(data, 'created_at', '')
@@ -27,6 +27,7 @@ const processProfileData = (data: any): AuthUser | null => {
 // Export all the functions that AuthContext.tsx expects
 export const getProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
+    // First get the profile
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -37,7 +38,17 @@ export const getProfile = async (userId: string): Promise<AuthUser | null> => {
       throw error;
     }
 
-    return processProfileData(data);
+    // Now get the user's email from auth
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+    
+    if (userError) {
+      console.error('Error fetching user auth data:', userError);
+      // Still return the profile even if we can't get the email
+      return processProfileData(data);
+    }
+
+    // Return profile with email from auth
+    return processProfileData(data, userData?.user?.email || '');
   } catch (error) {
     const authError = error as AuthError;
     console.error('Error fetching profile:', authError);
@@ -86,7 +97,8 @@ export const signup = async (email: string, name: string): Promise<{ user: any }
         .insert([{ 
           id: userId, 
           name, 
-          role: 'admin' as UserRole 
+          role: 'admin' as UserRole,
+          email: email // Also store email in profiles table for easy access
         }]);
 
       if (profileError) {
@@ -135,7 +147,7 @@ export const logout = async (): Promise<void> => {
   }
 };
 
-export const createProfileIfNotExists = async (userId: string, userData: { name: string; role?: UserRole }): Promise<AuthUser | null> => {
+export const createProfileIfNotExists = async (userId: string, userData: { name: string; role?: UserRole; email?: string }): Promise<AuthUser | null> => {
   try {
     const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
@@ -148,13 +160,15 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
     }
 
     if (existingProfile) {
-      return processProfileData(existingProfile);
+      const { data: authData } = await supabase.auth.admin.getUserById(userId);
+      return processProfileData(existingProfile, authData?.user?.email || '');
     }
 
     const now = new Date().toISOString();
     const newProfile = {
       id: userId,
       name: userData.name,
+      email: userData.email || '',
       role: userData.role || 'admin',
       created_at: now
     };
@@ -169,7 +183,7 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
       throw createError;
     }
 
-    return processProfileData(createdProfile);
+    return processProfileData(createdProfile, userData.email);
   } catch (error) {
     console.error('Error creating profile:', error);
     return null;
@@ -240,18 +254,35 @@ export const updateUserName = async (userId: string, newName: string): Promise<b
   }
 };
 
-// Add the missing functions that AuthContext.tsx is expecting
-export const fetchUserProfile = getProfile;
-export const signupUser = signup;
-export const createUserProfile = createProfileIfNotExists;
-export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
-  return signup(email, name);
+// Add a new function to fetch user auth details
+export const getUserAuthData = async (userId: string): Promise<{ email: string } | null> => {
+  try {
+    const { data, error } = await supabase.auth.admin.getUserById(userId);
+    
+    if (error) {
+      throw error;
+    }
+    
+    if (!data || !data.user) {
+      return null;
+    }
+    
+    return { 
+      email: data.user.email || '' 
+    };
+  } catch (error) {
+    console.error('Error fetching user auth data:', error);
+    return null;
+  }
 };
-export const updateUserRoleById = updateUserRole;
-export const logoutUser = logout;
+
+// Updated function to fetch all profiles with email data
 export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
   try {
-    const { data, error } = await supabase
+    console.log('Fetching all profiles from Supabase...');
+    
+    // First get all profiles
+    const { data: profiles, error } = await supabase
       .from('profiles')
       .select('*');
 
@@ -259,20 +290,73 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       throw error;
     }
 
-    if (!data || !Array.isArray(data)) {
+    if (!profiles || !Array.isArray(profiles)) {
+      console.log('No profiles found or invalid response format');
       return [];
     }
 
-    return data.map(profile => ({
-      id: profile?.id || '',
-      name: profile?.name || '',
-      email: '', // Add default email
-      role: (profile?.role as UserRole) || 'admin',
-      avatar: profile?.avatar,
-      created_at: profile?.created_at || ''
-    }));
+    console.log(`Found ${profiles.length} profiles`);
+    
+    // Process profiles with auth data
+    const usersWithData = await Promise.all(
+      profiles.map(async (profile) => {
+        // Get auth data for each user
+        const { data: userData } = await supabase.auth.admin.getUserById(profile.id);
+        
+        return {
+          id: profile?.id || '',
+          name: profile?.name || '',
+          email: userData?.user?.email || profile?.email || '',
+          role: (profile?.role as UserRole) || 'admin',
+          avatar: profile?.avatar,
+          created_at: profile?.created_at || ''
+        };
+      })
+    );
+
+    console.log('Processed all profiles with auth data');
+    return usersWithData;
   } catch (error) {
     console.error('Error fetching all profiles:', error);
     return [];
   }
 };
+
+// Add the missing functions that AuthContext.tsx is expecting
+export const fetchUserProfile = getProfile;
+export const signupUser = signup;
+export const createUserProfile = createProfileIfNotExists;
+export const createUserByAdmin = async (email: string, password: string, name: string, role: UserRole = 'admin') => {
+  try {
+    // Create the user in auth
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, role }
+    });
+
+    if (error) {
+      return { error };
+    }
+
+    if (!data || !data.user) {
+      return { error: new Error('No user data returned') };
+    }
+
+    // Create profile for the user
+    await createProfileIfNotExists(data.user.id, { 
+      name, 
+      role, 
+      email 
+    });
+
+    return { user: data.user };
+  } catch (err: any) {
+    console.error('Create user error:', err);
+    return { error: err.message };
+  }
+};
+
+export const updateUserRoleById = updateUserRole;
+export const logoutUser = logout;

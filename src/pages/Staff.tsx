@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { UserPlus, PencilIcon, UserCog, UploadIcon } from 'lucide-react';
+import { UserPlus, PencilIcon, UserCog, UploadIcon, RefreshCcw } from 'lucide-react';
 
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { AuthUser, UserRole } from '@/contexts/auth/types';
@@ -48,6 +49,7 @@ const Staff: React.FC = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -58,24 +60,6 @@ const Staff: React.FC = () => {
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<StaffFormValues>();
   const editForm = useForm<EditRoleValues>();
 
-  const fetchUserById = async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', filterValue(id))
-        .single();
-
-      if (error) throw error;
-
-      return data;
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      toast.error('Error al cargar el usuario');
-      return null;
-    }
-  };
-
   useEffect(() => {
     loadUsers();
   }, []);
@@ -83,13 +67,27 @@ const Staff: React.FC = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
+      console.log('Requesting all users from context...');
       const staffUsers = await fetchAllUsers();
+      console.log('Received users from context:', staffUsers);
       setUsers(staffUsers);
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Error al cargar usuarios');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshUsers = async () => {
+    setRefreshing(true);
+    try {
+      await loadUsers();
+      toast.success('Lista de usuarios actualizada');
+    } catch (error) {
+      console.error('Error refreshing users:', error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -133,6 +131,7 @@ const Staff: React.FC = () => {
   const startEditRole = (user: AuthUser) => {
     setCurrentUserEdit(user);
     editForm.setValue('role', user.role);
+    setAvatarUrl(user.avatar || null);
     setShowEditDialog(true);
   };
 
@@ -300,6 +299,13 @@ const Staff: React.FC = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
+              <Label>Email</Label>
+              <div className="p-2 bg-muted rounded text-sm">
+                {currentUserEdit?.email || 'Sin correo electrónico'}
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
               <Label htmlFor="role">Rol</Label>
               <Select 
                 onValueChange={(value) => editForm.setValue('role', value as UserRole)} 
@@ -373,18 +379,30 @@ const Staff: React.FC = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gestión de Personal</h1>
           
-          {canEdit && (
+          <div className="flex gap-2">
             <Button 
-              onClick={() => {
-                reset();
-                setShowAddDialog(true);
-              }}
+              variant="outline"
+              onClick={refreshUsers}
+              disabled={refreshing}
               className="flex items-center gap-2"
             >
-              <UserPlus size={18} />
-              Agregar Personal
+              <RefreshCcw size={18} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Actualizando..." : "Actualizar"}
             </Button>
-          )}
+            
+            {canEdit && (
+              <Button 
+                onClick={() => {
+                  reset();
+                  setShowAddDialog(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <UserPlus size={18} />
+                Agregar Personal
+              </Button>
+            )}
+          </div>
         </div>
         
         <Tabs defaultValue="all" value={tab} onValueChange={setTab} className="w-full">

@@ -306,7 +306,7 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
         return {
           id: profile?.id || '',
           name: profile?.name || '',
-          email: userData?.user?.email || profile?.email || '',
+          email: userData?.user?.email || '', // Use auth data for email
           role: (profile?.role as UserRole) || 'admin',
           avatar: profile?.avatar,
           created_at: profile?.created_at || ''

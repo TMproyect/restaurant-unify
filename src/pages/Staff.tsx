@@ -71,36 +71,19 @@ const Staff: React.FC = () => {
     try {
       console.log('Staff component: Cargando usuarios directamente...');
       
-      const { data, error } = await supabase.rpc('get_all_profiles');
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, role, avatar, created_at')
+        .order('created_at', { ascending: false });
       
       if (error) {
-        const { data: directData, error: directError } = await supabase
-          .from('profiles')
-          .select('id, name, role, avatar, created_at')
-          .order('created_at', { ascending: false });
-          
-        if (directError) {
-          throw directError;
-        }
+        throw error;
+      }
+      
+      if (data) {
+        console.log('Staff component: Consulta retornó', data.length, 'perfiles');
         
-        if (directData) {
-          console.log('Staff component: Consulta directa retornó', directData.length, 'perfiles');
-          
-          const staffUsers = directData.map(profile => ({
-            id: profile.id,
-            name: profile.name || 'Sin nombre',
-            email: '',
-            role: profile.role as UserRole,
-            avatar: profile.avatar,
-            created_at: profile.created_at
-          }));
-          
-          setUsers(staffUsers);
-        }
-      } else if (data) {
-        console.log('Staff component: RPC retornó', data.length, 'perfiles');
-        
-        const staffUsers = data.map((profile: any) => ({
+        const staffUsers = data.map(profile => ({
           id: profile.id,
           name: profile.name || 'Sin nombre',
           email: '',

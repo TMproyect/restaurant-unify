@@ -13,6 +13,7 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState('login');
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
+  const [redirectAttempts, setRedirectAttempts] = useState(0);
 
   // Detailed debug logging
   useEffect(() => {
@@ -42,16 +43,41 @@ const Login = () => {
     const message = params.get('message');
     
     if (error) {
+      console.log("Login page: URL contiene error:", error);
       toast.error('Error de autenticación', {
         description: message || error,
       });
     } else if (message) {
+      console.log("Login page: URL contiene mensaje:", message);
       toast.success('Información', {
         description: message,
       });
     }
     
     console.log("Login page loaded, isAuthenticated:", isAuthenticated, "isLoading:", isLoading, "user:", user);
+    
+    // Verificando estado del localStorage
+    try {
+      localStorage.setItem('login_test', 'test');
+      const testValue = localStorage.getItem('login_test');
+      console.log("Login page: LocalStorage test:", testValue === 'test' ? "funcionando" : "valor incorrecto");
+      localStorage.removeItem('login_test');
+    } catch (e) {
+      console.error("Login page: LocalStorage no funciona:", e);
+    }
+    
+    // Verificar la conexión a Supabase
+    const testSupabaseConnection = async () => {
+      try {
+        const { data, error } = await fetch('https://imcxvnivqrckgjrimzck.supabase.co/auth/v1/health')
+          .then(res => res.json());
+        console.log("Login page: Conexión a Supabase health check:", { data, error, status: "ok" });
+      } catch (err) {
+        console.error("Login page: Error verificando conexión a Supabase:", err);
+      }
+    };
+    
+    testSupabaseConnection();
   }, []);
 
   // CENTRALIZADA: Handle redirection with a small delay to ensure context is fully initialized
@@ -61,6 +87,7 @@ const Login = () => {
     console.log("Redirect effect triggered - Auth state check:", { 
       isAuthenticated, 
       isLoading,
+      redirectAttempts,
       user: user ? { id: user.id, email: user.email, role: user.role } : null
     });
     
@@ -72,6 +99,12 @@ const Login = () => {
         console.log("Executing redirect to dashboard now for user:", user.email);
         navigate('/dashboard', { replace: true });
       }, 300); // Increased timeout to ensure state is fully processed
+    } else if (!isLoading && !isAuthenticated && redirectAttempts < 3) {
+      console.log("Not authenticated but not loading, will check again in case of race condition");
+      // En caso de que haya una condición de carrera, intentar de nuevo después de un breve tiempo
+      redirectTimeout = window.setTimeout(() => {
+        setRedirectAttempts(prev => prev + 1);
+      }, 500);
     }
     
     return () => {
@@ -80,7 +113,7 @@ const Login = () => {
         window.clearTimeout(redirectTimeout);
       }
     };
-  }, [isAuthenticated, isLoading, navigate, user]);
+  }, [isAuthenticated, isLoading, navigate, user, redirectAttempts]);
 
   // Network connectivity check
   useEffect(() => {
@@ -89,11 +122,16 @@ const Login = () => {
         toast.error('Error de conexión', {
           description: 'Se ha perdido la conexión a internet',
         });
+      } else {
+        console.log("Conexión a internet restaurada");
       }
     };
 
     window.addEventListener('online', handleOnlineStatusChange);
     window.addEventListener('offline', handleOnlineStatusChange);
+
+    // Verificar estado actual de conexión
+    console.log("Estado actual de conexión:", navigator.onLine ? "Online" : "Offline");
 
     return () => {
       window.removeEventListener('online', handleOnlineStatusChange);
@@ -111,6 +149,7 @@ const Login = () => {
           <div className="h-2 w-64 bg-gray-200 mx-auto rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 animate-pulse rounded-full"></div>
           </div>
+          <p className="text-sm text-gray-500 mt-2">Conectando con el servidor...</p>
         </div>
       </div>
     );
@@ -119,6 +158,17 @@ const Login = () => {
   // If user is authenticated, we should not render this page but be redirected
   if (isAuthenticated && user) {
     console.log("User is authenticated on Login page, should be redirected soon...", user);
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-lg mb-2">Sesión iniciada</p>
+          <p className="mb-2">Redirigiendo al dashboard...</p>
+          <div className="h-2 w-64 bg-gray-200 mx-auto rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 animate-pulse rounded-full"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Show login content

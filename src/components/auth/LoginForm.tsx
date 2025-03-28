@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,15 +20,45 @@ const LoginForm = () => {
     return navigator.onLine;
   };
 
+  // Logs para verificar el estado al montar el componente
+  useEffect(() => {
+    console.log("LoginForm: Componente montado");
+    
+    // Verificar la conexión a supabase al inicio
+    const testConnection = async () => {
+      try {
+        const { data, error } = await fetch('https://imcxvnivqrckgjrimzck.supabase.co/auth/v1/health')
+          .then(res => res.json());
+        console.log("LoginForm: Conexión a Supabase health check:", { data, error, status: "ok" });
+      } catch (err) {
+        console.error("LoginForm: Error verificando conexión a Supabase:", err);
+      }
+    };
+    
+    testConnection();
+    
+    return () => {
+      console.log("LoginForm: Componente desmontado");
+    };
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("LoginForm: handleLogin iniciado, estado actual:", {
+      email,
+      passwordLength: password ? password.length : 0,
+      loading,
+      retryCount
+    });
+    
     if (loading) {
-      console.log("Proceso de login ya en curso, ignorando solicitud");
+      console.log("LoginForm: Proceso de login ya en curso, ignorando solicitud");
       return;
     }
     
     if (!email || !password) {
+      console.log("LoginForm: Datos incompletos, mostrando error");
       toast.error('Datos requeridos', {
         description: 'Por favor ingrese su correo y contraseña',
       });
@@ -37,6 +67,7 @@ const LoginForm = () => {
 
     // Check network connectivity first
     if (!checkNetworkConnectivity()) {
+      console.log("LoginForm: Sin conexión a internet");
       toast.error('Error de conexión', {
         description: 'Verifique su conexión a internet e intente nuevamente',
       });
@@ -50,6 +81,12 @@ const LoginForm = () => {
       console.log("LoginForm: Enviando solicitud de login a supabase...");
       const result = await login(email, password);
       
+      console.log("LoginForm: Resultado de login:", {
+        success: !!result?.user,
+        error: result?.error ? (result.error.message || 'Error desconocido') : null,
+        userId: result?.user?.id
+      });
+      
       if (result?.user) {
         console.log("LoginForm: Login completado exitosamente con ID:", result.user.id);
         
@@ -62,10 +99,13 @@ const LoginForm = () => {
         console.error("LoginForm: Error explícito en login:", result.error);
         throw new Error(result.error.message || 'Error durante el inicio de sesión');
       } else {
+        console.error("LoginForm: No se recibieron datos de usuario después del login");
         throw new Error('No se recibieron datos de usuario después del login');
       }
     } catch (err: any) {
       console.error("LoginForm: Error en login:", err);
+      console.error("LoginForm: Error stack:", err.stack);
+      
       let errorMessage = 'Intente nuevamente más tarde';
       
       if (err.message?.includes('Email not confirmed')) {
@@ -77,6 +117,7 @@ const LoginForm = () => {
         
         // Auto-retry once for network errors
         if (retryCount < 1) {
+          console.log("LoginForm: Configurando reintento automático");
           setRetryCount(prevCount => prevCount + 1);
           setTimeout(() => {
             console.log("LoginForm: Reintentando login automáticamente");
@@ -89,6 +130,7 @@ const LoginForm = () => {
         errorMessage = err.message;
       }
       
+      console.log("LoginForm: Mostrando error:", errorMessage);
       toast.error('Error al iniciar sesión', {
         description: errorMessage,
       });

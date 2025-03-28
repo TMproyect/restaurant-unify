@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Staff from "./pages/Staff";
 import Tables from "./pages/Tables";
 import Notifications from "./pages/Notifications";
+import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ function App() {
               <Route path="/settings" element={<Settings />} />
               <Route path="/staff" element={<Staff />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>

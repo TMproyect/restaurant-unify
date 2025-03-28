@@ -1,90 +1,117 @@
 
 import React, { useState, useEffect } from 'react';
-import { Bell, Moon, Sun, MessageSquare } from 'lucide-react';
+import { Bell, Moon, Sun, MessageSquare, X, AlertCircle, Package, ShoppingCart, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useOnClickOutside } from '@/hooks/use-click-outside';
+import { getNotifications, markNotificationAsRead, Notification } from '@/services/notificationService';
+import { getUnreadMessagesCount } from '@/services/messageService';
 
-// Definimos una interfaz para las notificaciones
-interface Notification {
-  id: number;
-  message: string;
-  time: string;
-  read: boolean;
-  link?: string;
-  type?: 'order' | 'inventory' | 'table' | 'system';
-}
-
-// Sample notifications for demo - Utilizaremos estos mientras integramos con Supabase
-const SAMPLE_NOTIFICATIONS: Notification[] = [
-  { id: 1, message: 'Pedido #45 listo para entregar', time: '2 min atrás', read: false, link: '/orders', type: 'order' },
-  { id: 2, message: 'Inventario bajo: Tomates', time: '10 min atrás', read: false, link: '/inventory', type: 'inventory' },
-  { id: 3, message: 'Nuevo pedido en Mesa 3', time: '15 min atrás', read: true, link: '/tables', type: 'table' },
-];
+const NotificationIcon = ({ type }: { type?: string }) => {
+  switch (type) {
+    case 'order':
+      return <ShoppingCart className="h-5 w-5 text-blue-500" />;
+    case 'inventory':
+      return <Package className="h-5 w-5 text-yellow-500" />;
+    case 'table':
+      return <Users className="h-5 w-5 text-green-500" />;
+    default:
+      return <Bell className="h-5 w-5 text-gray-500" />;
+  }
+};
 
 const Header = () => {
   const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(SAMPLE_NOTIFICATIONS);
-  const [messages, setMessages] = useState<{count: number}>({count: 2});
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const notificationsRef = React.useRef<HTMLDivElement>(null);
+  const messagesRef = React.useRef<HTMLDivElement>(null);
   
-  // Efecto para cargar las notificaciones al inicio
-  useEffect(() => {
-    console.log("Cargando notificaciones...");
-    // Aquí se cargarían las notificaciones reales desde Supabase
-    // Por ahora usamos las de muestra
-  }, []);
+  // Close dropdowns when clicking outside
+  useOnClickOutside(notificationsRef, () => setShowNotifications(false));
+  useOnClickOutside(messagesRef, () => setShowMessages(false));
 
-  // Suscribirse a eventos en tiempo real de Supabase (órdenes e inventario)
+  // Fetch notifications and unread counts when component mounts
   useEffect(() => {
-    console.log("Configurando suscripciones a notificaciones en tiempo real");
+    if (user) {
+      console.log("Loading notifications and message counts");
+      loadNotifications();
+      loadUnreadMessageCount();
+
+      // Subscribe to notifications and messages
+      const notificationsChannel = supabase
+        .channel('notifications-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'notifications' 
+          }, 
+          payload => {
+            console.log('New notification event:', payload);
+            loadNotifications();
+          })
+        .subscribe((status) => {
+          console.log('Notifications subscription status:', status);
+        });
+
+      const messagesChannel = supabase
+        .channel('messages-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'messages' 
+          }, 
+          payload => {
+            console.log('New message event:', payload);
+            loadUnreadMessageCount();
+          })
+        .subscribe((status) => {
+          console.log('Messages subscription status:', status);
+        });
+
+      return () => {
+        console.log("Cleaning up subscriptions");
+        supabase.removeChannel(notificationsChannel);
+        supabase.removeChannel(messagesChannel);
+      };
+    }
+  }, [user]);
+
+  const loadNotifications = async () => {
+    if (!user) return;
     
-    const orderChannel = supabase
-      .channel('orders-notifications')
-      .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'orders' 
-          }, 
-          payload => {
-            console.log('Nueva notificación de orden:', payload);
-            // Aquí procesaríamos la notificación real
-          })
-      .subscribe((status) => {
-        console.log('Estado de suscripción a órdenes:', status);
-      });
-      
-    const inventoryChannel = supabase
-      .channel('inventory-notifications')
-      .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'inventory_items' 
-          }, 
-          payload => {
-            console.log('Nueva notificación de inventario:', payload);
-            // Aquí procesaríamos la notificación real
-          })
-      .subscribe((status) => {
-        console.log('Estado de suscripción a inventario:', status);
-      });
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+      setUnreadNotifications(data.filter(n => !n.read).length);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+    }
+  };
 
-    return () => {
-      console.log("Limpiando suscripciones a notificaciones");
-      supabase.removeChannel(orderChannel);
-      supabase.removeChannel(inventoryChannel);
-    };
-  }, []);
+  const loadUnreadMessageCount = async () => {
+    if (!user) return;
+
+    try {
+      const count = await getUnreadMessagesCount(user.id);
+      setUnreadMessages(count);
+    } catch (error) {
+      console.error("Error loading unread message count:", error);
+    }
+  };
   
   const toggleDarkMode = () => {
     const newMode = !darkMode;
@@ -98,63 +125,86 @@ const Header = () => {
     }
   };
 
-  // Función para marcar una notificación como leída
-  const markAsRead = (id: number) => {
-    console.log(`Marcando notificación ${id} como leída`);
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-  };
-
-  // Función para manejar el clic en una notificación
-  const handleNotificationClick = (notification: Notification) => {
-    console.log(`Notificación clickeada:`, notification);
-    if (notification.link) {
-      markAsRead(notification.id);
-      setShowNotifications(false);
-      navigate(notification.link);
+  // Function to mark a notification as read
+  const handleNotificationClick = async (notification: Notification) => {
+    console.log(`Notification clicked:`, notification);
+    try {
+      // If the notification has not been read yet, mark it as read
+      if (!notification.read) {
+        await markNotificationAsRead(notification.id);
+      }
       
-      // Mostrar un toast informativo
-      toast({
-        title: "Navegando",
-        description: `Redirigiendo a ${notification.link}`,
-      });
+      // Close notification dropdown
+      setShowNotifications(false);
+      
+      // Navigate to the link if provided
+      if (notification.link) {
+        console.log(`Navigating to ${notification.link}`);
+        navigate(notification.link);
+        
+        toast({
+          title: "Navegando",
+          description: `Redirigiendo a ${notification.link}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error handling notification click:", error);
     }
   };
 
-  // Función para ver todas las notificaciones
+  // Function to view all notifications
   const viewAllNotifications = () => {
-    console.log("Ver todas las notificaciones");
+    console.log("View all notifications clicked");
     setShowNotifications(false);
     navigate('/notifications');
     
-    // Mostrar un toast informativo
     toast({
       title: "Notificaciones",
       description: "Visualizando todas las notificaciones",
     });
   };
 
-  // Función para manejar click en mensajes
+  // Function to handle click on messages
   const handleMessagesClick = () => {
-    console.log("Abriendo mensajes");
+    console.log("Messages clicked");
+    
+    // Close notifications dropdown if open
+    if (showNotifications) {
+      setShowNotifications(false);
+    }
+    
+    // Toggle messages dropdown
     setShowMessages(!showMessages);
     
-    // Reset del contador de mensajes
-    if (messages.count > 0) {
-      setMessages({count: 0});
+    // If dropdown is being opened and there are unread messages, navigate to messages page
+    if (!showMessages && unreadMessages > 0) {
+      setShowMessages(false); // Close dropdown
+      navigate('/messages'); // Navigate to messages page
       
       toast({
         title: "Mensajes",
-        description: "No hay mensajes nuevos disponibles aún",
+        description: "Navigando a mensajes",
       });
     }
   };
 
-  // Count unread notifications
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Function to navigate to messages page
+  const goToMessages = () => {
+    console.log("Navigating to messages page");
+    setShowMessages(false);
+    navigate('/messages');
+  };
+
+  // Toggle notifications dropdown
+  const toggleNotifications = () => {
+    // Close messages dropdown if open
+    if (showMessages) {
+      setShowMessages(false);
+    }
+    
+    // Toggle notifications dropdown
+    setShowNotifications(!showNotifications);
+  };
 
   return (
     <header className={cn(
@@ -180,49 +230,56 @@ const Header = () => {
         </button>
         
         {/* Chat button - hide on very small screens */}
-        <button 
-          className="icon-button relative hidden sm:flex"
-          onClick={handleMessagesClick}
-        >
-          <MessageSquare size={isMobile ? 18 : 20} />
-          {messages.count > 0 && (
-            <span className="absolute top-0 right-0 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-              {messages.count}
-            </span>
+        <div className="relative" ref={messagesRef}>
+          <button 
+            className="icon-button relative hidden sm:flex"
+            onClick={handleMessagesClick}
+            aria-label="Messages"
+          >
+            <MessageSquare size={isMobile ? 18 : 20} />
+            {unreadMessages > 0 && (
+              <span className="absolute top-0 right-0 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                {unreadMessages}
+              </span>
+            )}
+          </button>
+          
+          {/* Messages dropdown */}
+          {showMessages && (
+            <div className="absolute right-0 top-16 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
+              <div className="p-3 border-b border-border flex justify-between items-center">
+                <h3 className="font-medium">Mensajes</h3>
+                <button 
+                  onClick={() => setShowMessages(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-8 text-center text-muted-foreground">
+                <p>No hay mensajes nuevos</p>
+                <button 
+                  onClick={goToMessages}
+                  className="mt-2 text-primary text-sm hover:underline"
+                >
+                  Ir al centro de mensajes
+                </button>
+              </div>
+            </div>
           )}
-        </button>
-        
-        {/* Mensajes dropdown */}
-        {showMessages && (
-          <div className="absolute right-0 top-16 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
-            <div className="p-3 border-b border-border">
-              <h3 className="font-medium">Mensajes</h3>
-            </div>
-            <div className="p-8 text-center text-muted-foreground">
-              <p>No hay mensajes nuevos</p>
-              <button 
-                onClick={() => {
-                  setShowMessages(false);
-                  navigate('/messages');
-                }}
-                className="mt-2 text-primary text-sm hover:underline"
-              >
-                Ir al centro de mensajes
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
         
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notificationsRef}>
           <button 
             className="icon-button relative"
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={toggleNotifications}
+            aria-label="Notifications"
           >
             <Bell size={isMobile ? 18 : 20} />
-            {unreadCount > 0 && (
+            {unreadNotifications > 0 && (
               <span className="absolute top-0 right-0 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                {unreadCount}
+                {unreadNotifications}
               </span>
             )}
           </button>
@@ -230,12 +287,18 @@ const Header = () => {
           {/* Notifications dropdown */}
           {showNotifications && (
             <div className="absolute right-0 top-16 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
-              <div className="p-3 border-b border-border">
+              <div className="p-3 border-b border-border flex justify-between items-center">
                 <h3 className="font-medium">Notificaciones</h3>
+                <button 
+                  onClick={() => setShowNotifications(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={16} />
+                </button>
               </div>
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length > 0 ? (
-                  notifications.map(notification => (
+                  notifications.slice(0, 5).map(notification => (
                     <div 
                       key={notification.id}
                       className={cn(
@@ -244,13 +307,24 @@ const Header = () => {
                       )}
                       onClick={() => handleNotificationClick(notification)}
                     >
-                      <div className="flex justify-between items-start">
-                        <p className={cn('text-sm', !notification.read && 'font-medium')}>
-                          {notification.message}
-                        </p>
-                        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
-                          {notification.time}
-                        </span>
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <NotificationIcon type={notification.type} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <p className={cn('text-sm', !notification.read && 'font-medium')}>
+                              {notification.title}
+                            </p>
+                            <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                              {new Date(notification.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{notification.description}</p>
+                        </div>
                       </div>
                     </div>
                   ))

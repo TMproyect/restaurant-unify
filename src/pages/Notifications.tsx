@@ -8,27 +8,9 @@ import { Bell, CheckCircle, Package, ShoppingCart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
-
-// Definimos una interfaz para las notificaciones
-interface Notification {
-  id: number;
-  message: string;
-  time: string;
-  read: boolean;
-  link?: string;
-  type?: 'order' | 'inventory' | 'table' | 'system';
-}
-
-// Sample notifications for demo
-const SAMPLE_NOTIFICATIONS: Notification[] = [
-  { id: 1, message: 'Pedido #45 listo para entregar', time: '2 min atrás', read: false, link: '/orders', type: 'order' },
-  { id: 2, message: 'Inventario bajo: Tomates', time: '10 min atrás', read: false, link: '/inventory', type: 'inventory' },
-  { id: 3, message: 'Nuevo pedido en Mesa 3', time: '15 min atrás', read: true, link: '/tables', type: 'table' },
-  { id: 4, message: 'Nuevo usuario registrado: Carlos', time: '1 hora atrás', read: true, link: '/staff', type: 'system' },
-  { id: 5, message: 'Actualización de menú completada', time: '2 horas atrás', read: true, link: '/menu', type: 'system' },
-  { id: 6, message: 'Pedido #42 entregado', time: '3 horas atrás', read: true, link: '/orders', type: 'order' },
-  { id: 7, message: 'Inventario bajo: Queso mozzarella', time: '4 horas atrás', read: true, link: '/inventory', type: 'inventory' },
-];
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, Notification } from '@/services/notificationService';
+import { supabase } from '@/integrations/supabase/client';
 
 const NotificationIcon = ({ type }: { type?: string }) => {
   switch (type) {
@@ -44,15 +26,55 @@ const NotificationIcon = ({ type }: { type?: string }) => {
 };
 
 const Notifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(SAMPLE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    console.log("Cargando notificaciones en la página de Notificaciones");
-    // Aquí cargaríamos las notificaciones desde Supabase en una aplicación real
-  }, []);
+    console.log("Loading notifications in Notifications page");
+    loadNotifications();
+
+    // Subscribe to notifications
+    const notificationsChannel = supabase
+      .channel('notifications-page-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'notifications' 
+        }, 
+        payload => {
+          console.log('New notification event in page:', payload);
+          loadNotifications();
+        })
+      .subscribe((status) => {
+        console.log('Notifications page subscription status:', status);
+      });
+
+    return () => {
+      console.log("Cleaning up notifications subscription in page");
+      supabase.removeChannel(notificationsChannel);
+    };
+  }, [user?.id]);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+      toast({
+        title: "Error",
+        description: "Could not load notifications",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtramos las notificaciones según la pestaña activa
   const filteredNotifications = notifications.filter(notification => {
@@ -62,38 +84,64 @@ const Notifications = () => {
   });
 
   // Función para marcar una notificación como leída
-  const markAsRead = (id: number) => {
-    console.log(`Marcando notificación ${id} como leída`);
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-    
-    toast({
-      title: "Notificación actualizada",
-      description: "Notificación marcada como leída",
-    });
+  const handleMarkAsRead = async (id: string) => {
+    console.log(`Marking notification ${id} as read`);
+    try {
+      await markNotificationAsRead(id);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === id ? { ...notif, read: true } : notif
+        )
+      );
+      
+      toast({
+        title: "Notificación actualizada",
+        description: "Notificación marcada como leída",
+      });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      toast({
+        title: "Error",
+        description: "Could not mark notification as read",
+      });
+    }
   };
 
   // Función para marcar todas como leídas
-  const markAllAsRead = () => {
-    console.log("Marcando todas las notificaciones como leídas");
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
-    
-    toast({
-      title: "Notificaciones actualizadas",
-      description: "Todas las notificaciones marcadas como leídas",
-    });
+  const handleMarkAllAsRead = async () => {
+    console.log("Marking all notifications as read");
+    try {
+      await markAllNotificationsAsRead();
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notif => ({ ...notif, read: true }))
+      );
+      
+      toast({
+        title: "Notificaciones actualizadas",
+        description: "Todas las notificaciones marcadas como leídas",
+      });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      toast({
+        title: "Error",
+        description: "Could not mark all notifications as read",
+      });
+    }
   };
 
   // Función para manejar el clic en una notificación
-  const handleNotificationClick = (notification: Notification) => {
-    console.log(`Notificación clickeada:`, notification);
+  const handleNotificationClick = async (notification: Notification) => {
+    console.log(`Notification clicked:`, notification);
+    
+    if (!notification.read) {
+      await handleMarkAsRead(notification.id);
+    }
+    
     if (notification.link) {
-      markAsRead(notification.id);
       navigate(notification.link);
       
       toast({
@@ -111,7 +159,7 @@ const Notifications = () => {
           
           <Button
             variant="outline"
-            onClick={markAllAsRead}
+            onClick={handleMarkAllAsRead}
             disabled={!notifications.some(n => !n.read)}
             className="self-start"
           >
@@ -143,44 +191,59 @@ const Notifications = () => {
             </Tabs>
           </CardHeader>
           <CardContent>
-            <div className="space-y-1">
-              {filteredNotifications.length > 0 ? (
-                filteredNotifications.map(notification => (
-                  <div
-                    key={notification.id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-md cursor-pointer hover:bg-muted transition-colors",
-                      !notification.read && 'bg-blue-50 dark:bg-blue-900/20'
-                    )}
-                  >
-                    <div className="flex-shrink-0 mt-1">
-                      <NotificationIcon type={notification.type} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <p className={cn("text-sm", !notification.read && "font-medium")}>
-                          {notification.message}
-                        </p>
-                        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
-                          {notification.time}
-                        </span>
+            {loading ? (
+              <div className="py-8 text-center">
+                <p className="text-muted-foreground">Cargando notificaciones...</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredNotifications.length > 0 ? (
+                  filteredNotifications.map(notification => (
+                    <div
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-md cursor-pointer hover:bg-muted transition-colors",
+                        !notification.read && 'bg-blue-50 dark:bg-blue-900/20'
+                      )}
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        <NotificationIcon type={notification.type} />
                       </div>
                       
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {notification.read ? 'Leída' : 'Sin leer'}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <p className={cn("text-sm", !notification.read && "font-medium")}>
+                            {notification.title}
+                          </p>
+                          <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                            {new Date(notification.created_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              day: '2-digit',
+                              month: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {notification.description}
+                        </p>
+                        
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {notification.read ? 'Leída' : 'Sin leer'}
+                        </p>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center">
+                    <Bell className="mx-auto h-8 w-8 text-muted-foreground mb-2 opacity-50" />
+                    <p className="text-muted-foreground">No hay notificaciones para mostrar</p>
                   </div>
-                ))
-              ) : (
-                <div className="py-8 text-center">
-                  <Bell className="mx-auto h-8 w-8 text-muted-foreground mb-2 opacity-50" />
-                  <p className="text-muted-foreground">No hay notificaciones para mostrar</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

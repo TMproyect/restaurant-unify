@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, AuthUser } from './types';
 import { safetyCheck, filterValue } from '@/utils/supabaseHelpers';
@@ -513,4 +514,4 @@ export const createUserByAdmin = createUserWithEdgeFunction;
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;
 
-export { createUserWithEdgeFunction };
+// Remove the duplicate export at the end of the file

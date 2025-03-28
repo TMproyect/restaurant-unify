@@ -398,60 +398,24 @@ export const createUserWithEdgeFunction = async (email: string, password: string
   try {
     console.log(`Creating user with edge function: ${email}, ${name}, ${role}`);
     
-    // First, create the user with Supabase auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name, role }
+    // Call the Supabase edge function to create a user
+    const { data, error } = await supabase.functions.invoke('create-user-with-profile', {
+      body: { email, password, name, role }
     });
 
-    if (authError) {
-      console.error('Error creating user:', authError);
-      return { error: authError };
+    if (error) {
+      console.error('Error calling create-user-with-profile function:', error);
+      return { error };
     }
 
-    if (!authData.user) {
-      return { error: 'Error: No user returned from auth' };
+    if (!data || !data.user) {
+      console.error('Error: No user returned from edge function');
+      return { error: 'No user returned from edge function' };
     }
 
-    console.log('User created successfully with ID:', authData.user.id);
+    console.log('User created successfully with edge function:', data);
     
-    // Then, ensure profile exists
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{ 
-          id: authData.user.id, 
-          name, 
-          role
-        }])
-        .single();
-
-      if (profileError) {
-        // If the profile already exists, try updating it instead
-        if (profileError.code === '23505') { // Duplicate key error
-          console.log('Profile already exists, updating instead');
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ name, role })
-            .eq('id', authData.user.id);
-            
-          if (updateError) {
-            console.error('Error updating profile:', updateError);
-            return { error: updateError, user: authData.user };
-          }
-        } else {
-          console.error('Error creating profile:', profileError);
-          return { error: profileError, user: authData.user };
-        }
-      }
-    } catch (profileError) {
-      console.error('Exception creating profile:', profileError);
-      return { error: profileError, user: authData.user };
-    }
-
-    return { user: authData.user };
+    return { user: data.user };
   } catch (error) {
     console.error('Exception in createUserWithEdgeFunction:', error);
     return { error };

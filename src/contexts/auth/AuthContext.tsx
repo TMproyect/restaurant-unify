@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +10,8 @@ import {
   createUserByAdmin, 
   updateUserRoleById, 
   logoutUser,
-  fetchAllProfiles
+  fetchAllProfiles,
+  createUserWithEdgeFunction
 } from './authHelpers';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,7 +21,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  // Debugging helper
   const logAuthState = (prefix: string) => {
     console.log(`${prefix} - Auth State:`, {
       isLoading,
@@ -46,7 +45,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log("AuthProvider initialized, setting up auth state listener");
     logAuthState("Initial state");
     
-    // First set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log('Auth state changed:', event, currentSession?.user?.id);
@@ -57,7 +55,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (currentSession) {
           setSession(currentSession);
           
-          // Important: use setTimeout to prevent deadlocks with Supabase auth
           setTimeout(async () => {
             if (!isMounted) return;
             try {
@@ -71,7 +68,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               } else if (isMounted) {
                 console.error('No profile found for user:', currentSession.user.id);
                 
-                // Create a basic user object from auth data as fallback
                 const basicUser: AuthUser = {
                   id: currentSession.user.id,
                   name: currentSession.user.user_metadata?.name || 'Usuario',
@@ -87,7 +83,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               console.error('Error fetching profile after auth state change:', error);
               
               if (isMounted) {
-                // Create a basic user object from auth data as fallback on error
                 const basicUser: AuthUser = {
                   id: currentSession.user.id,
                   name: currentSession.user.user_metadata?.name || 'Usuario',
@@ -117,7 +112,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Set a reasonable timeout for initial auth check
     const sessionCheckTimeout = setTimeout(() => {
       if (isMounted && isLoading) {
         console.log("Session check timeout reached, forcing loading state to false");
@@ -126,7 +120,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }, 3000);
 
-    // Then check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       console.log('Initial session check:', currentSession?.user?.id);
       if (!isMounted) return;
@@ -144,7 +137,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           } else if (isMounted) {
             console.error('No profile found for user in initial check:', currentSession.user.id);
             
-            // Create a basic user object from auth data as fallback
             const basicUser: AuthUser = {
               id: currentSession.user.id,
               name: currentSession.user.user_metadata?.name || 'Usuario',
@@ -160,7 +152,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error('Error fetching initial profile:', error);
           
           if (isMounted) {
-            // Create a basic user object from auth data as fallback on error
             const basicUser: AuthUser = {
               id: currentSession.user.id,
               name: currentSession.user.user_metadata?.name || 'Usuario',
@@ -224,10 +215,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       console.log("Auth successful, user ID:", data.user.id);
       
-      // Set session before fetching profile to ensure auth state is updated
       setSession(data.session);
       
-      // Important: Fetch profile to get the user's role and other data
       try {
         console.log("Fetching user profile after login for user:", data.user.id);
         const profile = await fetchUserProfile(data.user.id);
@@ -238,7 +227,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           logAuthState("After setting user from profile");
         } else {
           console.warn("No profile found after login, using basic user data");
-          // Create a minimal user object from auth data if profile fetch fails
           const basicUser: AuthUser = {
             id: data.user.id,
             name: data.user.user_metadata?.name || 'Usuario',
@@ -251,8 +239,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (profileError) {
         console.error("Error fetching profile after login:", profileError);
-        // Still consider login successful even if profile fetch fails,
-        // but log the error and create a minimal user object
         const basicUser: AuthUser = {
           id: data.user.id,
           name: data.user.user_metadata?.name || 'Usuario',
@@ -300,7 +286,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (data.user) {
         try {
-          // Pass only userId and name to createUserProfile
           await createUserProfile(data.user.id, { name, role, email });
           console.log("Profile created successfully for user:", data.user.id);
         } catch (profileError) {
@@ -328,17 +313,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Create user started with role:", role);
       
-      // First, ensure we have the correct role format
       let safeRole: UserRole = role;
       if (!['admin', 'waiter', 'kitchen', 'delivery', 'manager'].includes(role)) {
         console.warn(`Invalid role provided: ${role}, defaulting to 'waiter'`);
         safeRole = 'waiter';
       }
       
-      // Use the createUserByAdmin function from authHelpers
-      const result = await createUserByAdmin(email, password, name, safeRole);
+      const result = await createUserWithEdgeFunction(email, password, name, safeRole);
 
-      // Handle the user creation result safely
       if (result && 'error' in result && result.error) {
         throw result.error;
       }
@@ -348,7 +330,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       console.log("Create user successful with role:", safeRole);
     } catch (error: any) {
-      console.error('Error creating user:', error.message);
+      console.error('Error creating user:', error.message || error);
       toast.error(error.message || 'Error al crear el usuario');
       throw error;
     } finally {
@@ -362,10 +344,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Update user role started for user:", userId, "to role:", newRole);
       
-      const success = await updateUserRoleById(userId, newRole);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
 
-      if (!success) {
-        throw new Error('No se pudo actualizar el rol del usuario');
+      if (error) {
+        console.error('Error updating role in database:', error);
+        throw new Error(error.message || 'Error updating user role');
       }
 
       if (user && userId === user.id) {
@@ -376,7 +362,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       console.log("Update role successful");
     } catch (error: any) {
-      console.error('Error updating user role:', error.message);
+      console.error('Error updating user role:', error.message || error);
       toast.error(error.message || 'Error al actualizar el rol del usuario');
       throw error;
     } finally {
@@ -406,7 +392,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchAllUsers = async (): Promise<AuthUser[]> => {
     try {
       console.log("Fetching all users from context...");
-      // Get all users with their profiles and email information
       const profiles = await fetchAllProfiles();
       console.log("Fetched profiles in fetchAllUsers:", profiles.length);
       return profiles;

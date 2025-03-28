@@ -153,11 +153,17 @@ const Staff: React.FC = () => {
     try {
       setIsSubmitting(true);
       console.log('Creating user with data:', data);
+      
       await createUser(data.email, data.password, data.name, data.role);
-      await loadUsers();
-      setShowAddDialog(false);
-      reset();
+      
       toast.success(`Usuario ${data.name} creado con rol ${data.role}`);
+      reset();
+      setShowAddDialog(false);
+      
+      setTimeout(() => {
+        loadUsers();
+      }, 500);
+      
     } catch (error: any) {
       console.error('Error adding staff:', error);
       toast.error(error.message || 'Error al crear usuario');
@@ -172,15 +178,22 @@ const Staff: React.FC = () => {
     try {
       setIsSubmitting(true);
       console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
+      
       await updateUserRole(currentUserEdit.id, data.role);
+      
+      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
+      setShowEditDialog(false);
       
       setUsers(users.map(u => 
         u.id === currentUserEdit.id 
           ? { ...u, role: data.role }
           : u
       ));
-      setShowEditDialog(false);
-      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
+      
+      setTimeout(() => {
+        loadUsers();
+      }, 500);
+      
     } catch (error: any) {
       console.error('Error updating role:', error);
       toast.error(error.message || 'Error al actualizar rol');

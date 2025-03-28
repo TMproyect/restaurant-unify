@@ -1,116 +1,112 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
-import { corsHeaders } from '../_shared/cors.ts';
-import { getEnv } from '../_shared/env.ts';
 
-interface CreateUserRequest {
-  email: string;
-  password: string;
-  name: string;
-  role: string;
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+// Set up CORS headers for browser access
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders
+    })
   }
 
   try {
-    // Get environment variables with enhanced error handling
-    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv([
-      'SUPABASE_URL',
-      'SUPABASE_SERVICE_ROLE_KEY'
-    ]);
+    // Get environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') as string
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string
 
-    // Initialize Supabase admin client with service role key
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Parse request body
-    const body: CreateUserRequest = await req.json();
-    const { email, password, name, role } = body;
-
-    // Validate required fields
-    if (!email || !password || !name || !role) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing environment variables SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
     }
 
-    console.log(`Creating user with email: ${email}, name: ${name}, role: ${role}`);
+    // Create Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Create user in auth.users
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+    // Parse the request body
+    const { email, password, name, role } = await req.json()
+
+    if (!email || !password || !name) {
+      throw new Error('Missing required fields: email, password, and name are required')
+    }
+
+    // Validate role
+    const validRoles = ['admin', 'waiter', 'kitchen', 'delivery', 'manager']
+    const safeRole = validRoles.includes(role) ? role : 'waiter'
+
+    console.log(`Creating user with email: ${email}, name: ${name}, role: ${safeRole}`)
+
+    // Create user with admin API
+    const { data: userData, error: userError } = await supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Skip email verification
-      user_metadata: { name, role },
-    });
+      email_confirm: true,
+      user_metadata: { name, role: safeRole }
+    })
 
     if (userError) {
-      console.error('Error creating user:', userError);
-      return new Response(
-        JSON.stringify({ error: userError.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('Error creating user:', userError)
+      throw userError
     }
 
-    // Ensure we have a user
-    if (!userData?.user) {
-      throw new Error('User created but no user data returned');
+    if (!userData.user) {
+      throw new Error('User creation failed, no user returned')
     }
 
-    const userId = userData.user.id;
-    console.log(`User created with ID: ${userId}`);
+    console.log(`User created with ID: ${userData.user.id}`)
 
-    // Create profile in public.profiles
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert([
-        {
-          id: userId,
+    // Create or update profile in profiles table
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userData.user.id,
           name,
-          role,
-        },
-      ]);
+          role: safeRole
+        })
 
-    // If profile creation fails, try to delete the user to maintain consistency
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
-      
-      // Attempt to delete the user since profile creation failed
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      
-      return new Response(
-        JSON.stringify({ error: `Profile creation failed: ${profileError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (profileError) {
+        console.error('Error creating profile:', profileError)
+        // Don't throw error here, as user is already created
+      }
+    } catch (profileError) {
+      console.error('Error creating profile:', profileError)
+      // Continue execution even if profile creation fails
     }
 
-    // Return success response with user data
+    // Return success response
     return new Response(
-      JSON.stringify({
-        success: true,
-        user: {
-          id: userId,
-          email: userData.user.email,
-          name,
-          role,
-        },
+      JSON.stringify({ 
+        user: userData.user,
+        message: 'User created successfully'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 200
+      }
+    )
   } catch (error) {
-    console.error('Error in create-user-with-profile function:', error);
+    console.error('Error in edge function:', error)
     
     return new Response(
-      JSON.stringify({ error: error.message || 'An unknown error occurred' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      JSON.stringify({ 
+        error: error.message || 'An error occurred while creating the user'
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 400
+      }
+    )
   }
-});
+})

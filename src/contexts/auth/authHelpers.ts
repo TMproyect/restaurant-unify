@@ -117,7 +117,7 @@ export const login = async (email: string, password: string): Promise<{ user: an
   }
 };
 
-export const signup = async (email: string, name: string, password: string): Promise<{ user: any } | { error: any }> => {
+export const signup = async (email: string, password: string, name: string, role: UserRole = 'admin'): Promise<{ user: any } | { error: any }> => {
   try {
     const { data, error } = await supabase.auth.signUp({ 
       email, 
@@ -282,15 +282,20 @@ export const getRoleFromProfile = async (userId: string): Promise<UserRole | nul
 
 export const updateUserRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
   try {
+    console.log(`Updating user ${userId} role to ${newRole}`);
+    
+    // Use direct update with Supabase query
     const { error } = await supabase
       .from('profiles')
       .update({ role: newRole })
       .eq('id', filterValue(userId));
 
     if (error) {
+      console.error('Error updating user role:', error);
       throw error;
     }
-
+    
+    console.log(`Successfully updated user ${userId} role to ${newRole}`);
     return true;
   } catch (error) {
     console.error('Error updating user role:', error);
@@ -393,23 +398,60 @@ export const createUserWithEdgeFunction = async (email: string, password: string
   try {
     console.log(`Creating user with edge function: ${email}, ${name}, ${role}`);
     
-    const { data, error } = await supabase.functions.invoke('create-user-with-profile', {
-      method: 'POST',
-      body: { email, password, name, role }
+    // First, create the user with Supabase auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, role }
     });
 
-    if (error) {
-      console.error('Error calling edge function:', error);
-      return { error };
+    if (authError) {
+      console.error('Error creating user:', authError);
+      return { error: authError };
     }
 
-    if (data.error) {
-      console.error('Error from edge function:', data.error);
-      return { error: data.error };
+    if (!authData.user) {
+      return { error: 'Error: No user returned from auth' };
     }
 
-    console.log('User created successfully via edge function:', data.user);
-    return { user: data.user };
+    console.log('User created successfully with ID:', authData.user.id);
+    
+    // Then, ensure profile exists
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ 
+          id: authData.user.id, 
+          name, 
+          role
+        }])
+        .single();
+
+      if (profileError) {
+        // If the profile already exists, try updating it instead
+        if (profileError.code === '23505') { // Duplicate key error
+          console.log('Profile already exists, updating instead');
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ name, role })
+            .eq('id', authData.user.id);
+            
+          if (updateError) {
+            console.error('Error updating profile:', updateError);
+            return { error: updateError, user: authData.user };
+          }
+        } else {
+          console.error('Error creating profile:', profileError);
+          return { error: profileError, user: authData.user };
+        }
+      }
+    } catch (profileError) {
+      console.error('Exception creating profile:', profileError);
+      return { error: profileError, user: authData.user };
+    }
+
+    return { user: authData.user };
   } catch (error) {
     console.error('Exception in createUserWithEdgeFunction:', error);
     return { error };

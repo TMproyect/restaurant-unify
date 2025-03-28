@@ -335,8 +335,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         safeRole = 'waiter';
       }
       
-      // Use the Edge Function to create user with admin privileges
-      const result = await createUserByAdmin(email, password, name, safeRole);
+      // Use the createUserWithEdgeFunction instead of Edge Function
+      const result = await createUserWithEdgeFunction(email, password, name, safeRole);
 
       // Handle the user creation result safely
       if (result && 'error' in result && result.error) {
@@ -360,9 +360,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
     try {
       setIsLoading(true);
-      console.log("Update user role started...");
+      console.log("Update user role started for user:", userId, "to role:", newRole);
       
-      await updateUserRoleById(userId, newRole);
+      const success = await updateUserRoleById(userId, newRole);
+
+      if (!success) {
+        throw new Error('No se pudo actualizar el rol del usuario');
+      }
 
       if (user && userId === user.id) {
         setUser(prev => prev ? { ...prev, role: newRole } : null);

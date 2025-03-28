@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -72,7 +71,7 @@ const Staff: React.FC = () => {
     try {
       console.log('Staff component: Cargando usuarios usando RPC function...');
       
-      // Use the RPC function we created in the database
+      // Use the RPC function we created
       const { data, error } = await supabase.rpc('get_all_profiles');
       
       if (error) {
@@ -96,6 +95,8 @@ const Staff: React.FC = () => {
         }));
         
         setUsers(staffUsers);
+      } else {
+        setUsers([]);
       }
     } catch (error: any) {
       console.error('Staff component: Error loading users:', error);
@@ -154,7 +155,9 @@ const Staff: React.FC = () => {
   const onAddStaff = async (data: StaffFormValues) => {
     try {
       setIsSubmitting(true);
+      console.log('Creating user with data:', data);
       await createUser(data.email, data.password, data.name, data.role);
+      // Reload users after creating a new one
       await loadUsers();
       setShowAddDialog(false);
       reset();
@@ -172,14 +175,20 @@ const Staff: React.FC = () => {
     
     try {
       setIsSubmitting(true);
-      await updateUserRole(currentUserEdit.id, data.role);
-      setUsers(users.map(u => 
-        u.id === currentUserEdit.id 
-          ? { ...u, role: data.role }
-          : u
-      ));
-      setShowEditDialog(false);
-      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
+      console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
+      const success = await updateUserRole(currentUserEdit.id, data.role);
+      
+      if (success) {
+        setUsers(users.map(u => 
+          u.id === currentUserEdit.id 
+            ? { ...u, role: data.role }
+            : u
+        ));
+        setShowEditDialog(false);
+        toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
+      } else {
+        throw new Error('No se pudo actualizar el rol');
+      }
     } catch (error: any) {
       console.error('Error updating role:', error);
       toast.error(error.message || 'Error al actualizar rol');

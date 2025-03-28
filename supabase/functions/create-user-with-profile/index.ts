@@ -65,7 +65,8 @@ serve(async (req) => {
         userEmail = userData.user.email || ''
         console.log(`Retrieved email for user ${requestBody.userId}: ${userEmail}`)
       } else {
-        console.log(`Could not retrieve email for user ${requestBody.userId}`)
+        console.error(`Could not retrieve email for user ${requestBody.userId}:`, userError)
+        console.log(`User data object:`, JSON.stringify(userData))
       }
       
       console.log('Role updated successfully:', profileData)
@@ -74,6 +75,8 @@ serve(async (req) => {
       const responseData = profileData && profileData.length > 0
         ? { ...profileData[0], email: userEmail }
         : null
+      
+      console.log('Returning response data:', JSON.stringify(responseData))
       
       return new Response(
         JSON.stringify({ 
@@ -117,7 +120,8 @@ serve(async (req) => {
         userEmail = userData.user.email || ''
         console.log(`Retrieved email for user ${requestBody.userId}: ${userEmail}`)
       } else {
-        console.log(`Could not retrieve email for user ${requestBody.userId}`)
+        console.error(`Could not retrieve email for user ${requestBody.userId}:`, userError)
+        console.log(`User data object:`, JSON.stringify(userData))
       }
       
       console.log('Name updated successfully:', profileData)
@@ -126,6 +130,8 @@ serve(async (req) => {
       const responseData = profileData && profileData.length > 0
         ? { ...profileData[0], email: userEmail }
         : null
+      
+      console.log('Returning response data:', JSON.stringify(responseData))
       
       return new Response(
         JSON.stringify({ 
@@ -145,22 +151,33 @@ serve(async (req) => {
 
     // If we're fetching user emails
     if (action === 'get_emails' && requestBody.userIds && Array.isArray(requestBody.userIds)) {
-      console.log(`Fetching emails for ${requestBody.userIds.length} users`)
+      console.log(`Fetching emails for ${requestBody.userIds.length} users: ${JSON.stringify(requestBody.userIds)}`)
       
       const emailsMap = {}
       
       // Get emails for all requested users
-      await Promise.all(requestBody.userIds.map(async (userId) => {
-        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
+      for (const userId of requestBody.userIds) {
+        console.log(`Fetching email for user ID: ${userId}`)
         
-        if (!userError && userData && userData.user) {
-          emailsMap[userId] = userData.user.email || ''
-          console.log(`Retrieved email for user ${userId}: ${userData.user.email}`)
-        } else {
+        try {
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
+          
+          if (!userError && userData && userData.user) {
+            const email = userData.user.email || ''
+            emailsMap[userId] = email
+            console.log(`Retrieved email for user ${userId}: ${email}`)
+          } else {
+            emailsMap[userId] = ''
+            console.error(`Could not retrieve email for user ${userId}:`, userError)
+            console.log(`Auth data for user ${userId}:`, JSON.stringify(userData))
+          }
+        } catch (error) {
+          console.error(`Exception while retrieving email for user ${userId}:`, error)
           emailsMap[userId] = ''
-          console.log(`Could not retrieve email for user ${userId}`)
         }
-      }))
+      }
+      
+      console.log(`Completed fetching emails. Result: ${JSON.stringify(emailsMap)}`)
       
       return new Response(
         JSON.stringify({ 
@@ -190,18 +207,22 @@ serve(async (req) => {
     console.log(`Creating user with email: ${email}, name: ${name}, role: ${safeRole}`)
 
     // Check if user already exists
-    const { data: existingUsers, error: lookupError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1)
-    
-    if (lookupError) {
-      console.error('Error looking up existing user:', lookupError)
-      // Continue anyway since the email might be unique in auth but not in profiles
-    } else if (existingUsers && existingUsers.length > 0) {
-      console.log('User with this email already exists in profiles table')
-      // Continue anyway, will update the profile if needed
+    try {
+      const { data: existingUsers, error: lookupError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .limit(1)
+      
+      if (lookupError) {
+        console.error('Error looking up existing user:', lookupError)
+        // Continue anyway since the email might be unique in auth but not in profiles
+      } else if (existingUsers && existingUsers.length > 0) {
+        console.log('User with this email already exists in profiles table')
+        // Continue anyway, will update the profile if needed
+      }
+    } catch (error) {
+      console.error('Exception during lookup:', error)
     }
 
     // Create user with admin API
@@ -223,7 +244,7 @@ serve(async (req) => {
       throw new Error('User creation failed, no user returned')
     }
 
-    console.log(`User created with ID: ${userData.user.id}`)
+    console.log(`User created with ID: ${userData.user.id}, email: ${userData.user.email}`)
 
     // Create or update profile in profiles table
     console.log('Creating/updating profile in profiles table')

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -67,14 +66,20 @@ const Staff: React.FC = () => {
   const fetchUserEmails = async (profiles: AuthUser[]) => {
     try {
       // Only fetch emails if there are profiles to fetch emails for
-      if (!profiles || profiles.length === 0) return profiles;
+      if (!profiles || profiles.length === 0) {
+        console.log("Staff: No profiles provided to fetchUserEmails");
+        return profiles;
+      }
       
-      console.log(`Staff: Fetching emails for ${profiles.length} users`);
+      console.log(`Staff: Fetching emails for ${profiles.length} users:`, profiles.map(p => p.id));
       
       // Create array of user IDs to fetch emails for
       const userIds = profiles.map(p => p.id);
       
+      console.log("Staff: User IDs being sent to edge function:", userIds);
+      
       // Call the edge function to get emails
+      console.log("Staff: Invoking create-user-with-profile edge function with action=get_emails");
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           action: 'get_emails',
@@ -82,23 +87,36 @@ const Staff: React.FC = () => {
         }
       });
       
-      console.log('Edge function response for email fetch:', response);
+      console.log('Staff: Edge function complete response:', response);
       
       if (response.error) {
-        console.error('Error fetching emails:', response.error);
+        console.error('Staff: Error from edge function:', response.error);
+        return profiles;
+      }
+      
+      if (!response.data) {
+        console.error('Staff: No data returned from edge function');
         return profiles;
       }
       
       // Map the emails to the profiles
       const emailsMap = response.data || {};
+      console.log('Staff: Emails map received:', emailsMap);
       
-      return profiles.map(profile => ({
-        ...profile,
-        email: emailsMap[profile.id] || profile.email || ''
-      }));
+      const mappedProfiles = profiles.map(profile => {
+        const email = emailsMap[profile.id] || profile.email || '';
+        console.log(`Staff: Mapping email for user ${profile.id}: ${email}`);
+        return {
+          ...profile,
+          email
+        };
+      });
+      
+      console.log('Staff: Profiles with mapped emails:', mappedProfiles);
+      return mappedProfiles;
       
     } catch (error) {
-      console.error('Error fetching user emails:', error);
+      console.error('Staff: Error fetching user emails:', error);
       return profiles;
     }
   };
@@ -113,12 +131,13 @@ const Staff: React.FC = () => {
       const { data, error } = await supabase.rpc('get_all_profiles');
       
       if (error) {
-        console.error('Error calling RPC function:', error);
+        console.error('Staff component: Error calling RPC function:', error);
         throw error;
       }
       
       if (data) {
         console.log('Staff component: RPC retornó', Array.isArray(data) ? data.length : 'no array', 'perfiles');
+        console.log('Staff component: RPC data:', data);
         
         const profilesArray = Array.isArray(data) ? data : [data];
         
@@ -131,10 +150,15 @@ const Staff: React.FC = () => {
           created_at: profile.created_at
         }));
         
+        console.log('Staff component: Mapped profiles to staffUsers:', staffUsers);
+        
         // Fetch emails for all users
+        console.log('Staff component: About to fetch emails for users');
         const usersWithEmails = await fetchUserEmails(staffUsers);
+        console.log('Staff component: Users with emails:', usersWithEmails);
         setUsers(usersWithEmails);
       } else {
+        console.log('Staff component: No data from RPC, setting empty users array');
         setUsers([]);
       }
     } catch (error: any) {
@@ -153,11 +177,13 @@ const Staff: React.FC = () => {
           .order('created_at', { ascending: false });
         
         if (directError) {
+          console.error('Staff component: Direct query error:', directError);
           throw directError;
         }
         
         if (directData) {
           console.log('Staff component: Fallback query returned', directData.length, 'profiles');
+          console.log('Staff component: Fallback data:', directData);
           
           const staffUsers = directData.map(profile => ({
             id: profile.id,
@@ -168,9 +194,16 @@ const Staff: React.FC = () => {
             created_at: profile.created_at
           }));
           
+          console.log('Staff component: Mapped profiles from fallback to staffUsers:', staffUsers);
+          
           // Fetch emails for all users
+          console.log('Staff component: About to fetch emails for users from fallback');
           const usersWithEmails = await fetchUserEmails(staffUsers);
+          console.log('Staff component: Users with emails from fallback:', usersWithEmails);
           setUsers(usersWithEmails);
+        } else {
+          console.log('Staff component: No data from fallback, setting empty users array');
+          setUsers([]);
         }
       } catch (fallbackError: any) {
         console.error('Staff component: Fallback query failed:', fallbackError);
@@ -183,6 +216,7 @@ const Staff: React.FC = () => {
   const refreshUsers = async () => {
     setRefreshing(true);
     try {
+      console.log('Staff component: Refreshing users list');
       await loadUsers();
       toast.success('Lista de usuarios actualizada');
     } catch (error) {
@@ -198,6 +232,7 @@ const Staff: React.FC = () => {
       console.log('Creating user with data:', data);
       
       // Use edge function directly to create user
+      console.log('Staff component: Invoking edge function to create user');
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           email: data.email, 
@@ -207,7 +242,7 @@ const Staff: React.FC = () => {
         }
       });
       
-      console.log('Edge function response:', response);
+      console.log('Staff component: Edge function response for user creation:', response);
       
       if (response.error) {
         throw new Error(response.error.message || 'Error al crear usuario');
@@ -237,6 +272,7 @@ const Staff: React.FC = () => {
       console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
       
       // Use edge function directly to update role
+      console.log('Staff component: Invoking edge function to update role');
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           userId: currentUserEdit.id,
@@ -245,7 +281,7 @@ const Staff: React.FC = () => {
         }
       });
       
-      console.log('Edge function response for role update:', response);
+      console.log('Staff component: Edge function response for role update:', response);
       
       if (response.error) {
         throw new Error(response.error.message || 'Error al actualizar rol');
@@ -257,6 +293,9 @@ const Staff: React.FC = () => {
       // Use the email from the response if available
       const updatedUser = response.data?.data;
       const updatedEmail = updatedUser?.email || currentUserEdit.email;
+      
+      console.log('Staff component: Updated user from response:', updatedUser);
+      console.log(`Staff component: Using email ${updatedEmail} for updated user`);
       
       setUsers(users.map(u => 
         u.id === currentUserEdit.id 
@@ -472,6 +511,7 @@ const Staff: React.FC = () => {
               variant="outline" 
               onClick={() => setShowAddDialog(false)} 
               disabled={isSubmitting}
+              type="button"
             >
               Cancelar
             </Button>

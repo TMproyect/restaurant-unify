@@ -71,7 +71,6 @@ const Staff: React.FC = () => {
     try {
       console.log('Staff component: Cargando usuarios usando RPC function...');
       
-      // Use the RPC function we created
       const { data, error } = await supabase.rpc('get_all_profiles');
       
       if (error) {
@@ -82,7 +81,6 @@ const Staff: React.FC = () => {
       if (data) {
         console.log('Staff component: RPC retornó', Array.isArray(data) ? data.length : 'no array', 'perfiles');
         
-        // Ensure data is an array
         const profilesArray = Array.isArray(data) ? data : [data];
         
         const staffUsers = profilesArray.map((profile: any) => ({
@@ -105,7 +103,6 @@ const Staff: React.FC = () => {
         description: error.message || 'No se pudieron cargar los datos del personal'
       });
       
-      // Fallback to direct query if RPC fails
       try {
         console.log('Staff component: Falling back to direct query...');
         
@@ -157,7 +154,6 @@ const Staff: React.FC = () => {
       setIsSubmitting(true);
       console.log('Creating user with data:', data);
       await createUser(data.email, data.password, data.name, data.role);
-      // Reload users after creating a new one
       await loadUsers();
       setShowAddDialog(false);
       reset();
@@ -176,19 +172,15 @@ const Staff: React.FC = () => {
     try {
       setIsSubmitting(true);
       console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
-      const success = await updateUserRole(currentUserEdit.id, data.role);
+      await updateUserRole(currentUserEdit.id, data.role);
       
-      if (success) {
-        setUsers(users.map(u => 
-          u.id === currentUserEdit.id 
-            ? { ...u, role: data.role }
-            : u
-        ));
-        setShowEditDialog(false);
-        toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
-      } else {
-        throw new Error('No se pudo actualizar el rol');
-      }
+      setUsers(users.map(u => 
+        u.id === currentUserEdit.id 
+          ? { ...u, role: data.role }
+          : u
+      ));
+      setShowEditDialog(false);
+      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
     } catch (error: any) {
       console.error('Error updating role:', error);
       toast.error(error.message || 'Error al actualizar rol');

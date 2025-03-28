@@ -335,8 +335,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         safeRole = 'waiter';
       }
       
-      // Use the createUserWithEdgeFunction instead of Edge Function
-      const result = await createUserWithEdgeFunction(email, password, name, safeRole);
+      // Use the createUserByAdmin function from authHelpers
+      const result = await createUserByAdmin(email, password, name, safeRole);
 
       // Handle the user creation result safely
       if (result && 'error' in result && result.error) {

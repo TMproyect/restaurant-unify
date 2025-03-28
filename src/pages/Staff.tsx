@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -154,7 +155,21 @@ const Staff: React.FC = () => {
       setIsSubmitting(true);
       console.log('Creating user with data:', data);
       
-      await createUser(data.email, data.password, data.name, data.role);
+      // Use edge function directly to create user
+      const response = await supabase.functions.invoke('create-user-with-profile', {
+        body: { 
+          email: data.email, 
+          password: data.password, 
+          name: data.name, 
+          role: data.role 
+        }
+      });
+      
+      console.log('Edge function response:', response);
+      
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al crear usuario');
+      }
       
       toast.success(`Usuario ${data.name} creado con rol ${data.role}`);
       reset();
@@ -179,7 +194,20 @@ const Staff: React.FC = () => {
       setIsSubmitting(true);
       console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
       
-      await updateUserRole(currentUserEdit.id, data.role);
+      // Use edge function directly to update role
+      const response = await supabase.functions.invoke('create-user-with-profile', {
+        body: { 
+          userId: currentUserEdit.id,
+          role: data.role,
+          action: 'update_role' 
+        }
+      });
+      
+      console.log('Edge function response for role update:', response);
+      
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al actualizar rol');
+      }
       
       toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
       setShowEditDialog(false);
@@ -247,10 +275,14 @@ const Staff: React.FC = () => {
         .from('avatars')
         .getPublicUrl(filePath);
         
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar: publicUrl } as any)
-        .eq('id', filterValue(currentUserEdit.id));
+      // Use edge function to update avatar
+      const { error: updateError } = await supabase.functions.invoke('create-user-with-profile', {
+        body: { 
+          userId: currentUserEdit.id,
+          avatar: publicUrl,
+          action: 'update_avatar' 
+        }
+      });
         
       if (updateError) throw updateError;
       

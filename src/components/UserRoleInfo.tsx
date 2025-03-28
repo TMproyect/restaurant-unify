@@ -34,6 +34,7 @@ const UserRoleInfo = () => {
         const { data, error } = await supabase.rpc('get_all_profiles');
         
         if (error) {
+          console.error("UserRoleInfo: Error fetching profiles with RPC:", error);
           throw error;
         }
         
@@ -44,12 +45,12 @@ const UserRoleInfo = () => {
           
           // Map the profile data to AuthUser format
           const users = profilesArray.map((profile: any) => ({
-            id: profile.id,
-            name: profile.name || 'Sin nombre',
+            id: profile?.id || '',
+            name: profile?.name || 'Sin nombre',
             email: '', // We can't get emails directly this way
-            role: profile.role as UserRole,
-            avatar: profile.avatar,
-            created_at: profile.created_at
+            role: (profile?.role as UserRole) || 'admin',
+            avatar: profile?.avatar,
+            created_at: profile?.created_at || ''
           }));
           
           setAllUsers(users);

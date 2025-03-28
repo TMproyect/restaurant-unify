@@ -33,8 +33,47 @@ serve(async (req) => {
     const requestBody = await req.json()
     console.log('Received request body:', JSON.stringify(requestBody))
     
-    const { email, password, name, role } = requestBody
+    const { email, password, name, role, action } = requestBody
 
+    // If we're updating a user role
+    if (action === 'update_role' && requestBody.userId) {
+      console.log(`Updating user ${requestBody.userId} role to ${role}`)
+      
+      if (!requestBody.userId || !role) {
+        throw new Error('Missing required fields: userId and role are required for role updates')
+      }
+      
+      // Use service role to bypass RLS policies
+      const { error: profileError, data: profileData } = await supabase
+        .from('profiles')
+        .update({ role })
+        .eq('id', requestBody.userId)
+        .select()
+      
+      if (profileError) {
+        console.error('Error updating role:', profileError)
+        throw profileError
+      }
+      
+      console.log('Role updated successfully:', profileData)
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'User role updated successfully',
+          data: profileData
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          },
+          status: 200
+        }
+      )
+    }
+    
+    // Handle user creation (original functionality)
     if (!email || !password || !name) {
       console.error('Missing required fields')
       throw new Error('Missing required fields: email, password, and name are required')

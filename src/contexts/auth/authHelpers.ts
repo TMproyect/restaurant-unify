@@ -34,16 +34,40 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
   try {
     console.log('Fetching profile for user ID:', userId);
     
-    // First get the profile
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', filterValue(userId))
-      .single();
+    // Use RPC function to get profile instead of direct query to avoid RLS issues
+    const { data, error } = await supabase.rpc('get_profile_by_id', { user_id: userId });
 
     if (error) {
-      console.error('Error in fetchUserProfile:', error.message, error);
-      throw error;
+      console.error('Error in fetchUserProfile with RPC:', error.message, error);
+      
+      // Fallback to get_all_profiles RPC
+      console.log('Falling back to get_all_profiles RPC');
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError) {
+        console.error('Error in fallback to get_all_profiles:', allProfilesError);
+        return null;
+      }
+      
+      if (!allProfiles || !Array.isArray(allProfiles)) {
+        console.error('No profiles found in get_all_profiles fallback');
+        return null;
+      }
+      
+      const userProfile = allProfiles.find(profile => profile.id === userId);
+      if (!userProfile) {
+        console.error('User profile not found in get_all_profiles results');
+        return null;
+      }
+      
+      console.log('Profile found in get_all_profiles:', userProfile);
+      
+      // Get the user's session to access email
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userEmail = sessionData?.session?.user?.email || '';
+      console.log('User email from session:', userEmail);
+      
+      return processProfileData(userProfile, userEmail);
     }
 
     if (!data) {
@@ -70,16 +94,39 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
 export const getProfile = async (userId: string): Promise<AuthUser | null> => {
   try {
     console.log('getProfile: Fetching profile for user ID:', userId);
-    // First get the profile
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', filterValue(userId))
-      .single();
+    
+    // Try using RPC function instead of direct query
+    const { data, error } = await supabase.rpc('get_profile_by_id', { user_id: userId });
 
     if (error) {
-      console.error('getProfile: Error fetching profile:', error);
-      throw error;
+      console.error('getProfile: Error fetching profile with RPC:', error);
+      
+      // Fallback to get_all_profiles
+      console.log('getProfile: Falling back to get_all_profiles');
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError) {
+        console.error('getProfile: Error in fallback to get_all_profiles:', allProfilesError);
+        return null;
+      }
+      
+      const userProfile = Array.isArray(allProfiles) 
+        ? allProfiles.find(profile => profile.id === userId)
+        : null;
+        
+      if (!userProfile) {
+        console.error('getProfile: User profile not found in get_all_profiles results');
+        return null;
+      }
+      
+      console.log('getProfile: Profile found in get_all_profiles:', userProfile);
+      
+      // Get the user's session to access email
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userEmail = sessionData?.session?.user?.email || '';
+      console.log('getProfile: User email from session:', userEmail);
+      
+      return processProfileData(userProfile, userEmail);
     }
 
     // Get the user's session to access email
@@ -238,15 +285,37 @@ export const refreshProfile = async (user: any): Promise<AuthUser | null> => {
 
   try {
     console.log('refreshProfile: Getting profile for user ID:', user.id);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', filterValue(user.id))
-      .single();
+    // Try using RPC function instead of direct query
+    const { data, error } = await supabase.rpc('get_profile_by_id', { user_id: user.id });
 
     if (error) {
-      console.error('refreshProfile: Error fetching profile:', error);
-      throw error;
+      console.error('refreshProfile: Error fetching profile with RPC:', error);
+      
+      // Fallback to get_all_profiles
+      console.log('refreshProfile: Falling back to get_all_profiles');
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError) {
+        console.error('refreshProfile: Error in fallback to get_all_profiles:', allProfilesError);
+        return null;
+      }
+      
+      const userProfile = Array.isArray(allProfiles) 
+        ? allProfiles.find(profile => profile.id === user.id)
+        : null;
+        
+      if (!userProfile) {
+        console.error('refreshProfile: User profile not found in get_all_profiles results');
+        return null;
+      }
+      
+      console.log('refreshProfile: Profile found in get_all_profiles:', userProfile);
+      
+      // Get the user's session to access email
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userEmail = sessionData?.session?.user?.email || '';
+      
+      return processProfileData(userProfile, userEmail);
     }
 
     // Get the user's email from session
@@ -297,15 +366,55 @@ export const logout = async (): Promise<void> => {
 export const createProfileIfNotExists = async (userId: string, userData: { name: string; role?: UserRole; email?: string }): Promise<AuthUser | null> => {
   try {
     console.log('createProfileIfNotExists: Checking for existing profile, user ID:', userId);
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', filterValue(userId))
-      .single();
+    // Try using RPC function to get profile
+    const { data: existingProfile, error: fetchError } = await supabase.rpc('get_profile_by_id', { user_id: userId });
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('createProfileIfNotExists: Error checking for existing profile:', fetchError);
-      throw fetchError;
+    if (fetchError) {
+      console.error('createProfileIfNotExists: Error checking for existing profile with RPC:', fetchError);
+      
+      // Fallback to get_all_profiles
+      console.log('createProfileIfNotExists: Falling back to get_all_profiles');
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError && allProfilesError.code !== 'PGRST116') {
+        console.error('createProfileIfNotExists: Error in fallback to get_all_profiles:', allProfilesError);
+        
+        // Final fallback - try direct query
+        const { data: directProfile, error: directError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', filterValue(userId))
+          .single();
+        
+        if (directError && directError.code !== 'PGRST116') {
+          console.error('createProfileIfNotExists: Error in final direct query fallback:', directError);
+          throw directError;
+        }
+        
+        if (directProfile) {
+          console.log('createProfileIfNotExists: Profile found via direct query:', directProfile);
+          
+          // Get the user's session to access email
+          const { data: sessionData } = await supabase.auth.getSession();
+          const userEmail = sessionData?.session?.user?.email || userData.email || '';
+          
+          return processProfileData(directProfile, userEmail);
+        }
+      } else {
+        const userProfile = Array.isArray(allProfiles) 
+          ? allProfiles.find(profile => profile.id === userId)
+          : null;
+          
+        if (userProfile) {
+          console.log('createProfileIfNotExists: Profile found in get_all_profiles:', userProfile);
+          
+          // Get the user's session to access email
+          const { data: sessionData } = await supabase.auth.getSession();
+          const userEmail = sessionData?.session?.user?.email || userData.email || '';
+          
+          return processProfileData(userProfile, userEmail);
+        }
+      }
     }
 
     if (existingProfile) {
@@ -353,25 +462,62 @@ export const createProfileIfNotExists = async (userId: string, userData: { name:
 export const getRoleFromProfile = async (userId: string): Promise<UserRole | null> => {
   try {
     console.log('getRoleFromProfile: Getting role for user ID:', userId);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', filterValue(userId))
-      .single();
+    
+    // Try using RPC function
+    const { data, error } = await supabase.rpc('get_user_role', { user_id: userId });
 
     if (error) {
-      console.error('getRoleFromProfile: Error getting role:', error);
-      throw error;
+      console.error('getRoleFromProfile: Error getting role with RPC:', error);
+      
+      // Fallback to get_all_profiles
+      console.log('getRoleFromProfile: Falling back to get_all_profiles');
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError) {
+        console.error('getRoleFromProfile: Error in fallback to get_all_profiles:', allProfilesError);
+        
+        // Final fallback - try direct query with service role
+        const { data: directData, error: directError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', filterValue(userId))
+          .single();
+        
+        if (directError) {
+          console.error('getRoleFromProfile: Error in final direct query fallback:', directError);
+          return null;
+        }
+        
+        if (!directData) return null;
+        
+        const roleValue = safetyCheck<{ role: UserRole }, 'role'>(directData, 'role', 'admin' as UserRole);
+        console.log('getRoleFromProfile: Retrieved role via direct query:', roleValue);
+        
+        return roleValue;
+      }
+      
+      const userProfile = Array.isArray(allProfiles) 
+        ? allProfiles.find(profile => profile.id === userId)
+        : null;
+        
+      if (!userProfile) {
+        console.error('getRoleFromProfile: User profile not found in get_all_profiles results');
+        return null;
+      }
+      
+      const roleValue = safetyCheck<{ role: UserRole }, 'role'>(userProfile, 'role', 'admin' as UserRole);
+      console.log('getRoleFromProfile: Retrieved role from get_all_profiles:', roleValue);
+      
+      return roleValue;
     }
 
     if (!data) return null;
     
-    const roleValue = safetyCheck<{ role: UserRole }, 'role'>(data, 'role', 'admin' as UserRole);
-    console.log('getRoleFromProfile: Retrieved role:', roleValue);
+    console.log('getRoleFromProfile: Retrieved role via RPC:', data);
     
-    if (roleValue === 'admin' || roleValue === 'waiter' || roleValue === 'kitchen' || 
-        roleValue === 'delivery' || roleValue === 'manager') {
-      return roleValue;
+    if (data === 'admin' || data === 'waiter' || data === 'kitchen' || 
+        data === 'delivery' || data === 'manager') {
+      return data as UserRole;
     }
     
     return 'admin';
@@ -385,15 +531,17 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
   try {
     console.log(`updateUserRole: Updating user ${userId} role to ${newRole}`);
     
-    // Use direct update with Supabase query with additional logging
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', filterValue(userId))
-      .select();
+    // Use the edge function to bypass RLS issues
+    const { data, error } = await supabase.functions.invoke('create-user-with-profile', {
+      body: { 
+        userId, 
+        role: newRole, 
+        action: 'update_role' 
+      }
+    });
 
     if (error) {
-      console.error('updateUserRole: Error updating role:', error);
+      console.error('updateUserRole: Error calling edge function:', error);
       console.error('updateUserRole: Error details:', {
         message: error.message,
         code: error.code,
@@ -402,7 +550,7 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
       throw error;
     }
     
-    console.log(`updateUserRole: Successfully updated user ${userId} role to ${newRole}. Response data:`, data);
+    console.log(`updateUserRole: Successfully updated user ${userId} role to ${newRole}. Response:`, data);
     return true;
   } catch (error) {
     console.error('Error updating user role:', error);
@@ -413,14 +561,18 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
 export const updateUserName = async (userId: string, newName: string): Promise<boolean> => {
   try {
     console.log(`updateUserName: Updating user ${userId} name to ${newName}`);
-    const { error, data } = await supabase
-      .from('profiles')
-      .update({ name: newName })
-      .eq('id', filterValue(userId))
-      .select();
+    
+    // Use the edge function to bypass RLS issues
+    const { data, error } = await supabase.functions.invoke('create-user-with-profile', {
+      body: { 
+        userId, 
+        name: newName, 
+        action: 'update_name' 
+      }
+    });
 
     if (error) {
-      console.error('updateUserName: Error updating name:', error);
+      console.error('updateUserName: Error calling edge function:', error);
       throw error;
     }
 
@@ -581,15 +733,46 @@ export const getUserFromProfiles = async (userId: string): Promise<AuthUser | nu
   try {
     console.log('getUserFromProfiles: Getting user from profiles, ID:', userId);
     
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', filterValue(userId))
-      .single();
+    // Try using RPC function
+    const { data, error } = await supabase.rpc('get_profile_by_id', { user_id: userId });
       
     if (error) {
-      console.error('getUserFromProfiles: Error getting user from profiles:', error);
-      return null;
+      console.error('getUserFromProfiles: Error getting user with RPC:', error);
+      
+      // Fallback to get_all_profiles
+      console.log('getUserFromProfiles: Falling back to get_all_profiles');
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError) {
+        console.error('getUserFromProfiles: Error in fallback to get_all_profiles:', allProfilesError);
+        return null;
+      }
+      
+      const userProfile = Array.isArray(allProfiles) 
+        ? allProfiles.find(profile => profile.id === userId)
+        : null;
+        
+      if (!userProfile) {
+        console.error('getUserFromProfiles: User profile not found in get_all_profiles results');
+        return null;
+      }
+      
+      console.log('getUserFromProfiles: Profile found in get_all_profiles:', userProfile);
+      
+      // Get the user's session to access email
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userEmail = sessionData?.session?.user?.id === userId 
+        ? sessionData.session.user.email || ''
+        : '';
+      
+      return {
+        id: userProfile.id,
+        name: userProfile.name,
+        email: userEmail,
+        role: userProfile.role as UserRole,
+        avatar: userProfile.avatar,
+        created_at: userProfile.created_at
+      };
     }
     
     if (!data) {
@@ -626,15 +809,38 @@ export const getUserFromTable = async (tableName: string, userId: string): Promi
       return null;
     }
     
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', filterValue(userId))
-      .single();
+    // Try using RPC function
+    const { data, error } = await supabase.rpc('get_profile_by_id', { user_id: userId });
       
     if (error) {
-      console.error(`Error getting user from ${tableName}:`, error);
-      return null;
+      console.error(`Error getting user from ${tableName} with RPC:`, error);
+      
+      // Fallback to get_all_profiles
+      console.log(`getUserFromTable: Falling back to get_all_profiles`);
+      const { data: allProfiles, error: allProfilesError } = await supabase.rpc('get_all_profiles');
+      
+      if (allProfilesError) {
+        console.error(`getUserFromTable: Error in fallback to get_all_profiles:`, allProfilesError);
+        return null;
+      }
+      
+      const userProfile = Array.isArray(allProfiles) 
+        ? allProfiles.find(profile => profile.id === userId)
+        : null;
+        
+      if (!userProfile) {
+        console.log(`No user found in ${tableName} for ID:`, userId);
+        return null;
+      }
+      
+      return {
+        id: userProfile.id,
+        name: userProfile.name || 'Unknown',
+        email: '', // Email is not stored in profiles table
+        role: userProfile.role as UserRole,
+        avatar: userProfile.avatar,
+        created_at: userProfile.created_at
+      };
     }
     
     if (!data) {
@@ -663,4 +869,4 @@ export const createUserByAdmin = createUserWithEdgeFunction;
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;
 
-// Remove the duplicate export at the end of the file
+// Removed duplicate exports

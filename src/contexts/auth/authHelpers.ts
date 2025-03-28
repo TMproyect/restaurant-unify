@@ -284,18 +284,19 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
   try {
     console.log(`Updating user ${userId} role to ${newRole}`);
     
-    // Use direct update with Supabase query
-    const { error } = await supabase
+    // Use direct update with Supabase query with additional logging
+    const { data, error } = await supabase
       .from('profiles')
       .update({ role: newRole })
-      .eq('id', filterValue(userId));
+      .eq('id', filterValue(userId))
+      .select();
 
     if (error) {
       console.error('Error updating user role:', error);
       throw error;
     }
     
-    console.log(`Successfully updated user ${userId} role to ${newRole}`);
+    console.log(`Successfully updated user ${userId} role to ${newRole}. Response data:`, data);
     return true;
   } catch (error) {
     console.error('Error updating user role:', error);
@@ -398,10 +399,14 @@ export const createUserWithEdgeFunction = async (email: string, password: string
   try {
     console.log(`Creating user with edge function: ${email}, ${name}, ${role}`);
     
-    // Call the Supabase edge function to create a user
-    const { data, error } = await supabase.functions.invoke('create-user-with-profile', {
+    // Call the Supabase edge function to create a user with more detailed logging
+    const response = await supabase.functions.invoke('create-user-with-profile', {
       body: { email, password, name, role }
     });
+    
+    console.log('Edge function raw response:', response);
+    
+    const { data, error } = response;
 
     if (error) {
       console.error('Error calling create-user-with-profile function:', error);
@@ -409,7 +414,7 @@ export const createUserWithEdgeFunction = async (email: string, password: string
     }
 
     if (!data || !data.user) {
-      console.error('Error: No user returned from edge function');
+      console.error('Error: No user returned from edge function', data);
       return { error: 'No user returned from edge function' };
     }
 
@@ -507,3 +512,5 @@ export const createUserProfile = createProfileIfNotExists;
 export const createUserByAdmin = createUserWithEdgeFunction;
 export const updateUserRoleById = updateUserRole;
 export const logoutUser = logout;
+
+export { createUserWithEdgeFunction };

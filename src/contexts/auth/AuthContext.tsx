@@ -10,7 +10,8 @@ import {
   createUserByAdmin, 
   updateUserRoleById, 
   logoutUser,
-  fetchAllProfiles
+  fetchAllProfiles,
+  createUserWithEdgeFunction
 } from './authHelpers';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -318,13 +319,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         safeRole = 'waiter';
       }
       
-      console.log("Calling createUserByAdmin with params:", email, password, name, safeRole);
-      const result = await createUserByAdmin(email, password, name, safeRole);
+      console.log("Calling createUserWithEdgeFunction with params:", email, password, name, safeRole);
+      const result = await createUserWithEdgeFunction(email, password, name, safeRole);
 
-      console.log("Result from createUserByAdmin:", result);
+      console.log("Result from createUserWithEdgeFunction:", result);
       
       if (result && 'error' in result && result.error) {
-        console.error("Error received from createUserByAdmin:", result.error);
+        console.error("Error received from createUserWithEdgeFunction:", result.error);
         throw result.error;
       }
 

@@ -162,7 +162,7 @@ const Staff: React.FC = () => {
       
       setTimeout(() => {
         loadUsers();
-      }, 1000);
+      }, 2000);
       
     } catch (error: any) {
       console.error('Error adding staff:', error);
@@ -192,7 +192,7 @@ const Staff: React.FC = () => {
       
       setTimeout(() => {
         loadUsers();
-      }, 1000);
+      }, 2000);
       
     } catch (error: any) {
       console.error('Error updating role:', error);
@@ -477,6 +477,7 @@ const Staff: React.FC = () => {
               variant="outline" 
               onClick={() => setShowEditDialog(false)} 
               disabled={isSubmitting}
+              type="button"
             >
               Cancelar
             </Button>

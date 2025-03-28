@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -69,21 +70,23 @@ const Staff: React.FC = () => {
     setError(null);
     
     try {
-      console.log('Staff component: Cargando usuarios directamente...');
+      console.log('Staff component: Cargando usuarios usando RPC function...');
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, role, avatar, created_at')
-        .order('created_at', { ascending: false });
+      // Use the RPC function we created in the database
+      const { data, error } = await supabase.rpc('get_all_profiles');
       
       if (error) {
+        console.error('Error calling RPC function:', error);
         throw error;
       }
       
       if (data) {
-        console.log('Staff component: Consulta retornó', data.length, 'perfiles');
+        console.log('Staff component: RPC retornó', Array.isArray(data) ? data.length : 'no array', 'perfiles');
         
-        const staffUsers = data.map(profile => ({
+        // Ensure data is an array
+        const profilesArray = Array.isArray(data) ? data : [data];
+        
+        const staffUsers = profilesArray.map((profile: any) => ({
           id: profile.id,
           name: profile.name || 'Sin nombre',
           email: '',
@@ -100,6 +103,37 @@ const Staff: React.FC = () => {
       toast.error('Error al cargar usuarios', {
         description: error.message || 'No se pudieron cargar los datos del personal'
       });
+      
+      // Fallback to direct query if RPC fails
+      try {
+        console.log('Staff component: Falling back to direct query...');
+        
+        const { data: directData, error: directError } = await supabase
+          .from('profiles')
+          .select('id, name, role, avatar, created_at')
+          .order('created_at', { ascending: false });
+        
+        if (directError) {
+          throw directError;
+        }
+        
+        if (directData) {
+          console.log('Staff component: Fallback query returned', directData.length, 'profiles');
+          
+          const staffUsers = directData.map(profile => ({
+            id: profile.id,
+            name: profile.name || 'Sin nombre',
+            email: '',
+            role: profile.role as UserRole,
+            avatar: profile.avatar,
+            created_at: profile.created_at
+          }));
+          
+          setUsers(staffUsers);
+        }
+      } catch (fallbackError: any) {
+        console.error('Staff component: Fallback query failed:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }

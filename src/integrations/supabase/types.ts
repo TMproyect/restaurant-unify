@@ -314,6 +314,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_all_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar: string | null
+          created_at: string
+          id: string
+          name: string
+          role: string
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,26 +33,27 @@ const UserRoleInfo = () => {
         // Try using the context's fetchAllUsers function
         let users = await fetchAllUsers();
         
-        // If that fails or returns empty, fallback to direct query
+        // If that fails or returns empty, fallback to RPC function
         if (!users || users.length === 0) {
-          console.log("UserRoleInfo: Context fetchAllUsers returned empty, trying direct query");
+          console.log("UserRoleInfo: Context fetchAllUsers returned empty, trying RPC function");
           
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*');
+          const { data, error } = await supabase.rpc('get_all_profiles');
           
           if (error) {
             throw error;
           }
           
           if (data) {
-            console.log("UserRoleInfo: Direct query returned", data.length, "profiles");
-            // Map the profile data to AuthUser format, ensuring role is cast to UserRole
-            users = data.map(profile => ({
+            // Ensure data is an array
+            const profilesArray = Array.isArray(data) ? data : [data];
+            console.log("UserRoleInfo: RPC function returned", profilesArray.length, "profiles");
+            
+            // Map the profile data to AuthUser format
+            users = profilesArray.map((profile: any) => ({
               id: profile.id,
               name: profile.name || 'Sin nombre',
               email: '', // We can't get emails directly this way
-              role: profile.role as UserRole, // Cast string to UserRole
+              role: profile.role as UserRole,
               avatar: profile.avatar,
               created_at: profile.created_at
             }));

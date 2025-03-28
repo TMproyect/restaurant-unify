@@ -324,6 +324,24 @@ export type Database = {
           role: string
         }[]
       }
+      get_profile_by_id: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          avatar: string | null
+          created_at: string
+          id: string
+          name: string
+          role: string
+        }[]
+      }
+      get_user_role: {
+        Args: {
+          user_id: string
+        }
+        Returns: string
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

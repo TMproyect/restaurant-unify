@@ -72,6 +72,40 @@ serve(async (req) => {
         }
       )
     }
+
+    // If we're updating a user's name
+    if (action === 'update_name' && requestBody.userId && requestBody.name) {
+      console.log(`Updating user ${requestBody.userId} name to ${requestBody.name}`)
+      
+      // Use service role to bypass RLS policies
+      const { error: profileError, data: profileData } = await supabase
+        .from('profiles')
+        .update({ name: requestBody.name })
+        .eq('id', requestBody.userId)
+        .select()
+      
+      if (profileError) {
+        console.error('Error updating name:', profileError)
+        throw profileError
+      }
+      
+      console.log('Name updated successfully:', profileData)
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'User name updated successfully',
+          data: profileData
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          },
+          status: 200
+        }
+      )
+    }
     
     // Handle user creation (original functionality)
     if (!email || !password || !name) {

@@ -30,33 +30,47 @@ const UserRoleInfo = () => {
       try {
         console.log("UserRoleInfo: Attempting to fetch all users");
         
-        // Call the RPC function to get all users
-        const { data, error } = await supabase.rpc('get_all_profiles');
-        
-        if (error) {
-          console.error("UserRoleInfo: Error fetching profiles with RPC:", error);
-          throw error;
-        }
-        
-        if (data) {
-          // Ensure data is an array
-          const profilesArray = Array.isArray(data) ? data : [data];
-          console.log("UserRoleInfo: RPC function returned", profilesArray.length, "profiles");
+        try {
+          console.log("UserRoleInfo: Trying fetchAllUsers from context");
+          const users = await fetchAllUsers();
+          if (users && users.length > 0) {
+            console.log("UserRoleInfo: Successfully fetched users from context:", users.length);
+            setAllUsers(users);
+          } else {
+            throw new Error("No users found or empty result");
+          }
+        } catch (contextError) {
+          console.error('UserRoleInfo: Error fetching with context method:', contextError);
           
-          // Map the profile data to AuthUser format
-          const users = profilesArray.map((profile: any) => ({
-            id: profile?.id || '',
-            name: profile?.name || 'Sin nombre',
-            email: '', // We can't get emails directly this way
-            role: (profile?.role as UserRole) || 'admin',
-            avatar: profile?.avatar,
-            created_at: profile?.created_at || ''
-          }));
+          // Fallback to direct RPC call
+          console.log("UserRoleInfo: Falling back to direct RPC call");
+          const { data, error } = await supabase.rpc('get_all_profiles');
           
-          setAllUsers(users);
-        } else {
-          console.log("UserRoleInfo: No data returned from RPC function");
-          setAllUsers([]);
+          if (error) {
+            console.error("UserRoleInfo: Error fetching profiles with RPC:", error);
+            throw error;
+          }
+          
+          if (data) {
+            // Ensure data is an array
+            const profilesArray = Array.isArray(data) ? data : [data];
+            console.log("UserRoleInfo: RPC function returned", profilesArray.length, "profiles");
+            
+            // Map the profile data to AuthUser format
+            const users = profilesArray.map((profile: any) => ({
+              id: profile?.id || '',
+              name: profile?.name || 'Sin nombre',
+              email: '', // We can't get emails directly this way
+              role: (profile?.role as UserRole) || 'admin',
+              avatar: profile?.avatar,
+              created_at: profile?.created_at || ''
+            }));
+            
+            setAllUsers(users);
+          } else {
+            console.log("UserRoleInfo: No data returned from RPC function");
+            setAllUsers([]);
+          }
         }
       } catch (error: any) {
         console.error('UserRoleInfo: Error loading users:', error);
@@ -64,18 +78,6 @@ const UserRoleInfo = () => {
         toast.error('Error al cargar usuarios', { 
           description: error.message || 'No se pudieron obtener los datos de usuarios'
         });
-        
-        // Try using fetchAllUsers from context as fallback
-        try {
-          console.log("UserRoleInfo: Trying fetchAllUsers as fallback");
-          const users = await fetchAllUsers();
-          if (users && users.length > 0) {
-            setAllUsers(users);
-            setError(null);
-          }
-        } catch (fallbackError) {
-          console.error('UserRoleInfo: Fallback also failed:', fallbackError);
-        }
       } finally {
         setLoading(false);
       }

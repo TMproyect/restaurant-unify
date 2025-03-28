@@ -37,7 +37,7 @@ const ROLES = [
 ];
 
 const Staff: React.FC = () => {
-  const { user, createUser, updateUserRole, fetchAllUsers } = useAuth();
+  const { user, createUser, updateUserRole } = useAuth();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [currentUserEdit, setCurrentUserEdit] = useState<AuthUser | null>(null);
@@ -69,25 +69,24 @@ const Staff: React.FC = () => {
     setError(null);
     
     try {
-      console.log('Staff component: Requesting all users from context...');
+      console.log('Staff component: Cargando usuarios directamente...');
       
-      let staffUsers = await fetchAllUsers();
+      const { data, error } = await supabase.rpc('get_all_profiles');
       
-      if (!staffUsers || staffUsers.length === 0) {
-        console.log('Staff component: Context method returned no users, trying direct query...');
-        
-        const { data, error } = await supabase
+      if (error) {
+        const { data: directData, error: directError } = await supabase
           .from('profiles')
-          .select('*');
-        
-        if (error) {
-          throw error;
+          .select('id, name, role, avatar, created_at')
+          .order('created_at', { ascending: false });
+          
+        if (directError) {
+          throw directError;
         }
         
-        if (data) {
-          console.log('Staff component: Direct query returned', data.length, 'profiles');
+        if (directData) {
+          console.log('Staff component: Consulta directa retornó', directData.length, 'perfiles');
           
-          staffUsers = data.map(profile => ({
+          const staffUsers = directData.map(profile => ({
             id: profile.id,
             name: profile.name || 'Sin nombre',
             email: '',
@@ -95,12 +94,23 @@ const Staff: React.FC = () => {
             avatar: profile.avatar,
             created_at: profile.created_at
           }));
+          
+          setUsers(staffUsers);
         }
-      } else {
-        console.log('Staff component: Received', staffUsers.length, 'users from context');
+      } else if (data) {
+        console.log('Staff component: RPC retornó', data.length, 'perfiles');
+        
+        const staffUsers = data.map((profile: any) => ({
+          id: profile.id,
+          name: profile.name || 'Sin nombre',
+          email: '',
+          role: profile.role as UserRole,
+          avatar: profile.avatar,
+          created_at: profile.created_at
+        }));
+        
+        setUsers(staffUsers);
       }
-      
-      setUsers(staffUsers);
     } catch (error: any) {
       console.error('Staff component: Error loading users:', error);
       setError(error.message || 'Error al cargar la lista de personal');

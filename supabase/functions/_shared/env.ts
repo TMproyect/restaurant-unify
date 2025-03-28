@@ -1,3 +1,4 @@
+
 /**
  * Utility for getting environment variables with better error handling
  */

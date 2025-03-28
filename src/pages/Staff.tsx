@@ -162,7 +162,7 @@ const Staff: React.FC = () => {
       
       setTimeout(() => {
         loadUsers();
-      }, 500);
+      }, 1000);
       
     } catch (error: any) {
       console.error('Error adding staff:', error);
@@ -192,7 +192,7 @@ const Staff: React.FC = () => {
       
       setTimeout(() => {
         loadUsers();
-      }, 500);
+      }, 1000);
       
     } catch (error: any) {
       console.error('Error updating role:', error);

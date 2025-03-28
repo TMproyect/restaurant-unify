@@ -61,22 +61,17 @@ serve(async (req) => {
     console.log(`User created with ID: ${userData.user.id}`)
 
     // Create or update profile in profiles table
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userData.user.id,
-          name,
-          role: safeRole
-        })
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userData.user.id,
+        name,
+        role: safeRole
+      })
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError)
-        // Don't throw error here, as user is already created
-      }
-    } catch (profileError) {
+    if (profileError) {
       console.error('Error creating profile:', profileError)
-      // Continue execution even if profile creation fails
+      // Don't throw error here, as user is already created
     }
 
     // Return success response

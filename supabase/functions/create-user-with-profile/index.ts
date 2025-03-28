@@ -55,13 +55,31 @@ serve(async (req) => {
         throw profileError
       }
       
+      // Get the user's email for the response
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+        requestBody.userId
+      )
+      
+      let userEmail = ''
+      if (!userError && userData && userData.user) {
+        userEmail = userData.user.email || ''
+        console.log(`Retrieved email for user ${requestBody.userId}: ${userEmail}`)
+      } else {
+        console.log(`Could not retrieve email for user ${requestBody.userId}`)
+      }
+      
       console.log('Role updated successfully:', profileData)
+      
+      // Return the profile data with the email
+      const responseData = profileData && profileData.length > 0
+        ? { ...profileData[0], email: userEmail }
+        : null
       
       return new Response(
         JSON.stringify({ 
           success: true,
           message: 'User role updated successfully',
-          data: profileData
+          data: responseData
         }),
         {
           headers: {
@@ -89,13 +107,65 @@ serve(async (req) => {
         throw profileError
       }
       
+      // Get the user's email for the response
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+        requestBody.userId
+      )
+      
+      let userEmail = ''
+      if (!userError && userData && userData.user) {
+        userEmail = userData.user.email || ''
+        console.log(`Retrieved email for user ${requestBody.userId}: ${userEmail}`)
+      } else {
+        console.log(`Could not retrieve email for user ${requestBody.userId}`)
+      }
+      
       console.log('Name updated successfully:', profileData)
+      
+      // Return the profile data with the email
+      const responseData = profileData && profileData.length > 0
+        ? { ...profileData[0], email: userEmail }
+        : null
       
       return new Response(
         JSON.stringify({ 
           success: true,
           message: 'User name updated successfully',
-          data: profileData
+          data: responseData
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          },
+          status: 200
+        }
+      )
+    }
+
+    // If we're fetching user emails
+    if (action === 'get_emails' && requestBody.userIds && Array.isArray(requestBody.userIds)) {
+      console.log(`Fetching emails for ${requestBody.userIds.length} users`)
+      
+      const emailsMap = {}
+      
+      // Get emails for all requested users
+      await Promise.all(requestBody.userIds.map(async (userId) => {
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
+        
+        if (!userError && userData && userData.user) {
+          emailsMap[userId] = userData.user.email || ''
+          console.log(`Retrieved email for user ${userId}: ${userData.user.email}`)
+        } else {
+          emailsMap[userId] = ''
+          console.log(`Could not retrieve email for user ${userId}`)
+        }
+      }))
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          data: emailsMap
         }),
         {
           headers: {
@@ -175,7 +245,7 @@ serve(async (req) => {
     // Return success response
     return new Response(
       JSON.stringify({ 
-        user: userData.user,
+        user: { ...userData.user, name, role: safeRole },
         message: 'User created successfully'
       }),
       {

@@ -16,6 +16,46 @@ const UserRoleInfo = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Function to fetch user emails using the edge function
+  const fetchUserEmails = async (profiles: AuthUser[]) => {
+    try {
+      // Only fetch emails if there are profiles to fetch emails for
+      if (!profiles || profiles.length === 0) return profiles;
+      
+      console.log(`UserRoleInfo: Fetching emails for ${profiles.length} users`);
+      
+      // Create array of user IDs to fetch emails for
+      const userIds = profiles.map(p => p.id);
+      
+      // Call the edge function to get emails
+      const response = await supabase.functions.invoke('create-user-with-profile', {
+        body: { 
+          action: 'get_emails',
+          userIds: userIds
+        }
+      });
+      
+      console.log('Edge function response for email fetch:', response);
+      
+      if (response.error) {
+        console.error('Error fetching emails:', response.error);
+        return profiles;
+      }
+      
+      // Map the emails to the profiles
+      const emailsMap = response.data || {};
+      
+      return profiles.map(profile => ({
+        ...profile,
+        email: emailsMap[profile.id] || profile.email || ''
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching user emails:', error);
+      return profiles;
+    }
+  };
+
   // Load all users if admin
   useEffect(() => {
     const loadUsers = async () => {
@@ -35,7 +75,10 @@ const UserRoleInfo = () => {
           const users = await fetchAllUsers();
           if (users && users.length > 0) {
             console.log("UserRoleInfo: Successfully fetched users from context:", users.length);
-            setAllUsers(users);
+            
+            // Fetch emails for all users
+            const usersWithEmails = await fetchUserEmails(users);
+            setAllUsers(usersWithEmails);
           } else {
             throw new Error("No users found or empty result");
           }
@@ -60,13 +103,15 @@ const UserRoleInfo = () => {
             const users = profilesArray.map((profile: any) => ({
               id: profile?.id || '',
               name: profile?.name || 'Sin nombre',
-              email: '', // We can't get emails directly this way
+              email: '', // We'll fetch emails separately
               role: (profile?.role as UserRole) || 'admin',
               avatar: profile?.avatar,
               created_at: profile?.created_at || ''
             }));
             
-            setAllUsers(users);
+            // Fetch emails for all users
+            const usersWithEmails = await fetchUserEmails(users);
+            setAllUsers(usersWithEmails);
           } else {
             console.log("UserRoleInfo: No data returned from RPC function");
             setAllUsers([]);

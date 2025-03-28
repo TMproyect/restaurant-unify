@@ -16,7 +16,6 @@ import { UserPlus, PencilIcon, UserCog, UploadIcon, RefreshCcw } from 'lucide-re
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { AuthUser, UserRole } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
 
 interface StaffFormValues {
   name: string;
@@ -65,6 +64,45 @@ const Staff: React.FC = () => {
     loadUsers();
   }, []);
 
+  const fetchUserEmails = async (profiles: AuthUser[]) => {
+    try {
+      // Only fetch emails if there are profiles to fetch emails for
+      if (!profiles || profiles.length === 0) return profiles;
+      
+      console.log(`Staff: Fetching emails for ${profiles.length} users`);
+      
+      // Create array of user IDs to fetch emails for
+      const userIds = profiles.map(p => p.id);
+      
+      // Call the edge function to get emails
+      const response = await supabase.functions.invoke('create-user-with-profile', {
+        body: { 
+          action: 'get_emails',
+          userIds: userIds
+        }
+      });
+      
+      console.log('Edge function response for email fetch:', response);
+      
+      if (response.error) {
+        console.error('Error fetching emails:', response.error);
+        return profiles;
+      }
+      
+      // Map the emails to the profiles
+      const emailsMap = response.data || {};
+      
+      return profiles.map(profile => ({
+        ...profile,
+        email: emailsMap[profile.id] || profile.email || ''
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching user emails:', error);
+      return profiles;
+    }
+  };
+
   const loadUsers = async () => {
     setLoading(true);
     setError(null);
@@ -93,7 +131,9 @@ const Staff: React.FC = () => {
           created_at: profile.created_at
         }));
         
-        setUsers(staffUsers);
+        // Fetch emails for all users
+        const usersWithEmails = await fetchUserEmails(staffUsers);
+        setUsers(usersWithEmails);
       } else {
         setUsers([]);
       }
@@ -128,7 +168,9 @@ const Staff: React.FC = () => {
             created_at: profile.created_at
           }));
           
-          setUsers(staffUsers);
+          // Fetch emails for all users
+          const usersWithEmails = await fetchUserEmails(staffUsers);
+          setUsers(usersWithEmails);
         }
       } catch (fallbackError: any) {
         console.error('Staff component: Fallback query failed:', fallbackError);
@@ -212,9 +254,13 @@ const Staff: React.FC = () => {
       toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
       setShowEditDialog(false);
       
+      // Use the email from the response if available
+      const updatedUser = response.data?.data;
+      const updatedEmail = updatedUser?.email || currentUserEdit.email;
+      
       setUsers(users.map(u => 
         u.id === currentUserEdit.id 
-          ? { ...u, role: data.role }
+          ? { ...u, role: data.role, email: updatedEmail }
           : u
       ));
       

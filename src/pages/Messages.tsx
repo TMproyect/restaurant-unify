@@ -11,18 +11,9 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-
-interface Message {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  content: string;
-  read: boolean;
-  created_at: string;
-  updated_at: string;
-  sender_name?: string;
-  receiver_name?: string;
-}
+import { Message, getMessages, sendMessage, markMessageAsRead, getUnreadMessagesCount } from '@/services/messageService';
+import { useOnClickOutside } from '@/hooks/use-click-outside';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Profile {
   id: string;
@@ -32,20 +23,25 @@ interface Profile {
 }
 
 const Messages = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [newMessage, setNewMessage] = useState('');
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [selectedChatName, setSelectedChatName] = useState<string>('');
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Fetch messages and profiles when component mounts
+  // Use React Query to fetch messages
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: ['messages'],
+    queryFn: getMessages,
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch profiles when component mounts
   useEffect(() => {
-    console.log("Loading messages and profiles");
-    fetchMessages();
+    console.log("Loading profiles");
     fetchProfiles();
 
     // Subscribe to new messages
@@ -59,7 +55,7 @@ const Messages = () => {
         }, 
         (payload) => {
           console.log('New message event:', payload);
-          fetchMessages();
+          queryClient.invalidateQueries({ queryKey: ['messages'] });
         })
       .subscribe((status) => {
         console.log('Messages channel status:', status);
@@ -69,46 +65,7 @@ const Messages = () => {
       console.log("Cleaning up messages subscription");
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
-
-  const fetchMessages = async () => {
-    if (!user?.id) {
-      console.log("Cannot fetch messages: No user ID");
-      return;
-    }
-
-    try {
-      console.log("Fetching messages for user:", user.id);
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error("Error fetching messages:", error);
-        toast({
-          title: "Error fetching messages",
-          description: error.message,
-        });
-        return;
-      }
-
-      console.log("Fetched messages:", data);
-      
-      // Enrich messages with profile names
-      if (data && profiles.length > 0) {
-        const enrichedMessages = await enrichMessagesWithNames(data);
-        setMessages(enrichedMessages);
-      } else {
-        setMessages(data || []);
-      }
-    } catch (error) {
-      console.error("Exception fetching messages:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user?.id, queryClient]);
 
   const fetchProfiles = async () => {
     try {
@@ -133,19 +90,6 @@ const Messages = () => {
     }
   };
 
-  const enrichMessagesWithNames = async (messages: Message[]) => {
-    return messages.map(message => {
-      const sender = profiles.find(p => p.id === message.sender_id);
-      const receiver = profiles.find(p => p.id === message.receiver_id);
-      
-      return {
-        ...message,
-        sender_name: sender?.name || 'Unknown User',
-        receiver_name: receiver?.name || 'Unknown User'
-      };
-    });
-  };
-
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || !user?.id) {
       console.log("Cannot send empty message or no selected chat");
@@ -154,33 +98,22 @@ const Messages = () => {
 
     try {
       console.log(`Sending message to ${selectedChat}: ${newMessage}`);
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: user.id,
-          receiver_id: selectedChat,
-          content: newMessage,
-          read: false
-        })
-        .select();
-
-      if (error) {
-        console.error("Error sending message:", error);
-        toast({
-          title: "Error sending message",
-          description: error.message,
-        });
-        return;
-      }
-
-      console.log("Message sent successfully:", data);
-      setNewMessage('');
-      fetchMessages();
-      
-      toast({
-        title: "Message sent",
-        description: "Your message has been sent successfully.",
+      const sentMessage = await sendMessage({
+        sender_id: user.id,
+        receiver_id: selectedChat,
+        content: newMessage,
       });
+
+      if (sentMessage) {
+        console.log("Message sent successfully:", sentMessage);
+        setNewMessage('');
+        queryClient.invalidateQueries({ queryKey: ['messages'] });
+        
+        toast({
+          title: "Message sent",
+          description: "Your message has been sent successfully.",
+        });
+      }
     } catch (error) {
       console.error("Exception sending message:", error);
     }
@@ -189,22 +122,8 @@ const Messages = () => {
   const markAsRead = async (messageId: string) => {
     try {
       console.log(`Marking message ${messageId} as read`);
-      const { error } = await supabase
-        .from('messages')
-        .update({ read: true })
-        .eq('id', messageId);
-
-      if (error) {
-        console.error("Error marking message as read:", error);
-        return;
-      }
-
-      // Update local messages state
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === messageId ? { ...msg, read: true } : msg
-        )
-      );
+      await markMessageAsRead(messageId);
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
     } catch (error) {
       console.error("Exception marking message as read:", error);
     }
@@ -217,12 +136,15 @@ const Messages = () => {
     messages.forEach(msg => {
       const isIncoming = msg.receiver_id === user?.id;
       const partnerId = isIncoming ? msg.sender_id : msg.receiver_id;
-      const partnerName = isIncoming ? msg.sender_name : msg.receiver_name;
+      
+      // Find partner profile
+      const partnerProfile = profiles.find(p => p.id === partnerId);
+      const partnerName = partnerProfile?.name || "Unknown User";
       
       if (!conversations.has(partnerId)) {
         conversations.set(partnerId, {
           id: partnerId,
-          name: partnerName || "Unknown User",
+          name: partnerName,
           lastMessage: msg.content,
           unread: isIncoming && !msg.read ? 1 : 0
         });
@@ -402,19 +324,19 @@ const Messages = () => {
                       </Button>
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="h-[65vh] flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-20" />
-                    <p className="text-lg font-medium">Select a conversation</p>
-                    <p className="text-sm max-w-md mx-auto mt-1">
-                      Choose a conversation from the list to view messages
-                    </p>
-                  </div>
+                </CardContent>
+              </>
+            ) : (
+              <div className="h-[65vh] flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-20" />
+                  <p className="text-lg font-medium">Select a conversation</p>
+                  <p className="text-sm max-w-md mx-auto mt-1">
+                    Choose a conversation from the list to view messages
+                  </p>
                 </div>
-              )}
-            </CardContent>
+              </div>
+            )}
           </Card>
         </div>
       </div>

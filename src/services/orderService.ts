@@ -13,6 +13,7 @@ export interface Order {
   is_delivery: boolean;
   table_id?: string;
   kitchen_id?: string;
+  discount?: number;
   created_at?: string;
   updated_at?: string;
 }

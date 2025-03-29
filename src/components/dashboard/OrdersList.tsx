@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getOrders, subscribeToOrders, Order, updateOrderStatus } from '@/services/orderService';
@@ -242,7 +241,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm font-medium">
                       ${order.total.toFixed(2)}
-                      {order.discount && order.discount > 0 && (
+                      {order.discount !== undefined && order.discount > 0 && (
                         <div className="text-xs text-green-600">
                           Descuento: {order.discount}%
                         </div>

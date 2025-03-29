@@ -2,11 +2,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth/AuthContext";
 
+export type NotificationType = 'order' | 'inventory' | 'table' | 'system';
+
 export interface Notification {
   id: string;
   title: string;
   description: string;
-  type: 'order' | 'inventory' | 'table' | 'system';
+  type: NotificationType;
   read: boolean;
   link?: string;
   action_text?: string;
@@ -129,3 +131,26 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     return null;
   }
 }
+
+// Subscribe to notification changes
+export const subscribeToNotifications = (callback: (payload: any) => void) => {
+  const channel = supabase
+    .channel('notifications-channel')
+    .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'notifications' 
+        }, 
+        payload => {
+          console.log('Notification realtime update received:', payload.eventType);
+          callback(payload);
+        })
+    .subscribe();
+
+  console.log('Subscribed to notifications channel');
+  return () => {
+    console.log('Unsubscribing from notifications channel');
+    supabase.removeChannel(channel);
+  };
+};

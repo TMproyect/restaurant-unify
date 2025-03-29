@@ -9,11 +9,12 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Check } from 'lucide-react';
+import { MoreHorizontal, Check, Loader2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 // Define order status types for UI purposes
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
 
 // Status badge component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -54,15 +55,17 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 interface OrdersListProps {
-  filter?: 'all' | 'table' | 'delivery';
+  filter?: OrderStatus;
   limit?: number;
   onRefresh?: () => void;
+  searchQuery?: string;
 }
 
 const OrdersList: React.FC<OrdersListProps> = ({ 
   filter = 'all',
   limit = 10,
-  onRefresh
+  onRefresh,
+  searchQuery = ''
 }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,155 +74,253 @@ const OrdersList: React.FC<OrdersListProps> = ({
   // Cargar órdenes
   const loadOrders = async () => {
     setLoading(true);
-    const data = await getOrders();
-    setOrders(data || []);
-    setLoading(false);
+    try {
+      console.log(`Loading orders with filter: ${filter}`);
+      const data = await getOrders();
+      setOrders(data || []);
+      console.log(`Loaded ${data?.length || 0} orders`);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las órdenes",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
   useEffect(() => {
     loadOrders();
     
-    // Suscribirse a cambios en órdenes
+    // Subscribe to order changes
     const unsubscribe = subscribeToOrders((payload) => {
-      console.log('Realtime order update:', payload);
+      console.log('Realtime order update received in OrdersList:', payload);
       loadOrders();
-      
-      if (payload.eventType === 'INSERT') {
-        toast({
-          title: "Nueva orden",
-          description: `Se ha recibido una nueva orden #${payload.new.id?.substring(0, 4) || ''}`
-        });
-      }
     });
     
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [filter]);
   
   // Actualizar una orden
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
-    await updateOrderStatus(orderId, newStatus);
-    loadOrders();
-    if (onRefresh) onRefresh();
+    try {
+      console.log(`Updating order ${orderId} status to ${newStatus}`);
+      setLoading(true);
+      const success = await updateOrderStatus(orderId, newStatus);
+      
+      if (success) {
+        toast({
+          title: "Estado actualizado",
+          description: `La orden ha sido actualizada a "${
+            newStatus === 'pending' ? 'Pendiente' :
+            newStatus === 'preparing' ? 'En preparación' :
+            newStatus === 'ready' ? 'Lista' :
+            newStatus === 'delivered' ? 'Entregada' :
+            newStatus === 'cancelled' ? 'Cancelada' : newStatus
+          }"`
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar el estado de la orden",
+          variant: "destructive"
+        });
+      }
+      
+      await loadOrders();
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al actualizar el estado",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
-  // Filtrar órdenes basado en filter type
-  const filteredOrders = orders.filter(order => {
-    if (filter === 'all') return true;
-    if (filter === 'table') return !order.is_delivery;
-    if (filter === 'delivery') return order.is_delivery;
-    return true;
-  }).slice(0, limit);
+  // Filtrar órdenes
+  const filteredOrders = orders
+    .filter(order => {
+      // Filter by status
+      if (filter !== 'all' && order.status !== filter) return false;
+      
+      // Filter by search query
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const orderIdMatch = order.id?.toLowerCase().includes(searchLower);
+        const tableMatch = order.table_number.toString().includes(searchLower);
+        const customerMatch = order.customer_name.toLowerCase().includes(searchLower);
+        return orderIdMatch || tableMatch || customerMatch;
+      }
+      
+      return true;
+    })
+    .slice(0, limit);
   
   return (
     <div className="overflow-hidden">
       {loading ? (
         <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="mt-2 text-sm text-muted-foreground">Cargando órdenes...</p>
+          </div>
         </div>
       ) : (
-        <table className="min-w-full divide-y divide-border">
-          <thead>
-            <tr>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
-                Pedido
-              </th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
-                Cliente
-              </th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
-                Estado
-              </th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
-                Cocina
-              </th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
-                Total
-              </th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
-                Hora
-              </th>
-              <th className="px-3 py-3.5 text-center text-sm font-semibold text-foreground">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map((order) => (
-                <tr 
-                  key={order.id}
-                  className="hover:bg-muted/50 transition-colors"
-                >
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    <div className="font-medium">#{order.id?.substring(0, 4)}</div>
-                    <div className="text-muted-foreground">
-                      {order.is_delivery ? 'Delivery' : `Mesa ${order.table_number}`}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    {order.customer_name}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    <StatusBadge status={order.status} />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    <span className="px-2 py-1 bg-secondary/40 rounded text-xs">
-                      {order.kitchen_id || 'Sin asignar'}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm font-medium">
-                    ${order.total.toFixed(2)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">
-                    {new Date(order.created_at || '').toLocaleTimeString('es-ES', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {order.status === 'pending' && (
-                          <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'preparing')}>
-                            Iniciar preparación
-                          </DropdownMenuItem>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead>
+              <tr>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+                  Pedido
+                </th>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+                  Cliente
+                </th>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+                  Estado
+                </th>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+                  Cocina
+                </th>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+                  Total
+                </th>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
+                  Hora
+                </th>
+                <th className="px-3 py-3.5 text-center text-sm font-semibold text-foreground">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <tr 
+                    key={order.id}
+                    className="hover:bg-muted/50 transition-colors"
+                  >
+                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                      <div className="font-medium">#{order.id?.substring(0, 4)}</div>
+                      <div className="text-muted-foreground">
+                        {order.is_delivery ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                            Delivery
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">
+                            Mesa {order.table_number}
+                          </Badge>
                         )}
-                        {order.status === 'preparing' && (
-                          <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'ready')}>
-                            Marcar como listo
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                      {order.customer_name}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                      <StatusBadge status={order.status} />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                      {order.kitchen_id ? (
+                        <Badge variant="outline" className="bg-secondary/40 text-secondary-foreground">
+                          {order.kitchen_id === 'main' ? 'Principal' : 
+                           order.kitchen_id === 'bar' ? 'Bar' : 
+                           order.kitchen_id === 'grill' ? 'Parrilla' : 
+                           order.kitchen_id}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Sin asignar</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm font-medium">
+                      ${order.total.toFixed(2)}
+                      {order.discount && order.discount > 0 && (
+                        <div className="text-xs text-green-600">
+                          Descuento: {order.discount}%
+                        </div>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">
+                      {order.created_at ? new Date(order.created_at).toLocaleTimeString('es-ES', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      }) : '--:--'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {order.status === 'pending' && (
+                            <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'preparing')}>
+                              Iniciar preparación
+                            </DropdownMenuItem>
+                          )}
+                          {order.status === 'preparing' && (
+                            <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'ready')}>
+                              Marcar como listo
+                            </DropdownMenuItem>
+                          )}
+                          {order.status === 'ready' && (
+                            <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'delivered')}>
+                              Marcar como entregado
+                            </DropdownMenuItem>
+                          )}
+                          {(order.status === 'pending' || order.status === 'preparing') && (
+                            <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'cancelled')}>
+                              Cancelar pedido
+                            </DropdownMenuItem>
+                          )}
+                          {/* Add option to view order details */}
+                          <DropdownMenuItem onClick={() => {
+                            // Implementation for viewing order details
+                            console.log('View order details for:', order.id);
+                            toast({
+                              title: "Ver detalles",
+                              description: `Detalles de la orden #${order.id?.substring(0, 4)}`
+                            });
+                          }}>
+                            Ver detalles
                           </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                    {searchQuery ? (
+                      <div className="flex flex-col items-center">
+                        <Search className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                        <p>No se encontraron órdenes para <strong>"{searchQuery}"</strong></p>
+                        <p className="text-sm mt-1">Intenta con otra búsqueda</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p>No hay órdenes para mostrar.</p>
+                        {filter !== 'all' && (
+                          <p className="text-sm mt-1">No hay órdenes con estado "{filter}"</p>
                         )}
-                        {order.status === 'ready' && (
-                          <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'delivered')}>
-                            Marcar como entregado
-                          </DropdownMenuItem>
-                        )}
-                        {(order.status === 'pending' || order.status === 'preparing') && (
-                          <DropdownMenuItem onClick={() => handleOrderStatusChange(order.id!, 'cancelled')}>
-                            Cancelar pedido
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={7} className="text-center py-10 text-muted-foreground">
-                  No hay órdenes para mostrar.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

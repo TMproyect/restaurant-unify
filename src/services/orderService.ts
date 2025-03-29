@@ -1,6 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult, filterValue } from '@/utils/supabaseHelpers';
+import { createNotification } from './notificationService';
+import { useAuth } from "@/contexts/auth/AuthContext";
 
 export interface Order {
   id?: string;
@@ -14,6 +16,7 @@ export interface Order {
   kitchen_id?: string;
   created_at?: string;
   updated_at?: string;
+  discount?: number;
 }
 
 export interface OrderItem {
@@ -30,6 +33,7 @@ export interface OrderItem {
 // Get all orders
 export const getOrders = async (): Promise<Order[]> => {
   try {
+    console.log('Fetching all orders...');
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -40,6 +44,7 @@ export const getOrders = async (): Promise<Order[]> => {
       return [];
     }
 
+    console.log('Orders fetched successfully:', data?.length || 0);
     return mapArrayResponse<Order>(data, 'Failed to map orders data');
   } catch (error) {
     console.error('Error getting orders:', error);
@@ -50,6 +55,7 @@ export const getOrders = async (): Promise<Order[]> => {
 // Get specific order with items
 export const getOrderWithItems = async (orderId: string): Promise<{ order: Order | null, items: OrderItem[] }> => {
   try {
+    console.log(`Fetching order details for ID: ${orderId}`);
     // Get order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
@@ -76,6 +82,7 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
       };
     }
 
+    console.log(`Order items fetched for ID ${orderId}:`, itemsData?.length || 0);
     return {
       order: mapSingleResponse<Order>(orderData, 'Failed to map order data'),
       items: mapArrayResponse<OrderItem>(itemsData, 'Failed to map order items')
@@ -87,8 +94,14 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
 };
 
 // Create a new order with items
-export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'updated_at'>, items: Omit<OrderItem, 'id' | 'order_id' | 'created_at'>[]): Promise<Order | null> => {
+export const createOrder = async (
+  orderData: Omit<Order, 'id' | 'created_at' | 'updated_at'>, 
+  items: Omit<OrderItem, 'id' | 'order_id' | 'created_at'>[]
+): Promise<Order | null> => {
   try {
+    console.log('Creating new order:', orderData);
+    console.log('Order items:', items);
+    
     // First, create the order
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
@@ -112,6 +125,8 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
       return null;
     }
     
+    console.log('Order created successfully with ID:', orderResult.id);
+    
     // Then, create the order items
     if (items.length > 0) {
       const orderItems = items.map(item => ({
@@ -130,7 +145,29 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
       if (itemsError) {
         console.error('Error creating order items:', itemsError);
         // We don't return null here because the order was created successfully
+      } else {
+        console.log(`${orderItems.length} order items created successfully`);
       }
+    }
+
+    // Create notification for new order
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      
+      if (userId) {
+        await createNotification({
+          title: "Nuevo pedido",
+          description: `Mesa ${orderData.table_number}: ${orderData.customer_name} - ${items.length} ítems`,
+          type: "order",
+          user_id: userId,
+          link: `/orders?id=${orderResult.id}`,
+          action_text: "Ver pedido"
+        });
+        console.log('Order notification created');
+      }
+    } catch (notifError) {
+      console.error('Failed to create notification for new order:', notifError);
     }
 
     return orderResult;
@@ -143,6 +180,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | '
 // Update order status
 export const updateOrderStatus = async (orderId: string, status: string): Promise<boolean> => {
   try {
+    console.log(`Updating order ${orderId} status to: ${status}`);
     const now = new Date().toISOString();
     const { error } = await supabase
       .from('orders')
@@ -155,6 +193,43 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
     if (error) {
       console.error('Error updating order status:', error);
       return false;
+    }
+
+    console.log('Order status updated successfully');
+    
+    // Create notification for status update
+    try {
+      const { data: orderData } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+        
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      
+      if (userId && orderData) {
+        const statusMessages = {
+          preparing: "El pedido ha comenzado a prepararse",
+          ready: "El pedido está listo para servir",
+          delivered: "El pedido ha sido entregado",
+          cancelled: "El pedido ha sido cancelado"
+        };
+        
+        const message = statusMessages[status as keyof typeof statusMessages] || `El estado del pedido cambió a ${status}`;
+        
+        await createNotification({
+          title: "Actualización de pedido",
+          description: `Mesa ${orderData.table_number}: ${message}`,
+          type: "order",
+          user_id: userId,
+          link: `/orders?id=${orderId}`,
+          action_text: "Ver detalles"
+        });
+        console.log('Order status notification created');
+      }
+    } catch (notifError) {
+      console.error('Failed to create notification for status update:', notifError);
     }
 
     return true;
@@ -175,11 +250,71 @@ export const subscribeToOrders = (callback: (payload: any) => void) => {
           table: 'orders' 
         }, 
         payload => {
+          console.log('Order realtime update received:', payload.eventType);
           callback(payload);
         })
     .subscribe();
 
+  console.log('Subscribed to orders channel');
   return () => {
+    console.log('Unsubscribing from orders channel');
     supabase.removeChannel(channel);
   };
+};
+
+// Get all kitchens
+export const getKitchens = async (): Promise<{ id: string, name: string }[]> => {
+  // In a real app, this would fetch from the database
+  // For now, we'll return hardcoded values
+  return [
+    { id: 'main', name: 'Cocina Principal' },
+    { id: 'bar', name: 'Bar' },
+    { id: 'grill', name: 'Parrilla' }
+  ];
+};
+
+// Update order with discount
+export const updateOrderDiscount = async (orderId: string, discount: number): Promise<boolean> => {
+  try {
+    console.log(`Updating order ${orderId} discount to: ${discount}%`);
+    
+    // First get the order to recalculate total
+    const { data: orderData, error: getError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', filterValue(orderId))
+      .single();
+    
+    if (getError || !orderData) {
+      console.error('Error fetching order for discount update:', getError);
+      return false;
+    }
+    
+    // Calculate new total with discount
+    const originalTotal = orderData.total;
+    const discountAmount = originalTotal * (discount / 100);
+    const newTotal = originalTotal - discountAmount;
+    
+    // Update the order
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('orders')
+      .update({ 
+        discount: discount,
+        total: newTotal,
+        updated_at: now
+      } as any)
+      .eq('id', filterValue(orderId));
+
+    if (error) {
+      console.error('Error updating order discount:', error);
+      return false;
+    }
+
+    console.log(`Order discount updated. Original: $${originalTotal}, Discount: ${discount}%, New Total: $${newTotal}`);
+    return true;
+  } catch (error) {
+    console.error('Error updating order discount:', error);
+    return false;
+  }
 };

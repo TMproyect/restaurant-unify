@@ -5,16 +5,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Filter } from 'lucide-react';
+import { Search, Plus, Filter, Loader2 } from 'lucide-react';
 import OrdersList from '@/components/dashboard/OrdersList';
 import NewOrderModal from '@/components/order/NewOrderModal';
 import { useToast } from '@/hooks/use-toast';
-import { getOrders } from '@/services/orderService';
+import { getOrders, subscribeToOrders } from '@/services/orderService';
 
 const Orders = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('all');
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [ordersCount, setOrdersCount] = useState({
     all: 0,
     pending: 0,
@@ -27,6 +28,8 @@ const Orders = () => {
   
   const loadOrderCounts = async () => {
     try {
+      console.log('Loading order counts...');
+      setIsLoading(true);
       const orders = await getOrders();
       
       const counts = {
@@ -38,14 +41,39 @@ const Orders = () => {
         cancelled: orders.filter(o => o.status === 'cancelled').length
       };
       
+      console.log('Order counts:', counts);
       setOrdersCount(counts);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error cargando conteos de órdenes:', error);
+      setIsLoading(false);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos de órdenes",
+        variant: "destructive"
+      });
     }
   };
   
   useEffect(() => {
     loadOrderCounts();
+    
+    // Subscribe to order changes
+    const unsubscribe = subscribeToOrders((payload) => {
+      console.log('Realtime order update received:', payload);
+      loadOrderCounts();
+      
+      if (payload.eventType === 'INSERT') {
+        toast({
+          title: "Nueva orden",
+          description: `Se ha recibido una nueva orden #${payload.new.id?.substring(0, 4) || ''}`
+        });
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const openNewOrderModal = () => {
@@ -78,7 +106,7 @@ const Orders = () => {
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all" className="relative">
               Todas
-              {ordersCount.all > 0 && (
+              {!isLoading && ordersCount.all > 0 && (
                 <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-primary/20">
                   {ordersCount.all}
                 </span>
@@ -86,7 +114,7 @@ const Orders = () => {
             </TabsTrigger>
             <TabsTrigger value="pending" className="relative">
               Pendientes
-              {ordersCount.pending > 0 && (
+              {!isLoading && ordersCount.pending > 0 && (
                 <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-800">
                   {ordersCount.pending}
                 </span>
@@ -94,7 +122,7 @@ const Orders = () => {
             </TabsTrigger>
             <TabsTrigger value="preparing" className="relative">
               En Preparación
-              {ordersCount.preparing > 0 && (
+              {!isLoading && ordersCount.preparing > 0 && (
                 <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-blue-200 text-blue-800">
                   {ordersCount.preparing}
                 </span>
@@ -102,7 +130,7 @@ const Orders = () => {
             </TabsTrigger>
             <TabsTrigger value="ready" className="relative">
               Listas
-              {ordersCount.ready > 0 && (
+              {!isLoading && ordersCount.ready > 0 && (
                 <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-green-200 text-green-800">
                   {ordersCount.ready}
                 </span>
@@ -110,7 +138,7 @@ const Orders = () => {
             </TabsTrigger>
             <TabsTrigger value="delivered" className="relative">
               Entregadas
-              {ordersCount.delivered > 0 && (
+              {!isLoading && ordersCount.delivered > 0 && (
                 <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-800">
                   {ordersCount.delivered}
                 </span>
@@ -118,7 +146,7 @@ const Orders = () => {
             </TabsTrigger>
             <TabsTrigger value="cancelled" className="relative">
               Canceladas
-              {ordersCount.cancelled > 0 && (
+              {!isLoading && ordersCount.cancelled > 0 && (
                 <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-red-200 text-red-800">
                   {ordersCount.cancelled}
                 </span>
@@ -142,64 +170,84 @@ const Orders = () => {
             </Button>
           </div>
 
-          <TabsContent value="all" className="border rounded-md">
-            <OrdersList onRefresh={loadOrderCounts} />
-          </TabsContent>
-
-          <TabsContent value="pending" className="border rounded-md">
-            <Card>
-              <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="flex flex-col items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="mt-2 text-sm text-muted-foreground">Cargando órdenes...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <TabsContent value="all" className="border rounded-md">
                 <OrdersList 
                   filter="all" 
                   onRefresh={loadOrderCounts}
+                  searchQuery={searchQuery}
                 />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="preparing" className="border rounded-md">
-            <Card>
-              <CardContent className="p-0">
-                <OrdersList 
-                  filter="all" 
-                  onRefresh={loadOrderCounts}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="pending" className="border rounded-md">
+                <Card>
+                  <CardContent className="p-0">
+                    <OrdersList 
+                      filter="pending" 
+                      onRefresh={loadOrderCounts}
+                      searchQuery={searchQuery}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          <TabsContent value="ready" className="border rounded-md">
-            <Card>
-              <CardContent className="p-0">
-                <OrdersList 
-                  filter="all" 
-                  onRefresh={loadOrderCounts}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="preparing" className="border rounded-md">
+                <Card>
+                  <CardContent className="p-0">
+                    <OrdersList 
+                      filter="preparing" 
+                      onRefresh={loadOrderCounts}
+                      searchQuery={searchQuery}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          <TabsContent value="delivered" className="border rounded-md">
-            <Card>
-              <CardContent className="p-0">
-                <OrdersList 
-                  filter="all" 
-                  onRefresh={loadOrderCounts}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="ready" className="border rounded-md">
+                <Card>
+                  <CardContent className="p-0">
+                    <OrdersList 
+                      filter="ready" 
+                      onRefresh={loadOrderCounts}
+                      searchQuery={searchQuery}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          <TabsContent value="cancelled" className="border rounded-md">
-            <Card>
-              <CardContent className="p-0">
-                <OrdersList 
-                  filter="all" 
-                  onRefresh={loadOrderCounts}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="delivered" className="border rounded-md">
+                <Card>
+                  <CardContent className="p-0">
+                    <OrdersList 
+                      filter="delivered" 
+                      onRefresh={loadOrderCounts}
+                      searchQuery={searchQuery}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="cancelled" className="border rounded-md">
+                <Card>
+                  <CardContent className="p-0">
+                    <OrdersList 
+                      filter="cancelled" 
+                      onRefresh={loadOrderCounts}
+                      searchQuery={searchQuery}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </div>
 

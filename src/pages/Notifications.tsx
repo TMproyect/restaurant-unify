@@ -64,7 +64,8 @@ const Notifications = () => {
     try {
       setLoading(true);
       const data = await getNotifications();
-      setNotifications(data);
+      // Safely cast the data to the correct type
+      setNotifications(data as Notification[]);
     } catch (error) {
       console.error("Error loading notifications:", error);
       toast({

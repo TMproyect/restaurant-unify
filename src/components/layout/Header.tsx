@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Bell, Moon, Sun, MessageSquare, X, AlertCircle, Package, ShoppingCart, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -38,18 +37,15 @@ const Header = () => {
   const notificationsRef = React.useRef<HTMLDivElement>(null);
   const messagesRef = React.useRef<HTMLDivElement>(null);
   
-  // Close dropdowns when clicking outside
   useOnClickOutside(notificationsRef, () => setShowNotifications(false));
   useOnClickOutside(messagesRef, () => setShowMessages(false));
 
-  // Fetch notifications and unread counts when component mounts
   useEffect(() => {
     if (user) {
       console.log("Loading notifications and message counts");
       loadNotifications();
       loadUnreadMessageCount();
 
-      // Subscribe to notifications and messages
       const notificationsChannel = supabase
         .channel('notifications-changes')
         .on('postgres_changes', 
@@ -95,7 +91,7 @@ const Header = () => {
     
     try {
       const data = await getNotifications();
-      setNotifications(data);
+      setNotifications(data as Notification[]);
       setUnreadNotifications(data.filter(n => !n.read).length);
     } catch (error) {
       console.error("Error loading notifications:", error);
@@ -117,7 +113,6 @@ const Header = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     
-    // Toggle dark class on document
     if (newMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -125,19 +120,15 @@ const Header = () => {
     }
   };
 
-  // Function to mark a notification as read
   const handleNotificationClick = async (notification: Notification) => {
     console.log(`Notification clicked:`, notification);
     try {
-      // If the notification has not been read yet, mark it as read
       if (!notification.read) {
         await markNotificationAsRead(notification.id);
       }
       
-      // Close notification dropdown
       setShowNotifications(false);
       
-      // Navigate to the link if provided
       if (notification.link) {
         console.log(`Navigating to ${notification.link}`);
         navigate(notification.link);
@@ -152,7 +143,6 @@ const Header = () => {
     }
   };
 
-  // Function to view all notifications
   const viewAllNotifications = () => {
     console.log("View all notifications clicked");
     setShowNotifications(false);
@@ -164,22 +154,18 @@ const Header = () => {
     });
   };
 
-  // Function to handle click on messages
   const handleMessagesClick = () => {
     console.log("Messages clicked");
     
-    // Close notifications dropdown if open
     if (showNotifications) {
       setShowNotifications(false);
     }
     
-    // Toggle messages dropdown
     setShowMessages(!showMessages);
     
-    // If dropdown is being opened and there are unread messages, navigate to messages page
     if (!showMessages && unreadMessages > 0) {
-      setShowMessages(false); // Close dropdown
-      navigate('/messages'); // Navigate to messages page
+      setShowMessages(false);
+      navigate('/messages');
       
       toast({
         title: "Mensajes",
@@ -188,21 +174,17 @@ const Header = () => {
     }
   };
 
-  // Function to navigate to messages page
   const goToMessages = () => {
     console.log("Navigating to messages page");
     setShowMessages(false);
     navigate('/messages');
   };
 
-  // Toggle notifications dropdown
   const toggleNotifications = () => {
-    // Close messages dropdown if open
     if (showMessages) {
       setShowMessages(false);
     }
     
-    // Toggle notifications dropdown
     setShowNotifications(!showNotifications);
   };
 
@@ -221,7 +203,6 @@ const Header = () => {
       </div>
       
       <div className="flex items-center space-x-2 md:space-x-4">
-        {/* Dark mode toggle */}
         <button 
           className="icon-button"
           onClick={toggleDarkMode}
@@ -229,7 +210,6 @@ const Header = () => {
           {darkMode ? <Sun size={isMobile ? 18 : 20} /> : <Moon size={isMobile ? 18 : 20} />}
         </button>
         
-        {/* Chat button - hide on very small screens */}
         <div className="relative" ref={messagesRef}>
           <button 
             className="icon-button relative hidden sm:flex"
@@ -244,7 +224,6 @@ const Header = () => {
             )}
           </button>
           
-          {/* Messages dropdown */}
           {showMessages && (
             <div className="absolute right-0 top-16 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
               <div className="p-3 border-b border-border flex justify-between items-center">
@@ -269,7 +248,6 @@ const Header = () => {
           )}
         </div>
         
-        {/* Notifications */}
         <div className="relative" ref={notificationsRef}>
           <button 
             className="icon-button relative"
@@ -284,7 +262,6 @@ const Header = () => {
             )}
           </button>
           
-          {/* Notifications dropdown */}
           {showNotifications && (
             <div className="absolute right-0 top-16 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50 animate-scale-in">
               <div className="p-3 border-b border-border flex justify-between items-center">
@@ -346,7 +323,6 @@ const Header = () => {
           )}
         </div>
         
-        {/* User avatar */}
         {user && (
           <div className="relative group">
             <button className="flex items-center gap-2">
@@ -356,7 +332,6 @@ const Header = () => {
               <span className="hidden md:inline-block">{user.name}</span>
             </button>
             
-            {/* Dropdown menu */}
             <div className="absolute right-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bg-white dark:bg-gray-900 border border-border rounded-lg shadow-lg z-50">
               <div className="p-3 border-b border-border">
                 <p className="font-medium">{user.name}</p>

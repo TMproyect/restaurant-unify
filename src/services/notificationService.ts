@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/auth/AuthContext";
 
 export interface Notification {
   id: string;
@@ -10,6 +11,7 @@ export interface Notification {
   link?: string;
   action_text?: string;
   created_at: string;
+  user_id: string;
 }
 
 export async function getNotifications() {
@@ -26,7 +28,7 @@ export async function getNotifications() {
     }
 
     console.log("Fetched notifications:", data);
-    return data || [];
+    return data as Notification[] || [];
   } catch (error) {
     console.error("Exception fetching notifications:", error);
     return [];
@@ -48,7 +50,7 @@ export async function markNotificationAsRead(id: string) {
     }
 
     console.log("Notification marked as read:", data);
-    return data?.[0];
+    return data?.[0] as Notification;
   } catch (error) {
     console.error("Exception marking notification as read:", error);
     return null;
@@ -70,7 +72,7 @@ export async function markAllNotificationsAsRead() {
     }
 
     console.log("All notifications marked as read:", data);
-    return data || [];
+    return data as Notification[] || [];
   } catch (error) {
     console.error("Exception marking all notifications as read:", error);
     return [];
@@ -101,6 +103,12 @@ export async function getUnreadNotificationsCount() {
 export async function createNotification(notification: Omit<Notification, 'id' | 'created_at' | 'read'>) {
   console.log("Creating notification:", notification);
   try {
+    // Make sure we have user_id from the notification object
+    if (!notification.user_id) {
+      console.error("Error: user_id is required for creating a notification");
+      throw new Error("user_id is required for creating a notification");
+    }
+
     const { data, error } = await supabase
       .from('notifications')
       .insert({
@@ -115,7 +123,7 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     }
 
     console.log("Notification created:", data);
-    return data?.[0];
+    return data?.[0] as Notification;
   } catch (error) {
     console.error("Exception creating notification:", error);
     return null;

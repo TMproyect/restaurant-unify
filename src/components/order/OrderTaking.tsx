@@ -10,7 +10,7 @@ import OrderCart from './OrderCart';
 import { supabase } from '@/integrations/supabase/client';
 import { filterValue, filterBooleanValue, mapArrayResponse } from '@/utils/supabaseHelpers';
 import { CartItem } from './CartItem';
-import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle } from 'lucide-react';
+import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle, Minus, Plus, Trash2 } from 'lucide-react';
 import { getKitchens } from '@/services/orderService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';

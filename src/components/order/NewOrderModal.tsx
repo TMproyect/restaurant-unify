@@ -47,16 +47,20 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
   const fetchAvailableTables = async () => {
     try {
       setTablesLoading(true);
+      console.log('Fetching available tables...');
       const { data, error } = await supabase
         .from('restaurant_tables')
         .select('*')
         .eq('status', filterValue('available'));
 
       if (error) {
+        console.error('Error fetching tables:', error);
         throw error;
       }
 
-      setTables(mapArrayResponse<RestaurantTable>(data, 'Failed to map tables'));
+      const tableData = mapArrayResponse<RestaurantTable>(data, 'Failed to map tables');
+      console.log('Available tables fetched:', tableData.length);
+      setTables(tableData);
     } catch (error) {
       console.error('Error fetching tables:', error);
       toast.error('Error al cargar mesas disponibles');
@@ -83,10 +87,12 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
       }
     }
 
+    console.log('Continuing to order items with customer:', customerName);
     setOrderStep('items');
   };
 
   const handleOrderComplete = () => {
+    console.log('Order completed successfully');
     onSuccess();
     onClose();
   };
@@ -133,7 +139,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
                     ) : tables.length > 0 ? (
                       tables.map((table) => (
                         <SelectItem key={table.id} value={table.id.toString()}>
-                          Mesa {table.number}
+                          Mesa {table.number} - {table.zone}
                         </SelectItem>
                       ))
                     ) : (
@@ -164,6 +170,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
           <div className="p-6">
             <OrderTaking 
               tableId={selectedTable}
+              customerName={customerName}
               onOrderComplete={handleOrderComplete}
             />
           </div>

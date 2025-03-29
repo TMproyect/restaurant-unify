@@ -6,15 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import OrderCart from './OrderCart';
 import { supabase } from '@/integrations/supabase/client';
 import { filterValue, filterBooleanValue, mapArrayResponse } from '@/utils/supabaseHelpers';
 import { CartItem } from './CartItem';
-import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle, Minus, Plus, Trash2 } from 'lucide-react';
-import { getKitchens } from '@/services/orderService';
+import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle, Minus, Plus, Trash2, DollarSign } from 'lucide-react';
+import { getKitchens, createOrder } from '@/services/orderService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface MenuItem {
   id: string;
@@ -35,11 +37,13 @@ interface Category {
 
 interface OrderTakingProps {
   tableId: string;
+  customerName: string;
   onOrderComplete: () => void;
 }
 
 const OrderTaking: React.FC<OrderTakingProps> = ({ 
   tableId,
+  customerName,
   onOrderComplete
 }: OrderTakingProps) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -50,9 +54,16 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedKitchen, setSelectedKitchen] = useState<string>('main');
   const [kitchenOptions, setKitchenOptions] = useState<{id: string, name: string}[]>([]);
-  const [customerName, setCustomerName] = useState<string>('');
+  const [localCustomerName, setLocalCustomerName] = useState<string>(customerName || '');
   const [discount, setDiscount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'percentage' | 'amount'>('percentage');
   const [tableInfo, setTableInfo] = useState<{number: number, zone: string} | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  useEffect(() => {
+    console.log("Initial customer name from prop:", customerName);
+    setLocalCustomerName(customerName || '');
+  }, [customerName]);
 
   useEffect(() => {
     fetchCategories();
@@ -63,6 +74,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
 
   const fetchKitchens = async () => {
     try {
+      console.log('Fetching kitchens...');
       const kitchens = await getKitchens();
       console.log('Available kitchens:', kitchens);
       setKitchenOptions(kitchens);
@@ -96,16 +108,11 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
     }
   };
 
-  const fetchMenuItems = async (categoryId?: string) => {
+  const fetchMenuItems = async () => {
     try {
       setLoading(true);
       console.log('Fetching menu items...');
       let query = supabase.from('menu_items').select('*');
-      
-      if (categoryId && categoryId !== 'all') {
-        console.log(`Filtering by category ID: ${categoryId}`);
-        query = query.eq('category_id', filterValue(categoryId));
-      }
       
       // Only show available items - using our custom filterBooleanValue helper
       query = query.eq('available', filterBooleanValue(true));
@@ -149,6 +156,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
       toast.error('Error al cargar las categorías del menú');
       // Fallback to default categories if there's an error
       setCategories([
+        { id: 'all', name: 'Todos' },
         { id: 'entradas', name: 'Entradas' },
         { id: 'principal', name: 'Platos Principales' },
         { id: 'bebidas', name: 'Bebidas' }
@@ -185,42 +193,102 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   const handleCategoryChange = (categoryId: string) => {
     console.log(`Selected category: ${categoryId}`);
     setSelectedCategory(categoryId);
-    fetchMenuItems(categoryId);
   };
 
-  const handleSendToKitchen = () => {
+  const handleSendToKitchen = async () => {
     if (cartItems.length === 0) {
       toast.error('No hay ítems en el pedido');
       return;
     }
     
-    if (!customerName.trim()) {
+    if (!localCustomerName.trim()) {
       toast.error('Por favor ingrese el nombre del cliente');
       return;
     }
-    
-    console.log('Sending order to kitchen:', {
-      items: cartItems,
-      kitchen: selectedKitchen,
-      customer: customerName,
-      discount: discount
-    });
-    
-    onOrderComplete();
+
+    try {
+      setIsSubmitting(true);
+      console.log('Preparing order data');
+      
+      // Calculate final total based on discount
+      let finalTotal = subtotal + taxAmount + serviceAmount;
+      if (discountType === 'percentage') {
+        finalTotal -= discountAmount;
+      } else {
+        finalTotal -= discount;
+      }
+
+      // Create order data
+      const orderData = {
+        table_number: tableInfo?.number || 0,
+        customer_name: localCustomerName,
+        status: 'pending',
+        total: finalTotal,
+        items_count: cartItems.length,
+        is_delivery: false,
+        table_id: tableId,
+        kitchen_id: selectedKitchen,
+        discount: discountType === 'percentage' ? discount : Math.round((discount / subtotal) * 100)
+      };
+      
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        menu_item_id: item.menuItemId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      }));
+      
+      console.log('Sending order to kitchen:', {
+        order: orderData,
+        items: orderItems
+      });
+      
+      // Call createOrder from orderService
+      const result = await createOrder(orderData, orderItems);
+      
+      if (result) {
+        console.log('Order created successfully:', result);
+        toast.success('Pedido enviado a cocina correctamente');
+        onOrderComplete();
+      } else {
+        throw new Error('No se pudo crear la orden');
+      }
+    } catch (error) {
+      console.error('Error sending order to kitchen:', error);
+      toast.error('Error al enviar pedido a cocina');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDiscountChange = (value: number) => {
     if (value < 0) value = 0;
-    if (value > 100) value = 100;
-    console.log(`Setting discount to ${value}%`);
+    
+    if (discountType === 'percentage' && value > 100) {
+      value = 100;
+    } else if (discountType === 'amount' && value > subtotal) {
+      value = subtotal;
+    }
+    
+    console.log(`Setting ${discountType} discount to ${value}`);
     setDiscount(value);
   };
 
-  // Apply search filter
-  const filteredMenuItems = menuItems.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter menu items based on category and search term
+  const filteredMenuItems = menuItems.filter(item => {
+    // Filter by search term
+    const matchesSearch = !searchTerm || 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Filter by category
+    const matchesCategory = selectedCategory === 'all' || 
+      (item.category_id && item.category_id === selectedCategory);
+      
+    return matchesSearch && matchesCategory;
+  });
 
   // Calculate totals
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -228,7 +296,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   const serviceRate = 0.10; // 10%
   const taxAmount = subtotal * taxRate;
   const serviceAmount = subtotal * serviceRate;
-  const discountAmount = subtotal * (discount / 100);
+  const discountAmount = discountType === 'percentage' ? subtotal * (discount / 100) : discount;
   const total = subtotal + taxAmount + serviceAmount - discountAmount;
 
   return (
@@ -247,8 +315,8 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
               <Input
                 type="text"
                 placeholder="Nombre del cliente..."
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                value={localCustomerName}
+                onChange={(e) => setLocalCustomerName(e.target.value)}
                 className="w-full"
               />
             </div>
@@ -268,7 +336,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
         </div>
         
         {/* Categories and Menu Items */}
-        <Tabs defaultValue="all" className="w-full" onValueChange={handleCategoryChange}>
+        <Tabs defaultValue="all" value={selectedCategory} onValueChange={handleCategoryChange}>
           <div className="relative">
             <ScrollArea className="w-full whitespace-nowrap pb-2">
               <TabsList className="mb-4 w-max">
@@ -300,7 +368,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
               ))}
             </div>
           ) : (
-            <TabsContent value="all" className="mt-0">
+            <div className="mt-0">
               {filteredMenuItems.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredMenuItems.map(item => (
@@ -313,8 +381,8 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                               alt={item.name}
                               className="object-cover w-full h-full"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder.svg';
                                 console.error(`Error loading image for ${item.name}`);
+                                (e.target as HTMLImageElement).src = '/placeholder.svg';
                               }}
                             />
                           </AspectRatio>
@@ -367,85 +435,8 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   <p className="text-sm text-muted-foreground mt-1">Intenta con otra búsqueda o categoría</p>
                 </div>
               )}
-            </TabsContent>
+            </div>
           )}
-          
-          {categories.map(category => (
-            <TabsContent key={category.id} value={category.id} className="mt-0">
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4].map((n) => (
-                    <Skeleton key={n} className="h-40 w-full" />
-                  ))}
-                </div>
-              ) : filteredMenuItems.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredMenuItems.map(item => (
-                    <Card key={item.id} className="cursor-pointer overflow-hidden hover:shadow-md transition-shadow">
-                      {item.image_url ? (
-                        <div className="h-32 relative overflow-hidden">
-                          <AspectRatio ratio={16/9}>
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="object-cover w-full h-full"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                console.error(`Error loading image for ${item.name}`);
-                              }}
-                            />
-                          </AspectRatio>
-                          {item.popular && (
-                            <div className="absolute top-2 right-2">
-                              <Badge variant="secondary" className="bg-amber-500 text-white hover:bg-amber-600">Popular</Badge>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="h-32 bg-muted flex items-center justify-center">
-                          <Utensils className="h-10 w-10 text-muted-foreground opacity-50" />
-                          {item.popular && (
-                            <div className="absolute top-2 right-2">
-                              <Badge variant="secondary" className="bg-amber-500 text-white hover:bg-amber-600">Popular</Badge>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      <CardHeader className="p-3 pb-1">
-                        <CardTitle className="text-base">{item.name}</CardTitle>
-                      </CardHeader>
-                      
-                      <CardContent className="p-3 pt-0">
-                        {item.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                        )}
-                        
-                        {item.allergens && item.allergens.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-amber-600 dark:text-amber-400">
-                            <AlertCircle className="h-3 w-3" />
-                            <span>Contiene: {item.allergens.join(', ')}</span>
-                          </div>
-                        )}
-                        
-                        <p className="text-lg font-bold mt-2">${item.price.toFixed(2)}</p>
-                      </CardContent>
-                      
-                      <CardFooter className="p-3 pt-0 justify-end">
-                        <Button size="sm" onClick={() => addToCart(item)}>Agregar</Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10">
-                  <SearchIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No se encontraron resultados</p>
-                  <p className="text-sm text-muted-foreground mt-1">Intenta con otra búsqueda o categoría</p>
-                </div>
-              )}
-            </TabsContent>
-          ))}
         </Tabs>
       </div>
       
@@ -461,8 +452,8 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                 {cartItems.length} {cartItems.length === 1 ? 'ítem' : 'ítems'}
               </Badge>
             </div>
-            {customerName && (
-              <p className="text-sm text-muted-foreground">Cliente: {customerName}</p>
+            {localCustomerName && (
+              <p className="text-sm text-muted-foreground">Cliente: {localCustomerName}</p>
             )}
           </CardHeader>
           
@@ -537,22 +528,40 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                 
                 {/* Discount section */}
                 <div className="p-3 border-t border-border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Percent className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Descuento</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <RadioGroup 
+                      value={discountType} 
+                      onValueChange={(value) => setDiscountType(value as 'percentage' | 'amount')}
+                      className="flex justify-between"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="percentage" id="percentage" />
+                        <Label htmlFor="percentage">Porcentaje</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="amount" id="amount" />
+                        <Label htmlFor="amount">Monto</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      <Percent className="h-4 w-4 text-muted-foreground mr-1" />
-                      <span className="text-sm font-medium">Descuento</span>
-                    </div>
                     <div className="flex-1">
                       <Input
                         type="number"
                         min="0"
-                        max="100"
+                        max={discountType === 'percentage' ? '100' : subtotal.toString()}
                         value={discount}
                         onChange={(e) => handleDiscountChange(Number(e.target.value))}
                         className="h-8 text-right"
                       />
                     </div>
-                    <span className="text-sm">%</span>
+                    <span className="text-sm">{discountType === 'percentage' ? '%' : '$'}</span>
                   </div>
                 </div>
                 
@@ -562,22 +571,21 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                     <ChefHat className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Cocina destino</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {kitchenOptions.map(kitchen => (
-                      <Button
-                        key={kitchen.id}
-                        variant={selectedKitchen === kitchen.id ? "default" : "outline"}
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          console.log(`Selected kitchen: ${kitchen.id}`);
-                          setSelectedKitchen(kitchen.id);
-                        }}
-                      >
-                        {kitchen.name}
-                      </Button>
-                    ))}
-                  </div>
+                  <Select
+                    value={selectedKitchen}
+                    onValueChange={setSelectedKitchen}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar cocina" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kitchenOptions.map(kitchen => (
+                        <SelectItem key={kitchen.id} value={kitchen.id}>
+                          {kitchen.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 {/* Totals */}
@@ -589,7 +597,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   
                   {discount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Descuento ({discount}%)</span>
+                      <span className="text-muted-foreground">
+                        Descuento {discountType === 'percentage' ? `(${discount}%)` : ''}
+                      </span>
                       <span className="text-red-500">-${discountAmount.toFixed(2)}</span>
                     </div>
                   )}
@@ -616,10 +626,19 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                     className="w-full" 
                     size="lg"
                     onClick={handleSendToKitchen}
-                    disabled={cartItems.length === 0 || !customerName.trim()}
+                    disabled={cartItems.length === 0 || !localCustomerName.trim() || isSubmitting}
                   >
-                    <ChefHat className="mr-2 h-4 w-4" />
-                    Enviar a Cocina
+                    {isSubmitting ? (
+                      <>
+                        <span className="animate-spin mr-2">●</span>
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <ChefHat className="mr-2 h-4 w-4" />
+                        Enviar a Cocina
+                      </>
+                    )}
                   </Button>
                   
                   <Button 

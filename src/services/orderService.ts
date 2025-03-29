@@ -264,6 +264,7 @@ export const subscribeToOrders = (callback: (payload: any) => void) => {
 
 // Get all kitchens
 export const getKitchens = async (): Promise<{ id: string, name: string }[]> => {
+  console.log('Fetching kitchen options');
   // In a real app, this would fetch from the database
   // For now, we'll return hardcoded values
   return [

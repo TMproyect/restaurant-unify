@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { filterValue, filterBooleanValue, mapArrayResponse } from '@/utils/supabaseHelpers';
 import { CartItem } from './CartItem';
-import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle, Minus, Plus, Trash2, DollarSign } from 'lucide-react';
+import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle, DollarSign } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react'; // Added missing imports
 import { getKitchens, createOrder } from '@/services/orderService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -125,7 +126,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
       }
       
       const items = mapArrayResponse<MenuItem>(data, 'Failed to map menu items');
-      console.log(`Fetched ${items.length} menu items`);
+      console.log(`Fetched ${items.length} menu items:`, items);
       setMenuItems(items);
     } catch (error) {
       console.error('Error fetching menu items:', error);
@@ -149,7 +150,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
       }
 
       const cats = mapArrayResponse<Category>(data, 'Failed to map menu categories');
-      console.log(`Fetched ${cats.length} menu categories`);
+      console.log(`Fetched ${cats.length} menu categories:`, cats);
       setCategories(cats);
     } catch (error) {
       console.error('Error fetching menu categories:', error);
@@ -227,9 +228,10 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
         items_count: cartItems.length,
         is_delivery: false,
         table_id: tableId,
-        kitchen_id: selectedKitchen,
-        discount: discountType === 'percentage' ? discount : Math.round((discount / subtotal) * 100)
+        kitchen_id: selectedKitchen
       };
+      
+      console.log('Order data prepared:', orderData);
       
       // Create order items
       const orderItems = cartItems.map(item => ({
@@ -253,6 +255,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
         toast.success('Pedido enviado a cocina correctamente');
         onOrderComplete();
       } else {
+        console.error('Order creation returned null or undefined');
         throw new Error('No se pudo crear la orden');
       }
     } catch (error) {
@@ -276,6 +279,21 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
     setDiscount(value);
   };
 
+  const toggleDiscountType = () => {
+    // Convert the current discount value when switching types
+    if (discountType === 'percentage') {
+      // Convert percentage to amount
+      const amountValue = (discount / 100) * subtotal;
+      setDiscountType('amount');
+      setDiscount(amountValue);
+    } else {
+      // Convert amount to percentage
+      const percentageValue = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
+      setDiscountType('percentage');
+      setDiscount(percentageValue);
+    }
+  };
+
   // Filter menu items based on category and search term
   const filteredMenuItems = menuItems.filter(item => {
     // Filter by search term
@@ -286,7 +304,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
     // Filter by category
     const matchesCategory = selectedCategory === 'all' || 
       (item.category_id && item.category_id === selectedCategory);
-      
+    
+    console.log(`Item ${item.name} category: ${item.category_id}, selected: ${selectedCategory}, matches: ${matchesCategory}`);
+    
     return matchesSearch && matchesCategory;
   });
 
@@ -298,6 +318,13 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   const serviceAmount = subtotal * serviceRate;
   const discountAmount = discountType === 'percentage' ? subtotal * (discount / 100) : discount;
   const total = subtotal + taxAmount + serviceAmount - discountAmount;
+
+  // Add a custom selector for the "all" category for better filtering
+  const allCategoryId = 'all';
+  const categoriesWithAll = [
+    { id: allCategoryId, name: 'Todos' },
+    ...categories.filter(cat => cat.id !== allCategoryId)
+  ];
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -340,8 +367,7 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
           <div className="relative">
             <ScrollArea className="w-full whitespace-nowrap pb-2">
               <TabsList className="mb-4 w-max">
-                <TabsTrigger value="all" className="px-4">Todos</TabsTrigger>
-                {categories.map(category => (
+                {categoriesWithAll.map(category => (
                   <TabsTrigger key={category.id} value={category.id} className="px-4">
                     {category.name}
                   </TabsTrigger>
@@ -526,28 +552,21 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   ))}
                 </div>
                 
-                {/* Discount section */}
+                {/* Discount section - Simplified */}
                 <div className="p-3 border-t border-border">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Percent className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Descuento</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <RadioGroup 
-                      value={discountType} 
-                      onValueChange={(value) => setDiscountType(value as 'percentage' | 'amount')}
-                      className="flex justify-between"
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Percent className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Descuento</span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 px-2"
+                      onClick={toggleDiscountType}
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="percentage" id="percentage" />
-                        <Label htmlFor="percentage">Porcentaje</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="amount" id="amount" />
-                        <Label htmlFor="amount">Monto</Label>
-                      </div>
-                    </RadioGroup>
+                      {discountType === 'percentage' ? '%' : '$'}
+                    </Button>
                   </div>
                   
                   <div className="flex items-center gap-2">

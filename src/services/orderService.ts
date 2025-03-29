@@ -2,7 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult, filterValue } from '@/utils/supabaseHelpers';
 import { createNotification } from './notificationService';
-import { useAuth } from "@/contexts/auth/AuthContext";
 
 export interface Order {
   id?: string;
@@ -16,7 +15,6 @@ export interface Order {
   kitchen_id?: string;
   created_at?: string;
   updated_at?: string;
-  discount?: number;
 }
 
 export interface OrderItem {
@@ -102,10 +100,13 @@ export const createOrder = async (
     console.log('Creating new order:', orderData);
     console.log('Order items:', items);
     
+    // Remove discount field if present as it's not in the database schema
+    const { discount, ...cleanOrderData } = orderData as any;
+    
     // First, create the order
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .insert(prepareInsertData(orderData) as any)
+      .insert(prepareInsertData(cleanOrderData) as any)
       .select()
       .single();
 
@@ -272,50 +273,4 @@ export const getKitchens = async (): Promise<{ id: string, name: string }[]> => 
     { id: 'bar', name: 'Bar' },
     { id: 'grill', name: 'Parrilla' }
   ];
-};
-
-// Update order with discount
-export const updateOrderDiscount = async (orderId: string, discount: number): Promise<boolean> => {
-  try {
-    console.log(`Updating order ${orderId} discount to: ${discount}%`);
-    
-    // First get the order to recalculate total
-    const { data: orderData, error: getError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', filterValue(orderId))
-      .single();
-    
-    if (getError || !orderData) {
-      console.error('Error fetching order for discount update:', getError);
-      return false;
-    }
-    
-    // Calculate new total with discount
-    const originalTotal = orderData.total;
-    const discountAmount = originalTotal * (discount / 100);
-    const newTotal = originalTotal - discountAmount;
-    
-    // Update the order
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from('orders')
-      .update({ 
-        discount: discount,
-        total: newTotal,
-        updated_at: now
-      } as any)
-      .eq('id', filterValue(orderId));
-
-    if (error) {
-      console.error('Error updating order discount:', error);
-      return false;
-    }
-
-    console.log(`Order discount updated. Original: $${originalTotal}, Discount: ${discount}%, New Total: $${newTotal}`);
-    return true;
-  } catch (error) {
-    console.error('Error updating order discount:', error);
-    return false;
-  }
 };

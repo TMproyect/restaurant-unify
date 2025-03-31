@@ -14,7 +14,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -28,7 +33,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: true,
       repartidor: true,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: true,
+      delivery: true,
+      owner: true
     }
   },
   
@@ -44,7 +54,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -58,7 +73,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: true,
       repartidor: true,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: true,
+      delivery: true,
+      owner: true
     }
   },
   {
@@ -72,7 +92,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -86,7 +111,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -102,7 +132,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -116,7 +151,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -132,7 +172,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: true,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: true,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -146,7 +191,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: true,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: true,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -162,7 +212,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -176,7 +231,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -190,7 +250,12 @@ export const defaultPermissions: Permission[] = [
       mesero: true,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: true,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -204,7 +269,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -218,7 +288,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -232,7 +307,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -246,7 +326,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -260,7 +345,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -274,7 +364,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -288,7 +383,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -302,7 +402,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -316,7 +421,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -330,7 +440,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -344,7 +459,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -358,7 +478,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -372,7 +497,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -386,7 +516,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -400,7 +535,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -416,7 +556,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: true,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: true,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -432,7 +577,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -448,7 +598,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -462,7 +617,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: false,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -476,7 +636,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: false,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   
@@ -492,7 +657,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -506,7 +676,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: true,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   },
   {
@@ -520,7 +695,12 @@ export const defaultPermissions: Permission[] = [
       mesero: false,
       cocina: false,
       repartidor: false,
-      propietario: true
+      propietario: true,
+      manager: false,
+      waiter: false,
+      kitchen: false,
+      delivery: false,
+      owner: true
     }
   }
 ];
@@ -531,7 +711,12 @@ export const systemRoles: Record<UserRole, string> = {
   mesero: 'Mesero',
   cocina: 'Cocina',
   repartidor: 'Repartidor',
-  propietario: 'Propietario'
+  propietario: 'Propietario',
+  manager: 'Manager',
+  waiter: 'Waiter',
+  kitchen: 'Kitchen',
+  delivery: 'Delivery',
+  owner: 'Owner'
 };
 
 // Utility function to get default role permissions

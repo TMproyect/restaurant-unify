@@ -2,78 +2,59 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CustomRole, SystemSetting, RolePermissionAuditLog } from "@/contexts/auth/types";
 
+// Helper function to safely parse JSON response
+function parseJsonResponse<T>(data: any): T[] {
+  if (!data || typeof data !== 'object') return [];
+  
+  try {
+    if (Array.isArray(data)) {
+      return data as T[];
+    } else {
+      return [data] as T[];
+    }
+  } catch (error) {
+    console.error("Error parsing JSON response:", error);
+    return [];
+  }
+}
+
+// Get custom roles from database
 export async function getCustomRoles(): Promise<CustomRole[]> {
   try {
-    // Use raw SQL via service role to bypass RLS issues
+    // Use raw SQL via exec_sql RPC
     const { data, error } = await supabase.rpc('exec_sql', { 
       sql: 'SELECT * FROM custom_roles ORDER BY created_at DESC' 
     });
     
     if (error) {
       console.error("Error executing SQL for custom roles:", error);
-      
-      // Fallback to direct query if possible
-      try {
-        const { data: directData, error: directError } = await supabase
-          .from('custom_roles')
-          .select('*');
-        
-        if (directError) {
-          console.error("Error in direct query:", directError);
-          return [];
-        }
-        
-        return (directData as CustomRole[]) || [];
-      } catch (fallbackError) {
-        console.error("Error in fallback query:", fallbackError);
-        return [];
-      }
+      return [];
     }
     
-    return (data as CustomRole[]) || [];
+    return parseJsonResponse<CustomRole>(data);
   } catch (error) {
     console.error("Error fetching custom roles:", error);
     return [];
   }
 }
 
+// Upsert (update or insert) a custom role
 export async function upsertCustomRole(role: Partial<CustomRole>): Promise<boolean> {
   try {
-    // Use raw SQL via service role
-    const { data, error } = await supabase.rpc('exec_sql', {
-      sql: `
-        INSERT INTO custom_roles (name, description, permissions)
-        VALUES ('${role.name}', '${role.description || ''}', '${JSON.stringify(role.permissions || {})}')
-        ON CONFLICT (name) 
-        DO UPDATE SET 
-          description = '${role.description || ''}',
-          permissions = '${JSON.stringify(role.permissions || {})}'
-      `
-    });
+    const sql = `
+      INSERT INTO custom_roles (name, description, permissions)
+      VALUES ('${role.name}', '${role.description || ''}', '${JSON.stringify(role.permissions || {})}')
+      ON CONFLICT (name) 
+      DO UPDATE SET 
+        description = '${role.description || ''}',
+        permissions = '${JSON.stringify(role.permissions || {})}'
+    `;
+    
+    const { error } = await supabase.rpc('exec_sql', { sql });
     
     if (error) {
       console.error("Error executing SQL for upserting custom role:", error);
-      
-      // Fallback to direct query
-      try {
-        const { error: directError } = await supabase
-          .from('custom_roles')
-          .upsert({
-            name: role.name,
-            description: role.description || '',
-            permissions: role.permissions || {}
-          });
-        
-        if (directError) {
-          console.error("Error in direct upsert:", directError);
-          return false;
-        }
-        
-        return true;
-      } catch (fallbackError) {
-        console.error("Error in fallback upsert:", fallbackError);
-        return false;
-      }
+      return false;
     }
     
     return true;
@@ -83,39 +64,22 @@ export async function upsertCustomRole(role: Partial<CustomRole>): Promise<boole
   }
 }
 
+// Get a system setting by key
 export async function getSystemSetting(key: string): Promise<string | null> {
   try {
-    // Use raw SQL via service role
-    const { data, error } = await supabase.rpc('exec_sql', {
-      sql: `SELECT value FROM system_settings WHERE key = '${key}'`
-    });
+    const sql = `SELECT value FROM system_settings WHERE key = '${key}'`;
+    const { data, error } = await supabase.rpc('exec_sql', { sql });
     
     if (error) {
       console.error(`Error fetching setting ${key}:`, error);
-      
-      // Fallback to direct query
-      try {
-        const { data: directData, error: directError } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', key)
-          .single();
-        
-        if (directError) {
-          console.error("Error in direct query:", directError);
-          return null;
-        }
-        
-        return directData?.value || null;
-      } catch (fallbackError) {
-        console.error("Error in fallback query:", fallbackError);
-        return null;
-      }
+      return null;
     }
     
     // Handle the SQL result which might be an array of rows
-    if (Array.isArray(data) && data.length > 0) {
-      return data[0]?.value || null;
+    const rows = parseJsonResponse<{ value: string }>(data);
+    
+    if (rows.length > 0 && rows[0] && rows[0].value) {
+      return rows[0].value;
     }
     
     return null;
@@ -125,6 +89,7 @@ export async function getSystemSetting(key: string): Promise<string | null> {
   }
 }
 
+// Log permission changes for audit trail
 export async function logPermissionChange(
   userId: string,
   userName: string,
@@ -135,22 +100,21 @@ export async function logPermissionChange(
   newValue: boolean
 ): Promise<boolean> {
   try {
-    // Use raw SQL via service role
-    const { error } = await supabase.rpc('exec_sql', {
-      sql: `
-        INSERT INTO role_permission_audit_logs
-        (user_id, user_name, role_name, permission_id, permission_name, previous_value, new_value)
-        VALUES (
-          '${userId}', 
-          '${userName}', 
-          '${roleName}', 
-          '${permissionId}', 
-          '${permissionName}', 
-          ${previousValue}, 
-          ${newValue}
-        )
-      `
-    });
+    const sql = `
+      INSERT INTO role_permission_audit_logs
+      (user_id, user_name, role_name, permission_id, permission_name, previous_value, new_value)
+      VALUES (
+        '${userId}', 
+        '${userName}', 
+        '${roleName}', 
+        '${permissionId}', 
+        '${permissionName}', 
+        ${previousValue}, 
+        ${newValue}
+      )
+    `;
+    
+    const { error } = await supabase.rpc('exec_sql', { sql });
     
     if (error) {
       console.error("Error logging permission change via SQL:", error);
@@ -164,26 +128,25 @@ export async function logPermissionChange(
   }
 }
 
+// Get audit logs for permission changes
 export async function getAuditLogs(): Promise<RolePermissionAuditLog[]> {
   try {
-    // Use raw SQL via service role
-    const { data, error } = await supabase.rpc('exec_sql', {
-      sql: 'SELECT * FROM role_permission_audit_logs ORDER BY timestamp DESC LIMIT 100'
-    });
+    const sql = 'SELECT * FROM role_permission_audit_logs ORDER BY timestamp DESC LIMIT 100';
+    const { data, error } = await supabase.rpc('exec_sql', { sql });
     
     if (error) {
       console.error("Error fetching audit logs via SQL:", error);
       return [];
     }
     
-    return (data as RolePermissionAuditLog[]) || [];
+    return parseJsonResponse<RolePermissionAuditLog>(data);
   } catch (error) {
     console.error('Error getting audit logs:', error);
     return [];
   }
 }
 
-// Create database tables and functions via SQL if they don't exist
+// Create database tables and functions via SQL
 export async function setupDatabaseFunctions(): Promise<void> {
   const createTablesSQL = `
     -- Create custom_roles table if not exists
@@ -229,7 +192,7 @@ export async function setupDatabaseFunctions(): Promise<void> {
   }
 }
 
-// Additional helper function to exec SQL if admin
+// Helper function to execute SQL if admin
 export async function execAdminSQL(sql: string): Promise<any> {
   try {
     const { data, error } = await supabase.rpc('exec_sql', { sql });

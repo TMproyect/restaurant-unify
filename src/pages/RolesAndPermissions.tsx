@@ -24,9 +24,8 @@ const RolesAndPermissionsPage = () => {
         await setupDatabaseFunctions();
         
         // Initialize audit logging setting
-        const { error } = await supabase.rpc('exec_sql', { 
-          sql: "INSERT INTO system_settings (key, value) VALUES ('enable_audit_logging', 'true') ON CONFLICT (key) DO NOTHING"
-        });
+        const sql = "INSERT INTO system_settings (key, value) VALUES ('enable_audit_logging', 'true') ON CONFLICT (key) DO NOTHING";
+        const { error } = await supabase.rpc('exec_sql', { sql });
         
         if (error) console.error("Error setting audit logging flag:", error);
         

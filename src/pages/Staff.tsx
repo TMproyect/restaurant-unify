@@ -378,7 +378,7 @@ const Staff: React.FC = () => {
     ? users 
     : users.filter(u => u.role === tab);
 
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
+  const canEdit = user?.role === 'admin' || user?.role === 'propietario' || user?.role === 'gerente';
 
   const getUserRoleLabel = (role: UserRole) => {
     const roleObj = ROLES.find(r => r.value === role);

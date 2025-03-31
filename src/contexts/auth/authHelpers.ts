@@ -1,3 +1,4 @@
+
 import { AuthUser, UserRole } from './types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,12 +20,12 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     if (data) {
       console.log("Profile data:", data);
       return {
-        id: data.id,
-        name: data.name,
-        email: data.email || '',
-        role: data.role as UserRole,
-        avatar: data.avatar || null,
-        created_at: data.created_at
+        id: (data as any).id,
+        name: (data as any).name,
+        email: (data as any).email || '',
+        role: (data as any).role as UserRole,
+        avatar: (data as any).avatar || null,
+        created_at: (data as any).created_at
       };
     } else {
       console.log("No profile found for ID:", userId);
@@ -53,12 +54,12 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
     if (data) {
       console.log("Fetched profiles:", data.length);
       return data.map(profile => ({
-        id: profile.id,
-        name: profile.name,
-        email: profile.email || '',
-        role: profile.role as UserRole,
-        avatar: profile.avatar || null,
-		created_at: profile.created_at
+        id: (profile as any).id,
+        name: (profile as any).name,
+        email: (profile as any).email || '',
+        role: (profile as any).role as UserRole,
+        avatar: (profile as any).avatar || null,
+        created_at: (profile as any).created_at
       }));
     } else {
       console.log("No profiles found");

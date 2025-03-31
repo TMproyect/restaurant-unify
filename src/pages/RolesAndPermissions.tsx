@@ -19,6 +19,8 @@ const RolesAndPermissionsPage = () => {
       if (!isAdmin) return;
       
       try {
+        console.log("Inicializando configuración de audit logging...");
+        
         // Initialize audit logging setting using type assertion for system_settings table
         await supabase.from('system_settings' as any)
           .upsert({ 
@@ -50,7 +52,7 @@ const RolesAndPermissionsPage = () => {
   }
   
   if (!isAdmin) {
-    console.log("User doesn't have permission to access Roles and Permissions");
+    console.log("Usuario sin permisos para acceder a Roles y Permisos");
     return <Navigate to="/dashboard" replace />;
   }
   

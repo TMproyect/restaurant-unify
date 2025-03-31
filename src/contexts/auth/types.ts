@@ -1,9 +1,8 @@
 
 import { Session, User } from '@supabase/supabase-js';
 
-// Define user roles - include both Spanish and English names to support older code
-export type UserRole = 'admin' | 'gerente' | 'mesero' | 'cocina' | 'repartidor' | 'propietario' | 
-                      'manager' | 'waiter' | 'kitchen' | 'delivery' | 'owner';
+// Define user roles - solo incluir nombres en español
+export type UserRole = 'admin' | 'gerente' | 'mesero' | 'cocina' | 'repartidor' | 'propietario';
 
 // Define permission categories
 export type PermissionCategory = 

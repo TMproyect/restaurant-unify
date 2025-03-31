@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCustomRoles, upsertCustomRole, getAuditLogs } from "@/utils/customDbOperations";
+import { getRoleDisplayName } from "@/utils/formatUtils";
 
 const NewRoleDialog = ({ onCreateRole }: { onCreateRole: (name: string, description: string, baseRole: UserRole) => void }) => {
   const [open, setOpen] = useState(false);
@@ -138,9 +139,11 @@ const RolesAndPermissions = () => {
         let customRoles: Role[] = [];
         
         try {
+          console.log("Cargando roles personalizados desde la base de datos...");
           const dbCustomRoles = await getCustomRoles();
           
           if (dbCustomRoles && dbCustomRoles.length > 0) {
+            console.log("Roles personalizados obtenidos:", dbCustomRoles);
             customRoles = dbCustomRoles.map(role => ({
               name: role.name as UserRole,
               description: role.description,
@@ -149,15 +152,18 @@ const RolesAndPermissions = () => {
               isCustom: true
             }));
           } else {
+            console.log("No se encontraron roles personalizados en la base de datos");
             const storedRoles = localStorage.getItem('customRoles');
             if (storedRoles) {
+              console.log("Cargando roles desde localStorage");
               customRoles = JSON.parse(storedRoles);
             }
           }
         } catch (error) {
-          console.error("Error loading custom roles:", error);
+          console.error("Error al cargar roles personalizados:", error);
           const storedRoles = localStorage.getItem('customRoles');
           if (storedRoles) {
+            console.log("Cargando roles desde localStorage debido a error");
             customRoles = JSON.parse(storedRoles);
           }
         }
@@ -166,6 +172,8 @@ const RolesAndPermissions = () => {
         allUsers.forEach(user => {
           roleCounts[user.role] = (roleCounts[user.role] || 0) + 1;
         });
+        
+        console.log("Conteo de usuarios por rol:", roleCounts);
         
         const systemRolesArray: Role[] = Object.entries(systemRoles).map(
           ([roleName, label]) => ({
@@ -186,9 +194,10 @@ const RolesAndPermissions = () => {
         }));
         
         const combinedRoles = [...systemRolesArray, ...customRoles];
+        console.log("Roles combinados:", combinedRoles);
         setRoles(combinedRoles);
       } catch (error) {
-        console.error("Error loading roles data:", error);
+        console.error("Error al cargar datos de roles y usuarios:", error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -315,56 +324,118 @@ const RolesAndPermissions = () => {
       )
     : roles;
 
-  if (showAuditLog) {
+  if (!editingRole && !showAuditLog) {
     return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Historial de Cambios en Permisos</CardTitle>
-            <CardDescription>
-              Registro de todas las modificaciones realizadas a los roles y permisos
-            </CardDescription>
-          </div>
-          <Button variant="outline" onClick={() => setShowAuditLog(false)}>
-            Volver a Roles
-          </Button>
+        <CardHeader>
+          <CardTitle>Gestión de Roles y Permisos</CardTitle>
+          <CardDescription>
+            Define qué acciones puede realizar cada tipo de usuario dentro del sistema.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {auditLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <p>Cargando registros de auditoría...</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="flex items-center w-full sm:w-auto space-x-2 border rounded-md px-3 py-2 flex-1 max-w-sm">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar roles..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 p-0"
+              />
+              {searchTerm && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => setSearchTerm('')}
+                >
+                  ✕
+                </Button>
+              )}
             </div>
-          ) : auditLogs.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              No hay registros de auditoría disponibles
+            
+            <div className="flex space-x-2 w-full sm:w-auto justify-end">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-1"
+                onClick={loadAuditLogs}
+              >
+                <Shield size={16} /> Historial de Cambios
+              </Button>
+              
+              <NewRoleDialog onCreateRole={handleCreateRole} />
+            </div>
+          </div>
+          
+          <Alert className="mb-6">
+            <Users className="h-4 w-4" />
+            <AlertTitle>Información</AlertTitle>
+            <AlertDescription>
+              Los roles del sistema no pueden ser eliminados. Los permisos críticos para roles administrativos están protegidos para evitar pérdida de acceso.
+            </AlertDescription>
+          </Alert>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <p>Cargando roles...</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fecha y Hora</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Rol Modificado</TableHead>
-                  <TableHead>Permiso</TableHead>
-                  <TableHead>Cambio</TableHead>
+                  <TableHead>Nombre del Rol</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Usuarios</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {auditLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      {new Date(log.timestamp).toLocaleString()}
-                    </TableCell>
-                    <TableCell>{log.user_name}</TableCell>
-                    <TableCell className="capitalize">{log.role_name}</TableCell>
-                    <TableCell>{log.permission_name}</TableCell>
-                    <TableCell>
-                      <span className={log.new_value ? 'text-green-600' : 'text-red-600'}>
-                        {log.new_value ? 'Activado' : 'Desactivado'}
-                      </span>
+                {filteredRoles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                      No se encontraron roles que coincidan con "{searchTerm}"
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredRoles.map((role) => (
+                    <TableRow key={role.name}>
+                      <TableCell className="font-medium capitalize">
+                        {getRoleDisplayName(role.name.toString())}
+                      </TableCell>
+                      <TableCell>{role.description}</TableCell>
+                      <TableCell>{role.userCount}</TableCell>
+                      <TableCell>
+                        {role.isSystem ? (
+                          <Badge variant="secondary">Sistema</Badge>
+                        ) : (
+                          <Badge variant="outline">Personalizado</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex items-center gap-1"
+                            onClick={() => handleEditRole(role)}
+                          >
+                            <Edit size={14} /> Editar Permisos
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="flex items-center gap-1"
+                            onClick={() => handleDuplicateRole(role)}
+                          >
+                            <Copy size={14} /> Duplicar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           )}
@@ -372,7 +443,7 @@ const RolesAndPermissions = () => {
       </Card>
     );
   }
-
+  
   if (editingRole) {
     return (
       <RolePermissionsEditor
@@ -385,113 +456,53 @@ const RolesAndPermissions = () => {
   
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Gestión de Roles y Permisos</CardTitle>
-        <CardDescription>
-          Define qué acciones puede realizar cada tipo de usuario dentro del sistema.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Historial de Cambios en Permisos</CardTitle>
+          <CardDescription>
+            Registro de todas las modificaciones realizadas a los roles y permisos
+          </CardDescription>
+        </div>
+        <Button variant="outline" onClick={() => setShowAuditLog(false)}>
+          Volver a Roles
+        </Button>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex items-center w-full sm:w-auto space-x-2 border rounded-md px-3 py-2 flex-1 max-w-sm">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar roles..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 p-0"
-            />
-            {searchTerm && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="h-5 w-5 p-0"
-                onClick={() => setSearchTerm('')}
-              >
-                ✕
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex space-x-2 w-full sm:w-auto justify-end">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-1"
-              onClick={loadAuditLogs}
-            >
-              <Shield size={16} /> Historial de Cambios
-            </Button>
-            
-            <NewRoleDialog onCreateRole={handleCreateRole} />
-          </div>
-        </div>
-        
-        <Alert className="mb-6">
-          <Users className="h-4 w-4" />
-          <AlertTitle>Información</AlertTitle>
-          <AlertDescription>
-            Los roles del sistema no pueden ser eliminados. Los permisos críticos para roles administrativos están protegidos para evitar pérdida de acceso.
-          </AlertDescription>
-        </Alert>
-
-        {isLoading ? (
+        {auditLoading ? (
           <div className="flex justify-center items-center py-8">
-            <p>Cargando roles...</p>
+            <p>Cargando registros de auditoría...</p>
+          </div>
+        ) : auditLogs.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground">
+            No hay registros de auditoría disponibles
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nombre del Rol</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Usuarios</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead>Fecha y Hora</TableHead>
+                <TableHead>Usuario</TableHead>
+                <TableHead>Rol Modificado</TableHead>
+                <TableHead>Permiso</TableHead>
+                <TableHead>Cambio</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRoles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                    No se encontraron roles que coincidan con "{searchTerm}"
+              {auditLogs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell>
+                    {new Date(log.timestamp).toLocaleString()}
+                  </TableCell>
+                  <TableCell>{log.user_name}</TableCell>
+                  <TableCell className="capitalize">{getRoleDisplayName(log.role_name)}</TableCell>
+                  <TableCell>{log.permission_name}</TableCell>
+                  <TableCell>
+                    <span className={log.new_value ? 'text-green-600' : 'text-red-600'}>
+                      {log.new_value ? 'Activado' : 'Desactivado'}
+                    </span>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredRoles.map((role) => (
-                  <TableRow key={role.name}>
-                    <TableCell className="font-medium capitalize">{role.name}</TableCell>
-                    <TableCell>{role.description}</TableCell>
-                    <TableCell>{role.userCount}</TableCell>
-                    <TableCell>
-                      {role.isSystem ? (
-                        <Badge variant="secondary">Sistema</Badge>
-                      ) : (
-                        <Badge variant="outline">Personalizado</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex items-center gap-1"
-                          onClick={() => handleEditRole(role)}
-                        >
-                          <Edit size={14} /> Editar Permisos
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="flex items-center gap-1"
-                          onClick={() => handleDuplicateRole(role)}
-                        >
-                          <Copy size={14} /> Duplicar
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         )}

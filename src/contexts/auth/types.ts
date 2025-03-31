@@ -2,7 +2,7 @@
 import { Session, User } from '@supabase/supabase-js';
 
 // Define user roles
-export type UserRole = 'admin' | 'waiter' | 'kitchen' | 'delivery' | 'manager' | 'owner';
+export type UserRole = 'admin' | 'gerente' | 'mesero' | 'cocina' | 'repartidor' | 'propietario';
 
 // Define permission categories
 export type PermissionCategory = 
@@ -31,6 +31,8 @@ export interface Role {
   description: string;
   permissions: Record<string, boolean>;
   userCount: number;
+  isCustom?: boolean;
+  isSystem?: boolean;
 }
 
 // Define user type
@@ -55,4 +57,17 @@ export interface AuthContextType {
   createUser: (email: string, password: string, name: string, role?: UserRole) => Promise<void>;
   updateUserRole: (userId: string, newRole: UserRole) => Promise<void>;
   fetchAllUsers: () => Promise<AuthUser[]>;
+}
+
+// Define for audit logging
+export interface RolePermissionAuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  roleName: UserRole;
+  permissionId: string;
+  permissionName: string;
+  previousValue: boolean;
+  newValue: boolean;
+  timestamp: string;
 }

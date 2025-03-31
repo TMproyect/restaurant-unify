@@ -1,17 +1,21 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Save, RotateCcw, HelpCircle } from "lucide-react";
-import { Role } from "@/contexts/auth/types";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, Save, RotateCcw, HelpCircle, AlertTriangle, Search } from "lucide-react";
+import { Role, UserRole } from "@/contexts/auth/types";
 import { defaultPermissions } from "@/data/permissionsData";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { PermissionCategory } from "@/contexts/auth/types";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/auth/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RolePermissionsEditorProps {
   role: Role;
@@ -26,21 +30,113 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
 }) => {
   const [editedRole, setEditedRole] = useState<Role>({ ...role });
   const [description, setDescription] = useState(role.description);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [auditingEnabled, setAuditingEnabled] = useState(false);
+  
+  // Check if auditing should be enabled
+  useEffect(() => {
+    const checkAuditingConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'enable_audit_logging')
+          .single();
+        
+        if (data && data.value === 'true') {
+          setAuditingEnabled(true);
+        }
+      } catch (error) {
+        console.log('Error checking audit config:', error);
+      }
+    };
+    
+    checkAuditingConfig();
+  }, []);
   
   const handleTogglePermission = (permissionId: string) => {
+    // Get the current value for this permission
+    const currentValue = editedRole.permissions[permissionId] || false;
+    const newValue = !currentValue;
+    
+    // Handle critical admin self-lockout prevention
+    if (
+      permissionId === 'settings.roles' && 
+      !newValue && 
+      (role.name === 'admin' || role.name === 'propietario') &&
+      user?.role === role.name
+    ) {
+      // Check if there are other admins with this permission
+      checkAdminLockout(permissionId, () => {
+        // Safe to toggle since other admins have this permission
+        updatePermission(permissionId, newValue);
+      });
+    } else {
+      // No risk of lockout, proceed with update
+      updatePermission(permissionId, newValue);
+    }
+  };
+  
+  // Log permission change to audit trail
+  const logPermissionChange = async (permissionId: string, previousValue: boolean, newValue: boolean) => {
+    if (!auditingEnabled || !user) return;
+    
+    try {
+      const permissionInfo = defaultPermissions.find(p => p.id === permissionId);
+      
+      await supabase.from('role_permission_audit_logs').insert({
+        user_id: user.id,
+        user_name: user.name,
+        role_name: role.name,
+        permission_id: permissionId,
+        permission_name: permissionInfo?.name || permissionId,
+        previous_value: previousValue,
+        new_value: newValue,
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log('Logged permission change to audit trail');
+    } catch (error) {
+      console.error('Failed to log permission change:', error);
+    }
+  };
+  
+  const checkAdminLockout = (permissionId: string, onSafe: () => void) => {
+    // This would be an async operation in a real scenario checking other admin users
+    // For now, prevent removal of critical admin permissions
+    toast({
+      variant: "destructive",
+      title: "Acción bloqueada - Prevención de auto-bloqueo",
+      description: "No puedes quitar este permiso porque podrías perder acceso al sistema de roles. Debe existir al menos un usuario con este permiso.",
+      duration: 5000
+    });
+    
+    // In a real implementation, we would check if other admins have this permission
+    // and only call onSafe() if it's safe to proceed
+  };
+  
+  const updatePermission = (permissionId: string, newValue: boolean) => {
+    const previousValue = editedRole.permissions[permissionId] || false;
+    
     setEditedRole(prev => ({
       ...prev,
       permissions: {
         ...prev.permissions,
-        [permissionId]: !prev.permissions[permissionId]
+        [permissionId]: newValue
       }
     }));
+    
+    // Log the change to audit trail if enabled
+    if (auditingEnabled) {
+      logPermissionChange(permissionId, previousValue, newValue);
+    }
   };
   
   const handleSave = () => {
     // Prevent removing critical permissions for admin
-    if (editedRole.name === 'admin' || editedRole.name === 'owner') {
+    if (editedRole.name === 'admin' || editedRole.name === 'propietario') {
       const hasSettingsAccess = editedRole.permissions['settings.access'];
       const hasRolesAccess = editedRole.permissions['settings.roles'];
       
@@ -48,7 +144,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: "No se pueden quitar permisos críticos al rol de Administrador/Dueño"
+          description: "No se pueden quitar permisos críticos al rol de Administrador/Propietario"
         });
         return;
       }
@@ -65,7 +161,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   const handleReset = () => {
     // Reset to default permissions for this role
     const resetPermissions = defaultPermissions.reduce((acc, permission) => {
-      acc[permission.id] = permission.default[role.name];
+      acc[permission.id] = permission.default[role.name as UserRole];
       return acc;
     }, {} as Record<string, boolean>);
     
@@ -82,8 +178,17 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     });
   };
   
-  // Group permissions by category
-  const permissionsByCategory = defaultPermissions.reduce((groups, permission) => {
+  // Filter permissions based on search term
+  const filteredPermissions = searchTerm
+    ? defaultPermissions.filter(permission => 
+        permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        permission.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        permission.id.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : defaultPermissions;
+  
+  // Group filtered permissions by category
+  const permissionsByCategory = filteredPermissions.reduce((groups, permission) => {
     if (!groups[permission.category]) {
       groups[permission.category] = [];
     }
@@ -115,7 +220,12 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
           <Button variant="ghost" onClick={onCancel} className="mr-2 p-0 h-8 w-8">
             <ChevronLeft />
           </Button>
-          <CardTitle>Editando Permisos para: <span className="capitalize">{role.name}</span></CardTitle>
+          <CardTitle className="flex items-center">
+            Editando Permisos para: <span className="capitalize ml-1">{role.name}</span>
+            {role.isSystem && (
+              <Badge variant="outline" className="ml-2">Rol del Sistema</Badge>
+            )}
+          </CardTitle>
         </div>
         <CardDescription>
           Personaliza qué acciones puede realizar este rol en el sistema.
@@ -134,43 +244,92 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
           />
         </div>
         
+        <div className="flex items-center space-x-2 border rounded-md p-2 bg-muted/20">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar permisos por nombre o descripción..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+          {searchTerm && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="h-5 w-5 p-0"
+              onClick={() => setSearchTerm('')}
+            >
+              ✕
+            </Button>
+          )}
+        </div>
+        
+        {searchTerm && filteredPermissions.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No se encontraron permisos que coincidan con "{searchTerm}"
+          </div>
+        )}
+        
         {Object.entries(permissionsByCategory).map(([category, permissions]) => (
           <div key={category} className="space-y-3">
             <h3 className="text-lg font-medium">Módulo: {formatCategoryName(category)}</h3>
             <div className="space-y-4">
-              {permissions.map(permission => (
+              {permissions.map(permission => {
+                // Check if this is a critical permission for this role
+                const isCriticalPermission = 
+                  (permission.id === 'settings.roles' || permission.id === 'settings.access') && 
+                  (role.name === 'admin' || role.name === 'propietario') &&
+                  user?.role === role.name;
+                
+                return (
                 <div key={permission.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Switch
                       id={`perm-${permission.id}`}
                       checked={editedRole.permissions[permission.id] || false}
                       onCheckedChange={() => handleTogglePermission(permission.id)}
+                      disabled={isCriticalPermission && editedRole.permissions[permission.id]}
                     />
                     <div className="space-y-0.5">
                       <Label 
                         htmlFor={`perm-${permission.id}`}
-                        className="text-sm font-medium cursor-pointer"
+                        className="text-sm font-medium cursor-pointer flex items-center"
                       >
                         {permission.name}
+                        {isCriticalPermission && editedRole.permissions[permission.id] && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertTriangle size={14} className="ml-1 text-amber-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">Este es un permiso crítico que no puede ser desactivado para evitar pérdida de acceso al sistema.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </Label>
                       {permission.description && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-4 w-4 p-0 ml-1">
-                                <HelpCircle size={12} />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs">{permission.description}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="flex items-center">
+                          <p className="text-xs text-muted-foreground">{permission.description}</p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-4 w-4 p-0 ml-1">
+                                  <HelpCircle size={12} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">{permission.description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
             <Separator className="my-4" />
           </div>

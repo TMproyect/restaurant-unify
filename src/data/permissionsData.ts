@@ -10,11 +10,11 @@ export const defaultPermissions: Permission[] = [
     category: "dashboard",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -24,11 +24,11 @@ export const defaultPermissions: Permission[] = [
     category: "dashboard",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: true,
-      delivery: true,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: true,
+      repartidor: true,
+      propietario: true
     }
   },
   
@@ -40,11 +40,11 @@ export const defaultPermissions: Permission[] = [
     category: "orders",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -54,11 +54,11 @@ export const defaultPermissions: Permission[] = [
     category: "orders",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: true,
-      delivery: true,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: true,
+      repartidor: true,
+      propietario: true
     }
   },
   {
@@ -68,11 +68,11 @@ export const defaultPermissions: Permission[] = [
     category: "orders",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -82,11 +82,11 @@ export const defaultPermissions: Permission[] = [
     category: "orders",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -98,11 +98,11 @@ export const defaultPermissions: Permission[] = [
     category: "tables",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -112,11 +112,11 @@ export const defaultPermissions: Permission[] = [
     category: "tables",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -128,11 +128,11 @@ export const defaultPermissions: Permission[] = [
     category: "kitchen",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: true,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: true,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -142,11 +142,11 @@ export const defaultPermissions: Permission[] = [
     category: "kitchen",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: true,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: true,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -158,11 +158,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -172,11 +172,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -186,11 +186,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: true,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: true,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -200,11 +200,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -214,11 +214,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -228,11 +228,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -242,11 +242,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -256,11 +256,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -270,11 +270,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -284,11 +284,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -298,11 +298,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -312,11 +312,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -326,11 +326,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -340,11 +340,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -354,11 +354,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -368,11 +368,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -382,11 +382,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -396,11 +396,11 @@ export const defaultPermissions: Permission[] = [
     category: "cashier",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -412,11 +412,11 @@ export const defaultPermissions: Permission[] = [
     category: "inventory",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: true,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: true,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -428,11 +428,11 @@ export const defaultPermissions: Permission[] = [
     category: "reports",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -444,11 +444,11 @@ export const defaultPermissions: Permission[] = [
     category: "staff",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -458,11 +458,11 @@ export const defaultPermissions: Permission[] = [
     category: "staff",
     default: {
       admin: true,
-      manager: false,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: false,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -472,11 +472,11 @@ export const defaultPermissions: Permission[] = [
     category: "staff",
     default: {
       admin: true,
-      manager: false,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: false,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   
@@ -488,11 +488,11 @@ export const defaultPermissions: Permission[] = [
     category: "settings",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -502,11 +502,11 @@ export const defaultPermissions: Permission[] = [
     category: "settings",
     default: {
       admin: true,
-      manager: true,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: true,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   },
   {
@@ -516,11 +516,28 @@ export const defaultPermissions: Permission[] = [
     category: "settings",
     default: {
       admin: true,
-      manager: false,
-      waiter: false,
-      kitchen: false,
-      delivery: false,
-      owner: true
+      gerente: false,
+      mesero: false,
+      cocina: false,
+      repartidor: false,
+      propietario: true
     }
   }
 ];
+
+export const systemRoles: Record<UserRole, string> = {
+  admin: 'Administrador',
+  gerente: 'Gerente',
+  mesero: 'Mesero',
+  cocina: 'Cocina',
+  repartidor: 'Repartidor',
+  propietario: 'Propietario'
+};
+
+// Utility function to get default role permissions
+export const getDefaultRolePermissions = (roleName: UserRole): Record<string, boolean> => {
+  return defaultPermissions.reduce((acc, permission) => {
+    acc[permission.id] = permission.default[roleName];
+    return acc;
+  }, {} as Record<string, boolean>);
+};

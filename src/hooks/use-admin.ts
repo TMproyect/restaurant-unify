@@ -9,8 +9,8 @@ export function useAdmin() {
   // Ensure we have a valid user with a role property
   const isAdmin = !!user && (
     user.role === 'admin' || 
-    user.role === 'owner' ||
-    user.role === 'manager'
+    user.role === 'propietario' ||
+    user.role === 'gerente'
   );
   
   console.log("useAdmin hook called, user:", user, "isAdmin:", isAdmin);

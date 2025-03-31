@@ -2,7 +2,7 @@
 import { Session, User } from '@supabase/supabase-js';
 
 // Define user roles
-export type UserRole = 'admin' | 'waiter' | 'kitchen' | 'delivery' | 'manager';
+export type UserRole = 'admin' | 'waiter' | 'kitchen' | 'delivery' | 'manager' | 'owner';
 
 // Define user type
 export interface AuthUser {

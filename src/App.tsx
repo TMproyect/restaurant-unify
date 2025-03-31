@@ -20,6 +20,7 @@ import Tables from "./pages/Tables";
 import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import Cashier from "./pages/Cashier";
+import RolesAndPermissions from "./pages/RolesAndPermissions";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ function App() {
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/staff" element={<Staff />} />
+              <Route path="/roles-and-permissions" element={<RolesAndPermissions />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/cashier" element={<Cashier />} />

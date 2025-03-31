@@ -4,6 +4,35 @@ import { Session, User } from '@supabase/supabase-js';
 // Define user roles
 export type UserRole = 'admin' | 'waiter' | 'kitchen' | 'delivery' | 'manager' | 'owner';
 
+// Define permission categories
+export type PermissionCategory = 
+  | 'dashboard' 
+  | 'orders' 
+  | 'tables' 
+  | 'kitchen' 
+  | 'cashier' 
+  | 'inventory' 
+  | 'reports' 
+  | 'staff' 
+  | 'settings';
+
+// Define permission structure
+export interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  category: PermissionCategory;
+  default: Record<UserRole, boolean>;
+}
+
+// Role with permissions
+export interface Role {
+  name: UserRole;
+  description: string;
+  permissions: Record<string, boolean>;
+  userCount: number;
+}
+
 // Define user type
 export interface AuthUser {
   id: string;

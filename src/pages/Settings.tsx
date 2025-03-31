@@ -10,9 +10,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Building, CreditCard, Globe, Bell, Shield, Save } from 'lucide-react';
+import { Building, CreditCard, Globe, Bell, Shield, Save, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/auth/AuthContext';
 
 const Settings = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
+  
   return (
     <Layout>
       <div className="space-y-4">
@@ -54,6 +59,14 @@ const Settings = () => {
                 >
                   <Shield size={16} className="mr-2" /> Seguridad
                 </TabsTrigger>
+                
+                {isAdmin && (
+                  <Link to="/roles-and-permissions" className="text-left">
+                    <div className="flex items-center px-4 py-2 h-10 rounded-md text-sm font-medium transition-colors hover:bg-secondary hover:text-secondary-foreground">
+                      <Users size={16} className="mr-2" /> Roles y Permisos
+                    </div>
+                  </Link>
+                )}
               </TabsList>
             </div>
 

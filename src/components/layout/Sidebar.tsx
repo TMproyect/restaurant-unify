@@ -1,3 +1,4 @@
+
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -145,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={closeMobileSidebar}
           active={location.pathname === "/reports"}
         />
-
+        
         {isAdmin && (
           <NavItem
             to="/staff"
@@ -160,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           icon={<Settings />}
           label="Configuración"
           onClick={closeMobileSidebar}
-          active={location.pathname === "/settings"}
+          active={location.pathname === "/settings" || location.pathname === "/roles-and-permissions"}
         />
       </div>
 

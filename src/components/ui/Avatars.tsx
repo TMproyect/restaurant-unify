@@ -9,6 +9,7 @@ const roleColors: Record<UserRole, string> = {
   kitchen: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
   delivery: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
   manager: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+  owner: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
 };
 
 interface AvatarProps {

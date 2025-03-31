@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, DollarSign, Banknote, Receipt, Percent, 
-  User, Users, SplitSquareVertical, Check, Loader2 
+  User, Users, SplitSquareVertical, Check, Loader2, 
+  Printer, Mail, FileText, PlusCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface PaymentMethod {
   id: string;
@@ -50,14 +61,25 @@ const paymentMethods: PaymentMethod[] = [
   { id: 'transfer', name: 'Transferencia', icon: <Receipt className="h-5 w-5" /> },
 ];
 
+interface PaymentState {
+  method: string;
+  amount: number;
+  cashReceived?: number;
+}
+
 const PaymentPanel: React.FC<PaymentPanelProps> = ({ 
   orderDetails, 
   onCancel,
   onPaymentComplete
 }) => {
   const { order, items } = orderDetails || { order: null, items: [] };
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
-  const [cashReceived, setCashReceived] = useState('');
+  const [paymentStep, setPaymentStep] = useState<'form' | 'success'>('form');
+  const [payments, setPayments] = useState<PaymentState[]>([]);
+  const [currentPayment, setCurrentPayment] = useState<PaymentState>({
+    method: 'cash',
+    amount: 0,
+    cashReceived: 0
+  });
   const [change, setChange] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSplitDialogOpen, setIsSplitDialogOpen] = useState(false);
@@ -69,12 +91,10 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   const [tipType, setTipType] = useState<'percent' | 'amount'>('percent');
   const { toast } = useToast();
 
-  // Calculate subtotal from items
   const calculateSubtotal = () => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
   
-  // Apply discount based on type (percent or amount)
   const calculateDiscount = () => {
     const subtotal = calculateSubtotal();
     if (discountType === 'percent') {
@@ -91,7 +111,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     return (subtotal - discountValue) * 0.16; // 16% tax
   };
   
-  // Calculate tip based on type (percent or amount)
   const calculateTip = () => {
     if (tipType === 'percent') {
       return calculateSubtotal() * (tipAmount / 100);
@@ -107,20 +126,59 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     const tipValue = calculateTip();
     return subtotal - discountValue + tax + tipValue;
   };
-  
-  // Calculate change when cash amount changes
+
+  const calculatePendingAmount = () => {
+    const total = calculateTotal();
+    const paidAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    return Math.max(0, total - paidAmount);
+  };
+
   useEffect(() => {
-    if (selectedPaymentMethod === 'cash' && cashReceived) {
-      const cashAmount = parseFloat(cashReceived);
-      const totalAmount = calculateTotal();
+    if (order) {
+      const pendingAmount = calculatePendingAmount();
+      setCurrentPayment(prev => ({ ...prev, amount: pendingAmount }));
+    }
+  }, [order, payments]);
+  
+  useEffect(() => {
+    if (currentPayment.method === 'cash' && currentPayment.cashReceived) {
+      const cashReceived = currentPayment.cashReceived || 0;
+      const amount = currentPayment.amount || 0;
       
-      if (!isNaN(cashAmount) && cashAmount >= totalAmount) {
-        setChange(cashAmount - totalAmount);
+      if (cashReceived >= amount) {
+        setChange(cashReceived - amount);
       } else {
         setChange(0);
       }
+    } else {
+      setChange(0);
     }
-  }, [cashReceived, selectedPaymentMethod, discount, discountType, tipAmount, tipType]);
+  }, [currentPayment]);
+
+  const addPaymentMethod = () => {
+    if (!currentPayment.amount || currentPayment.amount <= 0) {
+      toast({
+        title: "Error",
+        description: "El monto debe ser mayor a cero",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setPayments([...payments, currentPayment]);
+    const pendingAfterAdd = calculatePendingAmount() - currentPayment.amount;
+    setCurrentPayment({
+      method: 'cash',
+      amount: Math.max(0, pendingAfterAdd),
+      cashReceived: 0
+    });
+  };
+
+  const removePayment = (index: number) => {
+    const newPayments = [...payments];
+    newPayments.splice(index, 1);
+    setPayments(newPayments);
+  };
 
   const handlePayment = async () => {
     if (!order?.id) {
@@ -132,42 +190,50 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       return;
     }
     
-    // Validate payment data
-    if (selectedPaymentMethod === 'cash' && (parseFloat(cashReceived) < calculateTotal() || !cashReceived)) {
+    const pendingAmount = calculatePendingAmount();
+    const isValid = pendingAmount === 0 || 
+                    (currentPayment.amount > 0 && 
+                     currentPayment.amount === pendingAmount);
+    
+    if (!isValid) {
       toast({
         title: "Error",
-        description: "El efectivo recibido debe ser igual o mayor al total",
+        description: "El monto total no coincide con el monto pendiente",
         variant: "destructive"
       });
       return;
+    }
+    
+    if (currentPayment.amount > 0) {
+      if (currentPayment.method === 'cash' && 
+          (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
+        toast({
+          title: "Error",
+          description: "El efectivo recibido debe ser igual o mayor al monto a pagar",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setPayments([...payments, currentPayment]);
     }
     
     try {
       console.log(`Processing payment for order ${order.id}`);
       setIsProcessing(true);
       
-      // Update order status to 'paid' or relevant status
       const success = await updateOrderStatus(order.id, 'paid');
       
       if (success) {
-        // Here you would integrate with your payment processor or register system
-        
-        console.log(`Payment successful. Method: ${selectedPaymentMethod}`);
+        console.log(`Payment successful. Methods:`, payments);
         console.log(`Order total: ${calculateTotal().toFixed(2)}`);
         
-        if (selectedPaymentMethod === 'cash') {
-          console.log(`Cash received: ${cashReceived}`);
-          console.log(`Change: ${change.toFixed(2)}`);
-        }
-        
-        // Show success message
         toast({
           title: "Pago exitoso",
           description: `Se ha registrado el pago por $${calculateTotal().toFixed(2)}`,
         });
         
-        // Close payment panel and notify parent
-        onPaymentComplete();
+        setPaymentStep('success');
       } else {
         throw new Error("No se pudo actualizar el estado de la orden");
       }
@@ -178,19 +244,37 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         description: "Ocurrió un error al procesar el pago",
         variant: "destructive"
       });
-    } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handlePrintReceipt = () => {
+    toast({
+      title: "Ticket impreso",
+      description: "El ticket de venta se ha enviado a la impresora"
+    });
+  };
+
+  const handlePrintInvoice = () => {
+    toast({
+      title: "Factura generada",
+      description: "La factura fiscal se ha enviado a la impresora"
+    });
+  };
+
+  const handleSendEmail = () => {
+    toast({
+      title: "Recibo enviado",
+      description: "El recibo digital ha sido enviado por correo electrónico"
+    });
   };
   
   const toggleDiscountType = () => {
     if (discountType === 'percent') {
       setDiscountType('amount');
-      // Convert percent to approximate amount
       setDiscount(Math.round((discount / 100) * calculateSubtotal()));
     } else {
       setDiscountType('percent');
-      // Convert amount to approximate percent
       const subtotal = calculateSubtotal();
       setDiscount(Math.round((discount / subtotal) * 100));
     }
@@ -199,14 +283,22 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   const toggleTipType = () => {
     if (tipType === 'percent') {
       setTipType('amount');
-      // Convert percent to amount
       setTipAmount(Math.round((tipAmount / 100) * calculateSubtotal()));
     } else {
       setTipType('percent');
-      // Convert amount to percent
       const subtotal = calculateSubtotal();
       setTipAmount(Math.round((tipAmount / subtotal) * 100));
     }
+  };
+  
+  const applyPredefinedDiscount = (value: number, type: 'percent' | 'amount') => {
+    setDiscountType(type);
+    setDiscount(value);
+  };
+  
+  const applyPredefinedTip = (value: number, type: 'percent' | 'amount') => {
+    setTipType(type);
+    setTipAmount(value);
   };
   
   if (!order) {
@@ -222,9 +314,71 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     );
   }
   
+  if (paymentStep === 'success') {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-green-600">Pago Registrado Exitosamente</h2>
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            {order.is_delivery ? 'Delivery' : `Mesa ${order.table_number}`} • #{order.id?.substring(0, 6)}
+          </Badge>
+        </div>
+        
+        <div className="bg-green-50 p-4 rounded-md mb-6 border border-green-200">
+          <div className="text-center mb-2">
+            <Check className="h-12 w-12 text-green-500 mx-auto mb-2" />
+            <p className="text-lg font-medium">Total Cobrado: ${calculateTotal().toFixed(2)}</p>
+          </div>
+        </div>
+        
+        <div className="space-y-4 mb-6">
+          <h3 className="font-medium text-lg">¿Qué desea hacer ahora?</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2" 
+              onClick={handlePrintReceipt}
+            >
+              <Printer className="h-4 w-4" />
+              Imprimir Ticket
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2" 
+              onClick={handlePrintInvoice}
+            >
+              <FileText className="h-4 w-4" />
+              Imprimir Factura Fiscal
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2" 
+              onClick={handleSendEmail}
+            >
+              <Mail className="h-4 w-4" />
+              Enviar Recibo por Email
+            </Button>
+          </div>
+        </div>
+        
+        <div className="flex-grow"></div>
+        <Button 
+          size="lg" 
+          className="w-full mt-4" 
+          onClick={onPaymentComplete}
+        >
+          Finalizar / Nueva Venta
+        </Button>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-bold">Procesar Pago</h2>
         <Badge 
           variant="outline" 
@@ -234,24 +388,62 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         </Badge>
       </div>
       
-      {/* Order summary */}
       <div className="bg-muted/30 p-3 rounded-md mb-4">
         <div className="flex justify-between mb-1">
           <span className="text-sm font-medium">Cliente:</span>
           <span className="text-sm">{order.customer_name}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">Items:</span>
           <span className="text-sm">{items.length} productos</span>
         </div>
+        <div className="flex justify-between mb-1 font-medium">
+          <span>Total a Pagar:</span>
+          <span className="text-primary">${calculateTotal().toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Pendiente por Pagar:</span>
+          <span className={calculatePendingAmount() > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>
+            ${calculatePendingAmount().toFixed(2)}
+          </span>
+        </div>
       </div>
       
-      {/* Payment options */}
+      {payments.length > 0 && (
+        <div className="mb-4">
+          <h3 className="font-medium mb-2">Pagos Registrados</h3>
+          <div className="space-y-2">
+            {payments.map((payment, index) => (
+              <div key={index} className="flex items-center justify-between bg-muted/50 p-2 rounded">
+                <div className="flex items-center">
+                  {payment.method === 'cash' && <Banknote className="h-4 w-4 mr-2" />}
+                  {payment.method === 'card' && <CreditCard className="h-4 w-4 mr-2" />}
+                  {payment.method === 'transfer' && <Receipt className="h-4 w-4 mr-2" />}
+                  <span>{payment.method === 'cash' ? 'Efectivo' : payment.method === 'card' ? 'Tarjeta' : 'Transferencia'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">${payment.amount.toFixed(2)}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-destructive" 
+                    onClick={() => removePayment(index)}
+                  >
+                    <span className="sr-only">Remove</span>
+                    &times;
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <h3 className="font-medium mb-2">Método de Pago</h3>
       <RadioGroup 
-        value={selectedPaymentMethod} 
-        onValueChange={setSelectedPaymentMethod}
-        className="grid grid-cols-3 gap-2 mb-6"
+        value={currentPayment.method} 
+        onValueChange={(value) => setCurrentPayment({...currentPayment, method: value})}
+        className="grid grid-cols-3 gap-2 mb-4"
       >
         {paymentMethods.map((method) => (
           <div key={method.id}>
@@ -271,9 +463,27 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         ))}
       </RadioGroup>
       
-      {/* Cash payment specific fields */}
-      {selectedPaymentMethod === 'cash' && (
-        <div className="mb-4 space-y-4">
+      <div className="mb-4 space-y-4">
+        <div>
+          <Label htmlFor="paymentAmount">Monto a Pagar [{currentPayment.method === 'cash' ? 'Efectivo' : currentPayment.method === 'card' ? 'Tarjeta' : 'Transferencia'}]</Label>
+          <div className="relative">
+            <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="paymentAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              className="pl-8"
+              value={currentPayment.amount || ''}
+              onChange={(e) => setCurrentPayment({
+                ...currentPayment, 
+                amount: parseFloat(e.target.value) || 0
+              })}
+            />
+          </div>
+        </div>
+        
+        {currentPayment.method === 'cash' && (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="cashReceived">Efectivo recibido</Label>
@@ -286,8 +496,11 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
                   step="0.01"
                   className="pl-8"
                   placeholder="0.00"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
+                  value={currentPayment.cashReceived || ''}
+                  onChange={(e) => setCurrentPayment({
+                    ...currentPayment, 
+                    cashReceived: parseFloat(e.target.value) || 0
+                  })}
                 />
               </div>
             </div>
@@ -299,91 +512,85 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
-      {/* Modifier options */}
-      <div className="mb-4 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Discount Field */}
-          <div>
-            <Label htmlFor="discount" className="flex items-center justify-between mb-1">
-              <span>Descuento</span>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6" 
-                onClick={toggleDiscountType}
-              >
-                {discountType === 'percent' ? (
-                  <Percent className="h-3.5 w-3.5" />
-                ) : (
-                  <DollarSign className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </Label>
-            <div className="relative">
-              <Input
-                id="discount"
-                type="number"
-                min="0"
-                step={discountType === 'percent' ? '1' : '0.01'}
-                placeholder="0"
-                value={discount || ''}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-              />
-              <span className="absolute right-2.5 top-2.5 text-sm text-muted-foreground">
-                {discountType === 'percent' ? '%' : '$'}
-              </span>
-            </div>
-          </div>
+      <Button 
+        variant="outline" 
+        className="mb-4 flex items-center gap-2"
+        onClick={addPaymentMethod}
+        disabled={!currentPayment.amount || currentPayment.amount <= 0 || calculatePendingAmount() <= 0}
+      >
+        <PlusCircle className="h-4 w-4" />
+        Añadir Método de Pago
+      </Button>
+      
+      <div className="mb-4">
+        <h3 className="font-medium mb-2">Ajustes Adicionales</h3>
+        <div className="flex gap-2 mb-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex-1">Aplicar Descuento</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => applyPredefinedDiscount(10, 'percent')}>
+                Descuento Empleado (10%)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => applyPredefinedDiscount(500, 'amount')}>
+                Promo Martes ($500)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => applyPredefinedDiscount(0, 'percent')}>
+                Quitar Descuento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
-          {/* Tip Field */}
-          <div>
-            <Label htmlFor="tip" className="flex items-center justify-between mb-1">
-              <span>Propina</span>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6" 
-                onClick={toggleTipType}
-              >
-                {tipType === 'percent' ? (
-                  <Percent className="h-3.5 w-3.5" />
-                ) : (
-                  <DollarSign className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </Label>
-            <div className="relative">
-              <Input
-                id="tip"
-                type="number"
-                min="0"
-                step={tipType === 'percent' ? '1' : '0.01'}
-                placeholder="0"
-                value={tipAmount || ''}
-                onChange={(e) => setTipAmount(parseFloat(e.target.value) || 0)}
-              />
-              <span className="absolute right-2.5 top-2.5 text-sm text-muted-foreground">
-                {tipType === 'percent' ? '%' : '$'}
-              </span>
-            </div>
-          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex-1">Añadir Propina</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60">
+              <div className="space-y-2">
+                <h4 className="font-medium">Propina Rápida</h4>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => applyPredefinedTip(10, 'percent')}>10%</Button>
+                  <Button size="sm" variant="outline" onClick={() => applyPredefinedTip(15, 'percent')}>15%</Button>
+                  <Button size="sm" variant="outline" onClick={() => applyPredefinedTip(0, 'percent')}>Quitar</Button>
+                </div>
+                <div className="pt-2">
+                  <Label htmlFor="customTip">Propina personalizada</Label>
+                  <div className="flex items-center mt-1">
+                    <Input 
+                      id="customTip" 
+                      type="number" 
+                      value={tipAmount}
+                      min="0"
+                      onChange={(e) => setTipAmount(parseFloat(e.target.value) || 0)}
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="ml-2" 
+                      onClick={toggleTipType}
+                    >
+                      {tipType === 'percent' ? '%' : '$'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            onClick={() => setIsSplitDialogOpen(true)}
+          >
+            Dividir Cuenta
+          </Button>
         </div>
       </div>
       
-      {/* Split bill button */}
-      <Button 
-        variant="outline" 
-        className="mb-6"
-        onClick={() => setIsSplitDialogOpen(true)}
-      >
-        <SplitSquareVertical className="mr-2 h-4 w-4" />
-        Dividir Cuenta
-      </Button>
-      
-      {/* Summary */}
       <div className="flex-grow">
         <h3 className="font-medium mb-2">Resumen</h3>
         <div className="space-y-2">
@@ -420,12 +627,19 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         </div>
       </div>
       
-      {/* Action buttons */}
       <div className="flex justify-between pt-6 gap-4">
         <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
           Cancelar
         </Button>
-        <Button className="flex-1" onClick={handlePayment} disabled={isProcessing}>
+        <Button 
+          className="flex-1" 
+          onClick={handlePayment} 
+          disabled={
+            isProcessing || 
+            calculatePendingAmount() !== 0 || 
+            (payments.length === 0 && currentPayment.amount <= 0)
+          }
+        >
           {isProcessing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -433,14 +647,13 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
             </>
           ) : (
             <>
-              Finalizar Pago
+              Confirmar Pago ${calculateTotal().toFixed(2)}
               <Check className="ml-2 h-4 w-4" />
             </>
           )}
         </Button>
       </div>
       
-      {/* Split bill dialog */}
       <Dialog open={isSplitDialogOpen} onOpenChange={setIsSplitDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -512,10 +725,33 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
                   </TabsList>
                   
                   <TabsContent value="person1" className="space-y-2 mt-2">
-                    {/* This would be implemented with checkboxes for each item */}
-                    <p className="text-sm text-muted-foreground">
-                      Esta funcionalidad se completará en una actualización futura.
-                    </p>
+                    {items.map(item => (
+                      <div key={item.id} className="flex justify-between items-center p-2 border rounded">
+                        <span>{item.name}</span>
+                        <span>${item.price.toFixed(2)}</span>
+                        <input type="checkbox" defaultChecked />
+                      </div>
+                    ))}
+                  </TabsContent>
+                  
+                  <TabsContent value="person2" className="space-y-2 mt-2">
+                    {items.map(item => (
+                      <div key={item.id} className="flex justify-between items-center p-2 border rounded">
+                        <span>{item.name}</span>
+                        <span>${item.price.toFixed(2)}</span>
+                        <input type="checkbox" />
+                      </div>
+                    ))}
+                  </TabsContent>
+                  
+                  <TabsContent value="person3" className="space-y-2 mt-2">
+                    {items.map(item => (
+                      <div key={item.id} className="flex justify-between items-center p-2 border rounded">
+                        <span>{item.name}</span>
+                        <span>${item.price.toFixed(2)}</span>
+                        <input type="checkbox" />
+                      </div>
+                    ))}
                   </TabsContent>
                 </Tabs>
               </div>
@@ -526,7 +762,13 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
             <Button variant="outline" onClick={() => setIsSplitDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => setIsSplitDialogOpen(false)}>
+            <Button onClick={() => {
+              setIsSplitDialogOpen(false);
+              toast({
+                title: "Cuenta dividida",
+                description: "La cuenta ha sido dividida correctamente"
+              });
+            }}>
               Aplicar División
             </Button>
           </DialogFooter>

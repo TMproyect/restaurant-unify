@@ -2,8 +2,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Receipt, Edit, ReceiptText, Percent, DollarSign } from 'lucide-react';
+import { Loader2, Receipt, Edit, ReceiptText, Percent, DollarSign, Printer } from 'lucide-react';
 import { Order, OrderItem } from '@/services/orderService';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrderDetailsProps {
   orderDetails: {
@@ -20,6 +21,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
   onPaymentClick 
 }) => {
   const { order, items } = orderDetails || { order: null, items: [] };
+  const { toast } = useToast();
   
   const calculateSubtotal = () => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -43,6 +45,43 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
     const discount = calculateDiscount();
     const tax = calculateTax();
     return subtotal - discount + tax;
+  };
+
+  const handlePrintPreBill = () => {
+    if (!order) return;
+    
+    console.log('Printing pre-bill for order:', order.id);
+    
+    // In a real implementation, this would connect to a printer service
+    // For now, we'll simulate printing with a toast notification
+    toast({
+      title: "Pre-cuenta enviada a imprimir",
+      description: `Mesa ${order.table_number} - Cliente: ${order.customer_name}`,
+    });
+    
+    // You could also open a print preview in a new window
+    // const printWindow = window.open('', '_blank');
+    // if (printWindow) {
+    //   printWindow.document.write(`
+    //     <html>
+    //       <head><title>Pre-cuenta Mesa ${order.table_number}</title></head>
+    //       <body>
+    //         <h2>CUENTA PRELIMINAR - NO ES COMPROBANTE FISCAL</h2>
+    //         <p>Mesa: ${order.table_number}</p>
+    //         <p>Cliente: ${order.customer_name}</p>
+    //         <p>Fecha: ${new Date().toLocaleDateString()}</p>
+    //         <hr />
+    //         <!-- Items would go here -->
+    //         <hr />
+    //         <p>Subtotal: $${calculateSubtotal().toFixed(2)}</p>
+    //         <p>IVA (16%): $${calculateTax().toFixed(2)}</p>
+    //         <p>Total: $${calculateTotal().toFixed(2)}</p>
+    //       </body>
+    //     </html>
+    //   `);
+    //   printWindow.document.close();
+    //   printWindow.print();
+    // }
   };
 
   if (isLoading) {
@@ -150,8 +189,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
         </div>
       </div>
       
+      {/* New "Print Pre-Bill" button */}
       <Button 
-        className="mt-4 w-full" 
+        variant="outline" 
+        className="mt-4 w-full flex items-center justify-center gap-2" 
+        onClick={handlePrintPreBill}
+      >
+        <Printer className="h-4 w-4" />
+        Imprimir Pre-cuenta
+      </Button>
+      
+      <Button 
+        className="mt-2 w-full" 
         size="lg"
         onClick={onPaymentClick}
       >

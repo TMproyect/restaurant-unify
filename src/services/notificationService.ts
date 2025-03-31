@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth/AuthContext";
 
-export type NotificationType = 'order' | 'inventory' | 'table' | 'system';
+export type NotificationType = 'order' | 'inventory' | 'table' | 'system' | 'payment';
 
 export interface Notification {
   id: string;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import CashierOrdersList from '@/components/cashier/CashierOrdersList';
@@ -9,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getOrders, getOrderWithItems, Order } from '@/services/orderService';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, CashRegister, Receipt, ClipboardList } from 'lucide-react';
+import { Search, CircleDollarSign, Receipt, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
@@ -88,7 +87,7 @@ const Cashier = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <CashRegister size={24} className="text-primary" />
+            <CircleDollarSign size={24} className="text-primary" />
             <h1 className="text-2xl font-bold">Punto de Venta / Caja</h1>
           </div>
           <Button onClick={() => setIsPaymentSheetOpen(true)} disabled={!selectedOrder}>
@@ -98,7 +97,6 @@ const Cashier = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left panel - Orders list */}
           <div className="lg:col-span-1 border rounded-md p-4">
             <div className="mb-4">
               <h2 className="text-lg font-medium mb-2 flex items-center">
@@ -133,7 +131,6 @@ const Cashier = () => {
             />
           </div>
 
-          {/* Middle panel - Order details */}
           <div className="lg:col-span-1 border rounded-md p-4">
             <OrderDetails 
               orderDetails={orderDetails} 
@@ -142,14 +139,12 @@ const Cashier = () => {
             />
           </div>
 
-          {/* Right panel - Cash register controls */}
           <div className="lg:col-span-1 border rounded-md p-4">
             <CashRegisterControls />
           </div>
         </div>
       </div>
 
-      {/* Payment slide-out panel */}
       <Sheet open={isPaymentSheetOpen} onOpenChange={setIsPaymentSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto">
           <PaymentPanel 

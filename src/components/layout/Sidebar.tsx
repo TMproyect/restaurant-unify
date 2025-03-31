@@ -1,4 +1,3 @@
-
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -16,9 +15,9 @@ import {
   MessageSquare,
   Bell,
   LayoutGrid,
-  CashRegister,
+  CircleDollarSign,
 } from "lucide-react";
-import { useAuthContext } from "@/contexts/auth/AuthContext";
+import { useAuth } from "@/contexts/auth/AuthContext";
 
 interface NavItemProps {
   to: string;
@@ -65,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   closeMobileSidebar,
 }) => {
   const location = useLocation();
-  const { user } = useAuthContext();
+  const { user } = useAuth();
 
   if (!user) {
     return null;
@@ -120,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
         <NavItem
           to="/cashier"
-          icon={<CashRegister />}
+          icon={<CircleDollarSign />}
           label="Caja"
           onClick={closeMobileSidebar}
           active={location.pathname === "/cashier"}

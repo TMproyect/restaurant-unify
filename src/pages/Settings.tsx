@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,10 +12,13 @@ import { Separator } from '@/components/ui/separator';
 import { Building, CreditCard, Globe, Bell, Shield, Save, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-const Settings = () => {
+const Settings: React.FC = () => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
+  const navigate = useNavigate();
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'propietario';
   
   return (
     <Layout>

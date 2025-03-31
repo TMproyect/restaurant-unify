@@ -1,4 +1,3 @@
-
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -71,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }
 
-  const isAdmin = user.role === "admin" || user.role === "owner";
+  const isAdmin = user.role === "admin" || user.role === "propietario";
 
   return (
     <aside className="flex flex-col h-full">

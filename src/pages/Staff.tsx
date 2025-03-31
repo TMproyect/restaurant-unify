@@ -29,10 +29,10 @@ interface EditRoleValues {
 
 const ROLES = [
   { value: 'admin', label: 'Administrador' },
-  { value: 'manager', label: 'Gerente' },
-  { value: 'waiter', label: 'Mesero' },
-  { value: 'kitchen', label: 'Cocina' },
-  { value: 'delivery', label: 'Delivery' }
+  { value: 'gerente', label: 'Gerente' },
+  { value: 'mesero', label: 'Mesero' },
+  { value: 'cocina', label: 'Cocina' },
+  { value: 'repartidor', label: 'Delivery' }
 ];
 
 const Staff: React.FC = () => {
@@ -65,7 +65,6 @@ const Staff: React.FC = () => {
 
   const fetchUserEmails = async (profiles: AuthUser[]) => {
     try {
-      // Only fetch emails if there are profiles to fetch emails for
       if (!profiles || profiles.length === 0) {
         console.log("Staff: No profiles provided to fetchUserEmails");
         return profiles;
@@ -73,12 +72,10 @@ const Staff: React.FC = () => {
       
       console.log(`Staff: Fetching emails for ${profiles.length} users:`, profiles.map(p => p.id));
       
-      // Create array of user IDs to fetch emails for
       const userIds = profiles.map(p => p.id);
       
       console.log("Staff: User IDs being sent to edge function:", userIds);
       
-      // Call the edge function to get emails
       console.log("Staff: Invoking create-user-with-profile edge function with action=get_emails");
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
@@ -99,7 +96,6 @@ const Staff: React.FC = () => {
         return profiles;
       }
       
-      // Map the emails to the profiles
       const emailsMap = response.data || {};
       console.log('Staff: Emails map received:', emailsMap);
       
@@ -152,8 +148,6 @@ const Staff: React.FC = () => {
         
         console.log('Staff component: Mapped profiles to staffUsers:', staffUsers);
         
-        // Fetch emails for all users
-        console.log('Staff component: About to fetch emails for users');
         const usersWithEmails = await fetchUserEmails(staffUsers);
         console.log('Staff component: Users with emails:', usersWithEmails);
         setUsers(usersWithEmails);
@@ -196,8 +190,6 @@ const Staff: React.FC = () => {
           
           console.log('Staff component: Mapped profiles from fallback to staffUsers:', staffUsers);
           
-          // Fetch emails for all users
-          console.log('Staff component: About to fetch emails for users from fallback');
           const usersWithEmails = await fetchUserEmails(staffUsers);
           console.log('Staff component: Users with emails from fallback:', usersWithEmails);
           setUsers(usersWithEmails);
@@ -231,8 +223,6 @@ const Staff: React.FC = () => {
       setIsSubmitting(true);
       console.log('Creating user with data:', data);
       
-      // Use edge function directly to create user
-      console.log('Staff component: Invoking edge function to create user');
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           email: data.email, 
@@ -271,8 +261,6 @@ const Staff: React.FC = () => {
       setIsSubmitting(true);
       console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
       
-      // Use edge function directly to update role
-      console.log('Staff component: Invoking edge function to update role');
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           userId: currentUserEdit.id,
@@ -290,7 +278,6 @@ const Staff: React.FC = () => {
       toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
       setShowEditDialog(false);
       
-      // Use the email from the response if available
       const updatedUser = response.data?.data;
       const updatedEmail = updatedUser?.email || currentUserEdit.email;
       
@@ -360,7 +347,6 @@ const Staff: React.FC = () => {
         .from('avatars')
         .getPublicUrl(filePath);
         
-      // Use edge function to update avatar
       const { error: updateError } = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           userId: currentUserEdit.id,
@@ -647,10 +633,10 @@ const Staff: React.FC = () => {
           <TabsList className="mb-4">
             <TabsTrigger value="all">Todos</TabsTrigger>
             <TabsTrigger value="admin">Administradores</TabsTrigger>
-            <TabsTrigger value="manager">Gerentes</TabsTrigger>
-            <TabsTrigger value="waiter">Meseros</TabsTrigger>
-            <TabsTrigger value="kitchen">Cocina</TabsTrigger>
-            <TabsTrigger value="delivery">Delivery</TabsTrigger>
+            <TabsTrigger value="gerente">Gerentes</TabsTrigger>
+            <TabsTrigger value="mesero">Meseros</TabsTrigger>
+            <TabsTrigger value="cocina">Cocina</TabsTrigger>
+            <TabsTrigger value="repartidor">Delivery</TabsTrigger>
           </TabsList>
           
           <TabsContent value={tab} className="mt-0">
@@ -673,11 +659,11 @@ const Staff: React.FC = () => {
                           <span className={`text-xs px-2 py-1 rounded ${
                             staffUser.role === 'admin' 
                               ? 'bg-red-100 text-red-600' 
-                              : staffUser.role === 'manager'
+                              : staffUser.role === 'gerente'
                               ? 'bg-purple-100 text-purple-600'
-                              : staffUser.role === 'waiter'
+                              : staffUser.role === 'mesero'
                               ? 'bg-blue-100 text-blue-600'
-                              : staffUser.role === 'kitchen'
+                              : staffUser.role === 'cocina'
                               ? 'bg-yellow-100 text-yellow-600'
                               : 'bg-green-100 text-green-600'
                           }`}>

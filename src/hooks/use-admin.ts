@@ -11,7 +11,7 @@ export function useAdmin() {
     user.role === 'propietario'
   );
   
-  console.log("useAdmin hook called, user:", user, "isAdmin:", isAdmin);
+  console.log("useAdmin hook called, user:", user, "isAdmin:", isAdmin, "user role:", user?.role);
   
   return { isAdmin };
 }

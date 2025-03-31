@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -412,9 +411,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log("Create user started with role:", role);
       
       let safeRole: UserRole = role;
-      if (!['admin', 'waiter', 'kitchen', 'delivery', 'manager'].includes(role)) {
-        console.warn(`Invalid role provided: ${role}, defaulting to 'waiter'`);
-        safeRole = 'waiter';
+      if (!['admin', 'gerente', 'mesero', 'cocina', 'repartidor', 'propietario'].includes(role)) {
+        console.warn(`Invalid role provided: ${role}, defaulting to 'mesero'`);
+        safeRole = 'mesero';
       }
       
       console.log("Llamando a createUserWithEdgeFunction con params:", {
@@ -530,8 +529,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log("Fetching all users from context...");
       
       // Verificar si el usuario es administrador
-      if (user?.role !== 'admin' && user?.role !== 'manager') {
-        console.warn("fetchAllUsers: Usuario no es admin/manager, puede no tener acceso:", user?.role);
+      if (user?.role !== 'admin' && user?.role !== 'gerente') {
+        console.warn("fetchAllUsers: Usuario no es admin/gerente, puede no tener acceso:", user?.role);
       }
       
       const profiles = await fetchAllProfiles();

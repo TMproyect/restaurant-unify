@@ -146,16 +146,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={closeMobileSidebar}
           active={location.pathname === "/reports"}
         />
-        
-        {isAdmin && (
-          <NavItem
-            to="/staff"
-            icon={<Users />}
-            label="Personal"
-            onClick={closeMobileSidebar}
-            active={location.pathname === "/staff"}
-          />
-        )}
         <NavItem
           to="/settings"
           icon={<Settings />}

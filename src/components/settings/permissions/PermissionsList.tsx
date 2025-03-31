@@ -38,7 +38,7 @@ const PermissionsList: React.FC<PermissionsListProps> = ({
   };
   
   return (
-    <div>
+    <div className="space-y-4">
       {searchTerm && Object.keys(permissionsByCategory).length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           No se encontraron permisos que coincidan con "{searchTerm}"

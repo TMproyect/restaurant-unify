@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Role } from "@/contexts/auth/types";
-import { Shield, Users } from "lucide-react";
+import { Shield, Users, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import RolePermissionsEditor from "./RolePermissionsEditor";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -18,11 +18,14 @@ import { useRoles } from "@/hooks/use-roles";
 const RolesAndPermissions = () => {
   const { 
     roles, 
-    isLoading, 
+    isLoading,
+    error,
     handleSavePermissions, 
     handleCreateRole, 
-    handleDuplicateRole 
+    handleDuplicateRole,
+    reloadRoles
   } = useRoles();
+  
   const { toast } = useToast();
   
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -31,6 +34,7 @@ const RolesAndPermissions = () => {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditingEnabled, setAuditingEnabled] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Check if auditing should be enabled
   useEffect(() => {
@@ -50,6 +54,21 @@ const RolesAndPermissions = () => {
   
   const handleEditRole = (role: Role) => {
     setEditingRole(role);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await reloadRoles();
+      toast({
+        title: "Datos actualizados",
+        description: "La lista de roles se ha actualizado correctamente"
+      });
+    } catch (error) {
+      console.error("Error refreshing roles:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
   
   const loadAuditLogs = async () => {
@@ -74,7 +93,7 @@ const RolesAndPermissions = () => {
   const filteredRoles = searchTerm
     ? roles.filter(role => 
         role.name.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-        role.description.toLowerCase().includes(searchTerm.toLowerCase())
+        role.description?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : roles;
 
@@ -98,7 +117,18 @@ const RolesAndPermissions = () => {
               <Button 
                 variant="outline" 
                 className="flex items-center gap-1"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} /> 
+                {isRefreshing ? "Actualizando..." : "Actualizar"}
+              </Button>
+
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-1"
                 onClick={loadAuditLogs}
+                disabled={auditLoading}
               >
                 <Shield size={16} /> Historial de Cambios
               </Button>
@@ -115,9 +145,22 @@ const RolesAndPermissions = () => {
             </AlertDescription>
           </Alert>
 
-          {isLoading ? (
+          {error ? (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <h3 className="text-red-800 font-medium mb-2">Error al cargar roles</h3>
+              <p className="text-red-700">{error}</p>
+              <Button 
+                variant="outline" 
+                className="mt-2 bg-white"
+                onClick={handleRefresh}
+              >
+                Intentar nuevamente
+              </Button>
+            </div>
+          ) : isLoading ? (
             <div className="flex justify-center items-center py-8">
-              <p>Cargando roles...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              <p className="ml-2">Cargando roles...</p>
             </div>
           ) : (
             <RolesList 

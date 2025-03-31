@@ -23,6 +23,10 @@ const PermissionCategory: React.FC<PermissionCategoryProps> = ({
   userRole,
   onTogglePermission
 }) => {
+  if (permissions.length === 0) {
+    return null;
+  }
+  
   return (
     <div key={categoryName} className="space-y-3">
       <h3 className="text-lg font-medium">Módulo: {displayName}</h3>
@@ -40,7 +44,7 @@ const PermissionCategory: React.FC<PermissionCategoryProps> = ({
               id={permission.id}
               name={permission.name}
               description={permission.description}
-              isChecked={currentPermissions[permission.id] || false}
+              isChecked={!!currentPermissions[permission.id]}
               isCriticalPermission={isCriticalPermission}
               onChange={() => onTogglePermission(permission.id)}
             />

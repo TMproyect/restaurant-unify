@@ -44,7 +44,7 @@ export async function getCustomRoles(): Promise<CustomRole[]> {
       created_at: item.created_at
     }));
     
-    console.log("Got custom roles:", roles);
+    console.log("Got custom roles:", roles.length);
     return roles;
   } catch (error) {
     console.error("Error fetching custom roles:", error);
@@ -55,7 +55,10 @@ export async function getCustomRoles(): Promise<CustomRole[]> {
 // Upsert (update or insert) a custom role
 export async function upsertCustomRole(role: Partial<CustomRole>): Promise<boolean> {
   try {
-    console.log("Upserting custom role:", role);
+    console.log("Upserting custom role:", role.name);
+    
+    // Ensure we have valid permissions object
+    const safePermissions = role.permissions || {};
     
     // Upsert the role directly to custom_roles table with type assertion
     const { error } = await supabase
@@ -63,7 +66,7 @@ export async function upsertCustomRole(role: Partial<CustomRole>): Promise<boole
       .upsert({
         name: role.name,
         description: role.description || '',
-        permissions: role.permissions || {}
+        permissions: safePermissions
       } as any, { 
         onConflict: 'name',
         ignoreDuplicates: false

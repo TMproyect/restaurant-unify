@@ -12,15 +12,18 @@ export const useRoles = () => {
   const { toast } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadRolesAndUsers = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      console.log("Attempting to fetch profiles using RPC...");
+      console.log("Fetching profiles...");
       let allUsers: AuthUser[] = [];
       
       try {
+        // First attempt: Using RPC function
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_all_profiles');
         
         if (rpcError) {
@@ -29,9 +32,8 @@ export const useRoles = () => {
         }
         
         if (rpcData) {
-          console.log("RPC returned profiles:", Array.isArray(rpcData) ? rpcData.length : 'not an array');
-          
           const profilesArray = Array.isArray(rpcData) ? rpcData : [rpcData];
+          console.log("RPC returned profiles:", profilesArray.length);
           
           allUsers = profilesArray.map((profile: any) => ({
             id: profile.id,
@@ -43,12 +45,14 @@ export const useRoles = () => {
           }));
         }
       } catch (rpcError) {
-        console.error("RPC method failed, falling back to regular query:", rpcError);
+        console.error("RPC method failed, falling back to direct query:", rpcError);
         
         try {
+          // Second attempt: Direct query to profiles table
           const { data: queryData, error: queryError } = await supabase
             .from('profiles')
-            .select('id, name, role, avatar, created_at');
+            .select('id, name, role, avatar, created_at')
+            .order('created_at', { ascending: false });
             
           if (queryError) {
             console.error("Error with fallback query:", queryError);
@@ -68,13 +72,15 @@ export const useRoles = () => {
             }));
           }
         } catch (queryError) {
-          console.error("Direct query also failed:", queryError);
+          console.error("Direct query also failed, using fetchAllUsers:", queryError);
+          // Third attempt: Use fetchAllUsers from AuthContext
           allUsers = await fetchAllUsers();
         }
       }
       
-      try {
-        if (allUsers.length > 0) {
+      // After getting users, fetch their emails if available
+      if (allUsers.length > 0) {
+        try {
           console.log("Fetching emails for users...");
           const userIds = allUsers.map(user => user.id);
           
@@ -95,13 +101,14 @@ export const useRoles = () => {
               email: emailData[user.id] || user.email || ''
             }));
           }
+        } catch (emailError) {
+          console.error("Error in email fetching process:", emailError);
         }
-      } catch (emailError) {
-        console.error("Error in email fetching process:", emailError);
       }
       
-      console.log("Final user count after all fetching attempts:", allUsers.length);
+      console.log("Final user count:", allUsers.length);
       
+      // Now fetch custom roles
       let customRoles: Role[] = [];
       
       try {
@@ -112,41 +119,56 @@ export const useRoles = () => {
           console.log("Custom roles found:", dbCustomRoles.length);
           customRoles = dbCustomRoles.map(role => ({
             name: role.name as UserRole,
-            description: role.description,
-            permissions: role.permissions,
+            description: role.description || '',
+            permissions: role.permissions || {},
             userCount: 0,
             isCustom: true
           }));
         } else {
-          console.log("No custom roles found in database");
+          console.log("No custom roles found in database, checking localStorage");
           const storedRoles = localStorage.getItem('customRoles');
           if (storedRoles) {
             console.log("Loading custom roles from localStorage");
-            customRoles = JSON.parse(storedRoles);
+            try {
+              customRoles = JSON.parse(storedRoles);
+            } catch (e) {
+              console.error("Error parsing stored roles:", e);
+              customRoles = [];
+            }
           }
         }
       } catch (error) {
         console.error("Error loading custom roles:", error);
+        // Fallback to localStorage
         const storedRoles = localStorage.getItem('customRoles');
         if (storedRoles) {
           console.log("Loading roles from localStorage due to error");
-          customRoles = JSON.parse(storedRoles);
+          try {
+            customRoles = JSON.parse(storedRoles);
+          } catch (e) {
+            console.error("Error parsing stored roles:", e);
+            customRoles = [];
+          }
         }
       }
       
+      // Count users per role
       const roleCounts: Record<string, number> = {};
       allUsers.forEach(user => {
-        roleCounts[user.role] = (roleCounts[user.role] || 0) + 1;
+        if (user.role) {
+          roleCounts[user.role] = (roleCounts[user.role] || 0) + 1;
+        }
       });
       
       console.log("User counts by role:", roleCounts);
       
+      // Create system roles array
       const systemRolesArray: Role[] = Object.entries(systemRoles).map(
         ([roleName, label]) => ({
           name: roleName as UserRole,
           description: label,
           permissions: defaultPermissions.reduce((acc, permission) => {
-            acc[permission.id] = permission.default[roleName as UserRole];
+            acc[permission.id] = permission.default[roleName as UserRole] || false;
             return acc;
           }, {} as Record<string, boolean>),
           userCount: roleCounts[roleName] || 0,
@@ -154,16 +176,19 @@ export const useRoles = () => {
         })
       );
       
+      // Update user counts for custom roles
       customRoles = customRoles.map(role => ({
         ...role,
         userCount: roleCounts[role.name as string] || 0
       }));
       
+      // Combine system and custom roles
       const combinedRoles = [...systemRolesArray, ...customRoles];
-      console.log("Combined roles:", combinedRoles);
+      console.log("Total roles:", combinedRoles.length);
       setRoles(combinedRoles);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading roles and users data:", error);
+      setError(error.message || "No se pudieron cargar los datos de roles y usuarios");
       toast({
         variant: "destructive",
         title: "Error",
@@ -188,6 +213,7 @@ export const useRoles = () => {
         }
       } catch (dbError) {
         console.error("Error saving to database:", dbError);
+        // Fallback to localStorage
         const updatedCustomRoles = roles
           .filter(role => role.isCustom)
           .map(role => 
@@ -211,6 +237,30 @@ export const useRoles = () => {
   };
   
   const handleCreateRole = async (name: string, description: string, baseRole: UserRole) => {
+    // Validate inputs
+    if (!name.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "El nombre del rol no puede estar vacío"
+      });
+      return;
+    }
+    
+    // Check for name conflicts
+    const existingRole = roles.find(role => 
+      role.name.toLowerCase() === name.toLowerCase()
+    );
+    
+    if (existingRole) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Ya existe un rol con el nombre '${name}'`
+      });
+      return;
+    }
+    
     const newRole: Role = {
       name: name as UserRole,
       description,
@@ -231,6 +281,7 @@ export const useRoles = () => {
       }
     } catch (dbError) {
       console.error("Error saving to database:", dbError);
+      // Fallback to localStorage
       const customRoles = roles.filter(role => role.isCustom);
       customRoles.push(newRole);
       localStorage.setItem('customRoles', JSON.stringify(customRoles));
@@ -246,7 +297,14 @@ export const useRoles = () => {
   
   const handleDuplicateRole = (role: Role) => {
     const baseName = role.name.toString();
-    const newName = `${baseName}_copia`;
+    let newName = `${baseName}_copia`;
+    
+    // Ensure the duplicate name is unique
+    let counter = 1;
+    while (roles.some(r => r.name === newName)) {
+      counter++;
+      newName = `${baseName}_copia_${counter}`;
+    }
     
     handleCreateRole(
       newName, 
@@ -262,6 +320,7 @@ export const useRoles = () => {
   return {
     roles,
     isLoading,
+    error,
     handleSavePermissions,
     handleCreateRole,
     handleDuplicateRole,

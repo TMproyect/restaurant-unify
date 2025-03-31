@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult, filterValue } from '@/utils/supabaseHelpers';
 import { createNotification } from './notificationService';
@@ -101,13 +100,10 @@ export const createOrder = async (
     console.log('Creating new order:', orderData);
     console.log('Order items:', items);
     
-    // Remove discount field if present as it's not in the database schema
-    const { discount, ...cleanOrderData } = orderData as any;
-    
     // First, create the order
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .insert(prepareInsertData(cleanOrderData) as any)
+      .insert(prepareInsertData(orderData) as any)
       .select()
       .single();
 

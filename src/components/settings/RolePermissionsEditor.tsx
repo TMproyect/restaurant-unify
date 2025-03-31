@@ -74,7 +74,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   };
   
   // Log permission change to audit trail
-  const logPermissionChange = async (permissionId: string, previousValue: boolean, newValue: boolean) => {
+  const logPermissionAudit = async (permissionId: string, previousValue: boolean, newValue: boolean) => {
     if (!auditingEnabled || !user) return;
     
     try {
@@ -123,7 +123,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     
     // Log the change to audit trail if enabled
     if (auditingEnabled) {
-      logPermissionChange(permissionId, previousValue, newValue);
+      logPermissionAudit(permissionId, previousValue, newValue);
     }
   };
   

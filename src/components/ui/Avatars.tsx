@@ -1,16 +1,20 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/contexts/auth/types';
 
-// Role-specific colors
-const roleColors: Record<UserRole, string> = {
+// Role-specific colors - Include both Spanish and English role names
+const roleColors: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
   gerente: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+  manager: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
   mesero: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+  waiter: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
   cocina: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+  kitchen: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300', 
   repartidor: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+  delivery: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
   propietario: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+  owner: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
 };
 
 interface AvatarProps {

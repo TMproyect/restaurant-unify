@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/auth/AuthContext";
 import { Navigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/use-admin";
 import { supabase } from "@/integrations/supabase/client";
+import { setupDatabaseFunctions } from "@/utils/customDbOperations";
 
 const RolesAndPermissionsPage = () => {
   const { user, isLoading } = useAuth();
@@ -19,15 +20,15 @@ const RolesAndPermissionsPage = () => {
       if (!isAdmin) return;
       
       try {
-        // Use raw SQL query to check if tables exist
-        const { data: tablesData, error: sqlError } = await supabase.rpc('create_audit_table');
-        if (sqlError) console.error("Error creating audit table:", sqlError);
+        // Use our custom function to ensure tables exist
+        await setupDatabaseFunctions();
         
-        const { data: rolesData, error: rolesError } = await supabase.rpc('create_custom_roles_table');
-        if (rolesError) console.error("Error creating custom roles table:", rolesError);
+        // Initialize audit logging setting
+        const { error } = await supabase.rpc('exec_sql', { 
+          sql: "INSERT INTO system_settings (key, value) VALUES ('enable_audit_logging', 'true') ON CONFLICT (key) DO NOTHING"
+        });
         
-        const { data: settingsData, error: settingsError } = await supabase.rpc('create_system_settings_table');
-        if (settingsError) console.error("Error creating system settings table:", settingsError);
+        if (error) console.error("Error setting audit logging flag:", error);
         
         console.log("Database setup completed");
       } catch (error) {

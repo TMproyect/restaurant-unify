@@ -24,9 +24,9 @@ export async function getCustomRoles(): Promise<CustomRole[]> {
   try {
     console.log("Fetching custom roles...");
     
-    // Query custom_roles table
+    // Query custom_roles table with type assertion
     const { data, error } = await supabase
-      .from('custom_roles')
+      .from('custom_roles' as any)
       .select('*')
       .order('created_at', { ascending: false });
     
@@ -36,7 +36,7 @@ export async function getCustomRoles(): Promise<CustomRole[]> {
     }
     
     // Convert results to CustomRole type
-    const roles: CustomRole[] = (data || []).map(item => ({
+    const roles: CustomRole[] = (data || []).map((item: any) => ({
       id: item.id,
       name: item.name,
       description: item.description || '',
@@ -57,14 +57,14 @@ export async function upsertCustomRole(role: Partial<CustomRole>): Promise<boole
   try {
     console.log("Upserting custom role:", role);
     
-    // Upsert the role directly to custom_roles table
+    // Upsert the role directly to custom_roles table with type assertion
     const { error } = await supabase
-      .from('custom_roles')
+      .from('custom_roles' as any)
       .upsert({
         name: role.name,
         description: role.description || '',
         permissions: role.permissions || {}
-      }, { 
+      } as any, { 
         onConflict: 'name',
         ignoreDuplicates: false
       });
@@ -87,9 +87,9 @@ export async function getSystemSetting(key: string): Promise<string | null> {
   try {
     console.log(`Getting system setting for key: ${key}`);
     
-    // Get the setting directly from system_settings table
+    // Get the setting directly from system_settings table with type assertion
     const { data, error } = await supabase
-      .from('system_settings')
+      .from('system_settings' as any)
       .select('value')
       .eq('key', key)
       .single();
@@ -99,8 +99,9 @@ export async function getSystemSetting(key: string): Promise<string | null> {
       return null;
     }
     
-    console.log(`Got system setting ${key}:`, data?.value);
-    return data?.value || null;
+    const result = data as any;
+    console.log(`Got system setting ${key}:`, result?.value);
+    return result?.value || null;
   } catch (error) {
     console.error(`Error getting system setting ${key}:`, error);
     return null;
@@ -120,9 +121,9 @@ export async function logPermissionChange(
   try {
     console.log(`Logging permission change for role ${roleName}, permission ${permissionName}`);
     
-    // Insert directly to role_permission_audit_logs table
+    // Insert directly to role_permission_audit_logs table with type assertion
     const { error } = await supabase
-      .from('role_permission_audit_logs')
+      .from('role_permission_audit_logs' as any)
       .insert({
         user_id: userId,
         user_name: userName,
@@ -131,7 +132,7 @@ export async function logPermissionChange(
         permission_name: permissionName,
         previous_value: previousValue,
         new_value: newValue
-      });
+      } as any);
     
     if (error) {
       console.error("Error logging permission change:", error);
@@ -151,9 +152,9 @@ export async function getAuditLogs(): Promise<RolePermissionAuditLog[]> {
   try {
     console.log("Getting audit logs...");
     
-    // Get logs directly from role_permission_audit_logs table
+    // Get logs directly from role_permission_audit_logs table with type assertion
     const { data, error } = await supabase
-      .from('role_permission_audit_logs')
+      .from('role_permission_audit_logs' as any)
       .select('*')
       .order('timestamp', { ascending: false })
       .limit(100);
@@ -164,7 +165,7 @@ export async function getAuditLogs(): Promise<RolePermissionAuditLog[]> {
     }
     
     console.log(`Retrieved ${data?.length || 0} audit logs`);
-    return data as RolePermissionAuditLog[];
+    return data as unknown as RolePermissionAuditLog[];
   } catch (error) {
     console.error('Error getting audit logs:', error);
     return [];

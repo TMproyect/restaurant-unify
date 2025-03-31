@@ -19,13 +19,13 @@ const RolesAndPermissionsPage = () => {
       if (!isAdmin) return;
       
       try {
-        // Initialize audit logging setting
-        await supabase.from('system_settings')
+        // Initialize audit logging setting using type assertion for system_settings table
+        await supabase.from('system_settings' as any)
           .upsert({ 
             key: 'enable_audit_logging', 
             value: 'true',
             updated_at: new Date().toISOString()
-          }, { 
+          } as any, { 
             onConflict: 'key',
             ignoreDuplicates: false
           });

@@ -1,20 +1,19 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { ChevronLeft, Save, RotateCcw, HelpCircle, AlertTriangle, Search } from "lucide-react";
-import { Role, UserRole } from "@/contexts/auth/types";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, Save, RotateCcw } from "lucide-react";
+import { Role } from "@/contexts/auth/types";
 import { defaultPermissions } from "@/data/permissionsData";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { PermissionCategory } from "@/contexts/auth/types";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth/AuthContext";
 import { getSystemSetting, logPermissionChange } from "@/utils/customDbOperations";
+import PermissionSearch from "./permissions/PermissionSearch";
+import PermissionsList from "./permissions/PermissionsList";
 
 interface RolePermissionsEditorProps {
   role: Role;
@@ -154,7 +153,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   const handleReset = () => {
     // Reset to default permissions for this role
     const resetPermissions = defaultPermissions.reduce((acc, permission) => {
-      acc[permission.id] = permission.default[role.name as UserRole];
+      acc[permission.id] = permission.default[role.name];
       return acc;
     }, {} as Record<string, boolean>);
     
@@ -189,22 +188,8 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     return groups;
   }, {} as Record<PermissionCategory, typeof defaultPermissions>);
   
-  // Format category name for display
-  const formatCategoryName = (category: string): string => {
-    const categoryNames: Record<string, string> = {
-      dashboard: "Acceso y Dashboard", 
-      orders: "Pedidos",
-      tables: "Mesas", 
-      kitchen: "Cocina", 
-      cashier: "Caja", 
-      inventory: "Inventario", 
-      reports: "Informes", 
-      staff: "Personal", 
-      settings: "Configuración"
-    };
-    
-    return categoryNames[category] || category;
-  };
+  const isCriticalUser = user?.role === role.name && 
+    (role.name === 'admin' || role.name === 'propietario');
   
   return (
     <Card className="w-full">
@@ -237,96 +222,19 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
           />
         </div>
         
-        <div className="flex items-center space-x-2 border rounded-md p-2 bg-muted/20">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar permisos por nombre o descripción..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
-          {searchTerm && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="h-5 w-5 p-0"
-              onClick={() => setSearchTerm('')}
-            >
-              ✕
-            </Button>
-          )}
-        </div>
+        <PermissionSearch 
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />
         
-        {searchTerm && filteredPermissions.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            No se encontraron permisos que coincidan con "{searchTerm}"
-          </div>
-        )}
-        
-        {Object.entries(permissionsByCategory).map(([category, permissions]) => (
-          <div key={category} className="space-y-3">
-            <h3 className="text-lg font-medium">Módulo: {formatCategoryName(category)}</h3>
-            <div className="space-y-4">
-              {permissions.map(permission => {
-                // Check if this is a critical permission for this role
-                const isCriticalPermission = 
-                  (permission.id === 'settings.roles' || permission.id === 'settings.access') && 
-                  (role.name === 'admin' || role.name === 'propietario') &&
-                  user?.role === role.name;
-                
-                return (
-                <div key={permission.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id={`perm-${permission.id}`}
-                      checked={editedRole.permissions[permission.id] || false}
-                      onCheckedChange={() => handleTogglePermission(permission.id)}
-                      disabled={isCriticalPermission && editedRole.permissions[permission.id]}
-                    />
-                    <div className="space-y-0.5">
-                      <Label 
-                        htmlFor={`perm-${permission.id}`}
-                        className="text-sm font-medium cursor-pointer flex items-center"
-                      >
-                        {permission.name}
-                        {isCriticalPermission && editedRole.permissions[permission.id] && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <AlertTriangle size={14} className="ml-1 text-amber-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">Este es un permiso crítico que no puede ser desactivado para evitar pérdida de acceso al sistema.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </Label>
-                      {permission.description && (
-                        <div className="flex items-center">
-                          <p className="text-xs text-muted-foreground">{permission.description}</p>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-4 w-4 p-0 ml-1">
-                                  <HelpCircle size={12} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">{permission.description}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )})}
-            </div>
-            <Separator className="my-4" />
-          </div>
-        ))}
+        <PermissionsList 
+          permissionsByCategory={permissionsByCategory}
+          currentPermissions={editedRole.permissions}
+          isCriticalUser={isCriticalUser}
+          userRole={role.name}
+          onTogglePermission={handleTogglePermission}
+          searchTerm={searchTerm}
+        />
       </CardContent>
       
       <CardFooter className="flex justify-between">

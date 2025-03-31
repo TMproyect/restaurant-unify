@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { PermissionCategory } from "@/contexts/auth/types";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { getSystemSetting, logPermissionChange } from "@/utils/customDbOperations";
 
 interface RolePermissionsEditorProps {
   role: Role;
@@ -39,13 +38,8 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   useEffect(() => {
     const checkAuditingConfig = async () => {
       try {
-        const { data, error } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'enable_audit_logging')
-          .single();
-        
-        if (data && data.value === 'true') {
+        const value = await getSystemSetting('enable_audit_logging');
+        if (value === 'true') {
           setAuditingEnabled(true);
         }
       } catch (error) {
@@ -86,16 +80,15 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     try {
       const permissionInfo = defaultPermissions.find(p => p.id === permissionId);
       
-      await supabase.from('role_permission_audit_logs').insert({
-        user_id: user.id,
-        user_name: user.name,
-        role_name: role.name,
-        permission_id: permissionId,
-        permission_name: permissionInfo?.name || permissionId,
-        previous_value: previousValue,
-        new_value: newValue,
-        timestamp: new Date().toISOString()
-      });
+      await logPermissionChange(
+        user.id,
+        user.name,
+        role.name,
+        permissionId,
+        permissionInfo?.name || permissionId,
+        previousValue,
+        newValue
+      );
       
       console.log('Logged permission change to audit trail');
     } catch (error) {

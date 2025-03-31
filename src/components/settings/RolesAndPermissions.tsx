@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,17 +12,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth/AuthContext";
-import { UserRole, Role } from "@/contexts/auth/types";
+import { UserRole, Role, CustomRole } from "@/contexts/auth/types";
 import { Edit, Plus, Search, Users, Shield, Copy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import RolePermissionsEditor from "./RolePermissionsEditor";
 import { defaultPermissions, getDefaultRolePermissions, systemRoles } from "@/data/permissionsData";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getCustomRoles, upsertCustomRole, getAuditLogs } from "@/utils/customDbOperations";
 
-// Custom role dialog component
 const NewRoleDialog = ({ onCreateRole }: { onCreateRole: (name: string, description: string, baseRole: UserRole) => void }) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -131,24 +129,19 @@ const RolesAndPermissions = () => {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   
-  // Load roles and user counts
   React.useEffect(() => {
     const loadRolesAndUsers = async () => {
       try {
         setIsLoading(true);
         const allUsers = await fetchAllUsers();
         
-        // Check if we have custom roles in local storage or database
         let customRoles: Role[] = [];
         
         try {
-          // Try to load from database if available
-          const { data, error } = await supabase
-            .from('custom_roles')
-            .select('*');
+          const dbCustomRoles = await getCustomRoles();
           
-          if (data && data.length > 0) {
-            customRoles = data.map(role => ({
+          if (dbCustomRoles && dbCustomRoles.length > 0) {
+            customRoles = dbCustomRoles.map(role => ({
               name: role.name as UserRole,
               description: role.description,
               permissions: role.permissions,
@@ -156,7 +149,6 @@ const RolesAndPermissions = () => {
               isCustom: true
             }));
           } else {
-            // Fallback to localStorage if no DB
             const storedRoles = localStorage.getItem('customRoles');
             if (storedRoles) {
               customRoles = JSON.parse(storedRoles);
@@ -164,20 +156,17 @@ const RolesAndPermissions = () => {
           }
         } catch (error) {
           console.error("Error loading custom roles:", error);
-          // Fallback to localStorage
           const storedRoles = localStorage.getItem('customRoles');
           if (storedRoles) {
             customRoles = JSON.parse(storedRoles);
           }
         }
         
-        // Count users per role
         const roleCounts: Record<string, number> = {};
         allUsers.forEach(user => {
           roleCounts[user.role] = (roleCounts[user.role] || 0) + 1;
         });
         
-        // Create roles array with system roles
         const systemRolesArray: Role[] = Object.entries(systemRoles).map(
           ([roleName, label]) => ({
             name: roleName as UserRole,
@@ -191,13 +180,11 @@ const RolesAndPermissions = () => {
           })
         );
         
-        // Update custom role user counts
         customRoles = customRoles.map(role => ({
           ...role,
           userCount: roleCounts[role.name as string] || 0
         }));
         
-        // Combine system and custom roles
         const combinedRoles = [...systemRolesArray, ...customRoles];
         setRoles(combinedRoles);
       } catch (error) {
@@ -220,22 +207,19 @@ const RolesAndPermissions = () => {
   };
   
   const handleSavePermissions = async (updatedRole: Role) => {
-    // If it's a custom role, save it to database or localStorage
     if (updatedRole.isCustom) {
       try {
-        // Try to save to database if available
-        const { error } = await supabase
-          .from('custom_roles')
-          .upsert({
-            name: updatedRole.name,
-            description: updatedRole.description,
-            permissions: updatedRole.permissions
-          });
-          
-        if (error) throw error;
+        const success = await upsertCustomRole({
+          name: updatedRole.name,
+          description: updatedRole.description,
+          permissions: updatedRole.permissions
+        });
+        
+        if (!success) {
+          throw new Error("Failed to save custom role");
+        }
       } catch (dbError) {
         console.error("Error saving to database:", dbError);
-        // Fallback to localStorage
         const updatedCustomRoles = roles
           .filter(role => role.isCustom)
           .map(role => 
@@ -261,7 +245,6 @@ const RolesAndPermissions = () => {
   };
   
   const handleCreateRole = async (name: string, description: string, baseRole: UserRole) => {
-    // Create a new role with permissions based on the selected base role
     const newRole: Role = {
       name: name as UserRole,
       description,
@@ -270,26 +253,23 @@ const RolesAndPermissions = () => {
       isCustom: true
     };
     
-    // Save to database if available
     try {
-      const { error } = await supabase
-        .from('custom_roles')
-        .insert({
-          name: newRole.name,
-          description: newRole.description,
-          permissions: newRole.permissions
-        });
-        
-      if (error) throw error;
+      const success = await upsertCustomRole({
+        name: newRole.name,
+        description: newRole.description,
+        permissions: newRole.permissions
+      });
+      
+      if (!success) {
+        throw new Error("Failed to save custom role");
+      }
     } catch (dbError) {
       console.error("Error saving to database:", dbError);
-      // Fallback to localStorage
       const customRoles = roles.filter(role => role.isCustom);
       customRoles.push(newRole);
       localStorage.setItem('customRoles', JSON.stringify(customRoles));
     }
     
-    // Update state
     setRoles(prevRoles => [...prevRoles, newRole]);
     
     toast({
@@ -299,7 +279,6 @@ const RolesAndPermissions = () => {
   };
   
   const handleDuplicateRole = (role: Role) => {
-    // Create a copy of the role with a new name
     const baseName = role.name.toString();
     const newName = `${baseName}_copia`;
     
@@ -315,15 +294,8 @@ const RolesAndPermissions = () => {
     setShowAuditLog(true);
     
     try {
-      const { data, error } = await supabase
-        .from('role_permission_audit_logs')
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(100);
-        
-      if (error) throw error;
-      
-      setAuditLogs(data || []);
+      const logs = await getAuditLogs();
+      setAuditLogs(logs || []);
     } catch (error) {
       console.error("Error loading audit logs:", error);
       toast({
@@ -336,7 +308,6 @@ const RolesAndPermissions = () => {
     }
   };
 
-  // Filter roles by search term
   const filteredRoles = searchTerm
     ? roles.filter(role => 
         role.name.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -71,3 +71,20 @@ export interface RolePermissionAuditLog {
   newValue: boolean;
   timestamp: string;
 }
+
+// Define table types for Supabase
+export interface CustomRole {
+  id: string;
+  name: string;
+  description: string;
+  permissions: Record<string, boolean>;
+  created_at: string;
+}
+
+export interface SystemSetting {
+  key: string;
+  value: string;
+  created_at: string;
+  updated_at: string;
+}
+

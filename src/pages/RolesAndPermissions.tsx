@@ -19,58 +19,17 @@ const RolesAndPermissionsPage = () => {
       if (!isAdmin) return;
       
       try {
-        // Check if table exists
-        const { data: existingTables, error: tableError } = await supabase
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_schema', 'public')
-          .in('table_name', ['role_permission_audit_logs', 'custom_roles', 'system_settings']);
-          
-        if (tableError) {
-          console.error("Error checking for existing tables:", tableError);
-          return;
-        }
+        // Use raw SQL query to check if tables exist
+        const { data: tablesData, error: sqlError } = await supabase.rpc('create_audit_table');
+        if (sqlError) console.error("Error creating audit table:", sqlError);
         
-        const existingTableNames = (existingTables || []).map(t => t.table_name);
+        const { data: rolesData, error: rolesError } = await supabase.rpc('create_custom_roles_table');
+        if (rolesError) console.error("Error creating custom roles table:", rolesError);
         
-        // Create audit logs table if it doesn't exist
-        if (!existingTableNames.includes('role_permission_audit_logs')) {
-          const { error: createError } = await supabase.rpc('create_audit_table');
-          if (createError) {
-            console.error("Error creating audit table:", createError);
-          } else {
-            console.log("Audit table created successfully");
-          }
-        }
+        const { data: settingsData, error: settingsError } = await supabase.rpc('create_system_settings_table');
+        if (settingsError) console.error("Error creating system settings table:", settingsError);
         
-        // Create custom roles table if it doesn't exist
-        if (!existingTableNames.includes('custom_roles')) {
-          const { error: createError } = await supabase.rpc('create_custom_roles_table');
-          if (createError) {
-            console.error("Error creating custom roles table:", createError);
-          } else {
-            console.log("Custom roles table created successfully");
-          }
-        }
-        
-        // Create system settings table if it doesn't exist
-        if (!existingTableNames.includes('system_settings')) {
-          const { error: createError } = await supabase.rpc('create_system_settings_table');
-          if (createError) {
-            console.error("Error creating system settings table:", createError);
-          } else {
-            console.log("System settings table created successfully");
-            
-            // Add default setting for audit logging
-            const { error: insertError } = await supabase
-              .from('system_settings')
-              .upsert({ key: 'enable_audit_logging', value: 'true' });
-              
-            if (insertError) {
-              console.error("Error setting default audit setting:", insertError);
-            }
-          }
-        }
+        console.log("Database setup completed");
       } catch (error) {
         console.error("Error setting up audit logging:", error);
       }

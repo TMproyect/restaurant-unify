@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth/AuthContext";
-import { UserRole, Role, CustomRole } from "@/contexts/auth/types";
+import { UserRole, Role, CustomRole, AuthUser } from "@/contexts/auth/types";
 import { Edit, Plus, Search, Users, Shield, Copy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import RolePermissionsEditor from "./RolePermissionsEditor";
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCustomRoles, upsertCustomRole, getAuditLogs } from "@/utils/customDbOperations";
 import { getRoleDisplayName } from "@/utils/formatUtils";
-import { supabase } from "@/utils/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 const NewRoleDialog = ({ onCreateRole }: { onCreateRole: (name: string, description: string, baseRole: UserRole) => void }) => {
   const [open, setOpen] = useState(false);

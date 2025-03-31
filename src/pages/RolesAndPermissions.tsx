@@ -4,12 +4,13 @@ import Layout from "@/components/layout/Layout";
 import RolesAndPermissions from "@/components/settings/RolesAndPermissions";
 import { useAuth } from "@/contexts/auth/AuthContext";
 import { Navigate } from "react-router-dom";
+import { useAdmin } from "@/hooks/use-admin";
 
 const RolesAndPermissionsPage = () => {
   const { user, isLoading } = useAuth();
+  const { isAdmin } = useAdmin();
   
-  // Check if user has permission to access this page
-  const hasAccess = user && (user.role === "admin" || user.role === "owner");
+  console.log("RolesAndPermissions page loading. isAdmin:", isAdmin, "user:", user?.role);
   
   if (isLoading) {
     return (
@@ -21,7 +22,8 @@ const RolesAndPermissionsPage = () => {
     );
   }
   
-  if (!hasAccess) {
+  if (!isAdmin) {
+    console.log("User doesn't have permission to access Roles and Permissions");
     return <Navigate to="/dashboard" replace />;
   }
   

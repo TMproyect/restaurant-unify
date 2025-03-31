@@ -9,6 +9,7 @@ export function useAdmin() {
   // Ensure we have a valid user with a role property
   const isAdmin = !!user && (
     user.role === 'admin' || 
+    user.role === 'owner' ||
     user.role === 'manager'
   );
   

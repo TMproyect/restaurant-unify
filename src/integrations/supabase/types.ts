@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      custom_roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          permissions: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json
+        }
+        Relationships: []
+      }
       inventory_categories: {
         Row: {
           created_at: string
@@ -351,6 +375,63 @@ export type Database = {
           status?: string
           updated_at?: string
           zone?: string
+        }
+        Relationships: []
+      }
+      role_permission_audit_logs: {
+        Row: {
+          id: string
+          new_value: boolean
+          permission_id: string
+          permission_name: string
+          previous_value: boolean
+          role_name: string
+          timestamp: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          id?: string
+          new_value: boolean
+          permission_id: string
+          permission_name: string
+          previous_value: boolean
+          role_name: string
+          timestamp?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          id?: string
+          new_value?: boolean
+          permission_id?: string
+          permission_name?: string
+          previous_value?: boolean
+          role_name?: string
+          timestamp?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
         }
         Relationships: []
       }

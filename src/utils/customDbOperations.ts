@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { CustomRole, SystemSetting, RolePermissionAuditLog } from "@/contexts/auth/types";
+import { mapSingleResponse, mapArrayResponse } from "@/utils/supabaseHelpers";
 
 // Helper function to safely parse JSON response
 function parseJsonResponse<T>(data: any): T[] {
@@ -23,19 +24,19 @@ export async function getCustomRoles(): Promise<CustomRole[]> {
   try {
     console.log("Fetching custom roles...");
     
-    // Try direct query to custom_roles table
-    const { data: directData, error: directError } = await supabase
+    // Query custom_roles table
+    const { data, error } = await supabase
       .from('custom_roles')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (directError) {
-      console.error("Error fetching custom roles directly:", directError);
+    if (error) {
+      console.error("Error fetching custom roles directly:", error);
       return [];
     }
     
     // Convert results to CustomRole type
-    const roles: CustomRole[] = (directData || []).map(item => ({
+    const roles: CustomRole[] = (data || []).map(item => ({
       id: item.id,
       name: item.name,
       description: item.description || '',
@@ -98,9 +99,8 @@ export async function getSystemSetting(key: string): Promise<string | null> {
       return null;
     }
     
-    const value = data?.value;
-    console.log(`Got system setting ${key}:`, value);
-    return value || null;
+    console.log(`Got system setting ${key}:`, data?.value);
+    return data?.value || null;
   } catch (error) {
     console.error(`Error getting system setting ${key}:`, error);
     return null;
@@ -171,119 +171,8 @@ export async function getAuditLogs(): Promise<RolePermissionAuditLog[]> {
   }
 }
 
-// Create database tables and functions via SQL
+// Create database tables and functions via direct API call
 export async function setupDatabaseFunctions(): Promise<void> {
-  await createTables();
-}
-
-// Create the necessary database tables
-async function createTables(): Promise<void> {
-  try {
-    console.log("Creating custom_roles table if not exists...");
-    
-    // Create custom_roles table
-    const { error: rolesError } = await supabase.from('custom_roles').select('id').limit(1).single();
-    if (rolesError && rolesError.code === '42P01') { // Table doesn't exist
-      await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-          'apikey': process.env.SUPABASE_ANON_KEY || ''
-        },
-        body: JSON.stringify({
-          query: `
-            CREATE TABLE IF NOT EXISTS public.custom_roles (
-              id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-              name TEXT NOT NULL UNIQUE,
-              description TEXT,
-              permissions JSONB NOT NULL DEFAULT '{}',
-              created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            );
-          `
-        })
-      });
-      console.log("Created custom_roles table");
-    }
-    
-    console.log("Creating system_settings table if not exists...");
-    
-    // Create system_settings table
-    const { error: settingsError } = await supabase.from('system_settings').select('key').limit(1).single();
-    if (settingsError && settingsError.code === '42P01') { // Table doesn't exist
-      await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-          'apikey': process.env.SUPABASE_ANON_KEY || ''
-        },
-        body: JSON.stringify({
-          query: `
-            CREATE TABLE IF NOT EXISTS public.system_settings (
-              key TEXT NOT NULL PRIMARY KEY,
-              value TEXT,
-              created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-              updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            );
-          `
-        })
-      });
-      console.log("Created system_settings table");
-    }
-    
-    console.log("Creating role_permission_audit_logs table if not exists...");
-    
-    // Create role_permission_audit_logs table
-    const { error: logsError } = await supabase.from('role_permission_audit_logs').select('id').limit(1).single();
-    if (logsError && logsError.code === '42P01') { // Table doesn't exist
-      await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-          'apikey': process.env.SUPABASE_ANON_KEY || ''
-        },
-        body: JSON.stringify({
-          query: `
-            CREATE TABLE IF NOT EXISTS public.role_permission_audit_logs (
-              id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-              user_id UUID NOT NULL,
-              user_name TEXT NOT NULL,
-              role_name TEXT NOT NULL,
-              permission_id TEXT NOT NULL,
-              permission_name TEXT NOT NULL,
-              previous_value BOOLEAN NOT NULL,
-              new_value BOOLEAN NOT NULL,
-              timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-            );
-          `
-        })
-      });
-      console.log("Created role_permission_audit_logs table");
-    }
-  } catch (error) {
-    console.error("Error creating tables:", error);
-  }
-}
-
-// Helper function to execute SQL if admin
-export async function execAdminSQL(sql: string): Promise<any> {
-  try {
-    const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        'apikey': process.env.SUPABASE_ANON_KEY || ''
-      },
-      body: JSON.stringify({ query: sql })
-    });
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error executing SQL:", error);
-    return null;
-  }
+  // Tables should already exist via SQL migration
+  console.log("Database tables have been created via SQL migration");
 }

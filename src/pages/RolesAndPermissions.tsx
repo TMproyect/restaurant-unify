@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/auth/AuthContext";
 import { Navigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/use-admin";
 import { supabase } from "@/integrations/supabase/client";
-import { setupDatabaseFunctions } from "@/utils/customDbOperations";
 
 const RolesAndPermissionsPage = () => {
   const { user, isLoading } = useAuth();
@@ -14,23 +13,24 @@ const RolesAndPermissionsPage = () => {
   
   console.log("RolesAndPermissions page loading. isAdmin:", isAdmin, "user:", user?.role);
   
-  // Check and create necessary tables for audit logging
+  // Check and create necessary settings for audit logging
   useEffect(() => {
     const setupAuditLogging = async () => {
       if (!isAdmin) return;
       
       try {
-        // Use our custom function to ensure tables exist
-        await setupDatabaseFunctions();
-        
         // Initialize audit logging setting
         await supabase.from('system_settings')
-          .upsert({ key: 'enable_audit_logging', value: 'true' }, { 
+          .upsert({ 
+            key: 'enable_audit_logging', 
+            value: 'true',
+            updated_at: new Date().toISOString()
+          }, { 
             onConflict: 'key',
-            ignoreDuplicates: true
+            ignoreDuplicates: false
           });
         
-        console.log("Database setup completed");
+        console.log("Audit logging setting initialized");
       } catch (error) {
         console.error("Error setting up audit logging:", error);
       }

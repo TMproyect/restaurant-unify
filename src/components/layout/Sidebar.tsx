@@ -1,234 +1,187 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Calendar, 
-  ShoppingCart, 
-  Users, 
-  FileText, 
-  ChartBar, 
-  Settings, 
-  ArrowLeft, 
-  ArrowRight, 
-  Menu as MenuIcon, 
-  User, 
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import {
+  Home,
+  FileText,
+  Settings,
   Utensils,
-  PackageOpen
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { UserRole } from '@/contexts/auth/types';
-import { useIsMobile } from '@/hooks/use-mobile';
+  ShoppingBag,
+  Users,
+  Truck,
+  BarChart,
+  ClipboardList,
+  ChefHat,
+  MessageSquare,
+  Bell,
+  LayoutGrid,
+  CashRegister,
+} from "lucide-react";
+import { useAuthContext } from "@/contexts/auth/AuthContext";
 
-interface MenuItem {
-  title: string;
-  icon: React.ElementType;
-  path: string;
-  allowedRoles: UserRole[];
+interface NavItemProps {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
 }
 
-const menuItems: MenuItem[] = [
-  {
-    title: 'Dashboard',
-    icon: ChartBar,
-    path: '/dashboard',
-    allowedRoles: ['admin', 'manager', 'waiter', 'kitchen', 'delivery'],
-  },
-  {
-    title: 'Pedidos',
-    icon: ShoppingCart,
-    path: '/orders',
-    allowedRoles: ['admin', 'manager', 'waiter', 'kitchen', 'delivery'],
-  },
-  {
-    title: 'Mesas',
-    icon: Users,
-    path: '/tables',
-    allowedRoles: ['admin', 'manager', 'waiter'],
-  },
-  {
-    title: 'Cocina',
-    icon: Calendar,
-    path: '/kitchen',
-    allowedRoles: ['admin', 'manager', 'kitchen'],
-  },
-  {
-    title: 'Menú',
-    icon: Utensils,
-    path: '/menu',
-    allowedRoles: ['admin', 'manager', 'kitchen', 'waiter'],
-  },
-  {
-    title: 'Inventario',
-    icon: PackageOpen,
-    path: '/inventory',
-    allowedRoles: ['admin', 'manager', 'kitchen'],
-  },
-  {
-    title: 'Informes',
-    icon: FileText,
-    path: '/reports',
-    allowedRoles: ['admin', 'manager'],
-  },
-  {
-    title: 'Personal',
-    icon: User,
-    path: '/staff',
-    allowedRoles: ['admin', 'manager'],
-  },
-  {
-    title: 'Configuración',
-    icon: Settings,
-    path: '/settings',
-    allowedRoles: ['admin', 'manager'],
-  },
-];
-
-const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user } = useAuth();
-  const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (isMobile) {
-      setMobileMenuOpen(false);
-    }
-  }, [location.pathname, isMobile]);
-
-  const filteredMenuItems = menuItems.filter(
-    (item) => user && item.allowedRoles.includes(user.role)
+const NavItem: React.FC<NavItemProps> = ({
+  to,
+  icon,
+  label,
+  active,
+  onClick,
+}) => {
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors",
+          "hover:bg-primary/10 dark:hover:bg-primary/20",
+          isActive || active
+            ? "bg-primary/10 text-primary dark:bg-primary/20"
+            : "text-muted-foreground"
+        )
+      }
+    >
+      <span className="mr-3 h-5 w-5">{icon}</span>
+      <span>{label}</span>
+    </NavLink>
   );
+};
 
-  console.log('Current user role:', user?.role);
-  console.log('Filtered menu items:', filteredMenuItems);
+interface SidebarProps {
+  sidebarCollapsed?: boolean;
+  closeMobileSidebar?: () => void;
+}
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    if (isMobile) {
-      setMobileMenuOpen(false);
-    }
-  };
+const Sidebar: React.FC<SidebarProps> = ({
+  sidebarCollapsed = false,
+  closeMobileSidebar,
+}) => {
+  const location = useLocation();
+  const { user } = useAuthContext();
 
-  if (isMobile) {
-    return (
-      <>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="fixed top-3 left-3 z-50 p-2 bg-primary text-primary-foreground rounded-md shadow-md"
-          aria-label="Menú principal"
-        >
-          <MenuIcon size={24} />
-        </button>
-        
-        {mobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-        )}
-        
-        <div 
-          className={cn(
-            "fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out",
-            mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <div className="font-bold text-xl text-primary">RestaurantOS</div>
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="icon-button"
-            >
-              <ArrowLeft size={18} />
-            </button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto py-4">
-            <nav className="px-2 space-y-1">
-              {filteredMenuItems.map((item) => (
-                <div
-                  key={item.path}
-                  className={cn(
-                    'sidebar-item cursor-pointer',
-                    location.pathname === item.path && 'active'
-                  )}
-                  onClick={() => handleNavigation(item.path)}
-                >
-                  <item.icon size={20} />
-                  <span>{item.title}</span>
-                </div>
-              ))}
-            </nav>
-          </div>
-          
-          {user && (
-            <div className="p-4 border-t border-border">
-              <div className="text-sm text-muted-foreground">
-                Conectado como: <span className="font-medium">{user.role === 'kitchen' ? 'Cocina' : user.role}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </>
-    );
+  if (!user) {
+    return null;
   }
 
+  const isAdmin = user.role === "admin" || user.role === "owner";
+
   return (
-    <div
-      className={cn(
-        'h-screen bg-white dark:bg-gray-900 border-r border-border transition-all duration-300 flex flex-col',
-        collapsed ? 'w-[72px]' : 'w-[250px]'
-      )}
-    >
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        {!collapsed && (
-          <div className="font-bold text-xl text-primary animate-fade-in">RestaurantOS</div>
+    <aside className="flex flex-col h-full">
+      <div className="space-y-1.5 py-4">
+        <NavItem
+          to="/dashboard"
+          icon={<Home />}
+          label="Dashboard"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/dashboard"}
+        />
+        <NavItem
+          to="/orders"
+          icon={<ClipboardList />}
+          label="Órdenes"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/orders"}
+        />
+        <NavItem
+          to="/kitchen"
+          icon={<ChefHat />}
+          label="Cocina"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/kitchen"}
+        />
+        <NavItem
+          to="/menu"
+          icon={<Utensils />}
+          label="Menú"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/menu"}
+        />
+        <NavItem
+          to="/inventory"
+          icon={<ShoppingBag />}
+          label="Inventario"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/inventory"}
+        />
+        <NavItem
+          to="/tables"
+          icon={<LayoutGrid />}
+          label="Mesas"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/tables"}
+        />
+        <NavItem
+          to="/cashier"
+          icon={<CashRegister />}
+          label="Caja"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/cashier"}
+        />
+        <NavItem
+          to="/delivery"
+          icon={<Truck />}
+          label="Deliveries"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/delivery"}
+        />
+        <NavItem
+          to="/sales"
+          icon={<BarChart />}
+          label="Ventas"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/sales"}
+        />
+        <NavItem
+          to="/reports"
+          icon={<FileText />}
+          label="Reportes"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/reports"}
+        />
+
+        {isAdmin && (
+          <NavItem
+            to="/staff"
+            icon={<Users />}
+            label="Personal"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/staff"}
+          />
         )}
-        <button
-          className="icon-button ml-auto"
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          {collapsed ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
-        </button>
+        <NavItem
+          to="/settings"
+          icon={<Settings />}
+          label="Configuración"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/settings"}
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4">
-        <nav className="px-2 space-y-1">
-          {filteredMenuItems.map((item) => (
-            <div
-              key={item.path}
-              className={cn(
-                'sidebar-item cursor-pointer',
-                location.pathname === item.path && 'active'
-              )}
-              onClick={() => navigate(item.path)}
-            >
-              <item.icon size={20} />
-              {!collapsed && (
-                <span className="animate-fade-in">{item.title}</span>
-              )}
-            </div>
-          ))}
-        </nav>
+      <div className="mt-auto border-t pt-4">
+        <NavItem
+          to="/notifications"
+          icon={<Bell />}
+          label="Notificaciones"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/notifications"}
+        />
+        <NavItem
+          to="/messages"
+          icon={<MessageSquare />}
+          label="Mensajes"
+          onClick={closeMobileSidebar}
+          active={location.pathname === "/messages"}
+        />
       </div>
-
-      {!collapsed && user && (
-        <div className="p-4 border-t border-border">
-          <div className="text-sm text-muted-foreground">
-            Conectado como: <span className="font-medium">
-              {user.role === 'admin' ? 'Administrador' : 
-               user.role === 'manager' ? 'Gerente' : 
-               user.role === 'waiter' ? 'Mesero' : 
-               user.role === 'kitchen' ? 'Cocina' : 
-               user.role === 'delivery' ? 'Repartidor' : user.role}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+    </aside>
   );
 };
 

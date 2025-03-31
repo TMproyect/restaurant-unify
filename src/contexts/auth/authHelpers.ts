@@ -8,7 +8,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
     console.log("Fetching user profile for ID:", userId);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, email, role, avatar, created_at')
+      .select('id, name, role, avatar, created_at')
       .eq('id', userId)
       .single();
 
@@ -22,7 +22,7 @@ export const fetchUserProfile = async (userId: string): Promise<AuthUser | null>
       return {
         id: (data as any).id,
         name: (data as any).name,
-        email: (data as any).email || '',
+        email: '', // Email will be fetched separately since it's not in the profiles table
         role: (data as any).role as UserRole,
         avatar: (data as any).avatar || null,
         created_at: (data as any).created_at
@@ -43,7 +43,7 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
     console.log("Fetching all user profiles");
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, email, role, avatar, created_at')
+      .select('id, name, role, avatar, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -56,7 +56,7 @@ export const fetchAllProfiles = async (): Promise<AuthUser[]> => {
       return data.map(profile => ({
         id: (profile as any).id,
         name: (profile as any).name,
-        email: (profile as any).email || '',
+        email: '', // Email will be fetched separately
         role: (profile as any).role as UserRole,
         avatar: (profile as any).avatar || null,
         created_at: (profile as any).created_at

@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCustomRoles, upsertCustomRole, getAuditLogs } from "@/utils/customDbOperations";
 import { getRoleDisplayName } from "@/utils/formatUtils";
+import { supabase } from "@/utils/supabase";
 
 const NewRoleDialog = ({ onCreateRole }: { onCreateRole: (name: string, description: string, baseRole: UserRole) => void }) => {
   const [open, setOpen] = useState(false);
@@ -134,16 +135,100 @@ const RolesAndPermissions = () => {
     const loadRolesAndUsers = async () => {
       try {
         setIsLoading(true);
-        const allUsers = await fetchAllUsers();
+        
+        console.log("Attempting to fetch profiles using RPC...");
+        let allUsers: AuthUser[] = [];
+        
+        try {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_all_profiles');
+          
+          if (rpcError) {
+            console.error("Error with RPC call:", rpcError);
+            throw rpcError;
+          }
+          
+          if (rpcData) {
+            console.log("RPC returned profiles:", Array.isArray(rpcData) ? rpcData.length : 'not an array');
+            
+            const profilesArray = Array.isArray(rpcData) ? rpcData : [rpcData];
+            
+            allUsers = profilesArray.map((profile: any) => ({
+              id: profile.id,
+              name: profile.name || 'Sin nombre',
+              email: '',
+              role: profile.role as UserRole,
+              avatar: profile.avatar,
+              created_at: profile.created_at
+            }));
+          }
+        } catch (rpcError) {
+          console.error("RPC method failed, falling back to regular query:", rpcError);
+          
+          try {
+            const { data: queryData, error: queryError } = await supabase
+              .from('profiles')
+              .select('id, name, role, avatar, created_at');
+              
+            if (queryError) {
+              console.error("Error with fallback query:", queryError);
+              throw queryError;
+            }
+            
+            if (queryData) {
+              console.log("Direct query returned profiles:", queryData.length);
+              
+              allUsers = queryData.map(profile => ({
+                id: profile.id,
+                name: profile.name || 'Sin nombre',
+                email: '',
+                role: profile.role as UserRole,
+                avatar: profile.avatar,
+                created_at: profile.created_at
+              }));
+            }
+          } catch (queryError) {
+            console.error("Direct query also failed:", queryError);
+            allUsers = await fetchAllUsers();
+          }
+        }
+        
+        try {
+          if (allUsers.length > 0) {
+            console.log("Fetching emails for users...");
+            const userIds = allUsers.map(user => user.id);
+            
+            const { data: emailData, error: emailError } = await supabase.functions.invoke('create-user-with-profile', {
+              body: { 
+                action: 'get_emails',
+                userIds
+              }
+            });
+            
+            if (emailError) {
+              console.error("Error fetching emails:", emailError);
+            } else if (emailData) {
+              console.log("Emails fetched:", Object.keys(emailData).length);
+              
+              allUsers = allUsers.map(user => ({
+                ...user,
+                email: emailData[user.id] || user.email || ''
+              }));
+            }
+          }
+        } catch (emailError) {
+          console.error("Error in email fetching process:", emailError);
+        }
+        
+        console.log("Final user count after all fetching attempts:", allUsers.length);
         
         let customRoles: Role[] = [];
         
         try {
-          console.log("Cargando roles personalizados desde la base de datos...");
+          console.log("Loading custom roles from database...");
           const dbCustomRoles = await getCustomRoles();
           
           if (dbCustomRoles && dbCustomRoles.length > 0) {
-            console.log("Roles personalizados obtenidos:", dbCustomRoles);
+            console.log("Custom roles found:", dbCustomRoles.length);
             customRoles = dbCustomRoles.map(role => ({
               name: role.name as UserRole,
               description: role.description,
@@ -152,18 +237,18 @@ const RolesAndPermissions = () => {
               isCustom: true
             }));
           } else {
-            console.log("No se encontraron roles personalizados en la base de datos");
+            console.log("No custom roles found in database");
             const storedRoles = localStorage.getItem('customRoles');
             if (storedRoles) {
-              console.log("Cargando roles desde localStorage");
+              console.log("Loading custom roles from localStorage");
               customRoles = JSON.parse(storedRoles);
             }
           }
         } catch (error) {
-          console.error("Error al cargar roles personalizados:", error);
+          console.error("Error loading custom roles:", error);
           const storedRoles = localStorage.getItem('customRoles');
           if (storedRoles) {
-            console.log("Cargando roles desde localStorage debido a error");
+            console.log("Loading roles from localStorage due to error");
             customRoles = JSON.parse(storedRoles);
           }
         }
@@ -173,7 +258,7 @@ const RolesAndPermissions = () => {
           roleCounts[user.role] = (roleCounts[user.role] || 0) + 1;
         });
         
-        console.log("Conteo de usuarios por rol:", roleCounts);
+        console.log("User counts by role:", roleCounts);
         
         const systemRolesArray: Role[] = Object.entries(systemRoles).map(
           ([roleName, label]) => ({
@@ -194,10 +279,10 @@ const RolesAndPermissions = () => {
         }));
         
         const combinedRoles = [...systemRolesArray, ...customRoles];
-        console.log("Roles combinados:", combinedRoles);
+        console.log("Combined roles:", combinedRoles);
         setRoles(combinedRoles);
       } catch (error) {
-        console.error("Error al cargar datos de roles y usuarios:", error);
+        console.error("Error loading roles and users data:", error);
         toast({
           variant: "destructive",
           title: "Error",

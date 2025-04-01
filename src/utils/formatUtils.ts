@@ -54,6 +54,10 @@ export function translateRoleToEnglish(spanishRole: string): string {
 
 // Utility function to normalize role names consistently to Spanish
 export function normalizeRoleName(role: string): string {
+  // Special cases for direct mapping
+  if (role.toLowerCase() === 'kitchen') return 'cocina';
+  if (role.toLowerCase() === 'delivery') return 'repartidor';
+  
   // Primero intentamos traducir de inglés a español
   const normalizedRole = translateRoleToSpanish(role);
   

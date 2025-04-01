@@ -15,7 +15,9 @@ export function getRoleDisplayName(role: string): string {
     'gerente': 'Gerente',
     'mesero': 'Mesero',
     'cocina': 'Cocina',
+    'kitchen': 'Cocina', // Añadimos mapeo directo de kitchen a Cocina
     'repartidor': 'Repartidor',
+    'delivery': 'Repartidor', // Añadimos mapeo directo de delivery a Repartidor
     'propietario': 'Propietario'
   };
   
@@ -48,4 +50,21 @@ export function translateRoleToEnglish(spanishRole: string): string {
   };
   
   return roleMap[spanishRole.toLowerCase()] || spanishRole;
+}
+
+// Utility function to normalize role names consistently to Spanish
+export function normalizeRoleName(role: string): string {
+  // Primero intentamos traducir de inglés a español
+  const normalizedRole = translateRoleToSpanish(role);
+  
+  // Lista de roles válidos en español
+  const validSpanishRoles = ['admin', 'gerente', 'mesero', 'cocina', 'repartidor', 'propietario'];
+  
+  // Si es un rol válido en español, lo devolvemos
+  if (validSpanishRoles.includes(normalizedRole.toLowerCase())) {
+    return normalizedRole;
+  }
+  
+  // Si no se pudo normalizar, devolvemos el rol original
+  return role;
 }

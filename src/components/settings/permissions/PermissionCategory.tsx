@@ -3,6 +3,7 @@ import React from "react";
 import { Separator } from "@/components/ui/separator";
 import PermissionItem from "./PermissionItem";
 import { Permission } from "@/contexts/auth/types";
+import { normalizeRoleName, getRoleDisplayName } from "@/utils/formatUtils";
 
 interface PermissionCategoryProps {
   categoryName: string;
@@ -27,6 +28,9 @@ const PermissionCategory: React.FC<PermissionCategoryProps> = ({
     return null;
   }
   
+  // Normalizar el userRole para asegurar consistencia
+  const normalizedUserRole = userRole ? normalizeRoleName(userRole) : undefined;
+  
   return (
     <div key={categoryName} className="space-y-3">
       <h3 className="text-lg font-medium">Módulo: {displayName}</h3>
@@ -35,7 +39,7 @@ const PermissionCategory: React.FC<PermissionCategoryProps> = ({
           // Check if this is a critical permission for this role
           const isCriticalPermission = 
             (permission.id === 'settings.roles' || permission.id === 'settings.access') && 
-            (userRole === 'admin' || userRole === 'propietario') &&
+            (normalizedUserRole === 'admin' || normalizedUserRole === 'propietario') &&
             isCriticalUser;
           
           return (

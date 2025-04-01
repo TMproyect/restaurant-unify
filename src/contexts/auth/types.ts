@@ -1,7 +1,8 @@
+
 import { Session, User } from '@supabase/supabase-js';
 
 // Define user roles - solo incluir nombres en español
-export type UserRole = 'admin' | 'gerente' | 'mesero' | 'cocina' | 'repartidor' | 'propietario';
+export type UserRole = 'admin' | 'gerente' | 'mesero' | 'cocina' | 'kitchen' | 'repartidor' | 'delivery' | 'propietario';
 
 // Update or add these types if not already present
 export type PermissionCategory = 'dashboard' | 'orders' | 'tables' | 'kitchen' | 'cashier' | 'inventory' | 'reports' | 'staff' | 'settings';

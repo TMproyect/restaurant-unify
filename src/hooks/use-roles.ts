@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Role, AuthUser, UserRole, CustomRole } from "@/contexts/auth/types";
 import { useAuth } from "@/contexts/auth/AuthContext";
@@ -6,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getCustomRoles, upsertCustomRole } from "@/utils/customDbOperations";
 import { defaultPermissions, systemRoles, getDefaultRolePermissions } from "@/data/permissionsData";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeRoleName } from "@/utils/formatUtils";
 
 export const useRoles = () => {
   const { fetchAllUsers } = useAuth();
@@ -35,14 +35,19 @@ export const useRoles = () => {
           const profilesArray = Array.isArray(rpcData) ? rpcData : [rpcData];
           console.log("RPC returned profiles:", profilesArray.length);
           
-          allUsers = profilesArray.map((profile: any) => ({
-            id: profile.id,
-            name: profile.name || 'Sin nombre',
-            email: '',
-            role: profile.role as UserRole,
-            avatar: profile.avatar,
-            created_at: profile.created_at
-          }));
+          allUsers = profilesArray.map((profile: any) => {
+            // Normalizar el rol para asegurar que siempre sea en español
+            const normalizedRole = normalizeRoleName(profile.role);
+            
+            return {
+              id: profile.id,
+              name: profile.name || 'Sin nombre',
+              email: '',
+              role: normalizedRole as UserRole,
+              avatar: profile.avatar,
+              created_at: profile.created_at
+            };
+          });
         }
       } catch (rpcError) {
         console.error("RPC method failed, falling back to direct query:", rpcError);
@@ -62,19 +67,30 @@ export const useRoles = () => {
           if (queryData) {
             console.log("Direct query returned profiles:", queryData.length);
             
-            allUsers = queryData.map(profile => ({
-              id: profile.id,
-              name: profile.name || 'Sin nombre',
-              email: '',
-              role: profile.role as UserRole,
-              avatar: profile.avatar,
-              created_at: profile.created_at
-            }));
+            allUsers = queryData.map(profile => {
+              // Normalizar el rol para asegurar que siempre sea en español
+              const normalizedRole = normalizeRoleName(profile.role);
+              
+              return {
+                id: profile.id,
+                name: profile.name || 'Sin nombre',
+                email: '',
+                role: normalizedRole as UserRole,
+                avatar: profile.avatar,
+                created_at: profile.created_at
+              };
+            });
           }
         } catch (queryError) {
           console.error("Direct query also failed, using fetchAllUsers:", queryError);
           // Third attempt: Use fetchAllUsers from AuthContext
-          allUsers = await fetchAllUsers();
+          const fetchedUsers = await fetchAllUsers();
+          
+          // Normalize roles
+          allUsers = fetchedUsers.map(user => ({
+            ...user,
+            role: normalizeRoleName(user.role) as UserRole
+          }));
         }
       }
       
@@ -118,7 +134,7 @@ export const useRoles = () => {
         if (dbCustomRoles && dbCustomRoles.length > 0) {
           console.log("Custom roles found:", dbCustomRoles.length);
           customRoles = dbCustomRoles.map(role => ({
-            name: role.name as UserRole,
+            name: normalizeRoleName(role.name) as UserRole,
             description: role.description || '',
             permissions: role.permissions || {},
             userCount: 0,
@@ -130,7 +146,12 @@ export const useRoles = () => {
           if (storedRoles) {
             console.log("Loading custom roles from localStorage");
             try {
-              customRoles = JSON.parse(storedRoles);
+              const parsedRoles = JSON.parse(storedRoles);
+              // Normalize roles
+              customRoles = parsedRoles.map((role: Role) => ({
+                ...role,
+                name: normalizeRoleName(role.name.toString()) as UserRole
+              }));
             } catch (e) {
               console.error("Error parsing stored roles:", e);
               customRoles = [];
@@ -144,7 +165,12 @@ export const useRoles = () => {
         if (storedRoles) {
           console.log("Loading roles from localStorage due to error");
           try {
-            customRoles = JSON.parse(storedRoles);
+            const parsedRoles = JSON.parse(storedRoles);
+            // Normalize roles
+            customRoles = parsedRoles.map((role: Role) => ({
+              ...role,
+              name: normalizeRoleName(role.name.toString()) as UserRole
+            }));
           } catch (e) {
             console.error("Error parsing stored roles:", e);
             customRoles = [];
@@ -152,35 +178,49 @@ export const useRoles = () => {
         }
       }
       
-      // Count users per role
+      // Count users per role (using normalized roles)
       const roleCounts: Record<string, number> = {};
       allUsers.forEach(user => {
         if (user.role) {
-          roleCounts[user.role] = (roleCounts[user.role] || 0) + 1;
+          const normalizedRole = normalizeRoleName(user.role);
+          roleCounts[normalizedRole] = (roleCounts[normalizedRole] || 0) + 1;
         }
       });
       
       console.log("User counts by role:", roleCounts);
       
-      // Create system roles array
+      // Create system roles array (ensuring proper role normalization)
       const systemRolesArray: Role[] = Object.entries(systemRoles).map(
-        ([roleName, label]) => ({
-          name: roleName as UserRole,
-          description: label,
-          permissions: defaultPermissions.reduce((acc, permission) => {
-            acc[permission.id] = permission.default[roleName as UserRole] || false;
-            return acc;
-          }, {} as Record<string, boolean>),
-          userCount: roleCounts[roleName] || 0,
-          isSystem: true
-        })
+        ([roleName, label]) => {
+          const normalizedRoleName = normalizeRoleName(roleName) as UserRole;
+          
+          return {
+            name: normalizedRoleName,
+            description: label,
+            permissions: defaultPermissions.reduce((acc, permission) => {
+              // Find the default permission for this role, handling both Spanish and English role names
+              const defaultValue = permission.default[normalizedRoleName] || 
+                                   permission.default[roleName as UserRole] ||
+                                   false;
+              
+              acc[permission.id] = defaultValue;
+              return acc;
+            }, {} as Record<string, boolean>),
+            userCount: roleCounts[normalizedRoleName] || 0,
+            isSystem: true
+          };
+        }
       );
       
       // Update user counts for custom roles
-      customRoles = customRoles.map(role => ({
-        ...role,
-        userCount: roleCounts[role.name as string] || 0
-      }));
+      customRoles = customRoles.map(role => {
+        const normalizedRoleName = normalizeRoleName(role.name.toString());
+        return {
+          ...role,
+          name: normalizedRoleName as UserRole,
+          userCount: roleCounts[normalizedRoleName] || 0
+        };
+      });
       
       // Combine system and custom roles
       const combinedRoles = [...systemRolesArray, ...customRoles];
@@ -247,9 +287,13 @@ export const useRoles = () => {
       return;
     }
     
+    // Normalize role name
+    const normalizedName = normalizeRoleName(name);
+    const normalizedBaseRole = normalizeRoleName(baseRole) as UserRole;
+    
     // Check for name conflicts
     const existingRole = roles.find(role => 
-      role.name.toLowerCase() === name.toLowerCase()
+      normalizeRoleName(role.name.toString()).toLowerCase() === normalizedName.toLowerCase()
     );
     
     if (existingRole) {
@@ -262,9 +306,9 @@ export const useRoles = () => {
     }
     
     const newRole: Role = {
-      name: name as UserRole,
+      name: normalizedName as UserRole,
       description,
-      permissions: getDefaultRolePermissions(baseRole),
+      permissions: getDefaultRolePermissions(normalizedBaseRole),
       userCount: 0,
       isCustom: true
     };
@@ -297,19 +341,20 @@ export const useRoles = () => {
   
   const handleDuplicateRole = (role: Role) => {
     const baseName = role.name.toString();
-    let newName = `${baseName}_copia`;
+    const normalizedBaseName = normalizeRoleName(baseName);
+    let newName = `${normalizedBaseName}_copia`;
     
     // Ensure the duplicate name is unique
     let counter = 1;
-    while (roles.some(r => r.name === newName)) {
+    while (roles.some(r => normalizeRoleName(r.name.toString()) === newName)) {
       counter++;
-      newName = `${baseName}_copia_${counter}`;
+      newName = `${normalizedBaseName}_copia_${counter}`;
     }
     
     handleCreateRole(
       newName, 
       `Copia de ${role.description || role.name}`,
-      role.name as UserRole
+      normalizedBaseName as UserRole
     );
   };
 

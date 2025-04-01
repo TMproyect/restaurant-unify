@@ -32,7 +32,7 @@ const ROLES = [
   { value: 'gerente', label: 'Gerente' },
   { value: 'mesero', label: 'Mesero' },
   { value: 'cocina', label: 'Cocina' },
-  { value: 'repartidor', label: 'Delivery' }
+  { value: 'repartidor', label: 'Repartidor' }
 ];
 
 const Staff: React.FC = () => {
@@ -137,14 +137,18 @@ const Staff: React.FC = () => {
         
         const profilesArray = Array.isArray(data) ? data : [data];
         
-        const staffUsers = profilesArray.map((profile: any) => ({
-          id: profile.id,
-          name: profile.name || 'Sin nombre',
-          email: '',
-          role: profile.role as UserRole,
-          avatar: profile.avatar,
-          created_at: profile.created_at
-        }));
+        const staffUsers = profilesArray.map((profile: any) => {
+          const normalizedRole = normalizeRoleName(profile.role);
+          
+          return {
+            id: profile.id,
+            name: profile.name || 'Sin nombre',
+            email: '',
+            role: normalizedRole as UserRole,
+            avatar: profile.avatar,
+            created_at: profile.created_at
+          };
+        });
         
         console.log('Staff component: Mapped profiles to staffUsers:', staffUsers);
         
@@ -179,14 +183,18 @@ const Staff: React.FC = () => {
           console.log('Staff component: Fallback query returned', directData.length, 'profiles');
           console.log('Staff component: Fallback data:', directData);
           
-          const staffUsers = directData.map(profile => ({
-            id: profile.id,
-            name: profile.name || 'Sin nombre',
-            email: '',
-            role: profile.role as UserRole,
-            avatar: profile.avatar,
-            created_at: profile.created_at
-          }));
+          const staffUsers = directData.map(profile => {
+            const normalizedRole = normalizeRoleName(profile.role);
+            
+            return {
+              id: profile.id,
+              name: profile.name || 'Sin nombre',
+              email: '',
+              role: normalizedRole as UserRole,
+              avatar: profile.avatar,
+              created_at: profile.created_at
+            };
+          });
           
           console.log('Staff component: Mapped profiles from fallback to staffUsers:', staffUsers);
           
@@ -259,12 +267,15 @@ const Staff: React.FC = () => {
     
     try {
       setIsSubmitting(true);
-      console.log('Updating role for user:', currentUserEdit.id, 'to', data.role);
+      
+      const normalizedRole = normalizeRoleName(data.role);
+      
+      console.log('Updating role for user:', currentUserEdit.id, 'to normalized role:', normalizedRole);
       
       const response = await supabase.functions.invoke('create-user-with-profile', {
         body: { 
           userId: currentUserEdit.id,
-          role: data.role,
+          role: normalizedRole,
           action: 'update_role' 
         }
       });
@@ -275,7 +286,7 @@ const Staff: React.FC = () => {
         throw new Error(response.error.message || 'Error al actualizar rol');
       }
       
-      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${data.role}`);
+      toast.success(`Rol de ${currentUserEdit.name} actualizado a ${getRoleDisplayName(normalizedRole)}`);
       setShowEditDialog(false);
       
       const updatedUser = response.data?.data;
@@ -286,7 +297,7 @@ const Staff: React.FC = () => {
       
       setUsers(users.map(u => 
         u.id === currentUserEdit.id 
-          ? { ...u, role: data.role, email: updatedEmail }
+          ? { ...u, role: normalizedRole as UserRole, email: updatedEmail }
           : u
       ));
       
@@ -381,6 +392,27 @@ const Staff: React.FC = () => {
   const canEdit = user?.role === 'admin' || user?.role === 'propietario' || user?.role === 'gerente';
 
   const getUserRoleLabel = (role: UserRole) => {
+    return getRoleDisplayName(role);
+  };
+
+  const normalizeRoleName = (role: string): UserRole => {
+    switch (role) {
+      case 'admin':
+        return 'admin';
+      case 'gerente':
+        return 'gerente';
+      case 'mesero':
+        return 'mesero';
+      case 'cocina':
+        return 'cocina';
+      case 'repartidor':
+        return 'repartidor';
+      default:
+        return 'mesero';
+    }
+  };
+
+  const getRoleDisplayName = (role: UserRole): string => {
     const roleObj = ROLES.find(r => r.value === role);
     return roleObj ? roleObj.label : role;
   };
@@ -636,7 +668,7 @@ const Staff: React.FC = () => {
             <TabsTrigger value="gerente">Gerentes</TabsTrigger>
             <TabsTrigger value="mesero">Meseros</TabsTrigger>
             <TabsTrigger value="cocina">Cocina</TabsTrigger>
-            <TabsTrigger value="repartidor">Delivery</TabsTrigger>
+            <TabsTrigger value="repartidor">Repartidor</TabsTrigger>
           </TabsList>
           
           <TabsContent value={tab} className="mt-0">

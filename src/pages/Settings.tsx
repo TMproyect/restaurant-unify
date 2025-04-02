@@ -4,10 +4,11 @@ import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RolesAndPermissions from '@/components/settings/RolesAndPermissions';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
+import { QzDiagnosticTool } from '@/components/ui/printing/QzDiagnosticTool';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2 } from 'lucide-react';
+import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
@@ -18,6 +19,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   
   const { 
     availablePrinters, 
@@ -100,10 +102,27 @@ const Settings = () => {
                       Configuración del sistema de impresión QZ Tray
                     </CardDescription>
                   </div>
-                  <PrinterStatus showHelp={true} />
+                  <div className="flex flex-col items-end gap-2">
+                    <PrinterStatus showHelp={true} />
+                    {status === 'error' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowDiagnostics(!showDiagnostics)}
+                        className="text-amber-600 border-amber-300 hover:text-amber-700 hover:border-amber-400"
+                      >
+                        <AlertTriangle className="mr-2 h-3 w-3" />
+                        {showDiagnostics ? "Ocultar diagnóstico" : "Mostrar diagnóstico"}
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
+                    {status === 'error' && showDiagnostics && (
+                      <QzDiagnosticTool onClose={() => setShowDiagnostics(false)} />
+                    )}
+
                     {status === 'error' && (
                       <Card className="border-amber-200 bg-amber-50">
                         <CardHeader className="pb-2">
@@ -130,7 +149,7 @@ const Settings = () => {
                               <strong>Verifique que QZ Tray esté en ejecución</strong> - Busque el icono en la bandeja del sistema (junto al reloj)
                               <div className="mt-2 flex justify-center">
                                 <img 
-                                  src="/lovable-uploads/0dbccf9d-27fa-4c7d-a688-888de326ea75.png" 
+                                  src="/lovable-uploads/455e7883-ebf8-4f65-96a0-bb0292806174.png" 
                                   alt="QZ Tray en ejecución" 
                                   className="border rounded-md p-1 shadow-sm"
                                   style={{ maxWidth: '300px' }}

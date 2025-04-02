@@ -17,8 +17,8 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- QZ Tray dependencies - Cambiado a cargar con atributo defer para mejor manejo del timing -->
-    <script src="/qz-tray.js" defer></script>
+    <!-- QZ Tray dependencies - Carga directa del archivo minificado para evitar problemas -->
+    <script src="/qz-tray.min.js" defer></script>
     <script>
       // Escucha el evento DOMContentLoaded para empezar a verificar QZ
       document.addEventListener('DOMContentLoaded', function() {

@@ -108,6 +108,24 @@ class PrintService {
       return true;
     }
     
+    // Verificamos si el archivo está parcialmente cargado (existe la etiqueta script)
+    const qzScriptTags = document.querySelectorAll('script[src*="qz-tray"]');
+    if (qzScriptTags.length === 0) {
+      console.warn("%c🖨️ PrintService: No se encontró ninguna etiqueta script de QZ Tray", "background: #F44336; color: white; padding: 2px 4px; border-radius: 2px;");
+      
+      // Intento de cargar dinámicamente el script
+      try {
+        console.log("%c🖨️ PrintService: Intentando cargar QZ Tray dinámicamente", "color: #FFA000;");
+        const script = document.createElement('script');
+        script.src = '/qz-tray.min.js';
+        script.defer = true;
+        document.head.appendChild(script);
+        console.log("%c🖨️ PrintService: Script QZ Tray añadido dinámicamente", "color: #FFA000;");
+      } catch (err) {
+        console.error("%c🖨️ PrintService: Error al añadir script dinámicamente", "background: #F44336; color: white;", err);
+      }
+    }
+    
     // Si QZ Tray no está disponible inmediatamente, intentamos esperar
     try {
       console.log("%c🖨️ PrintService: QZ Tray no está inmediatamente disponible, intentando esperar", "color: #FFA000;");

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RolesAndPermissions from '@/components/settings/RolesAndPermissions';
@@ -7,7 +7,7 @@ import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, RefreshCw, ExternalLink, Download, ArrowRight } from 'lucide-react';
+import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2 } from 'lucide-react';
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
@@ -16,24 +16,51 @@ const QZ_DOWNLOAD_LINK = "https://qz.io/download/";
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  
   const { 
     availablePrinters, 
     defaultPrinter, 
     isConnected, 
     connect,
     scanForPrinters,
-    status,
-    isScanning
+    status
   } = usePrintService();
+
+  // Efecto para detectar cuando cambia el estado de conexión
+  useEffect(() => {
+    if (status === 'connected') {
+      setIsConnecting(false);
+    } else if (status === 'error' && isConnecting) {
+      setIsConnecting(false);
+    }
+  }, [status, isConnecting]);
 
   const handleRefreshPrinters = async () => {
     console.log("Settings: Iniciando escaneo de impresoras desde settings");
-    await scanForPrinters();
+    setIsScanning(true);
+    try {
+      await scanForPrinters();
+      console.log("Settings: Escaneo de impresoras completado");
+    } catch (error) {
+      console.error("Settings: Error al escanear impresoras", error);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleConnect = async () => {
     console.log("Settings: Iniciando conexión desde settings");
-    await connect();
+    setIsConnecting(true);
+    try {
+      const result = await connect();
+      console.log("Settings: Resultado de conexión:", result ? "Exitoso" : "Fallido");
+      // La desactivación del estado de conexión se maneja en el useEffect
+    } catch (error) {
+      console.error("Settings: Error al conectar", error);
+      setIsConnecting(false);
+    }
   };
 
   return (
@@ -117,10 +144,20 @@ const Settings = () => {
                                   variant="default" 
                                   size="sm"
                                   onClick={handleConnect}
+                                  disabled={isConnecting}
                                   className="gap-1"
                                 >
-                                  <ArrowRight className="h-3 w-3" />
-                                  Conectar con QZ Tray
+                                  {isConnecting ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Conectando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ArrowRight className="h-3 w-3" />
+                                      Conectar con QZ Tray
+                                    </>
+                                  )}
                                 </Button>
                               </div>
                             </li>
@@ -170,11 +207,16 @@ const Settings = () => {
                             </div>
                           ))}
                         </div>
+                      ) : isConnected && availablePrinters.length === 0 ? (
+                        <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
+                          <p>No se encontraron impresoras instaladas en el sistema</p>
+                          <p className="text-sm mt-1">Verifica que tengas impresoras instaladas y configuradas en tu computadora</p>
+                        </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          {isConnected 
-                            ? "No se encontraron impresoras. Verifique que estén conectadas y configuradas en su sistema." 
-                            : "Conecte el sistema de impresión para ver las impresoras disponibles."}
+                          {isConnecting ? 
+                            "Conectando con el sistema de impresión..." : 
+                            "Conecte el sistema de impresión para ver las impresoras disponibles."}
                         </p>
                       )}
                     </div>

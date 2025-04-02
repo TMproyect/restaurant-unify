@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import printService, { PrinterConnectionStatus, PrinterConfig } from '@/services/printService';
 import { toast } from "sonner";
 
@@ -11,42 +11,73 @@ export function usePrintService() {
   const [isScanning, setIsScanning] = useState<boolean>(false);
   
   // Connect to QZ Tray
-  const connect = async () => {
+  const connect = useCallback(async () => {
     console.log("usePrintService: Iniciando conexión con QZ Tray");
-    const success = await printService.connect();
-    if (success) {
-      console.log("usePrintService: Conexión exitosa");
-      setIsConnected(true);
-      setAvailablePrinters(printService.getAvailablePrinters());
-      setDefaultPrinter(printService.getDefaultPrinter());
-      toast.success("Conectado al sistema de impresión QZ Tray");
-    } else {
-      console.log("usePrintService: Conexión fallida");
-      toast.error("No se pudo conectar al sistema de impresión", {
-        description: "Verifique que QZ Tray esté instalado y en ejecución",
+    try {
+      // Verificar si el objeto QZ Tray está disponible en el navegador
+      if (typeof window === 'undefined' || !window.qz) {
+        console.error("usePrintService: QZ Tray no disponible en el navegador");
+        toast.error("No se pudo conectar al sistema de impresión", {
+          description: "QZ Tray no está disponible en el navegador",
+          duration: 5000,
+        });
+        return false;
+      }
+      
+      const success = await printService.connect();
+      console.log("usePrintService: Resultado conexión =", success);
+      
+      if (success) {
+        console.log("usePrintService: Conexión exitosa");
+        setIsConnected(true);
+        setAvailablePrinters(printService.getAvailablePrinters());
+        setDefaultPrinter(printService.getDefaultPrinter());
+        toast.success("Conectado al sistema de impresión QZ Tray");
+      } else {
+        console.log("usePrintService: Conexión fallida");
+        toast.error("No se pudo conectar al sistema de impresión", {
+          description: "Verifique que QZ Tray esté instalado y en ejecución",
+          duration: 5000,
+        });
+      }
+      return success;
+    } catch (error) {
+      console.error("usePrintService: Error en conexión:", error);
+      toast.error("Error al conectar con el sistema de impresión", {
+        description: error instanceof Error ? error.message : "Error desconocido",
         duration: 5000,
       });
+      return false;
     }
-    return success;
-  };
+  }, []);
   
   // Disconnect from QZ Tray
-  const disconnect = async () => {
+  const disconnect = useCallback(async () => {
     console.log("usePrintService: Iniciando desconexión");
-    const success = await printService.disconnect();
-    if (success) {
-      console.log("usePrintService: Desconexión exitosa");
-      setIsConnected(false);
-      toast.info("Desconectado del sistema de impresión");
-    } else {
-      console.log("usePrintService: Desconexión fallida");
+    try {
+      const success = await printService.disconnect();
+      console.log("usePrintService: Resultado desconexión =", success);
+      
+      if (success) {
+        console.log("usePrintService: Desconexión exitosa");
+        setIsConnected(false);
+        toast.info("Desconectado del sistema de impresión");
+      } else {
+        console.log("usePrintService: Desconexión fallida");
+        toast.error("No se pudo desconectar del sistema de impresión");
+      }
+      return success;
+    } catch (error) {
+      console.error("usePrintService: Error en desconexión:", error);
+      toast.error("Error al desconectar del sistema de impresión");
+      return false;
     }
-    return success;
-  };
+  }, []);
 
   // Scan for printers
-  const scanForPrinters = async () => {
+  const scanForPrinters = useCallback(async () => {
     console.log("usePrintService: Iniciando escaneo de impresoras");
+    
     if (!isConnected) {
       console.log("usePrintService: No está conectado. Intentando conectar primero...");
       const connectionSuccess = await connect();
@@ -60,11 +91,20 @@ export function usePrintService() {
     try {
       console.log("usePrintService: Ejecutando refreshPrinters");
       const success = await printService.refreshPrinters();
+      
       if (success) {
         console.log("usePrintService: Impresoras actualizadas con éxito");
-        setAvailablePrinters(printService.getAvailablePrinters());
+        const printers = printService.getAvailablePrinters();
+        console.log("usePrintService: Impresoras encontradas:", printers);
+        setAvailablePrinters(printers);
         setDefaultPrinter(printService.getDefaultPrinter());
         toast.success("Lista de impresoras actualizada");
+        
+        if (printers.length === 0) {
+          toast.info("No se encontraron impresoras", {
+            description: "Asegúrese de que hay impresoras instaladas en el sistema"
+          });
+        }
       } else {
         console.log("usePrintService: No se pudieron actualizar las impresoras");
         toast.error("Error al buscar impresoras");
@@ -77,7 +117,7 @@ export function usePrintService() {
     } finally {
       setIsScanning(false);
     }
-  };
+  }, [isConnected, connect]);
   
   // Listen for status changes
   useEffect(() => {
@@ -92,16 +132,22 @@ export function usePrintService() {
     });
     
     // Auto-connect on mount (if we're in a relevant page)
-    console.log("usePrintService: Intentando conexión automática");
-    connect().catch(error => {
-      console.error("usePrintService: Error en conexión automática", error);
-    });
+    console.log("usePrintService: Comprobando si QZ Tray está disponible antes de intentar conexión automática");
+    
+    if (typeof window !== 'undefined' && window.qz) {
+      console.log("usePrintService: QZ Tray disponible, intentando conexión automática");
+      connect().catch(error => {
+        console.error("usePrintService: Error en conexión automática", error);
+      });
+    } else {
+      console.log("usePrintService: QZ Tray no disponible en este momento");
+    }
     
     return () => {
       console.log("usePrintService: Eliminando listener");
       unsubscribe();
     };
-  }, []);
+  }, [connect]);
   
   return {
     status,

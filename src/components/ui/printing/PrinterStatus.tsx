@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Printer, 
@@ -7,7 +7,7 @@ import {
   Loader2, 
   AlertCircle, 
   RefreshCw,
-  Power // Using Power instead of PrinterOff
+  Power
 } from 'lucide-react';
 import { usePrintService } from '@/hooks/use-print-service';
 import { Badge } from '@/components/ui/badge';
@@ -40,44 +40,63 @@ export function PrinterStatus({
     isScanning
   } = usePrintService();
   
+  const [isConnecting, setIsConnecting] = useState(false);
+  
   const handleToggleConnection = async () => {
-    console.log("🖨️ Intentando cambiar estado de conexión. Estado actual:", status);
+    console.log("🖨️ PrinterStatus: Intentando cambiar estado de conexión. Estado actual:", status);
+    
     try {
       if (isConnected) {
-        console.log("🖨️ Iniciando desconexión...");
+        console.log("🖨️ PrinterStatus: Iniciando desconexión...");
         await disconnect();
-        console.log("🖨️ Desconexión completada");
+        console.log("🖨️ PrinterStatus: Desconexión completada");
       } else {
-        console.log("🖨️ Iniciando conexión...");
+        console.log("🖨️ PrinterStatus: Iniciando conexión manual...");
+        setIsConnecting(true);
         const result = await connect();
-        console.log("🖨️ Resultado de conexión:", result ? "Exitoso" : "Fallido");
+        console.log("🖨️ PrinterStatus: Resultado de conexión:", result ? "Exitoso" : "Fallido");
+        setIsConnecting(false);
       }
     } catch (error) {
-      console.error("🖨️ Error al cambiar estado de conexión:", error);
+      console.error("🖨️ PrinterStatus: Error al cambiar estado de conexión:", error);
+      setIsConnecting(false);
     }
   };
 
   const handleScanPrinters = async () => {
-    console.log("🖨️ Iniciando escaneo de impresoras...");
+    console.log("🖨️ PrinterStatus: Iniciando escaneo de impresoras...");
     try {
       const result = await scanForPrinters();
-      console.log("🖨️ Resultado de escaneo:", result ? "Exitoso" : "Fallido");
+      console.log("🖨️ PrinterStatus: Resultado de escaneo:", result ? "Exitoso" : "Fallido");
     } catch (error) {
-      console.error("🖨️ Error al escanear impresoras:", error);
+      console.error("🖨️ PrinterStatus: Error al escanear impresoras:", error);
     }
   };
   
-  // Click handler for the tooltip when in compact mode
+  // Click handler para cuando está en modo compacto
   const handleCompactClick = () => {
-    console.log("🖨️ Click en estado compacto. Estado actual:", status);
+    console.log("🖨️ PrinterStatus: Click en estado compacto. Estado actual:", status);
     if (status === 'error') {
-      console.log("🖨️ Intentando conectar desde modo compacto...");
-      connect().catch(err => console.error("🖨️ Error al conectar desde compacto:", err));
+      console.log("🖨️ PrinterStatus: Intentando conectar desde modo compacto...");
+      setIsConnecting(true);
+      connect()
+        .then(result => {
+          console.log("🖨️ PrinterStatus: Resultado de conexión desde compacto:", result ? "Exitoso" : "Fallido");
+          setIsConnecting(false);
+        })
+        .catch(err => {
+          console.error("🖨️ PrinterStatus: Error al conectar desde compacto:", err);
+          setIsConnecting(false);
+        });
     }
   };
   
   // Status icon based on connection status
   const StatusIcon = () => {
+    if (isConnecting) {
+      return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+    }
+    
     switch (status) {
       case 'connected':
         return <Printer className="h-4 w-4 text-green-500" />;
@@ -94,6 +113,10 @@ export function PrinterStatus({
   
   // Status text based on connection status
   const getStatusText = () => {
+    if (isConnecting) {
+      return 'Conectando...';
+    }
+    
     switch (status) {
       case 'connected':
         return compact ? 'Conectado' : `Impresora conectada${defaultPrinter ? ` (${defaultPrinter})` : ''}`;
@@ -110,6 +133,10 @@ export function PrinterStatus({
   
   // Status color based on connection status
   const getStatusColor = () => {
+    if (isConnecting) {
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    }
+    
     switch (status) {
       case 'connected':
         return 'bg-green-100 text-green-800 border-green-200';
@@ -129,7 +156,11 @@ export function PrinterStatus({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="inline-flex cursor-pointer" onClick={handleCompactClick}>
+            <div 
+              className="inline-flex cursor-pointer" 
+              onClick={handleCompactClick}
+              aria-label="Estado del sistema de impresión"
+            >
               <Badge variant="outline" className={`${getStatusColor()} flex items-center gap-1`}>
                 <StatusIcon />
                 <span>{getStatusText()}</span>
@@ -159,9 +190,9 @@ export function PrinterStatus({
               size="sm" 
               variant={isConnected ? "outline" : "default"}
               onClick={handleToggleConnection}
-              disabled={status === 'connecting'}
+              disabled={status === 'connecting' || isConnecting}
             >
-              {status === 'connecting' ? (
+              {(status === 'connecting' || isConnecting) ? (
                 <>
                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   Conectando

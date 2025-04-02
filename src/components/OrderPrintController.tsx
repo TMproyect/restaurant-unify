@@ -1,8 +1,8 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface OrderPrintControllerProps {
@@ -19,6 +19,7 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
   showAlert = true
 }) => {
   const { isConnected, connect, status } = usePrintService();
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     // Intenta conectar automáticamente si no está conectado
@@ -40,11 +41,14 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
 
   const handleRetryConnection = async () => {
     console.log("OrderPrintController: Intentando reconexión manual");
+    setIsRetrying(true);
     try {
       const success = await connect();
       console.log(`OrderPrintController: Resultado de reconexión: ${success ? 'Exitoso' : 'Fallido'}`);
     } catch (error) {
       console.error('OrderPrintController: Error en reconexión manual:', error);
+    } finally {
+      setIsRetrying(false);
     }
   };
 
@@ -67,8 +71,16 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
               variant="destructive" 
               size="sm" 
               onClick={handleRetryConnection}
+              disabled={isRetrying}
             >
-              Reintentar Conexión
+              {isRetrying ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
+                  Intentando...
+                </>
+              ) : (
+                'Reintentar Conexión'
+              )}
             </Button>
           </AlertDescription>
         </Alert>

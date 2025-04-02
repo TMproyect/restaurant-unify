@@ -17,31 +17,31 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- QZ Tray dependencies -->
-    <script src="/qz-tray.min.js"></script>
+    <!-- QZ Tray dependencies - Cambiado a cargar con atributo defer para mejor manejo del timing -->
+    <script src="/qz-tray.min.js" defer></script>
     <script>
-      console.log('QZ Test Script: Ejecutando inmediatamente después de qz-tray.min.js');
-      if (typeof qz !== 'undefined') {
-        console.log('QZ Test Script: ¡Éxito! window.qz está DEFINIDO aquí.', qz);
-      } else {
-        console.warn('QZ Test Script: Fallo - window.qz sigue siendo UNDEFINED aquí.');
-        // Intentar esperar un poco más, como último recurso
-        setTimeout(function() {
+      // Escucha el evento DOMContentLoaded para empezar a verificar QZ
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM cargado. Comenzando verificación de QZ Tray...');
+        
+        // Primera verificación inmediata
+        checkQzTray();
+        
+        // Verificaciones adicionales con delays progresivos
+        setTimeout(checkQzTray, 1000);  // 1s
+        setTimeout(checkQzTray, 3000);  // 3s
+        setTimeout(checkQzTray, 5000);  // 5s
+        
+        function checkQzTray() {
           if (typeof qz !== 'undefined') {
-            console.log('QZ Test Script (Delayed): ¡Éxito! window.qz está DEFINIDO después de 2s.', qz);
+            console.log('VERIFICACIÓN QZ: ¡ÉXITO! window.qz DEFINIDO:', qz);
+            // Disparar un evento personalizado para notificar a PrintService
+            window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: qz }));
           } else {
-            console.warn('QZ Test Script (Delayed): Fallo - window.qz sigue UNDEFINED incluso después de 2s.');
-            // Intentar un último intervalo más prolongado
-            setTimeout(function() {
-              if (typeof qz !== 'undefined') {
-                console.log('QZ Test Script (Extended): ¡Éxito! window.qz está DEFINIDO después de 5s.', qz);
-              } else {
-                console.warn('QZ Test Script (Extended): Fallo crítico - window.qz sigue UNDEFINED incluso después de 5s.');
-              }
-            }, 3000); // 3s adicionales (5s total)
+            console.warn('VERIFICACIÓN QZ: window.qz todavía UNDEFINED. Tiempo:', new Date().toISOString());
           }
-        }, 2000); // Esperar 2 segundos adicionales
-      }
+        }
+      });
     </script>
   </head>
 

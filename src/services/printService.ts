@@ -28,7 +28,7 @@ class PrintService {
   private maxConnectionAttempts = 3;
   private qzCheckInterval: number | null = null;
   private qzWaitAttempts = 0;
-  private maxQzWaitAttempts = 30; // Increased from 10 to 30 attempts (15 seconds at 500ms intervals)
+  private maxQzWaitAttempts = 60; // Increased from 30 to 60 attempts (30 seconds at 500ms intervals)
 
   constructor() {
     // Initialize when the service is created

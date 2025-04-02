@@ -28,7 +28,7 @@ class PrintService {
   private maxConnectionAttempts = 3;
   private qzCheckInterval: number | null = null;
   private qzWaitAttempts = 0;
-  private maxQzWaitAttempts = 10;
+  private maxQzWaitAttempts = 30; // Increased from 10 to 30 attempts (15 seconds at 500ms intervals)
 
   constructor() {
     // Initialize when the service is created
@@ -134,6 +134,12 @@ class PrintService {
         }
 
         this.qzWaitAttempts++;
+        
+        // Log periodically but not on every attempt to avoid console spam
+        if (this.qzWaitAttempts % 5 === 0) {
+          console.log(`PrintService: Esperando QZ Tray... (${this.qzWaitAttempts * 0.5}s / ${this.maxQzWaitAttempts * 0.5}s)`);
+        }
+        
         if (this.qzWaitAttempts >= this.maxQzWaitAttempts) {
           console.log(`PrintService: QZ Tray no disponible después de ${this.maxQzWaitAttempts * 0.5} segundos`);
           clearInterval(interval);

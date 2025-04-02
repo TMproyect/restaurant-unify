@@ -1,26 +1,42 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Printer, WifiOff, Loader2, AlertCircle } from 'lucide-react';
+import { 
+  Printer, 
+  WifiOff, 
+  Loader2, 
+  AlertCircle, 
+  RefreshCw,
+  PrinterOff
+} from 'lucide-react';
 import { usePrintService } from '@/hooks/use-print-service';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PrinterStatusProps {
   showConnectButton?: boolean;
   compact?: boolean;
+  showHelp?: boolean;
 }
 
 export function PrinterStatus({ 
   showConnectButton = true,
-  compact = false 
+  compact = false,
+  showHelp = false
 }: PrinterStatusProps) {
   const { 
     status, 
     isConnected, 
     connect, 
     disconnect,
-    defaultPrinter 
+    defaultPrinter,
+    scanForPrinters
   } = usePrintService();
   
   const handleToggleConnection = async () => {
@@ -29,6 +45,10 @@ export function PrinterStatus({
     } else {
       await connect();
     }
+  };
+
+  const handleScanPrinters = async () => {
+    await scanForPrinters();
   };
   
   // Status icon based on connection status
@@ -84,13 +104,16 @@ export function PrinterStatus({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="outline" className={`${getStatusColor()} flex items-center gap-1 cursor-default`}>
-              <StatusIcon />
-              <span>{getStatusText()}</span>
-            </Badge>
+            <div className="inline-flex cursor-pointer">
+              <Badge variant="outline" className={`${getStatusColor()} flex items-center gap-1`}>
+                <StatusIcon />
+                <span>{getStatusText()}</span>
+              </Badge>
+            </div>
           </TooltipTrigger>
           <TooltipContent>
             <p>Estado del sistema de impresión</p>
+            {status === 'error' && <p className="text-xs text-red-500">Haga clic para solucionar</p>}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -98,27 +121,65 @@ export function PrinterStatus({
   }
   
   return (
-    <div className="flex items-center gap-2">
+    <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <StatusIcon />
-        <span className="text-sm">{getStatusText()}</span>
+        <div className="flex items-center gap-2">
+          <StatusIcon />
+          <span className="text-sm">{getStatusText()}</span>
+        </div>
+        
+        {showConnectButton && (
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm" 
+              variant={isConnected ? "outline" : "default"}
+              onClick={handleToggleConnection}
+              disabled={status === 'connecting'}
+            >
+              {status === 'connecting' ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Conectando
+                </>
+              ) : isConnected ? (
+                <>
+                  <PrinterOff className="mr-1 h-3 w-3" />
+                  Desconectar
+                </>
+              ) : (
+                <>
+                  <Printer className="mr-1 h-3 w-3" />
+                  Conectar
+                </>
+              )}
+            </Button>
+            
+            {isConnected && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleScanPrinters}
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Buscar Impresoras
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       
-      {showConnectButton && (
-        <Button 
-          size="sm" 
-          variant={isConnected ? "outline" : "default"}
-          onClick={handleToggleConnection}
-          disabled={status === 'connecting'}
-          className="ml-2"
-        >
-          {status === 'connecting' ? (
-            <>
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              Conectando
-            </>
-          ) : isConnected ? 'Desconectar' : 'Conectar'}
-        </Button>
+      {showHelp && status === 'error' && (
+        <Alert variant="destructive" className="py-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <p className="text-sm">No se pudo conectar con QZ Tray. Verifique que:</p>
+            <ol className="text-sm list-decimal pl-5 mt-1">
+              <li>QZ Tray esté instalado en su computadora</li>
+              <li>QZ Tray esté ejecutándose (busque el icono en la bandeja del sistema)</li>
+              <li>Su navegador permita conexiones con aplicaciones locales</li>
+            </ol>
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

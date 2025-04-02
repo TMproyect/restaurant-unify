@@ -78,14 +78,12 @@ class PrintService {
     // Error callback
     window.qz.websocket.setErrorCallbacks((error: any) => {
       console.error('QZ Tray error:', error);
-      toast.error('Error en el sistema de impresión');
       this.updateStatus('error');
     });
 
     // Closed callback
     window.qz.websocket.setClosedCallbacks(() => {
       console.warn('QZ Tray connection closed');
-      toast.warning('Conexión con el sistema de impresión cerrada');
       this.updateStatus('disconnected');
     });
   }
@@ -111,6 +109,25 @@ class PrintService {
       // Connect to QZ Tray
       await window.qz.websocket.connect();
       
+      // Get list of available printers after successful connection
+      await this.refreshPrinters();
+
+      this.updateStatus('connected');
+      return true;
+    } catch (error) {
+      console.error('Error connecting to QZ Tray:', error);
+      this.updateStatus('error');
+      return false;
+    }
+  }
+
+  // Refresh the list of available printers
+  public async refreshPrinters(): Promise<boolean> {
+    if (!window.qz || !window.qz.websocket.isActive()) {
+      return false;
+    }
+
+    try {
       // Get list of available printers
       const printers = await window.qz.printers.find();
       this.availablePrinters = printers.map((name: string) => ({
@@ -128,13 +145,9 @@ class PrintService {
         }));
       }
 
-      this.updateStatus('connected');
-      toast.success('Conectado al sistema de impresión');
       return true;
     } catch (error) {
-      console.error('Error connecting to QZ Tray:', error);
-      this.updateStatus('error');
-      toast.error('Error al conectar con el sistema de impresión');
+      console.error('Error refreshing printers:', error);
       return false;
     }
   }
@@ -149,7 +162,6 @@ class PrintService {
     try {
       await window.qz.websocket.disconnect();
       this.updateStatus('disconnected');
-      toast.info('Desconectado del sistema de impresión');
       return true;
     } catch (error) {
       console.error('Error disconnecting from QZ Tray:', error);

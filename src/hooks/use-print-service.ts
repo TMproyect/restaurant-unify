@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import printService, { PrinterConnectionStatus, PrinterConfig } from '@/services/printService';
 import { toast } from "sonner";
@@ -15,8 +14,19 @@ export function usePrintService() {
     console.log("usePrintService: Iniciando conexión con QZ Tray");
     try {
       // Verificar si el objeto QZ Tray está disponible en el navegador
-      if (typeof window === 'undefined' || !window.qz) {
-        console.error("usePrintService: QZ Tray no disponible en el navegador");
+      if (typeof window === 'undefined') {
+        console.error("usePrintService: No estamos en un entorno de navegador");
+        toast.error("No se pudo conectar al sistema de impresión", {
+          description: "No estamos en un entorno de navegador",
+          duration: 5000,
+        });
+        return false;
+      }
+      
+      // Verificar si QZ Tray está cargado
+      const qzLoaded = await printService.ensureQzTrayLoaded();
+      if (!qzLoaded) {
+        console.error("usePrintService: No se pudo cargar QZ Tray después de múltiples intentos");
         toast.error("No se pudo conectar al sistema de impresión", {
           description: "QZ Tray no está instalado o no está en ejecución",
           duration: 5000,
@@ -126,7 +136,7 @@ export function usePrintService() {
         connect().catch(error => {
           console.error("usePrintService: Error en conexión automática", error);
         });
-      }, 2000);
+      }, 3000); // Aumentamos el tiempo de espera a 3 segundos
       
       return () => {
         clearTimeout(autoConnectTimer);

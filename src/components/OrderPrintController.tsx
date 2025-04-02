@@ -28,17 +28,23 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
     if (!isConnected && !autoConnectAttempted) {
       console.log("OrderPrintController: Intentando conexión automática");
       setAutoConnectAttempted(true);
-      connect()
-        .then((success) => {
-          if (success) {
-            console.log('OrderPrintController: Sistema de impresión conectado automáticamente');
-          } else {
-            console.log('OrderPrintController: No se pudo conectar al sistema de impresión automáticamente');
-          }
-        })
-        .catch((error) => {
-          console.error('OrderPrintController: Error al conectar con el sistema de impresión:', error);
-        });
+      
+      // Pequeño retraso para asegurar que los scripts estén cargados
+      const timer = setTimeout(() => {
+        connect()
+          .then((success) => {
+            if (success) {
+              console.log('OrderPrintController: Sistema de impresión conectado automáticamente');
+            } else {
+              console.log('OrderPrintController: No se pudo conectar al sistema de impresión automáticamente');
+            }
+          })
+          .catch((error) => {
+            console.error('OrderPrintController: Error al conectar con el sistema de impresión:', error);
+          });
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
   }, [isConnected, connect, autoConnectAttempted]);
 
@@ -104,4 +110,3 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
 };
 
 export default OrderPrintController;
-

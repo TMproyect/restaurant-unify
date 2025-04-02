@@ -1,4 +1,3 @@
-
 // QZ Tray service for handling printer connections
 import { toast } from "sonner";
 
@@ -28,6 +27,8 @@ class PrintService {
   private connectionAttempts = 0;
   private maxConnectionAttempts = 3;
   private qzCheckInterval: number | null = null;
+  private qzLoadAttempts = 0;
+  private maxQzLoadAttempts = 5;
 
   constructor() {
     // Initialize when the service is created
@@ -74,6 +75,94 @@ class PrintService {
     } else {
       console.log("PrintService: QZ Tray no disponible en esta comprobación");
     }
+  }
+
+  // Asegurarse de que QZ Tray esté cargado, con reintentos
+  public async ensureQzTrayLoaded(): Promise<boolean> {
+    console.log("PrintService: Asegurando que QZ Tray esté cargado");
+    
+    // Si QZ Tray ya está disponible, devolvemos true inmediatamente
+    if (window.qz) {
+      console.log("PrintService: QZ Tray ya está disponible");
+      
+      // Configurar el servicio si aún no está listo
+      if (!this.isReady) {
+        this.setupService();
+      }
+      
+      return true;
+    }
+    
+    // Si hemos alcanzado el número máximo de intentos, fallamos
+    if (this.qzLoadAttempts >= this.maxQzLoadAttempts) {
+      console.error("PrintService: Número máximo de intentos de carga de QZ Tray alcanzado");
+      return false;
+    }
+    
+    // Incrementar contador de intentos
+    this.qzLoadAttempts++;
+    
+    console.log(`PrintService: Intento ${this.qzLoadAttempts} de cargar QZ Tray`);
+    
+    try {
+      // Intentar cargar QZ Tray dinámicamente si no está disponible
+      if (!window.qz) {
+        await this.loadQzTrayScript();
+      }
+      
+      // Esperar a que QZ Tray esté disponible
+      await this.waitForQZ();
+      
+      console.log("PrintService: QZ Tray cargado con éxito");
+      
+      if (!this.isReady) {
+        this.setupService();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("PrintService: Error al cargar QZ Tray:", error);
+      
+      // Si todavía tenemos intentos disponibles, intentamos de nuevo después de un breve retraso
+      if (this.qzLoadAttempts < this.maxQzLoadAttempts) {
+        console.log(`PrintService: Reintentando cargar QZ Tray en 1 segundo (intento ${this.qzLoadAttempts}/${this.maxQzLoadAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.ensureQzTrayLoaded(); // Recursión para reintentar
+      }
+      
+      return false;
+    }
+  }
+  
+  // Cargar el script QZ Tray dinámicamente
+  private loadQzTrayScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.scriptLoaded || window.qz) {
+        resolve();
+        return;
+      }
+      
+      console.log("PrintService: Cargando QZ Tray script dinámicamente");
+      
+      const script = document.createElement('script');
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.2.1/qz-tray.js";
+      script.integrity = "sha512-2G1ZyqmP1rpnCxAzKRO7kLxwAzXUQYFU3eVtVVG1sOgx9QKCChvVvhCN4Rg4FbHQ+6S4V4qLOeE9ZYaNwpUCdA==";
+      script.crossOrigin = "anonymous";
+      script.referrerPolicy = "no-referrer";
+      
+      script.onload = () => {
+        console.log("PrintService: Script de QZ Tray cargado con éxito");
+        this.scriptLoaded = true;
+        resolve();
+      };
+      
+      script.onerror = (error) => {
+        console.error("PrintService: Error al cargar el script de QZ Tray:", error);
+        reject(new Error("No se pudo cargar el script de QZ Tray"));
+      };
+      
+      document.head.appendChild(script);
+    });
   }
 
   // Configure service after QZ is available
@@ -173,8 +262,8 @@ class PrintService {
   public async connect(): Promise<boolean> {
     console.log('PrintService: Verificando disponibilidad de QZ Tray...');
     
-    // Verificamos primero si QZ está ya disponible
-    const qzAvailable = await this.isQzAvailable();
+    // Verificamos primero si QZ está ya disponible o si podemos cargarlo dinámicamente
+    const qzAvailable = await this.ensureQzTrayLoaded();
     if (!qzAvailable) {
       console.error('PrintService: QZ Tray no está disponible en el navegador');
       this.updateStatus('error');
@@ -230,40 +319,6 @@ class PrintService {
       toast.error("Error al conectar con QZ Tray", {
         description: error instanceof Error ? error.message : "Error desconocido",
       });
-      return false;
-    }
-  }
-
-  // Verificar si QZ Tray está disponible
-  private async isQzAvailable(): Promise<boolean> {
-    console.log("PrintService: Verificando disponibilidad de QZ Tray");
-    
-    // Si ya está listo, retornar true
-    if (window.qz) {
-      console.log("PrintService: QZ Tray ya está disponible");
-      
-      // Configurar el servicio si aún no está listo
-      if (!this.isReady) {
-        this.setupService();
-      }
-      
-      return true;
-    }
-
-    console.log("PrintService: QZ Tray no detectado inicialmente, esperando...");
-    
-    // Intentar esperar un poco para ver si QZ Tray se carga
-    try {
-      await this.waitForQZ();
-      console.log("PrintService: QZ Tray detectado después de espera");
-      
-      if (!this.isReady) {
-        this.setupService();
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("PrintService: QZ Tray no disponible después de esperar:", error);
       return false;
     }
   }

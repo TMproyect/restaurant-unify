@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, AlertTriangle, CheckCircle, Loader2, Terminal, Download } from 'lucide-react';
+import { isQzScriptLoaded, loadQzScript } from '@/services/printing/qzDetection';
 
 interface QzDiagnosticToolProps {
   onClose?: () => void;
@@ -15,51 +16,36 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
   const [checking, setChecking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Función para comprobar el estado de QZ Tray
+  // Function to check QZ Tray status
   const checkQzStatus = () => {
     setChecking(true);
     setErrorMsg(null);
 
-    // 1. Comprobar si el script está cargado
-    const qzScriptTags = document.querySelectorAll('script[src*="qz-tray"]');
-    const scriptExists = qzScriptTags.length > 0;
+    // 1. Check if script is loaded
+    const scriptExists = isQzScriptLoaded();
     setScriptLoaded(scriptExists);
 
-    // 2. Comprobar si el objeto qz está disponible
+    // 2. Check if qz object is available
     setQzAvailable(typeof window.qz !== 'undefined');
 
     setChecking(false);
   };
 
-  const loadQzScript = () => {
+  const handleLoadQzScript = async () => {
+    setChecking(true);
+    setErrorMsg(null);
+    
     try {
-      // Si no existe el script, lo añadimos dinámicamente
-      const existingScript = document.querySelector('script[src*="qz-tray"]');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.src = '/qz-tray.min.js';
-        script.defer = true;
-        script.onload = () => {
-          console.log("Script QZ Tray cargado dinámicamente");
-          setTimeout(checkQzStatus, 1000); // Comprobar después de un segundo
-        };
-        script.onerror = (e) => {
-          console.error("Error al cargar script QZ Tray", e);
-          setErrorMsg("No se pudo cargar el script de QZ Tray. Verifique que el archivo exista en el servidor.");
-          setChecking(false);
-        };
-        document.head.appendChild(script);
-      } else {
-        setErrorMsg("El script ya está presente, pero no se ha inicializado correctamente. Intente recargar la página.");
-      }
+      await loadQzScript();
+      setTimeout(checkQzStatus, 1000); // Check again after a second
     } catch (err) {
-      console.error("Error al añadir script dinámicamente", err);
-      setErrorMsg(`Error al añadir script: ${err}`);
+      console.error("Error loading QZ Tray script", err);
+      setErrorMsg(err instanceof Error ? err.message : "Unknown error loading QZ Tray script");
       setChecking(false);
     }
   };
 
-  // Comprobación inicial al montar el componente
+  // Initial check when component mounts
   useEffect(() => {
     checkQzStatus();
   }, []);
@@ -69,18 +55,18 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
       <CardHeader className="bg-amber-100">
         <CardTitle className="flex items-center gap-2">
           <Terminal className="h-5 w-5" />
-          Herramienta de diagnóstico QZ Tray
+          QZ Tray Diagnostic Tool
         </CardTitle>
       </CardHeader>
 
       <CardContent className="py-4 space-y-4">
         <div className="space-y-4">
-          <h3 className="font-medium">Estado de QZ Tray</h3>
+          <h3 className="font-medium">QZ Tray Status</h3>
           
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 bg-white rounded-md border">
               <div className="flex items-center gap-2">
-                <span>Script QZ Tray cargado:</span>
+                <span>QZ Tray script loaded:</span>
               </div>
               {checking ? (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -93,7 +79,7 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
             
             <div className="flex items-center justify-between p-2 bg-white rounded-md border">
               <div className="flex items-center gap-2">
-                <span>Objeto window.qz disponible:</span>
+                <span>window.qz available:</span>
               </div>
               {checking ? (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -116,16 +102,16 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="space-y-2">
-                <p>Problemas detectados con QZ Tray:</p>
+                <p>Problems detected with QZ Tray:</p>
                 <ul className="list-disc pl-5 space-y-1">
-                  {!scriptLoaded && <li>El script de QZ Tray no está cargado correctamente.</li>}
-                  {!qzAvailable && <li>El objeto window.qz no está disponible.</li>}
+                  {!scriptLoaded && <li>QZ Tray script is not loaded correctly.</li>}
+                  {!qzAvailable && <li>window.qz object is not available.</li>}
                 </ul>
-                <p className="mt-2">Recomendaciones:</p>
+                <p className="mt-2">Recommendations:</p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Verifique que QZ Tray esté instalado y ejecutándose</li>
-                  <li>Intente recargar la página</li>
-                  <li>Compruebe que el archivo qz-tray.min.js existe en el servidor</li>
+                  <li>Verify QZ Tray is installed and running</li>
+                  <li>Try reloading the page</li>
+                  <li>Check that qz-tray.min.js exists on the server</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -138,24 +124,24 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
           {checking ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Comprobando...
+              Checking...
             </>
           ) : (
-            'Comprobar estado'
+            'Check status'
           )}
         </Button>
         
         <div className="flex gap-2">
           {!scriptLoaded && (
-            <Button variant="outline" size="sm" onClick={loadQzScript} disabled={checking}>
-              Cargar script
+            <Button variant="outline" size="sm" onClick={handleLoadQzScript} disabled={checking}>
+              Load script
             </Button>
           )}
           
           <Button variant="default" size="sm" asChild>
             <a href="https://qz.io/download/" target="_blank" rel="noreferrer">
               <Download className="mr-2 h-4 w-4" />
-              Descargar QZ Tray
+              Download QZ Tray
             </a>
           </Button>
         </div>

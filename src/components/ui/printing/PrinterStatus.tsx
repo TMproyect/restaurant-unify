@@ -7,7 +7,7 @@ import {
   Loader2, 
   AlertCircle, 
   RefreshCw,
-  PrinterOff
+  Power // Using Power instead of PrinterOff
 } from 'lucide-react';
 import { usePrintService } from '@/hooks/use-print-service';
 import { Badge } from '@/components/ui/badge';
@@ -143,7 +143,7 @@ export function PrinterStatus({
                 </>
               ) : isConnected ? (
                 <>
-                  <PrinterOff className="mr-1 h-3 w-3" />
+                  <Power className="mr-1 h-3 w-3" />
                   Desconectar
                 </>
               ) : (

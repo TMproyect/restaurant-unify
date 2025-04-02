@@ -64,6 +64,9 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
   // Mostrar alerta solo si hay error y showAlert es true
   const showConnectionError = showAlert && (status === 'error' || status === 'disconnected');
 
+  // Helper function to check if status is 'connecting'
+  const isConnecting = status === 'connecting';
+
   return (
     <>
       {showConnectionError && (
@@ -80,10 +83,10 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
               variant="destructive" 
               size="sm" 
               onClick={handleRetryConnection}
-              disabled={isRetrying || status === 'connecting'}
+              disabled={isRetrying || isConnecting}
               className="min-w-[150px]"
             >
-              {(isRetrying || status === 'connecting') ? (
+              {(isRetrying || isConnecting) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
                   Conectando...
@@ -101,3 +104,4 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
 };
 
 export default OrderPrintController;
+

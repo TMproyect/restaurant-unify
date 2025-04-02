@@ -23,19 +23,30 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
   useEffect(() => {
     // Intenta conectar automáticamente si no está conectado
     if (!isConnected) {
+      console.log("OrderPrintController: Intentando conexión automática");
       connect()
         .then((success) => {
           if (success) {
-            console.log('Sistema de impresión conectado automáticamente');
+            console.log('OrderPrintController: Sistema de impresión conectado automáticamente');
           } else {
-            console.log('No se pudo conectar al sistema de impresión automáticamente');
+            console.log('OrderPrintController: No se pudo conectar al sistema de impresión automáticamente');
           }
         })
         .catch((error) => {
-          console.error('Error al conectar con el sistema de impresión:', error);
+          console.error('OrderPrintController: Error al conectar con el sistema de impresión:', error);
         });
     }
   }, [isConnected, connect]);
+
+  const handleRetryConnection = async () => {
+    console.log("OrderPrintController: Intentando reconexión manual");
+    try {
+      const success = await connect();
+      console.log(`OrderPrintController: Resultado de reconexión: ${success ? 'Exitoso' : 'Fallido'}`);
+    } catch (error) {
+      console.error('OrderPrintController: Error en reconexión manual:', error);
+    }
+  };
 
   // Mostrar alerta solo si hay error y showAlert es true
   const showConnectionError = showAlert && status === 'error';
@@ -52,7 +63,11 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
                 No se pudo conectar con QZ Tray. Verifique que esté instalado y en ejecución en su computadora.
               </p>
             </div>
-            <Button variant="destructive" size="sm" onClick={() => connect()}>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleRetryConnection}
+            >
               Reintentar Conexión
             </Button>
           </AlertDescription>

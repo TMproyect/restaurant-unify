@@ -36,19 +36,44 @@ export function PrinterStatus({
     connect, 
     disconnect,
     defaultPrinter,
-    scanForPrinters
+    scanForPrinters,
+    isScanning
   } = usePrintService();
   
   const handleToggleConnection = async () => {
-    if (isConnected) {
-      await disconnect();
-    } else {
-      await connect();
+    console.log("🖨️ Intentando cambiar estado de conexión. Estado actual:", status);
+    try {
+      if (isConnected) {
+        console.log("🖨️ Iniciando desconexión...");
+        await disconnect();
+        console.log("🖨️ Desconexión completada");
+      } else {
+        console.log("🖨️ Iniciando conexión...");
+        const result = await connect();
+        console.log("🖨️ Resultado de conexión:", result ? "Exitoso" : "Fallido");
+      }
+    } catch (error) {
+      console.error("🖨️ Error al cambiar estado de conexión:", error);
     }
   };
 
   const handleScanPrinters = async () => {
-    await scanForPrinters();
+    console.log("🖨️ Iniciando escaneo de impresoras...");
+    try {
+      const result = await scanForPrinters();
+      console.log("🖨️ Resultado de escaneo:", result ? "Exitoso" : "Fallido");
+    } catch (error) {
+      console.error("🖨️ Error al escanear impresoras:", error);
+    }
+  };
+  
+  // Click handler for the tooltip when in compact mode
+  const handleCompactClick = () => {
+    console.log("🖨️ Click en estado compacto. Estado actual:", status);
+    if (status === 'error') {
+      console.log("🖨️ Intentando conectar desde modo compacto...");
+      connect().catch(err => console.error("🖨️ Error al conectar desde compacto:", err));
+    }
   };
   
   // Status icon based on connection status
@@ -104,7 +129,7 @@ export function PrinterStatus({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="inline-flex cursor-pointer">
+            <div className="inline-flex cursor-pointer" onClick={handleCompactClick}>
               <Badge variant="outline" className={`${getStatusColor()} flex items-center gap-1`}>
                 <StatusIcon />
                 <span>{getStatusText()}</span>
@@ -159,9 +184,10 @@ export function PrinterStatus({
                 size="sm" 
                 variant="outline"
                 onClick={handleScanPrinters}
+                disabled={isScanning}
               >
-                <RefreshCw className="mr-1 h-3 w-3" />
-                Buscar Impresoras
+                <RefreshCw className={`mr-1 h-3 w-3 ${isScanning ? 'animate-spin' : ''}`} />
+                {isScanning ? "Buscando..." : "Buscar Impresoras"}
               </Button>
             )}
           </div>

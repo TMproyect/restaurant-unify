@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,11 +22,18 @@ const Settings = () => {
     isConnected, 
     connect,
     scanForPrinters,
-    status
+    status,
+    isScanning
   } = usePrintService();
 
   const handleRefreshPrinters = async () => {
+    console.log("Settings: Iniciando escaneo de impresoras desde settings");
     await scanForPrinters();
+  };
+
+  const handleConnect = async () => {
+    console.log("Settings: Iniciando conexión desde settings");
+    await connect();
   };
 
   return (
@@ -108,7 +116,7 @@ const Settings = () => {
                                 <Button 
                                   variant="default" 
                                   size="sm"
-                                  onClick={() => connect()}
+                                  onClick={handleConnect}
                                   className="gap-1"
                                 >
                                   <ArrowRight className="h-3 w-3" />
@@ -133,10 +141,10 @@ const Settings = () => {
                           variant="outline" 
                           size="sm" 
                           onClick={handleRefreshPrinters}
-                          disabled={!isConnected}
+                          disabled={!isConnected || isScanning}
                         >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Buscar Impresoras
+                          <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                          {isScanning ? "Buscando..." : "Buscar Impresoras"}
                         </Button>
                       </div>
                     </div>

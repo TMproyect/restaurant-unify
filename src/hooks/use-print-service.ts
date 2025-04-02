@@ -18,7 +18,7 @@ export function usePrintService() {
       if (typeof window === 'undefined' || !window.qz) {
         console.error("usePrintService: QZ Tray no disponible en el navegador");
         toast.error("No se pudo conectar al sistema de impresión", {
-          description: "QZ Tray no está disponible en el navegador",
+          description: "QZ Tray no está instalado o no está en ejecución",
           duration: 5000,
         });
         return false;
@@ -32,13 +32,8 @@ export function usePrintService() {
         setIsConnected(true);
         setAvailablePrinters(printService.getAvailablePrinters());
         setDefaultPrinter(printService.getDefaultPrinter());
-        toast.success("Conectado al sistema de impresión QZ Tray");
       } else {
         console.log("usePrintService: Conexión fallida");
-        toast.error("No se pudo conectar al sistema de impresión", {
-          description: "Verifique que QZ Tray esté instalado y en ejecución",
-          duration: 5000,
-        });
       }
       return success;
     } catch (error) {
@@ -61,10 +56,8 @@ export function usePrintService() {
       if (success) {
         console.log("usePrintService: Desconexión exitosa");
         setIsConnected(false);
-        toast.info("Desconectado del sistema de impresión");
       } else {
         console.log("usePrintService: Desconexión fallida");
-        toast.error("No se pudo desconectar del sistema de impresión");
       }
       return success;
     } catch (error) {
@@ -98,16 +91,8 @@ export function usePrintService() {
         console.log("usePrintService: Impresoras encontradas:", printers);
         setAvailablePrinters(printers);
         setDefaultPrinter(printService.getDefaultPrinter());
-        toast.success("Lista de impresoras actualizada");
-        
-        if (printers.length === 0) {
-          toast.info("No se encontraron impresoras", {
-            description: "Asegúrese de que hay impresoras instaladas en el sistema"
-          });
-        }
       } else {
         console.log("usePrintService: No se pudieron actualizar las impresoras");
-        toast.error("Error al buscar impresoras");
       }
       return success;
     } catch (error) {
@@ -134,18 +119,25 @@ export function usePrintService() {
     // Auto-connect on mount (if we're in a relevant page)
     console.log("usePrintService: Comprobando si QZ Tray está disponible antes de intentar conexión automática");
     
-    if (typeof window !== 'undefined' && window.qz) {
-      console.log("usePrintService: QZ Tray disponible, intentando conexión automática");
-      connect().catch(error => {
-        console.error("usePrintService: Error en conexión automática", error);
-      });
-    } else {
-      console.log("usePrintService: QZ Tray no disponible en este momento");
+    if (typeof window !== 'undefined') {
+      // Intentar conectar después de un breve retraso para permitir que se cargue la interfaz
+      const autoConnectTimer = setTimeout(() => {
+        console.log("usePrintService: Intentando conexión automática después del tiempo de espera");
+        connect().catch(error => {
+          console.error("usePrintService: Error en conexión automática", error);
+        });
+      }, 2000);
+      
+      return () => {
+        clearTimeout(autoConnectTimer);
+        unsubscribe();
+        console.log("usePrintService: Eliminando listener");
+      };
     }
     
     return () => {
-      console.log("usePrintService: Eliminando listener");
       unsubscribe();
+      console.log("usePrintService: Eliminando listener");
     };
   }, [connect]);
   

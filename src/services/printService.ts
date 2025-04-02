@@ -27,6 +27,7 @@ class PrintService {
   private scriptLoaded = false;
   private connectionAttempts = 0;
   private maxConnectionAttempts = 3;
+  private qzCheckInterval: number | null = null;
 
   constructor() {
     // Initialize when the service is created
@@ -39,21 +40,39 @@ class PrintService {
     
     // Verificar si QZ Tray ya está disponible
     if (typeof window !== 'undefined') {
-      if (window.qz) {
-        console.log("PrintService: QZ Tray ya está disponible");
-        this.setupService();
-      } else {
-        console.log("PrintService: QZ Tray no disponible, esperando carga");
-        this.waitForQZ()
-          .then(() => {
-            console.log("PrintService: QZ Tray cargado correctamente");
-            this.setupService();
-          })
-          .catch(err => {
-            console.error("PrintService: Error al inicializar QZ Tray:", err);
-            this.updateStatus('error');
-          });
+      console.log("PrintService: Comprobando disponibilidad de QZ Tray");
+      
+      // Primera comprobación inicial
+      this.checkQzAvailability();
+      
+      // Configurar un intervalo para comprobar periódicamente si QZ Tray está disponible
+      // (útil si el usuario inicia QZ Tray después de cargar la página)
+      this.qzCheckInterval = window.setInterval(() => {
+        this.checkQzAvailability();
+      }, 3000); // Comprobar cada 3 segundos
+    }
+  }
+
+  // Comprobar si QZ Tray está disponible
+  private checkQzAvailability() {
+    if (window.qz) {
+      console.log("PrintService: QZ Tray detectado en verificación periódica");
+      
+      // Si ya estamos listos, no hacer nada
+      if (this.isReady) {
+        return;
       }
+
+      // Detener el intervalo de comprobación si QZ Tray está disponible
+      if (this.qzCheckInterval) {
+        console.log("PrintService: Deteniendo comprobación periódica de QZ Tray");
+        window.clearInterval(this.qzCheckInterval);
+        this.qzCheckInterval = null;
+      }
+
+      this.setupService();
+    } else {
+      console.log("PrintService: QZ Tray no disponible en esta comprobación");
     }
   }
 
@@ -154,9 +173,15 @@ class PrintService {
   public async connect(): Promise<boolean> {
     console.log('PrintService: Verificando disponibilidad de QZ Tray...');
     
-    if (!window.qz) {
+    // Verificamos primero si QZ está ya disponible
+    const qzAvailable = await this.isQzAvailable();
+    if (!qzAvailable) {
       console.error('PrintService: QZ Tray no está disponible en el navegador');
       this.updateStatus('error');
+      toast.error("No se pudo conectar al sistema de impresión", {
+        description: "QZ Tray no está instalado o no está en ejecución",
+        duration: 5000,
+      });
       return false;
     }
     
@@ -197,10 +222,48 @@ class PrintService {
       await this.refreshPrinters();
 
       this.updateStatus('connected');
+      toast.success("Conectado al sistema de impresión QZ Tray");
       return true;
     } catch (error) {
       console.error('PrintService: Error al conectar con QZ Tray:', error);
       this.updateStatus('error');
+      toast.error("Error al conectar con QZ Tray", {
+        description: error instanceof Error ? error.message : "Error desconocido",
+      });
+      return false;
+    }
+  }
+
+  // Verificar si QZ Tray está disponible
+  private async isQzAvailable(): Promise<boolean> {
+    console.log("PrintService: Verificando disponibilidad de QZ Tray");
+    
+    // Si ya está listo, retornar true
+    if (window.qz) {
+      console.log("PrintService: QZ Tray ya está disponible");
+      
+      // Configurar el servicio si aún no está listo
+      if (!this.isReady) {
+        this.setupService();
+      }
+      
+      return true;
+    }
+
+    console.log("PrintService: QZ Tray no detectado inicialmente, esperando...");
+    
+    // Intentar esperar un poco para ver si QZ Tray se carga
+    try {
+      await this.waitForQZ();
+      console.log("PrintService: QZ Tray detectado después de espera");
+      
+      if (!this.isReady) {
+        this.setupService();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("PrintService: QZ Tray no disponible después de esperar:", error);
       return false;
     }
   }
@@ -209,14 +272,29 @@ class PrintService {
   public async refreshPrinters(): Promise<boolean> {
     console.log('PrintService: Iniciando actualización de impresoras...');
     
-    if (!window.qz) {
+    // Verificar si QZ está disponible
+    const qzAvailable = await this.isQzAvailable();
+    if (!qzAvailable) {
       console.error('PrintService: QZ Tray no disponible para buscar impresoras');
+      toast.error("No se pudo buscar impresoras", {
+        description: "QZ Tray no está instalado o no está en ejecución",
+      });
       return false;
     }
 
     if (!window.qz.websocket.isActive()) {
       console.error('PrintService: No hay conexión activa para buscar impresoras');
-      return false;
+      
+      // Intentamos conectar primero
+      console.log('PrintService: Intentando conectar antes de buscar impresoras');
+      const connected = await this.connect();
+      
+      if (!connected) {
+        toast.error("No se pudo buscar impresoras", {
+          description: "No hay conexión activa con QZ Tray",
+        });
+        return false;
+      }
     }
 
     try {
@@ -248,9 +326,21 @@ class PrintService {
         // No hacer fallar toda la operación por esto
       }
 
+      // Notificar al usuario del resultado
+      if (this.availablePrinters.length > 0) {
+        toast.success(`Se encontraron ${this.availablePrinters.length} impresoras`);
+      } else {
+        toast.info("No se encontraron impresoras instaladas", {
+          description: "Verifica que tengas impresoras configuradas en tu sistema",
+        });
+      }
+
       return true;
     } catch (error) {
       console.error('PrintService: Error al refrescar impresoras:', error);
+      toast.error("Error al buscar impresoras", {
+        description: error instanceof Error ? error.message : "Error desconocido",
+      });
       return false;
     }
   }
@@ -275,9 +365,11 @@ class PrintService {
       console.log('PrintService: Desconectando de QZ Tray');
       await window.qz.websocket.disconnect();
       this.updateStatus('disconnected');
+      toast.info("Desconectado del sistema de impresión");
       return true;
     } catch (error) {
       console.error('PrintService: Error al desconectar de QZ Tray:', error);
+      toast.error("Error al desconectar del sistema de impresión");
       return false;
     }
   }

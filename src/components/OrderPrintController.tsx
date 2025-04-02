@@ -20,11 +20,13 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
 }) => {
   const { isConnected, connect, status } = usePrintService();
   const [isRetrying, setIsRetrying] = useState(false);
+  const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
 
   useEffect(() => {
     // Intenta conectar automáticamente si no está conectado
-    if (!isConnected) {
+    if (!isConnected && !autoConnectAttempted) {
       console.log("OrderPrintController: Intentando conexión automática");
+      setAutoConnectAttempted(true);
       connect()
         .then((success) => {
           if (success) {
@@ -37,7 +39,14 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
           console.error('OrderPrintController: Error al conectar con el sistema de impresión:', error);
         });
     }
-  }, [isConnected, connect]);
+  }, [isConnected, connect, autoConnectAttempted]);
+
+  // Resetear el estado de isRetrying cuando cambia el estado de conexión
+  useEffect(() => {
+    if (status !== 'connecting' && isRetrying) {
+      setIsRetrying(false);
+    }
+  }, [status, isRetrying]);
 
   const handleRetryConnection = async () => {
     console.log("OrderPrintController: Intentando reconexión manual");
@@ -47,13 +56,12 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
       console.log(`OrderPrintController: Resultado de reconexión: ${success ? 'Exitoso' : 'Fallido'}`);
     } catch (error) {
       console.error('OrderPrintController: Error en reconexión manual:', error);
-    } finally {
-      setIsRetrying(false);
     }
+    // No hacemos setIsRetrying(false) aquí porque lo manejamos en el useEffect
   };
 
   // Mostrar alerta solo si hay error y showAlert es true
-  const showConnectionError = showAlert && status === 'error';
+  const showConnectionError = showAlert && (status === 'error' || status === 'disconnected');
 
   return (
     <>
@@ -71,12 +79,13 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
               variant="destructive" 
               size="sm" 
               onClick={handleRetryConnection}
-              disabled={isRetrying}
+              disabled={isRetrying || status === 'connecting'}
+              className="min-w-[150px]"
             >
-              {isRetrying ? (
+              {isRetrying || status === 'connecting' ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
-                  Intentando...
+                  Conectando...
                 </>
               ) : (
                 'Reintentar Conexión'

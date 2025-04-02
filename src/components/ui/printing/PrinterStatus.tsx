@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Printer, 
@@ -42,6 +42,14 @@ export function PrinterStatus({
   
   const [isConnecting, setIsConnecting] = useState(false);
   
+  // Efecto para resetear el estado de conexión cuando cambia el status
+  useEffect(() => {
+    if (status !== 'connecting' && isConnecting) {
+      console.log("🖨️ PrinterStatus: Reseteando estado de conexión porque status cambió a:", status);
+      setIsConnecting(false);
+    }
+  }, [status, isConnecting]);
+  
   const handleToggleConnection = async () => {
     console.log("🖨️ PrinterStatus: Intentando cambiar estado de conexión. Estado actual:", status);
     
@@ -76,7 +84,7 @@ export function PrinterStatus({
   // Click handler para cuando está en modo compacto
   const handleCompactClick = () => {
     console.log("🖨️ PrinterStatus: Click en estado compacto. Estado actual:", status);
-    if (status === 'error') {
+    if (status === 'error' || status === 'disconnected') {
       console.log("🖨️ PrinterStatus: Intentando conectar desde modo compacto...");
       setIsConnecting(true);
       connect()
@@ -169,7 +177,7 @@ export function PrinterStatus({
           </TooltipTrigger>
           <TooltipContent>
             <p>Estado del sistema de impresión</p>
-            {status === 'error' && <p className="text-xs text-red-500">Haga clic para solucionar</p>}
+            {(status === 'error' || status === 'disconnected') && <p className="text-xs text-red-500">Haga clic para solucionar</p>}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -191,6 +199,7 @@ export function PrinterStatus({
               variant={isConnected ? "outline" : "default"}
               onClick={handleToggleConnection}
               disabled={status === 'connecting' || isConnecting}
+              className="relative"
             >
               {(status === 'connecting' || isConnecting) ? (
                 <>

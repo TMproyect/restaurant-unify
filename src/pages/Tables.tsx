@@ -15,6 +15,8 @@ import {
 } from '@/services/tableService';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import OrderPrintController from '@/components/OrderPrintController';
+import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 
 const Tables: React.FC = () => {
   const [activeTab, setActiveTab] = useState('lista');
@@ -75,53 +77,58 @@ const Tables: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Gestión de Mesas</h1>
-          <Button 
-            onClick={handleRefresh}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Actualizar
-          </Button>
-        </div>
+      <OrderPrintController>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold">Gestión de Mesas</h1>
+            <div className="flex items-center space-x-3">
+              <PrinterStatus compact />
+              <Button 
+                onClick={handleRefresh}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Actualizar
+              </Button>
+            </div>
+          </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6">
-            <TabsTrigger value="lista">Lista de Mesas</TabsTrigger>
-            <TabsTrigger value="zonas">Zonas</TabsTrigger>
-            <TabsTrigger value="mapa">Mapa de Mesas</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="lista">
-            <TablesList 
-              tables={tables || []} 
-              isLoading={tablesLoading} 
-              zones={zones || []}
-              onRefresh={refetchTables}
-            />
-          </TabsContent>
-          
-          <TabsContent value="zonas">
-            <TableZones 
-              zones={zones || []} 
-              isLoading={zonesLoading}
-              onRefresh={refetchZones}
-            />
-          </TabsContent>
-          
-          <TabsContent value="mapa">
-            <TableMap 
-              tables={tables || []} 
-              zones={zones || []} 
-              isLoading={tablesLoading || zonesLoading}
-              onTableUpdate={refetchTables}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-3 mb-6">
+              <TabsTrigger value="lista">Lista de Mesas</TabsTrigger>
+              <TabsTrigger value="zonas">Zonas</TabsTrigger>
+              <TabsTrigger value="mapa">Mapa de Mesas</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="lista">
+              <TablesList 
+                tables={tables || []} 
+                isLoading={tablesLoading} 
+                zones={zones || []}
+                onRefresh={refetchTables}
+              />
+            </TabsContent>
+            
+            <TabsContent value="zonas">
+              <TableZones 
+                zones={zones || []} 
+                isLoading={zonesLoading}
+                onRefresh={refetchZones}
+              />
+            </TabsContent>
+            
+            <TabsContent value="mapa">
+              <TableMap 
+                tables={tables || []} 
+                zones={zones || []} 
+                isLoading={tablesLoading || zonesLoading}
+                onTableUpdate={refetchTables}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </OrderPrintController>
     </Layout>
   );
 };

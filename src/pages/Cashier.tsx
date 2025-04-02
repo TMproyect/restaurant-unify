@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import CashierOrdersList from '@/components/cashier/CashierOrdersList';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Search, CircleDollarSign, Receipt, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 
 const Cashier = () => {
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -90,10 +92,13 @@ const Cashier = () => {
             <CircleDollarSign size={24} className="text-primary" />
             <h1 className="text-2xl font-bold">Punto de Venta / Caja</h1>
           </div>
-          <Button onClick={() => setIsPaymentSheetOpen(true)} disabled={!selectedOrder}>
-            <Receipt className="mr-2 h-4 w-4" />
-            Procesar Pago
-          </Button>
+          <div className="flex gap-3 items-center">
+            <PrinterStatus compact />
+            <Button onClick={() => setIsPaymentSheetOpen(true)} disabled={!selectedOrder}>
+              <Receipt className="mr-2 h-4 w-4" />
+              Procesar Pago
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

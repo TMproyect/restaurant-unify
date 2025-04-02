@@ -28,7 +28,7 @@ class PrintService {
   private maxConnectionAttempts = 3;
   private qzCheckInterval: number | null = null;
   private qzWaitAttempts = 0;
-  private maxQzWaitAttempts = 60; // Increased from 30 to 60 attempts (30 seconds at 500ms intervals)
+  private maxQzWaitAttempts = 120; // Aumentado a 120 intentos (60 segundos a 500ms por intento)
 
   constructor() {
     // Initialize when the service is created
@@ -37,17 +37,20 @@ class PrintService {
 
   // Initialize the service and QZ Tray
   private initialize() {
-    console.log("PrintService: Inicializando servicio");
+    console.log("%c🖨️ PrintService: Iniciando servicio de impresión", "background: #004D40; color: white; padding: 2px 4px; border-radius: 2px;");
     
     // Verificar si QZ Tray ya está disponible
     if (typeof window !== 'undefined') {
-      console.log("PrintService: Comprobando disponibilidad de QZ Tray");
+      console.log("%c🖨️ PrintService: Comprobando disponibilidad inicial de QZ Tray", "background: #004D40; color: white; padding: 2px 4px; border-radius: 2px;");
+      
+      if (window.qz) {
+        console.log("%c🖨️ PrintService: QZ Tray detectado inmediatamente en inicialización", "background: #00796B; color: white; padding: 2px 4px; border-radius: 2px;");
+      }
       
       // Primera comprobación inicial
       this.checkQzAvailability();
       
       // Configurar un intervalo para comprobar periódicamente si QZ Tray está disponible
-      // (útil si el usuario inicia QZ Tray después de cargar la página)
       this.qzCheckInterval = window.setInterval(() => {
         this.checkQzAvailability();
       }, 3000); // Comprobar cada 3 segundos
@@ -56,8 +59,11 @@ class PrintService {
 
   // Comprobar si QZ Tray está disponible
   private checkQzAvailability() {
+    console.log("%c🖨️ PrintService: Verificación periódica de QZ Tray", "color: #004D40;");
+    console.log("%c🖨️ PrintService: window.qz =", "color: #004D40;", window.qz ? "DISPONIBLE" : "NO DISPONIBLE");
+    
     if (window.qz) {
-      console.log("PrintService: QZ Tray detectado en verificación periódica");
+      console.log("%c🖨️ PrintService: QZ Tray detectado en verificación periódica", "background: #00796B; color: white; padding: 2px 4px; border-radius: 2px;");
       
       // Si ya estamos listos, no hacer nada
       if (this.isReady) {
@@ -66,24 +72,25 @@ class PrintService {
 
       // Detener el intervalo de comprobación si QZ Tray está disponible
       if (this.qzCheckInterval) {
-        console.log("PrintService: Deteniendo comprobación periódica de QZ Tray");
+        console.log("%c🖨️ PrintService: Deteniendo comprobación periódica de QZ Tray", "color: #004D40;");
         window.clearInterval(this.qzCheckInterval);
         this.qzCheckInterval = null;
       }
 
       this.setupService();
     } else {
-      console.log("PrintService: QZ Tray no disponible en esta comprobación");
+      console.log("%c🖨️ PrintService: QZ Tray no disponible en esta comprobación", "color: #FF5722;");
     }
   }
 
   // Asegurarse de que QZ Tray esté cargado, con reintentos
   public async isQzAvailable(): Promise<boolean> {
-    console.log("PrintService: Verificando disponibilidad de QZ Tray");
+    console.log("%c🖨️ PrintService: Verificando disponibilidad de QZ Tray", "background: #004D40; color: white; padding: 2px 4px; border-radius: 2px;");
+    console.log("%c🖨️ PrintService: window.qz =", "color: #004D40;", window.qz ? "DISPONIBLE" : "NO DISPONIBLE");
     
     // Si QZ Tray ya está disponible, devolvemos true inmediatamente
     if (window.qz) {
-      console.log("PrintService: QZ Tray ya está disponible");
+      console.log("%c🖨️ PrintService: QZ Tray ya está disponible", "background: #00796B; color: white; padding: 2px 4px; border-radius: 2px;");
       
       // Configurar el servicio si aún no está listo
       if (!this.isReady) {
@@ -95,9 +102,10 @@ class PrintService {
     
     // Si QZ Tray no está disponible inmediatamente, intentamos esperar
     try {
+      console.log("%c🖨️ PrintService: QZ Tray no está inmediatamente disponible, intentando esperar", "color: #FFA000;");
       await this.waitForQZ();
       
-      console.log("PrintService: QZ Tray disponible después de esperar");
+      console.log("%c🖨️ PrintService: QZ Tray disponible después de esperar", "background: #00796B; color: white; padding: 2px 4px; border-radius: 2px;");
       
       if (!this.isReady) {
         this.setupService();
@@ -105,7 +113,7 @@ class PrintService {
       
       return true;
     } catch (error) {
-      console.error("PrintService: Error al esperar QZ Tray:", error);
+      console.error("%c🖨️ PrintService: Error al esperar QZ Tray:", "background: #F44336; color: white; padding: 2px 4px; border-radius: 2px;", error);
       return false;
     }
   }
@@ -114,34 +122,37 @@ class PrintService {
   private waitForQZ(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (window.qz) {
-        console.log("PrintService: QZ Tray detectado inmediatamente");
+        console.log("%c🖨️ PrintService: QZ Tray detectado inmediatamente en waitForQZ", "background: #00796B; color: white; padding: 2px 4px; border-radius: 2px;");
         resolve();
         return;
       }
 
-      console.log("PrintService: Esperando a QZ Tray...");
+      console.log("%c🖨️ PrintService: Esperando a QZ Tray...", "color: #FFA000;");
 
       // Reiniciar contador de intentos
       this.qzWaitAttempts = 0;
       
       // Check every 500ms for up to maxQzWaitAttempts times
       const interval = setInterval(() => {
+        this.qzWaitAttempts++;
+
+        // Verificamos si qz está disponible ahora
         if (window.qz) {
-          console.log(`PrintService: QZ Tray detectado después de ${this.qzWaitAttempts * 0.5} segundos`);
+          console.log(`%c🖨️ PrintService: QZ Tray detectado después de ${this.qzWaitAttempts * 0.5} segundos`, "background: #00796B; color: white; padding: 2px 4px; border-radius: 2px;");
           clearInterval(interval);
           resolve();
           return;
         }
-
-        this.qzWaitAttempts++;
         
         // Log periodically but not on every attempt to avoid console spam
         if (this.qzWaitAttempts % 5 === 0) {
-          console.log(`PrintService: Esperando QZ Tray... (${this.qzWaitAttempts * 0.5}s / ${this.maxQzWaitAttempts * 0.5}s)`);
+          console.log(`%c🖨️ PrintService: Esperando QZ Tray... (${this.qzWaitAttempts * 0.5}s / ${this.maxQzWaitAttempts * 0.5}s)`, "color: #FFA000;");
+          console.log("%c🖨️ PrintService: Estado actual de window.qz =", "color: #FFA000;", window.qz || "undefined");
         }
         
         if (this.qzWaitAttempts >= this.maxQzWaitAttempts) {
-          console.log(`PrintService: QZ Tray no disponible después de ${this.maxQzWaitAttempts * 0.5} segundos`);
+          console.log(`%c🖨️ PrintService: QZ Tray no disponible después de ${this.maxQzWaitAttempts * 0.5} segundos`, "background: #F44336; color: white; padding: 2px 4px; border-radius: 2px;");
+          console.log("%c🖨️ PrintService: Verificación final de window.qz =", "color: #F44336;", window.qz || "undefined");
           clearInterval(interval);
           reject(new Error(`QZ Tray no disponible después de ${this.maxQzWaitAttempts * 0.5} segundos`));
         }

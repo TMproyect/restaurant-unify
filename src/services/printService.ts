@@ -1,3 +1,4 @@
+
 // QZ Tray service for handling printer connections
 import { toast } from "sonner";
 
@@ -256,6 +257,27 @@ class PrintService {
         console.error('PrintService: Error al ejecutar callback de estado:', error);
       }
     });
+  }
+
+  // Check if QZ Tray is available in the browser
+  public async isQzAvailable(): Promise<boolean> {
+    if (typeof window === 'undefined') {
+      console.log("PrintService: No estamos en un entorno de navegador");
+      return false;
+    }
+    
+    // Si QZ ya está disponible, devolvemos true inmediatamente
+    if (window.qz) {
+      return true;
+    }
+    
+    // Si no está disponible, intentamos cargarlo
+    try {
+      return await this.ensureQzTrayLoaded();
+    } catch (error) {
+      console.error("PrintService: Error al verificar disponibilidad de QZ Tray:", error);
+      return false;
+    }
   }
 
   // Connect to QZ Tray

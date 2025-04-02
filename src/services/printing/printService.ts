@@ -324,4 +324,5 @@ class PrintService {
 const printService = new PrintService();
 
 export default printService;
-export { PrinterConnectionStatus, PrinterConfig };
+// Fix the type re-exports by adding the 'type' keyword
+export type { PrinterConnectionStatus, PrinterConfig };

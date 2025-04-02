@@ -4,6 +4,7 @@ import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PrinterConnectionStatus } from '@/services/printService';
 
 interface OrderPrintControllerProps {
   children: React.ReactNode;
@@ -82,7 +83,7 @@ const OrderPrintController: React.FC<OrderPrintControllerProps> = ({
               disabled={isRetrying || status === 'connecting'}
               className="min-w-[150px]"
             >
-              {isRetrying || status === 'connecting' ? (
+              {(isRetrying || status === 'connecting') ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
                   Conectando...

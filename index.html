@@ -17,30 +17,62 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- QZ Tray dependencies - Carga directa del archivo minificado para evitar problemas -->
-    <script src="/qz-tray.min.js" defer></script>
+    <!-- QZ Tray dependencies - Fixed script loading with absolute URL and better error handling -->
     <script>
-      // Escucha el evento DOMContentLoaded para empezar a verificar QZ
+      window.qzScriptLoaded = false;
+      
+      function loadQzTray() {
+        console.log('Attempting to load QZ Tray script...');
+        var script = document.createElement('script');
+        script.src = '/qz-tray.min.js'; 
+        script.async = false;
+        script.onload = function() {
+          console.log('QZ Tray script loaded successfully!');
+          window.qzScriptLoaded = true;
+          window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
+          
+          // Check for window.qz after a short delay to ensure initialization
+          setTimeout(function() {
+            if (window.qz) {
+              console.log('QZ Tray object initialized successfully!');
+              window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
+            } else {
+              console.warn('QZ Tray script loaded but window.qz is not available!');
+            }
+          }, 500);
+        };
+        script.onerror = function(e) {
+          console.error('Error loading QZ Tray script:', e);
+          window.dispatchEvent(new CustomEvent('qz-tray-load-error', { detail: e }));
+        };
+        document.head.appendChild(script);
+      }
+
+      // Load QZ Tray when DOM is ready
       document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM cargado. Comenzando verificación de QZ Tray...');
+        console.log('DOM loaded. Starting QZ Tray setup...');
         
-        // Primera verificación inmediata
-        checkQzTray();
+        // Load QZ Tray script
+        loadQzTray();
         
-        // Verificaciones adicionales con delays progresivos
-        setTimeout(checkQzTray, 1000);  // 1s
-        setTimeout(checkQzTray, 3000);  // 3s
-        setTimeout(checkQzTray, 5000);  // 5s
-        
-        function checkQzTray() {
-          if (typeof qz !== 'undefined') {
-            console.log('VERIFICACIÓN QZ: ¡ÉXITO! window.qz DEFINIDO:', qz);
-            // Disparar un evento personalizado para notificar a PrintService
-            window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: qz }));
-          } else {
-            console.warn('VERIFICACIÓN QZ: window.qz todavía UNDEFINED. Tiempo:', new Date().toISOString());
-          }
-        }
+        // Additional verification checks with progressive delays
+        var checkIntervals = [1000, 2000, 5000, 10000];
+        checkIntervals.forEach(function(delay) {
+          setTimeout(function() {
+            if (window.qz) {
+              console.log('QZ CHECK (' + delay + 'ms): SUCCESS! window.qz DEFINED:', window.qz);
+              window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
+            } else {
+              console.warn('QZ CHECK (' + delay + 'ms): window.qz still UNDEFINED at time:', new Date().toISOString());
+              
+              // If script loading failed, try loading again after 5 seconds
+              if (delay === 5000 && !window.qzScriptLoaded) {
+                console.log('Retrying QZ Tray script load after failed attempt...');
+                loadQzTray();
+              }
+            }
+          }, delay);
+        });
       });
     </script>
   </head>

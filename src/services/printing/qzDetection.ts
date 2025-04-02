@@ -4,12 +4,18 @@
  */
 
 // Maximum number of attempts to wait for QZ Tray
-const MAX_QZ_WAIT_ATTEMPTS = 120; // 60 seconds at 500ms per attempt
+const MAX_QZ_WAIT_ATTEMPTS = 60; // 30 seconds at 500ms per attempt
 
 /**
  * Checks if QZ Tray script is loaded in the document
  */
 export function isQzScriptLoaded(): boolean {
+  // First check our custom flag
+  if (window.qzScriptLoaded) {
+    return true;
+  }
+  
+  // Then check for script tags
   const qzScriptTags = document.querySelectorAll('script[src*="qz-tray"]');
   return qzScriptTags.length > 0;
 }
@@ -20,29 +26,74 @@ export function isQzScriptLoaded(): boolean {
 export function loadQzScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
+      console.log("Attempting to load QZ Tray script dynamically");
+      
       // Check if script already exists
       const existingScript = document.querySelector('script[src*="qz-tray"]');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.src = '/qz-tray.min.js';
-        script.defer = true;
-        script.onload = () => {
-          console.log("QZ Tray script loaded dynamically");
-          setTimeout(resolve, 1000); // Give it a second to initialize
-        };
-        script.onerror = (e) => {
-          console.error("Error loading QZ Tray script", e);
-          reject(new Error("Could not load QZ Tray script. Verify that the file exists on the server."));
-        };
-        document.head.appendChild(script);
+      if (existingScript) {
+        console.log("QZ Tray script already exists in document");
+        
+        // If the script is already loaded but no qz object, something might be wrong
+        if (!window.qz && !window.qzScriptLoaded) {
+          console.warn("QZ Tray script exists but appears not to be loaded correctly");
+        }
+        
+        // Set a timeout to give it time to initialize
+        setTimeout(() => {
+          if (window.qz) {
+            window.qzScriptLoaded = true;
+            console.log("QZ Tray object available after waiting");
+            resolve();
+          } else {
+            // Try reloading the script
+            existingScript.remove();
+            createAndAppendScript(resolve, reject);
+          }
+        }, 1000);
       } else {
-        reject(new Error("Script already exists but QZ Tray is not initialized correctly. Try reloading the page."));
+        createAndAppendScript(resolve, reject);
       }
     } catch (err) {
-      console.error("Error dynamically adding script", err);
-      reject(new Error(`Error adding script: ${err}`));
+      console.error("Error handling QZ Tray script", err);
+      reject(new Error(`Error handling QZ Tray script: ${err}`));
     }
   });
+}
+
+/**
+ * Helper function to create and append the QZ Tray script
+ */
+function createAndAppendScript(resolve: () => void, reject: (error: Error) => void): void {
+  const script = document.createElement('script');
+  script.src = '/qz-tray.min.js';
+  script.async = false;
+  
+  script.onload = () => {
+    console.log("QZ Tray script loaded dynamically");
+    window.qzScriptLoaded = true;
+    window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
+    
+    // Give it a second to initialize
+    setTimeout(() => {
+      if (window.qz) {
+        console.log("QZ Tray object available after dynamic load");
+        resolve();
+      } else {
+        console.warn("QZ Tray script loaded but window.qz is not available");
+        
+        // We'll resolve anyway since the script loaded, even if qz isn't available yet
+        resolve();
+      }
+    }, 1000);
+  };
+  
+  script.onerror = (e) => {
+    console.error("Error loading QZ Tray script", e);
+    window.dispatchEvent(new CustomEvent('qz-tray-load-error', { detail: e }));
+    reject(new Error("Could not load QZ Tray script. Verify that the file exists on the server."));
+  };
+  
+  document.head.appendChild(script);
 }
 
 /**
@@ -68,7 +119,14 @@ export function waitForQZ(): Promise<void> {
       resolve();
     };
     
+    const errorListener = (event: CustomEvent) => {
+      console.error("QZ Tray script load error via custom event", event.detail);
+      window.removeEventListener('qz-tray-load-error', errorListener as EventListener);
+      reject(new Error("QZ Tray script failed to load properly"));
+    };
+    
     window.addEventListener('qz-tray-available', eventListener as EventListener);
+    window.addEventListener('qz-tray-load-error', errorListener as EventListener);
     
     // Check every 500ms
     const interval = setInterval(() => {
@@ -79,6 +137,7 @@ export function waitForQZ(): Promise<void> {
         console.log(`QZ Tray detected after ${attempts * 0.5} seconds`);
         clearInterval(interval);
         window.removeEventListener('qz-tray-available', eventListener as EventListener);
+        window.removeEventListener('qz-tray-load-error', errorListener as EventListener);
         resolve();
         return;
       }
@@ -89,13 +148,29 @@ export function waitForQZ(): Promise<void> {
         console.log("Current state of window.qz =", window.qz || "undefined");
       }
       
+      // Try reloading script after 15 seconds if QZ is still not available
+      if (attempts === 30) {
+        console.log("QZ Tray not detected after 15 seconds, attempting to reload script...");
+        loadQzScript().catch(err => {
+          console.error("Error reloading QZ Tray script", err);
+        });
+      }
+      
       if (attempts >= MAX_QZ_WAIT_ATTEMPTS) {
         console.log(`QZ Tray not available after ${MAX_QZ_WAIT_ATTEMPTS * 0.5} seconds`);
         console.log("Final check of window.qz =", window.qz || "undefined");
         clearInterval(interval);
         window.removeEventListener('qz-tray-available', eventListener as EventListener);
-        reject(new Error(`QZ Tray not available after ${MAX_QZ_WAIT_ATTEMPTS * 0.5} seconds`));
+        window.removeEventListener('qz-tray-load-error', errorListener as EventListener);
+        reject(new Error(`QZ Tray not available after ${MAX_QZ_WAIT_ATTEMPTS * 0.5} seconds. Make sure QZ Tray is installed and running on your computer.`));
       }
     }, 500);
   });
+}
+
+// Add a custom flag to the Window interface
+declare global {
+  interface Window {
+    qzScriptLoaded?: boolean;
+  }
 }

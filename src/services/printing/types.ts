@@ -2,7 +2,7 @@
 // Type definitions for the print service
 
 // Connection status type
-export type PrinterConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+export type PrinterConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error' | 'not-installed';
 
 // Printer configuration type
 export interface PrinterConfig {
@@ -14,5 +14,6 @@ export interface PrinterConfig {
 declare global {
   interface Window {
     qz: any;
+    qzScriptLoaded?: boolean;
   }
 }

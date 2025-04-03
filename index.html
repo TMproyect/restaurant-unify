@@ -17,10 +17,11 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- QZ Tray dependencies - Fixed script loading with absolute URL and better error handling -->
+    <!-- QZ Tray dependencies - Moving script to end of body -->
     <script>
       window.qzScriptLoaded = false;
       
+      // The loadQzTray function is kept for backward compatibility but will no longer be used here
       function loadQzTray() {
         console.log('Attempting to load QZ Tray script...');
         var script = document.createElement('script');
@@ -48,12 +49,9 @@
         document.head.appendChild(script);
       }
 
-      // Load QZ Tray when DOM is ready
+      // Additional verification checks will still run after DOM loaded
       document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded. Starting QZ Tray setup...');
-        
-        // Load QZ Tray script
-        loadQzTray();
+        console.log('DOM loaded. QZ Tray will be loaded at end of body.');
         
         // Additional verification checks with progressive delays
         var checkIntervals = [1000, 2000, 5000, 10000];
@@ -64,12 +62,6 @@
               window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
             } else {
               console.warn('QZ CHECK (' + delay + 'ms): window.qz still UNDEFINED at time:', new Date().toISOString());
-              
-              // If script loading failed, try loading again after 5 seconds
-              if (delay === 5000 && !window.qzScriptLoaded) {
-                console.log('Retrying QZ Tray script load after failed attempt...');
-                loadQzTray();
-              }
             }
           }, delay);
         });
@@ -82,5 +74,8 @@
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- QZ Tray script moved to end of body for isolation -->
+    <script src="/qz-tray.min.js"></script>
   </body>
 </html>

@@ -16,7 +16,7 @@ export function isQzScriptLoaded(): boolean {
   }
   
   // Then check for script tags
-  const qzScriptTags = document.querySelectorAll('script[src*="qz-tray"]');
+  const qzScriptTags = document.querySelectorAll('script[src*="qz-tray.js"]');
   return qzScriptTags.length > 0;
 }
 
@@ -29,7 +29,7 @@ export function loadQzScript(): Promise<void> {
       console.log("Attempting to load QZ Tray script dynamically");
       
       // Check if the script already exists
-      const existingScript = document.querySelector('script[src*="qz-tray"]');
+      const existingScript = document.querySelector('script[src*="qz-tray.js"]');
       if (existingScript) {
         console.log("QZ Tray script already exists in document");
         
@@ -67,7 +67,7 @@ export function loadQzScript(): Promise<void> {
  */
 function createAndAppendScript(resolve: () => void, reject: (error: Error) => void): void {
   const script = document.createElement('script');
-  script.src = '/qz-tray.min.js';
+  script.src = '/qz-tray.js';
   script.async = false;
   
   script.onload = () => {

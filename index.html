@@ -17,39 +17,10 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- QZ Tray dependencies - Moving script to end of body -->
+    <!-- QZ Tray detection setup -->
     <script>
       window.qzScriptLoaded = false;
       
-      // The loadQzTray function is kept for backward compatibility but will no longer be used here
-      function loadQzTray() {
-        console.log('Attempting to load QZ Tray script...');
-        var script = document.createElement('script');
-        script.src = '/qz-tray.min.js'; 
-        script.async = false;
-        script.onload = function() {
-          console.log('QZ Tray script loaded successfully!');
-          window.qzScriptLoaded = true;
-          window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
-          
-          // Check for window.qz after a short delay to ensure initialization
-          setTimeout(function() {
-            if (window.qz) {
-              console.log('QZ Tray object initialized successfully!');
-              window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
-            } else {
-              console.warn('QZ Tray script loaded but window.qz is not available!');
-            }
-          }, 500);
-        };
-        script.onerror = function(e) {
-          console.error('Error loading QZ Tray script:', e);
-          window.dispatchEvent(new CustomEvent('qz-tray-load-error', { detail: e }));
-        };
-        document.head.appendChild(script);
-      }
-
-      // Additional verification checks will still run after DOM loaded
       document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM loaded. QZ Tray will be loaded at end of body.');
         
@@ -75,7 +46,49 @@
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- QZ Tray script moved to end of body for isolation -->
+    <!-- QZ Tray script positioned at very end of body -->
+    <script>
+      // Execute this immediately to ensure it runs before other scripts
+      (function() {
+        console.log('Setting up QZ Tray script loading...');
+        
+        // Helper function to report QZ availability
+        function markQzAsAvailable() {
+          if (window.qz) {
+            console.log('QZ Tray object detected and available!');
+            window.qzScriptLoaded = true;
+            window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
+          } else {
+            console.warn('QZ Tray script reported as loaded but window.qz is not available');
+          }
+        }
+        
+        // Add event listener for when script is loaded
+        window.addEventListener('load', function() {
+          setTimeout(function() {
+            if (window.qz) {
+              markQzAsAvailable();
+            } else {
+              console.warn('QZ Tray not available after initial page load');
+            }
+          }, 500);
+        });
+      })();
+    </script>
     <script src="/qz-tray.min.js"></script>
+    <script>
+      // Check if QZ loaded correctly after script inclusion
+      (function() {
+        setTimeout(function() {
+          if (window.qz) {
+            console.log('QZ Tray verified after script inclusion!');
+            window.qzScriptLoaded = true;
+            window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
+          } else {
+            console.warn('QZ Tray still not available after direct script inclusion');
+          }
+        }, 300);
+      })();
+    </script>
   </body>
 </html>

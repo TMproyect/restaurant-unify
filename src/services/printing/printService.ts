@@ -1,6 +1,6 @@
 
 import { toast } from "sonner";
-import { PrinterConnectionStatus, PrinterConfig } from './types';
+import type { PrinterConnectionStatus, PrinterConfig } from './types';
 import { isQzScriptLoaded, loadQzScript, waitForQZ } from './qzDetection';
 import { QzConnectionManager } from './qzConnection';
 import { PrinterManager } from './printerManager';
@@ -48,9 +48,7 @@ class PrintService {
       
       // Clear interval after 30 seconds to avoid running forever
       setTimeout(() => {
-        if (qzCheckInterval) {
-          window.clearInterval(qzCheckInterval);
-        }
+        window.clearInterval(qzCheckInterval);
       }, 30000);
     }
   }
@@ -106,6 +104,8 @@ class PrintService {
         console.log("🖨️ PrintService: QZ Tray script added dynamically");
       } catch (err) {
         console.error("🖨️ PrintService: Error adding script dynamically", err);
+        this.updateStatus('not-installed');
+        return false;
       }
     }
     
@@ -123,6 +123,7 @@ class PrintService {
       return true;
     } catch (error) {
       console.error("🖨️ PrintService: Error waiting for QZ Tray:", error);
+      this.updateStatus('not-installed');
       return false;
     }
   }
@@ -324,5 +325,5 @@ class PrintService {
 const printService = new PrintService();
 
 export default printService;
-// Fix the type re-exports by adding the 'type' keyword
+// Re-export types with the correct syntax for isolated modules
 export type { PrinterConnectionStatus, PrinterConfig };

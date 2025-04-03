@@ -28,7 +28,7 @@ export function loadQzScript(): Promise<void> {
     try {
       console.log("Attempting to load QZ Tray script dynamically");
       
-      // Check if script already exists
+      // Check if the script already exists
       const existingScript = document.querySelector('script[src*="qz-tray"]');
       if (existingScript) {
         console.log("QZ Tray script already exists in document");
@@ -45,8 +45,10 @@ export function loadQzScript(): Promise<void> {
             console.log("QZ Tray object available after waiting");
             resolve();
           } else {
-            // Try reloading the script
+            console.log("Re-creating QZ Tray script element");
+            // Remove the existing script
             existingScript.remove();
+            // Create a new script element
             createAndAppendScript(resolve, reject);
           }
         }, 1000);
@@ -70,13 +72,13 @@ function createAndAppendScript(resolve: () => void, reject: (error: Error) => vo
   
   script.onload = () => {
     console.log("QZ Tray script loaded dynamically");
-    window.qzScriptLoaded = true;
-    window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
     
     // Give it a second to initialize
     setTimeout(() => {
       if (window.qz) {
+        window.qzScriptLoaded = true;
         console.log("QZ Tray object available after dynamic load");
+        window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
         resolve();
       } else {
         console.warn("QZ Tray script loaded but window.qz is not available");
@@ -93,7 +95,7 @@ function createAndAppendScript(resolve: () => void, reject: (error: Error) => vo
     reject(new Error("Could not load QZ Tray script. Verify that the file exists on the server."));
   };
   
-  document.head.appendChild(script);
+  document.body.appendChild(script);
 }
 
 /**
@@ -146,14 +148,6 @@ export function waitForQZ(): Promise<void> {
       if (attempts % 5 === 0) {
         console.log(`Waiting for QZ Tray... (${attempts * 0.5}s / ${MAX_QZ_WAIT_ATTEMPTS * 0.5}s)`);
         console.log("Current state of window.qz =", window.qz || "undefined");
-      }
-      
-      // Try reloading script after 15 seconds if QZ is still not available
-      if (attempts === 30) {
-        console.log("QZ Tray not detected after 15 seconds, attempting to reload script...");
-        loadQzScript().catch(err => {
-          console.error("Error reloading QZ Tray script", err);
-        });
       }
       
       if (attempts >= MAX_QZ_WAIT_ATTEMPTS) {

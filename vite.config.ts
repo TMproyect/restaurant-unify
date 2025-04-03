@@ -25,11 +25,14 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       // External files that should not be bundled
       external: ['/qz-tray.js']
-    }
+    },
+    assetsInlineLimit: 0, // Disable inlining small files
   },
   // Configure static assets
   optimizeDeps: {
     // Exclude QZ Tray from optimization
-    exclude: ['qz-tray']
+    exclude: ['qz-tray', 'qz-tray.js']
   },
+  // Add explicit handling for public assets
+  publicDir: 'public',
 }));

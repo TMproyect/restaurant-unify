@@ -10,14 +10,23 @@ const MAX_QZ_WAIT_ATTEMPTS = 60; // 30 seconds at 500ms per attempt
  * Checks if QZ Tray script is loaded in the document
  */
 export function isQzScriptLoaded(): boolean {
+  console.log("Checking if QZ Tray script is loaded in the document");
+
   // First check our custom flag
   if (window.qzScriptLoaded) {
+    console.log("QZ Tray script is marked as loaded via window.qzScriptLoaded flag");
     return true;
   }
   
   // Then check for script tags
   const qzScriptTags = document.querySelectorAll('script[src*="qz-tray.js"]');
-  return qzScriptTags.length > 0;
+  if (qzScriptTags.length > 0) {
+    console.log(`Found ${qzScriptTags.length} QZ Tray script tags in document`);
+    return true;
+  } else {
+    console.warn("No QZ Tray script tags found in document");
+    return false;
+  }
 }
 
 /**
@@ -31,7 +40,7 @@ export function loadQzScript(): Promise<void> {
       // Check if the script already exists
       const existingScript = document.querySelector('script[src*="qz-tray.js"]');
       if (existingScript) {
-        console.log("QZ Tray script already exists in document");
+        console.log("QZ Tray script already exists in document:", existingScript);
         
         // If the script is already loaded but no qz object, something might be wrong
         if (!window.qz && !window.qzScriptLoaded) {
@@ -67,7 +76,10 @@ export function loadQzScript(): Promise<void> {
  */
 function createAndAppendScript(resolve: () => void, reject: (error: Error) => void): void {
   const script = document.createElement('script');
-  script.src = '/qz-tray.js';
+  
+  // Add a timestamp to prevent caching issues
+  const timestamp = new Date().getTime();
+  script.src = `/qz-tray.js?t=${timestamp}`;
   script.async = false;
   
   script.onload = () => {
@@ -77,11 +89,19 @@ function createAndAppendScript(resolve: () => void, reject: (error: Error) => vo
     setTimeout(() => {
       if (window.qz) {
         window.qzScriptLoaded = true;
-        console.log("QZ Tray object available after dynamic load");
+        console.log("QZ Tray object available after dynamic load:", window.qz);
         window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
         resolve();
       } else {
         console.warn("QZ Tray script loaded but window.qz is not available");
+        
+        // Let's check if the script was maybe loaded but has errors
+        try {
+          const scriptElement = document.querySelector(`script[src*="qz-tray.js"]`);
+          console.log("Script element status:", scriptElement);
+        } catch (e) {
+          console.error("Error checking script element:", e);
+        }
         
         // We'll resolve anyway since the script loaded, even if qz isn't available yet
         resolve();
@@ -96,6 +116,7 @@ function createAndAppendScript(resolve: () => void, reject: (error: Error) => vo
   };
   
   document.body.appendChild(script);
+  console.log("QZ Tray script appended to document body");
 }
 
 /**
@@ -166,5 +187,6 @@ export function waitForQZ(): Promise<void> {
 declare global {
   interface Window {
     qzScriptLoaded?: boolean;
+    qz?: any;
   }
 }

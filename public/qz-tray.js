@@ -1,44 +1,63 @@
 
 /**
  * QZ Tray Connector
- * @version 2.2.4
+ * @version 2.2.5-SNAPSHOT
  * @file qz-tray.js
  */
 var qz = (function() {
     // Private methods and properties
     var _qz = {
-        VERSION: "2.2.4",
+        VERSION: "2.2.5-SNAPSHOT",
         DEBUG: false,
 
         log: {
-            /** Logs message with timestamp to browser console */
-            trace: function(msg, ...params) {
-                if (_qz.DEBUG) { console.log(msg, ...params); }
-            },
-            /** Logs error message with timestamp to browser console */
-            err: function(msg, err) {
-                if (_qz.DEBUG) { 
-                    console.error(msg, err);
-                    if (err && err.stack) { console.error(err.stack); }
-                }
-            }
+            /** Debugging messages */
+            trace: function() { if (_qz.DEBUG) { console.log.apply(console, arguments); } },
+            /** General messages */
+            info: function() { console.info.apply(console, arguments); },
+            /** General warnings */
+            warn: function() { console.warn.apply(console, arguments); },
+            /** Debugging errors */
+            allay: function() { if (_qz.DEBUG) { console.warn.apply(console, arguments); } },
+            /** General errors */
+            error: function() { console.error.apply(console, arguments); }
         },
-
-        // WebSocket connection
+        
+        //stream types
+        streams: {
+            serial: 'SERIAL', usb: 'USB', hid: 'HID', printer: 'PRINTER', file: 'FILE', socket: 'SOCKET'
+        },
+        
         websocket: {
-            /** Connection timeout in milliseconds */
-            connectTimeout: 5000,
-            /** Active connection to QZ Tray websocket */
+            /** The actual websocket object managing the connection. */
             connection: null,
-            /** Connection status */
-            connected: false,
+            /** Track if a connection attempt is being cancelled. */
+            shutdown: false,
+            /** Default parameters used on new connections. Override values using options parameter on {@link qz.websocket.connect}. */
+            connectConfig: {
+                host: ["localhost", "localhost.qz.io"], //hosts QZ Tray can be running on
+                hostIndex: 0,                           //internal var - index on host array
+                usingSecure: true,                      //boolean use of secure protocol
+                protocol: {
+                    secure: "wss://",                   //secure websocket
+                    insecure: "ws://"                   //insecure websocket
+                },
+                port: {
+                    secure: [8181, 8282, 8383, 8484],   //list of secure ports QZ Tray could be listening on
+                    insecure: [8182, 8283, 8384, 8485], //list of insecure ports QZ Tray could be listening on
+                    portIndex: 0                        //internal var - index on active port array
+                },
+                keepAlive: 60,                          //time between pings to keep connection alive, in seconds
+                retries: 0,                             //number of times to reconnect before failing
+                delay: 0                                //seconds before firing a connection
+            },
             
             /** Establish connection to QZ Tray websocket */
             connect: function(options) {
                 options = options || {};
                 
                 return new Promise(function(resolve, reject) {
-                    if (_qz.websocket.connection && _qz.websocket.connected) {
+                    if (_qz.websocket.connection && _qz.websocket.connection.readyState == WebSocket.OPEN) {
                         resolve(_qz.websocket.connection);
                         return;
                     }
@@ -50,33 +69,30 @@ var qz = (function() {
                     _qz.log.trace("Connecting to QZ Tray on " + url);
                     
                     var ws = new WebSocket(url);
-                    var connectionTimeout = setTimeout(function() {
+                    var connectTimeout = setTimeout(function() {
                         if (ws.readyState !== WebSocket.OPEN) {
                             ws.close();
                             reject(new Error("Connection to QZ Tray timed out"));
                         }
-                    }, _qz.websocket.connectTimeout);
+                    }, _qz.websocket.connectConfig.keepAlive * 1000);
                     
                     ws.onopen = function() {
-                        clearTimeout(connectionTimeout);
+                        clearTimeout(connectTimeout);
                         _qz.log.trace("WebSocket connection established to " + url);
                         _qz.websocket.connection = ws;
-                        _qz.websocket.connected = true;
                         resolve(ws);
                     };
                     
                     ws.onclose = function() {
-                        clearTimeout(connectionTimeout);
+                        clearTimeout(connectTimeout);
                         _qz.log.trace("WebSocket closed");
                         _qz.websocket.connection = null;
-                        _qz.websocket.connected = false;
                     };
                     
                     ws.onerror = function(event) {
-                        clearTimeout(connectionTimeout);
-                        _qz.log.err("WebSocket error", event);
+                        clearTimeout(connectTimeout);
+                        _qz.log.error("WebSocket error", event);
                         _qz.websocket.connection = null;
-                        _qz.websocket.connected = false;
                         reject(new Error("Failed to connect to QZ Tray"));
                     };
                 });
@@ -87,14 +103,13 @@ var qz = (function() {
                 if (_qz.websocket.connection) {
                     _qz.websocket.connection.close();
                     _qz.websocket.connection = null;
-                    _qz.websocket.connected = false;
                 }
                 return Promise.resolve();
             },
             
             /** Check if connected to QZ Tray */
             isActive: function() {
-                return _qz.websocket.connected && _qz.websocket.connection && _qz.websocket.connection.readyState === WebSocket.OPEN;
+                return _qz.websocket.connection && _qz.websocket.connection.readyState === WebSocket.OPEN;
             }
         },
         

@@ -1,4 +1,5 @@
 
+
 // Type definitions for the print service
 
 // Connection status type
@@ -13,7 +14,8 @@ export interface PrinterConfig {
 // Define the global qz object
 declare global {
   interface Window {
-    qz?: any; // Make sure this is optional with the ? mark
+    qz?: any; // Make sure qz is optional (with the ? modifier)
     qzScriptLoaded?: boolean;
   }
 }
+

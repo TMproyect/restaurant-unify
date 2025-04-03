@@ -1,43 +1,27 @@
 
-import { PrinterConfig } from './types';
+// Printer management functionality
+import { toast } from "sonner";
+import type { PrinterConfig } from './types';
 
 /**
- * Manages printer-related operations
+ * Class to manage printer discovery and operations
  */
 export class PrinterManager {
   private availablePrinters: PrinterConfig[] = [];
   private defaultPrinter: string | null = null;
-
-  /**
-   * Get available printers
-   */
-  getAvailablePrinters(): PrinterConfig[] {
-    return this.availablePrinters;
-  }
-
-  /**
-   * Get default printer
-   */
-  getDefaultPrinter(): string | null {
-    return this.defaultPrinter;
-  }
-
+  
   /**
    * Refresh the list of available printers
    */
-  async refreshPrinters(): Promise<boolean> {
-    if (!window.qz) {
+  public async refreshPrinters(): Promise<boolean> {
+    console.log('Finding available printers');
+    
+    if (!window.qz || !window.qz.printers) {
       console.error('QZ Tray not available for finding printers');
       return false;
     }
 
-    if (!window.qz.websocket.isActive()) {
-      console.error('No active connection for finding printers');
-      return false;
-    }
-
     try {
-      console.log('Searching for available printers');
       // Get list of available printers
       const printers = await window.qz.printers.find();
       console.log('Printers found:', printers);
@@ -62,7 +46,7 @@ export class PrinterManager {
         }
       } catch (defPrinterError) {
         console.error('Error getting default printer:', defPrinterError);
-        // Don't fail the entire operation because of this
+        // Don't fail the whole operation for this
       }
 
       return true;
@@ -70,5 +54,19 @@ export class PrinterManager {
       console.error('Error refreshing printers:', error);
       return false;
     }
+  }
+  
+  /**
+   * Get all available printers
+   */
+  public getAvailablePrinters(): PrinterConfig[] {
+    return this.availablePrinters;
+  }
+  
+  /**
+   * Get the default printer
+   */
+  public getDefaultPrinter(): string | null {
+    return this.defaultPrinter;
   }
 }

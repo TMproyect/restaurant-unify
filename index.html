@@ -76,42 +76,11 @@
         });
       })();
     </script>
-    <!-- Add a timestamp to the URL to prevent caching issues -->
+    <!-- Add script tag with simple src attribute to avoid caching issues -->
     <script 
-      src="/qz-tray.js?v=20250403" 
+      src="/qz-tray.js" 
       onerror="console.error('Failed to load QZ Tray script. Check if the file exists and is valid.');"
-      onload="console.log('QZ Tray script loading complete. Checking if window.qz is defined...');
-              setTimeout(function() { 
-                if (window.qz) { 
-                  console.log('SUCCESS: window.qz is defined after script load!');
-                  window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
-                } else {
-                  console.error('FAILURE: window.qz is NOT defined after script load!');
-                }
-              }, 300);">
-    </script>
-    <script>
-      // Check if QZ loaded correctly after script inclusion
-      (function() {
-        setTimeout(function() {
-          if (window.qz) {
-            console.log('QZ Tray verified after script inclusion!');
-            window.qzScriptLoaded = true;
-            window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
-          } else {
-            console.warn('QZ Tray still not available after direct script inclusion.');
-            // Add extra debug info
-            console.log('Attempting to debug QZ Tray script issue:');
-            var script = document.querySelector('script[src*="qz-tray"]');
-            if (script) {
-              console.log('QZ script tag found:', script);
-              console.log('QZ script status:', script.readyState || 'readyState not available');
-            } else {
-              console.error('QZ script tag NOT found in document!');
-            }
-          }
-        }, 300);
-      })();
+      onload="console.log('QZ Tray script loading complete');">
     </script>
   </body>
 </html>

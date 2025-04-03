@@ -13,7 +13,7 @@ export interface PrinterConfig {
 // Define the global qz object
 declare global {
   interface Window {
-    qz: any;
+    qz?: any; // Make sure this is optional with the ? mark
     qzScriptLoaded?: boolean;
   }
 }

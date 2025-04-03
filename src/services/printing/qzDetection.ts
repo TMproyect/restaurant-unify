@@ -90,7 +90,7 @@ function createAndAppendScript(resolve: () => void, reject: (error: Error) => vo
       if (window.qz) {
         window.qzScriptLoaded = true;
         console.log("QZ Tray object available after dynamic load:", window.qz);
-        window.dispatchEvent(new CustomEvent('qz-tray-script-loaded'));
+        window.dispatchEvent(new CustomEvent('qz-tray-available', { detail: window.qz }));
         resolve();
       } else {
         console.warn("QZ Tray script loaded but window.qz is not available");
@@ -183,10 +183,4 @@ export function waitForQZ(): Promise<void> {
   });
 }
 
-// Add a custom flag to the Window interface
-declare global {
-  interface Window {
-    qzScriptLoaded?: boolean;
-    qz?: any;
-  }
-}
+// Note: No need to redeclare the Window interface here as it's already declared in types.ts

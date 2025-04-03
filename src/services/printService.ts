@@ -1,22 +1,9 @@
-
 // QZ Tray service for handling printer connections
 import { toast } from "sonner";
+import type { PrinterConnectionStatus, PrinterConfig } from './printing/types';
 
-// Define the global qz object
-declare global {
-  interface Window {
-    qz: any;
-  }
-}
-
-// Connection status type
-export type PrinterConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
-
-// Printer configuration type
-export interface PrinterConfig {
-  name: string;
-  isDefault: boolean;
-}
+// Re-use the global Window interface from types.ts, not redefine it
+// Define the global qz object is now handled in types.ts
 
 class PrintService {
   private isReady = false;
@@ -465,3 +452,6 @@ class PrintService {
 const printService = new PrintService();
 
 export default printService;
+
+// Re-export types with the correct syntax for isolated modules
+export type { PrinterConnectionStatus, PrinterConfig };

@@ -81,15 +81,18 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
 
-    // Filter for external ID manually if needed
-    const matchingOrder = data?.find(order => order.external_id === externalId);
+    // Filter manually to handle potential missing properties
+    const matchingOrder = data?.find(order => {
+      // Use optional chaining to safely access potentially missing property
+      return order.external_id === externalId;
+    });
     
     if (!matchingOrder) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Map to Order type directly from the found order
+    // Map to Order type with optional properties
     const order: Order = {
       id: matchingOrder.id,
       table_number: matchingOrder.table_number,
@@ -102,8 +105,9 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       kitchen_id: matchingOrder.kitchen_id,
       created_at: matchingOrder.created_at,
       updated_at: matchingOrder.updated_at,
-      external_id: matchingOrder.external_id,
-      discount: matchingOrder.discount
+      // Use optional chaining for properties that might not exist in the database
+      external_id: matchingOrder.external_id as string | undefined,
+      discount: matchingOrder.discount as number | undefined
     };
     
     return order;

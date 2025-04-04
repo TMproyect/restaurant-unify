@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult, filterValue } from '@/utils/supabaseHelpers';
 import { createNotification } from './notificationService';
@@ -327,22 +326,22 @@ export const processOrderPayment = async (
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
+    
+    // Using a different approach that avoids the recursive type inference
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .eq('external_id', externalId)
-      .maybeSingle();
+      .limit(1)
+      .single();
 
     if (error) {
       console.error('Error buscando orden por ID externo:', error);
       return null;
     }
-
-    if (!data) {
-      return null;
-    }
     
-    return data as Order;
+    // Cast the result directly to avoid type recursion issues
+    return data as unknown as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

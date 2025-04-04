@@ -71,39 +71,39 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use primitive types instead of complex objects to avoid type recursion
+    // Using explicit query without external_id filter since it might not exist yet
     const { data, error } = await supabase
       .from('orders')
-      .select('id, table_number, customer_name, status, total, items_count, is_delivery, table_id, kitchen_id, created_at, updated_at, external_id')
-      .eq('external_id', externalId)
-      .limit(1);
+      .select('*');
     
     if (error) {
       console.error('Error buscando orden por ID externo:', error);
       return null;
     }
 
-    if (!data || data.length === 0) {
+    // Filter for external ID manually if needed
+    const matchingOrder = data?.find(order => order.external_id === externalId);
+    
+    if (!matchingOrder) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Simple mapping with optional properties safely handled
+    // Map to Order type directly from the found order
     const order: Order = {
-      id: data[0].id,
-      table_number: data[0].table_number,
-      customer_name: data[0].customer_name,
-      status: data[0].status,
-      total: data[0].total,
-      items_count: data[0].items_count,
-      is_delivery: data[0].is_delivery,
-      table_id: data[0].table_id,
-      kitchen_id: data[0].kitchen_id,
-      created_at: data[0].created_at,
-      updated_at: data[0].updated_at,
-      external_id: data[0].external_id,
-      // Set optional properties that might not be in the query
-      discount: undefined
+      id: matchingOrder.id,
+      table_number: matchingOrder.table_number,
+      customer_name: matchingOrder.customer_name,
+      status: matchingOrder.status,
+      total: matchingOrder.total,
+      items_count: matchingOrder.items_count,
+      is_delivery: matchingOrder.is_delivery,
+      table_id: matchingOrder.table_id,
+      kitchen_id: matchingOrder.kitchen_id,
+      created_at: matchingOrder.created_at,
+      updated_at: matchingOrder.updated_at,
+      external_id: matchingOrder.external_id,
+      discount: matchingOrder.discount
     };
     
     return order;

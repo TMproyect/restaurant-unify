@@ -102,10 +102,10 @@ export const createOrder = async (
     console.log('Creating new order:', orderData);
     console.log('Order items:', items);
     
-    // First, create the order
+    // First, create the order - Use explicit typing instead of prepareInsertData
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .insert(prepareInsertData(orderData))
+      .insert(orderData)
       .select()
       .single();
 
@@ -263,14 +263,20 @@ export const processOrderPayment = async (
     // For now, we'll just update the order status
     const status = paymentDetails.status || 'paid';
     
+    // Define update object explicitly with correct types
+    const updateData = { 
+      status,
+      updated_at: now
+    };
+    
+    // Add discount if provided
+    if (paymentDetails.discount !== undefined) {
+      updateData['discount'] = paymentDetails.discount;
+    }
+    
     const { error } = await supabase
       .from('orders')
-      .update({ 
-        status,
-        updated_at: now,
-        // Store discount if provided
-        ...(paymentDetails.discount !== undefined && { discount: paymentDetails.discount })
-      })
+      .update(updateData)
       .eq('id', filterValue(orderId));
 
     if (error) {

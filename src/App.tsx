@@ -21,6 +21,7 @@ import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import Cashier from "./pages/Cashier";
 import RolesAndPermissions from "./pages/RolesAndPermissions";
+import Integration from "./pages/Integration";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ function App() {
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/cashier" element={<Cashier />} />
+              <Route path="/integration" element={<Integration />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>

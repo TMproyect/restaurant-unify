@@ -264,14 +264,18 @@ export const processOrderPayment = async (
     const status = paymentDetails.status || 'paid';
     
     // Define update object explicitly with correct types
-    const updateData = { 
+    const updateData: {
+      status: string,
+      updated_at: string,
+      discount?: number
+    } = { 
       status,
       updated_at: now
     };
     
     // Add discount if provided
     if (paymentDetails.discount !== undefined) {
-      updateData['discount'] = paymentDetails.discount;
+      updateData.discount = paymentDetails.discount;
     }
     
     const { error } = await supabase

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, prepareInsertData, processQueryResult, processSingleResult, filterValue } from '@/utils/supabaseHelpers';
 import { createNotification } from './notificationService';
@@ -104,7 +105,7 @@ export const createOrder = async (
     // First, create the order
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .insert(prepareInsertData(orderData) as any)
+      .insert(prepareInsertData(orderData))
       .select()
       .single();
 
@@ -139,7 +140,7 @@ export const createOrder = async (
 
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems as any);
+        .insert(orderItems);
 
       if (itemsError) {
         console.error('Error creating order items:', itemsError);
@@ -186,7 +187,7 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
       .update({ 
         status: status,
         updated_at: now
-      } as any)
+      })
       .eq('id', filterValue(orderId));
 
     if (error) {
@@ -269,7 +270,7 @@ export const processOrderPayment = async (
         updated_at: now,
         // Store discount if provided
         ...(paymentDetails.discount !== undefined && { discount: paymentDetails.discount })
-      } as any)
+      })
       .eq('id', filterValue(orderId));
 
     if (error) {

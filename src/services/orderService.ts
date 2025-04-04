@@ -327,21 +327,25 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Using a different approach that avoids the recursive type inference
+    // Use raw query to avoid TypeScript recursion issues
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select()
       .eq('external_id', externalId)
-      .limit(1)
-      .single();
+      .limit(1);
 
     if (error) {
       console.error('Error buscando orden por ID externo:', error);
       return null;
     }
+
+    if (!data || data.length === 0) {
+      console.log('No se encontró orden con ese ID externo');
+      return null;
+    }
     
-    // Cast the result directly to avoid type recursion issues
-    return data as unknown as Order;
+    // Return the first (and should be only) result
+    return data[0] as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

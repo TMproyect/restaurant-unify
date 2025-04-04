@@ -128,15 +128,15 @@ export const PrinterStationsConfig = () => {
               <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
                 <div className="min-w-[180px]">
                   <Select
-                    value={station.printerName || ''}
-                    onValueChange={(value) => handlePrinterSelect(station.id, value === '' ? null : value)}
+                    value={station.printerName || 'none'}
+                    onValueChange={(value) => handlePrinterSelect(station.id, value === 'none' ? null : value)}
                     disabled={!isConnected || availablePrinters.length === 0}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Seleccionar impresora" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Sin asignar --</SelectItem>
+                      <SelectItem value="none">-- Sin asignar --</SelectItem>
                       {availablePrinters.map((printer) => (
                         <SelectItem key={printer.name} value={printer.name}>
                           {printer.name}

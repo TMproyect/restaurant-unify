@@ -15,6 +15,7 @@ export interface Order {
   discount?: number;
   created_at?: string;
   updated_at?: string;
+  external_id?: string; // Agregamos campo para ID externo
 }
 
 export interface OrderItem {
@@ -93,7 +94,7 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
 
 // Create a new order with items
 export const createOrder = async (
-  orderData: Omit<Order, 'id' | 'created_at' | 'updated_at'>, 
+  orderData: Omit<Order, 'id' | 'created_at' | 'updated_at' | 'external_id'>, 
   items: Omit<OrderItem, 'id' | 'order_id' | 'created_at'>[]
 ): Promise<Order | null> => {
   try {
@@ -308,6 +309,28 @@ export const processOrderPayment = async (
   } catch (error) {
     console.error('Error processing order payment:', error);
     return false;
+  }
+};
+
+// Nueva función para obtener órdenes por ID externo
+export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
+  try {
+    console.log(`Buscando orden con ID externo: ${externalId}`);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('external_id', filterValue(externalId))
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error buscando orden por ID externo:', error);
+      return null;
+    }
+
+    return mapSingleResponse<Order>(data, 'Failed to map order data');
+  } catch (error) {
+    console.error('Error al obtener orden por ID externo:', error);
+    return null;
   }
 };
 

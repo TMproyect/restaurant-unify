@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -21,6 +20,7 @@ export interface MenuItem {
   allergens?: string[];
   created_at?: string;
   updated_at?: string;
+  sku?: string;
 }
 
 export const fetchMenuCategories = async (): Promise<MenuCategory[]> => {
@@ -136,6 +136,19 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem | null> => {
   try {
+    if (item.sku) {
+      const { data: existingSku, error: skuError } = await supabase
+        .from('menu_items')
+        .select('sku')
+        .eq('sku', item.sku)
+        .maybeSingle();
+      
+      if (existingSku) {
+        toast.error(`El SKU "${item.sku}" ya está en uso por otro producto.`);
+        return null;
+      }
+    }
+    
     const { data, error } = await supabase
       .from('menu_items')
       .insert([item as any])
@@ -157,6 +170,20 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
 
 export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
   try {
+    if (updates.sku) {
+      const { data: existingSku, error: skuError } = await supabase
+        .from('menu_items')
+        .select('id, sku')
+        .eq('sku', updates.sku)
+        .neq('id', id)
+        .maybeSingle();
+      
+      if (existingSku) {
+        toast.error(`El SKU "${updates.sku}" ya está en uso por otro producto.`);
+        return null;
+      }
+    }
+    
     const updatesWithTimestamp = {
       ...updates,
       updated_at: new Date().toISOString()
@@ -204,10 +231,8 @@ export const deleteMenuItem = async (id: string): Promise<boolean> => {
 
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   try {
-    // Generate a unique file name if not provided
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     
-    // Upload to Supabase Storage
     const { data, error } = await supabase
       .storage
       .from('menu_images')
@@ -221,7 +246,6 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       throw error;
     }
 
-    // Get the public URL
     const { data: { publicUrl } } = supabase
       .storage
       .from('menu_images')

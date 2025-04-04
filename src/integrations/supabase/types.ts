@@ -122,6 +122,7 @@ export type Database = {
           name: string
           popular: boolean
           price: number
+          sku: string | null
           updated_at: string
         }
         Insert: {
@@ -135,6 +136,7 @@ export type Database = {
           name: string
           popular?: boolean
           price: number
+          sku?: string | null
           updated_at?: string
         }
         Update: {
@@ -148,6 +150,7 @@ export type Database = {
           name?: string
           popular?: boolean
           price?: number
+          sku?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -495,6 +498,12 @@ export type Database = {
       }
       is_admin_or_manager: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      validate_external_api_key: {
+        Args: {
+          api_key: string
+        }
         Returns: boolean
       }
     }

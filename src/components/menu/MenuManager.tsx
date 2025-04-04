@@ -73,7 +73,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
   
-  // Form state for adding/editing menu items
   const [editingItem, setEditingItem] = useState<ExtendedMenuItem | null>(null);
   const [newItem, setNewItem] = useState<Partial<ExtendedMenuItem>>({
     name: '',
@@ -82,10 +81,10 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     category_id: '',
     available: true,
     allergens: [],
+    sku: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   
-  // Fetch menu items from Supabase
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -105,7 +104,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     
     loadData();
     
-    // Listen for menu updates from other components
     const handleMenuUpdated = () => {
       loadData();
     };
@@ -116,7 +114,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     };
   }, [toast]);
   
-  // Filter menu items when search term or category changes
   useEffect(() => {
     let filtered = menuItems;
     
@@ -134,7 +131,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     setFilteredItems(filtered);
   }, [menuItems, searchTerm, selectedCategory]);
   
-  // Reset form fields
   const resetForm = () => {
     setNewItem({
       name: '',
@@ -143,11 +139,11 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       category_id: '',
       available: true,
       allergens: [],
+      sku: '',
     });
     setImageFile(null);
   };
   
-  // Handle adding a new menu item
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.category_id) {
       toast({
@@ -158,7 +154,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       return;
     }
     
-    // Handle image upload if provided
     let imageUrl = newItem.image_url;
     if (imageFile) {
       const uploadedUrl = await uploadMenuItemImage(imageFile);
@@ -175,7 +170,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       available: newItem.available !== undefined ? newItem.available : true,
       popular: newItem.popular || false,
       allergens: newItem.allergens || [],
-      image_url: imageUrl
+      image_url: imageUrl,
+      sku: newItem.sku || null,
     };
     
     const createdItem = await createMenuItem(itemToAdd);
@@ -188,13 +184,11 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         description: `${createdItem.name} ha sido añadido al menú`
       });
       
-      // Close dialog
       setIsAddDialogOpen(false);
       resetForm();
     }
   };
   
-  // Handle adding and staying in dialog to add more
   const handleAddAndContinue = async () => {
     if (!newItem.name || !newItem.category_id) {
       toast({
@@ -205,7 +199,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       return;
     }
     
-    // Handle image upload if provided
     let imageUrl = newItem.image_url;
     if (imageFile) {
       const uploadedUrl = await uploadMenuItemImage(imageFile);
@@ -222,7 +215,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       available: newItem.available !== undefined ? newItem.available : true,
       popular: newItem.popular || false,
       allergens: newItem.allergens || [],
-      image_url: imageUrl
+      image_url: imageUrl,
+      sku: newItem.sku || null,
     };
     
     const createdItem = await createMenuItem(itemToAdd);
@@ -230,7 +224,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     if (createdItem) {
       setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
       
-      // Reset form but keep dialog open for adding more
       resetForm();
       
       toast({
@@ -240,7 +233,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
   
-  // Handle editing a menu item
   const handleEditItem = (item: ExtendedMenuItem) => {
     setEditingItem(item);
     setNewItem({
@@ -251,17 +243,16 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       available: item.available,
       popular: item.popular,
       allergens: item.allergens,
-      image_url: item.image_url
+      image_url: item.image_url,
+      sku: item.sku || '',
     });
     setImageFile(null);
     setIsEditDialogOpen(true);
   };
   
-  // Handle saving edited menu item
   const handleSaveEdit = async () => {
     if (!editingItem) return;
     
-    // Handle image upload if provided
     let imageUrl = newItem.image_url;
     if (imageFile) {
       const uploadedUrl = await uploadMenuItemImage(imageFile);
@@ -278,7 +269,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       available: newItem.available,
       popular: newItem.popular,
       allergens: newItem.allergens,
-      image_url: imageUrl
+      image_url: imageUrl,
+      sku: newItem.sku || null,
     };
     
     const updatedItem = await updateMenuItem(editingItem.id, updates);
@@ -293,7 +285,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       setEditingItem(null);
       setIsEditDialogOpen(false);
       
-      // Reset form
       resetForm();
       
       toast({
@@ -303,7 +294,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
   
-  // Handle deleting a menu item
   const handleDeleteItem = async (id: string) => {
     const itemToDelete = menuItems.find(item => item.id === id);
     if (!itemToDelete) return;
@@ -320,7 +310,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
   
-  // Handle toggling availability
   const handleToggleAvailability = async (id: string) => {
     const item = menuItems.find(item => item.id === id);
     if (!item) return;
@@ -341,7 +330,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
   
-  // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -382,6 +370,19 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   placeholder="Nombre del plato"
                 />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="sku">SKU (Código único para integraciones)</Label>
+                <Input
+                  id="sku"
+                  value={newItem.sku || ''}
+                  onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
+                  placeholder="SKU o código de producto"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Un código único para identificar este producto en integraciones externas
+                </p>
               </div>
               
               <div className="grid gap-2">
@@ -582,6 +583,11 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">{item.description}</p>
+                {item.sku && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    SKU: {item.sku}
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
@@ -656,6 +662,19 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                 onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                 placeholder="Nombre del plato"
               />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-sku">SKU (Código único para integraciones)</Label>
+              <Input
+                id="edit-sku"
+                value={newItem.sku || ''}
+                onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
+                placeholder="SKU o código de producto"
+              />
+              <p className="text-xs text-muted-foreground">
+                Un código único para identificar este producto en integraciones externas
+              </p>
             </div>
             
             <div className="grid gap-2">

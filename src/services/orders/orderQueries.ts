@@ -81,10 +81,17 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
 
-    // Filter manually to handle potential missing properties
-    const matchingOrder = data?.find(order => {
-      // Use optional chaining to safely access potentially missing property
-      return order.external_id === externalId;
+    if (!data || data.length === 0) {
+      console.log('No orders found');
+      return null;
+    }
+
+    // Use a type guard to check and compare the external_id safely
+    const matchingOrder = data.find(order => {
+      return typeof order === 'object' && 
+             order !== null && 
+             'external_id' in order && 
+             order.external_id === externalId;
     });
     
     if (!matchingOrder) {
@@ -92,7 +99,8 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Map to Order type with optional properties
+    // Create an Order object with all required properties from the base fields
+    // and add the optional properties conditionally
     const order: Order = {
       id: matchingOrder.id,
       table_number: matchingOrder.table_number,
@@ -105,10 +113,16 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       kitchen_id: matchingOrder.kitchen_id,
       created_at: matchingOrder.created_at,
       updated_at: matchingOrder.updated_at,
-      // Use optional chaining for properties that might not exist in the database
-      external_id: matchingOrder.external_id as string | undefined,
-      discount: matchingOrder.discount as number | undefined
     };
+    
+    // Add optional properties if they exist in the database record
+    if ('external_id' in matchingOrder) {
+      order.external_id = matchingOrder.external_id;
+    }
+    
+    if ('discount' in matchingOrder) {
+      order.discount = matchingOrder.discount;
+    }
     
     return order;
   } catch (error) {

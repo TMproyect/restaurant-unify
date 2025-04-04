@@ -71,10 +71,10 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use a more explicit approach to avoid type recursion
+    // Use primitive types instead of complex objects to avoid type recursion
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select('id, table_number, customer_name, status, total, items_count, is_delivery, table_id, kitchen_id, created_at, updated_at, external_id')
       .eq('external_id', externalId)
       .limit(1);
     
@@ -88,7 +88,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Use direct type assertion instead of complex type inference
+    // Simple mapping with optional properties safely handled
     const order: Order = {
       id: data[0].id,
       table_number: data[0].table_number,
@@ -99,10 +99,11 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       is_delivery: data[0].is_delivery,
       table_id: data[0].table_id,
       kitchen_id: data[0].kitchen_id,
-      discount: data[0].discount,
       created_at: data[0].created_at,
       updated_at: data[0].updated_at,
-      external_id: data[0].external_id
+      external_id: data[0].external_id,
+      // Set optional properties that might not be in the query
+      discount: undefined
     };
     
     return order;

@@ -6,6 +6,8 @@ import { Loader2, Receipt, Edit, ReceiptText, Percent, DollarSign, Printer } fro
 import { Order, OrderItem } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
+import usePrintService from '@/hooks/use-print-service';
+import { toast } from 'sonner';
 
 interface OrderDetailsProps {
   orderDetails: {
@@ -23,6 +25,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
 }) => {
   const { order, items } = orderDetails || { order: null, items: [] };
   const { toast } = useToast();
+  const { isConnected } = usePrintService();
   
   const calculateSubtotal = () => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -48,195 +51,131 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
     return subtotal - discount + tax;
   };
 
-  const handlePrintPreBill = () => {
+  const generateTicketContent = () => {
+    if (!order) return '';
+    
+    // Format date in a locale-friendly way
+    const dateOptions: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    const formattedDate = new Date().toLocaleDateString('es-MX', dateOptions);
+    
+    // Initialize content string
+    let content = '';
+    
+    // Header
+    content += '\x1B\x61\x01'; // Center align
+    content += 'RESTAURANTE DEMO\n';
+    content += 'PRE-CUENTA\n\n';
+    
+    // Left align for details
+    content += '\x1B\x61\x00';
+    
+    // Order info
+    content += `Mesa: ${order.table_number}\n`;
+    content += `Cliente: ${order.customer_name}\n`;
+    content += `Fecha: ${formattedDate}\n`;
+    content += `Orden: #${order.id?.substring(0, 6)}\n`;
+    content += '--------------------------------\n';
+    
+    // Column headers
+    content += 'DESCRIPCION     CANT  PRECIO  TOTAL\n';
+    content += '--------------------------------\n';
+    
+    // Items
+    items.forEach(item => {
+      const itemTotal = item.price * item.quantity;
+      // Format item details with fixed width columns
+      const name = item.name.substring(0, 15).padEnd(15);
+      const qty = item.quantity.toString().padStart(4);
+      const price = item.price.toFixed(2).padStart(6);
+      const total = itemTotal.toFixed(2).padStart(6);
+      
+      content += `${name} ${qty} ${price} ${total}\n`;
+      
+      // Add notes if available
+      if (item.notes) {
+        content += `  ${item.notes.substring(0, 28)}\n`;
+      }
+    });
+    
+    content += '--------------------------------\n';
+    
+    // Totals
+    const subtotal = calculateSubtotal();
+    content += `Subtotal:${subtotal.toFixed(2).padStart(23)}\n`;
+    
+    if (order.discount && order.discount > 0) {
+      const discount = calculateDiscount();
+      content += `Descuento (${order.discount}%):${discount.toFixed(2).padStart(14)}\n`;
+    }
+    
+    const tax = calculateTax();
+    content += `IVA (16%):${tax.toFixed(2).padStart(24)}\n`;
+    
+    const total = calculateTotal();
+    content += '\x1B\x45\x01'; // Bold on
+    content += `TOTAL:${total.toFixed(2).padStart(27)}\n`;
+    content += '\x1B\x45\x00'; // Bold off
+    
+    content += '--------------------------------\n';
+    
+    // Footer
+    content += '\x1B\x61\x01'; // Center align
+    content += 'CUENTA PRELIMINAR\n';
+    content += 'NO ES COMPROBANTE FISCAL\n';
+    content += 'Gracias por su preferencia\n\n';
+    
+    // Cut command
+    content += '\x1D\x56\x00'; // Full cut
+    
+    return content;
+  };
+
+  const handlePrintPreBill = async () => {
     if (!order) return;
     
     console.log('Printing pre-bill for order:', order.id);
     
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    
-    if (printWindow) {
-      // Format date in a locale-friendly way
-      const dateOptions: Intl.DateTimeFormatOptions = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      };
-      const formattedDate = new Date().toLocaleDateString('es-MX', dateOptions);
+    // Check if printer is connected before proceeding
+    if (!isConnected) {
+      toast({
+        title: "Error de impresión",
+        description: "El sistema de impresión no está conectado. Por favor conecte la impresora primero.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Generate ticket content
+      const ticketContent = generateTicketContent();
       
-      // Generate the HTML content for the pre-bill
-      const html = `
-        <html>
-          <head>
-            <title>Pre-cuenta Mesa ${order.table_number}</title>
-            <style>
-              body {
-                font-family: 'Arial', sans-serif;
-                max-width: 300px;
-                margin: 0 auto;
-                padding: 10px;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 20px;
-              }
-              .title {
-                font-size: 18px;
-                font-weight: bold;
-                margin-bottom: 5px;
-              }
-              .subtitle {
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 10px;
-              }
-              .info {
-                margin-bottom: 15px;
-                font-size: 14px;
-              }
-              .divider {
-                border-top: 1px dashed #ccc;
-                margin: 10px 0;
-              }
-              .item {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 5px;
-                font-size: 14px;
-              }
-              .item-name {
-                flex: 2;
-              }
-              .item-qty {
-                flex: 0.5;
-                text-align: center;
-              }
-              .item-price {
-                flex: 1;
-                text-align: right;
-              }
-              .item-total {
-                flex: 1;
-                text-align: right;
-                font-weight: bold;
-              }
-              .totals {
-                margin-top: 10px;
-                text-align: right;
-                font-size: 14px;
-              }
-              .total-row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 5px;
-              }
-              .grand-total {
-                font-size: 16px;
-                font-weight: bold;
-                margin-top: 5px;
-              }
-              .footer {
-                margin-top: 20px;
-                font-size: 12px;
-                text-align: center;
-                font-style: italic;
-              }
-            </style>
-          </head>
-          <body onload="window.print()">
-            <div class="header">
-              <div class="title">RESTAURANTE DEMO</div>
-              <div class="subtitle">PRE-CUENTA</div>
-            </div>
-            
-            <div class="info">
-              <div><strong>Mesa:</strong> ${order.table_number}</div>
-              <div><strong>Cliente:</strong> ${order.customer_name}</div>
-              <div><strong>Fecha:</strong> ${formattedDate}</div>
-              <div><strong>Orden:</strong> #${order.id?.substring(0, 6)}</div>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="item" style="font-weight: bold;">
-              <div class="item-name">Descripción</div>
-              <div class="item-qty">Cant</div>
-              <div class="item-price">Precio</div>
-              <div class="item-total">Total</div>
-            </div>
-            
-            ${items.map(item => `
-              <div class="item">
-                <div class="item-name">${item.name}</div>
-                <div class="item-qty">${item.quantity}</div>
-                <div class="item-price">$${item.price.toFixed(2)}</div>
-                <div class="item-total">$${(item.price * item.quantity).toFixed(2)}</div>
-              </div>
-              ${item.notes ? `<div style="font-size: 12px; color: #666; margin-left: 10px;">${item.notes}</div>` : ''}
-            `).join('')}
-            
-            <div class="divider"></div>
-            
-            <div class="totals">
-              <div class="total-row">
-                <span>Subtotal:</span>
-                <span>$${calculateSubtotal().toFixed(2)}</span>
-              </div>
-              
-              ${order.discount ? `
-              <div class="total-row" style="color: green;">
-                <span>Descuento (${order.discount}%):</span>
-                <span>-$${calculateDiscount().toFixed(2)}</span>
-              </div>
-              ` : ''}
-              
-              <div class="total-row">
-                <span>IVA (16%):</span>
-                <span>$${calculateTax().toFixed(2)}</span>
-              </div>
-              
-              <div class="grand-total">
-                <span>TOTAL:</span>
-                <span>$${calculateTotal().toFixed(2)}</span>
-              </div>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="footer">
-              <p>CUENTA PRELIMINAR - NO ES COMPROBANTE FISCAL</p>
-              <p>Gracias por su preferencia.</p>
-            </div>
-          </body>
-        </html>
-      `;
+      // Send to printer service (using a temporary printer name)
+      // In a real implementation, this would come from configuration
+      const printerName = "IMPRESORA_PRECUENTA";
       
-      printWindow.document.write(html);
-      printWindow.document.close();
+      // Use printService to print directly
+      const success = await window.printService.printRaw(printerName, ticketContent, {
+        encoding: 'UTF-8',
+        language: 'escpos'
+      });
       
-      // Log when print is complete or cancelled
-      printWindow.onafterprint = () => {
-        console.log('Printing completed or cancelled');
+      if (success) {
         toast({
-          title: "Pre-cuenta impresa",
-          description: `Mesa ${order.table_number} - Cliente: ${order.customer_name}`,
+          title: "Pre-cuenta enviada a impresora",
+          description: `Mesa ${order.table_number} - Cliente: ${order.customer_name}`
         });
-      };
-      
-      // Handle any errors that might occur
-      setTimeout(() => {
-        if (printWindow.closed) {
-          console.log('Print window was closed');
-        }
-      }, 1000);
-    } else {
-      console.error('Could not open print window');
+      }
+    } catch (error) {
+      console.error('Error printing pre-bill:', error);
       toast({
         title: "Error al imprimir",
-        description: "No se pudo abrir la ventana de impresión. Verifica la configuración de tu navegador.",
+        description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive"
       });
     }

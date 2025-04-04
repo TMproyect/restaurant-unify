@@ -12,6 +12,7 @@ class PrintService {
   private isReady = false;
   private connectionStatus: PrinterConnectionStatus = 'disconnected';
   private statusCallbacks: ((status: PrinterConnectionStatus) => void)[] = [];
+  private qzCheckInterval: number | null = null;
   
   private connectionManager = new QzConnectionManager();
   private printerManager = new PrinterManager();
@@ -42,13 +43,16 @@ class PrintService {
       });
       
       // Also set up an interval as a backup
-      const qzCheckInterval = window.setInterval(() => {
+      this.qzCheckInterval = window.setInterval(() => {
         this.checkQzAvailability();
       }, 3000); // Check every 3 seconds
       
       // Clear interval after 30 seconds to avoid running forever
       setTimeout(() => {
-        window.clearInterval(qzCheckInterval);
+        if (this.qzCheckInterval !== null) {
+          window.clearInterval(this.qzCheckInterval);
+          this.qzCheckInterval = null;
+        }
       }, 30000);
     }
   }
@@ -57,6 +61,9 @@ class PrintService {
    * Check if QZ Tray is available
    */
   private checkQzAvailability(): void {
+    // Only check if we're not already ready
+    if (this.isReady) return;
+    
     console.log("🖨️ PrintService: Checking QZ Tray availability");
     console.log("🖨️ PrintService: window.qz =", window.qz ? "AVAILABLE" : "NOT AVAILABLE");
     
@@ -69,6 +76,12 @@ class PrintService {
       }
 
       this.setupService();
+      
+      // Clear the interval since we've found QZ Tray
+      if (this.qzCheckInterval !== null) {
+        window.clearInterval(this.qzCheckInterval);
+        this.qzCheckInterval = null;
+      }
     } else {
       console.log("🖨️ PrintService: QZ Tray not available in this check");
     }
@@ -151,6 +164,12 @@ class PrintService {
     } else {
       console.log('PrintService: No active WebSocket connection');
       this.updateStatus('disconnected');
+    }
+    
+    // Clear the check interval if it's still running
+    if (this.qzCheckInterval !== null) {
+      window.clearInterval(this.qzCheckInterval);
+      this.qzCheckInterval = null;
     }
   }
 
@@ -260,6 +279,65 @@ class PrintService {
       console.error('PrintService: Error refreshing printers:', error);
       toast.error("Error searching for printers", {
         description: error instanceof Error ? error.message : "Unknown error",
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Print data to a printer using QZ Tray
+   */
+  public async printRaw(
+    printerName: string,
+    data: string,
+    options: { encoding?: string; language?: string } = {}
+  ): Promise<boolean> {
+    console.log(`PrintService: Attempting to print to ${printerName}`);
+    
+    if (!this.connectionManager.isConnected()) {
+      console.error('PrintService: No active connection for printing');
+      toast.error("No se puede imprimir", {
+        description: "El sistema de impresión no está conectado",
+        duration: 5000,
+      });
+      return false;
+    }
+    
+    try {
+      // Ensure QZ is available
+      const qzAvailable = await this.isQzAvailable();
+      if (!qzAvailable) {
+        console.error('PrintService: QZ Tray not available for printing');
+        toast.error("No se puede imprimir", {
+          description: "QZ Tray no está disponible",
+        });
+        return false;
+      }
+
+      // Create printer config
+      console.log('PrintService: Creating printer config');
+      const config = window.qz.configs.create(printerName, {
+        encoding: options.encoding || 'UTF-8',
+        language: options.language || 'escpos'
+      });
+
+      // Prepare print data
+      const printData = [{
+        type: 'raw',
+        format: 'escpos',
+        flavor: 'plain',
+        data: data
+      }];
+
+      console.log('PrintService: Sending print job to QZ Tray');
+      await window.qz.print(config, printData);
+      
+      console.log('PrintService: Print job sent successfully');
+      return true;
+    } catch (error) {
+      console.error('PrintService: Error printing:', error);
+      toast.error("Error al enviar a la impresora", {
+        description: error instanceof Error ? error.message : "Error desconocido",
       });
       return false;
     }

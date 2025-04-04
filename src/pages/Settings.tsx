@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +13,7 @@ import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
 import ApiIntegrationConfig from '@/components/settings/ApiIntegrationConfig';
+import { PrinterStationsConfig } from '@/components/ui/printing/PrinterStationsConfig';
 
 const QZ_DOWNLOAD_LINK = "https://qz.io/download/";
 
@@ -239,6 +241,13 @@ const Settings = () => {
                         </p>
                       )}
                     </div>
+                    
+                    {/* Printer Stations Configuration */}
+                    {isConnected && (
+                      <div className="mt-8">
+                        <PrinterStationsConfig />
+                      </div>
+                    )}
                   </div>
                 </CardContent>
                 <CardFooter className="bg-muted/50 text-xs text-muted-foreground">

@@ -1,5 +1,3 @@
-
-
 // Type definitions for the print service
 
 // Connection status type
@@ -19,3 +17,16 @@ declare global {
   }
 }
 
+// Station types for printer configuration
+export interface PrinterStation {
+  id: string;
+  name: string;
+  description?: string;
+  printerName: string | null;
+}
+
+export type StationTypes = 'kitchen' | 'bar' | 'cashier' | 'general';
+
+export interface PrinterStationConfig {
+  stations: PrinterStation[];
+}

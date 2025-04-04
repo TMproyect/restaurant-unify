@@ -6,6 +6,7 @@ import { Order, OrderItem } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import usePrintService from '@/hooks/use-print-service';
+import usePrinterStation from '@/hooks/use-printer-station';
 import { toast } from 'sonner';
 
 interface OrderDetailsProps {
@@ -24,7 +25,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
 }) => {
   const { order, items } = orderDetails || { order: null, items: [] };
   const { toast } = useToast();
-  const { isConnected } = usePrintService();
+  const { isConnected, availablePrinters } = usePrintService();
+  const { getPrinterForStation } = usePrinterStation();
   
   const calculateSubtotal = () => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -150,15 +152,39 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       return;
     }
 
+    // Check if any printers are available
+    if (availablePrinters.length === 0) {
+      toast({
+        title: "Error de impresión",
+        description: "No se detectaron impresoras en el sistema. Verifique la configuración.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get the printer configured for the cashier station
+    const cashierPrinter = getPrinterForStation('cashier');
+    
+    // Check if a printer is configured for the cashier station
+    if (!cashierPrinter) {
+      toast({
+        title: "Error de impresión",
+        description: "No hay una impresora configurada para la caja. Vaya a Configuración -> Impresión.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       // Generate ticket content
       const ticketContent = generateTicketContent();
       
-      // Send to printer service (using a temporary printer name)
-      // In a real implementation, this would come from configuration
-      const printerName = "IMPRESORA_PRECUENTA";
+      // Use the printer configured for cashier station
+      const printerName = cashierPrinter;
       
-      // Use printService directly through the usePrintService hook
+      console.log(`Sending print job to printer: ${printerName}`);
+      
+      // Use printService directly through the window global
       const success = await window.printService.printRaw(printerName, ticketContent, {
         encoding: 'UTF-8',
         language: 'escpos'
@@ -210,7 +236,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
             Detalles de la Orden
           </h2>
           <div className="text-sm text-muted-foreground">
-            {order.is_delivery ? 'Delivery' : `Mesa ${order.table_number}`} • #{order.id?.substring(0, 6)}
+            {order?.is_delivery ? 'Delivery' : `Mesa ${order?.table_number}`} • #{order?.id?.substring(0, 6)}
           </div>
         </div>
         <Button size="sm" variant="outline" className="gap-1">
@@ -222,11 +248,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       <div className="bg-muted/30 p-3 rounded-md mb-4">
         <div className="flex justify-between mb-1">
           <span className="text-sm font-medium">Cliente:</span>
-          <span className="text-sm">{order.customer_name}</span>
+          <span className="text-sm">{order?.customer_name}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-sm font-medium">Estado:</span>
-          <span className="text-sm">{order.status === 'ready' ? 'Listo para cobrar' : 'Entregado'}</span>
+          <span className="text-sm">{order?.status === 'ready' ? 'Listo para cobrar' : 'Entregado'}</span>
         </div>
       </div>
       
@@ -262,7 +288,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           <span className="text-sm">${calculateSubtotal().toFixed(2)}</span>
         </div>
         
-        {order.discount && order.discount > 0 && (
+        {order?.discount && order.discount > 0 && (
           <div className="flex justify-between mb-1 text-green-600">
             <span className="text-sm flex items-center">
               <Percent className="h-3 w-3 mr-1" />

@@ -64,8 +64,12 @@ class PrintService {
     // Only check if we're not already ready
     if (this.isReady) return;
     
-    console.log("🖨️ PrintService: Checking QZ Tray availability");
-    console.log("🖨️ PrintService: window.qz =", window.qz ? "AVAILABLE" : "NOT AVAILABLE");
+    // Use a less verbose log once initialization is done
+    if (this.connectionStatus !== 'disconnected') {
+      console.debug("🖨️ PrintService: Checking QZ Tray availability");
+    } else {
+      console.log("🖨️ PrintService: Checking QZ Tray availability");
+    }
     
     if (window.qz) {
       console.log("🖨️ PrintService: QZ Tray detected in periodic check");
@@ -83,7 +87,8 @@ class PrintService {
         this.qzCheckInterval = null;
       }
     } else {
-      console.log("🖨️ PrintService: QZ Tray not available in this check");
+      // Use debug level to reduce noise in the console
+      console.debug("🖨️ PrintService: QZ Tray not available in this check");
     }
   }
 
@@ -401,6 +406,13 @@ class PrintService {
 
 // Create singleton instance
 const printService = new PrintService();
+
+// Register the printService on the global window object for easy access
+if (typeof window !== 'undefined') {
+  window.printService = {
+    printRaw: printService.printRaw.bind(printService)
+  };
+}
 
 export default printService;
 // Re-export types with the correct syntax for isolated modules

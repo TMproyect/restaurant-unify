@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +11,7 @@ import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertT
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
+import ApiIntegrationConfig from '@/components/settings/ApiIntegrationConfig';
 
 const QZ_DOWNLOAD_LINK = "https://qz.io/download/";
 
@@ -252,17 +252,7 @@ const Settings = () => {
             </TabsContent>
             
             <TabsContent value="integration" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Integraciones</CardTitle>
-                  <CardDescription>
-                    Configure las integraciones con otros sistemas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p>Configuración de integraciones con otros sistemas como contabilidad, CRM, etc.</p>
-                </CardContent>
-              </Card>
+              <ApiIntegrationConfig />
             </TabsContent>
           </Tabs>
         </div>

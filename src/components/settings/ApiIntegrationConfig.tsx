@@ -6,8 +6,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Eye, EyeOff, RefreshCw, Check, ExternalLink } from 'lucide-react';
+import { Copy, Eye, EyeOff, RefreshCw, Check, ExternalLink, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export const ApiIntegrationConfig = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -15,6 +39,7 @@ export const ApiIntegrationConfig = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   const [apiUrl, setApiUrl] = useState('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
 
   // Establecer la URL base para la API Edge Function
@@ -52,6 +77,11 @@ export const ApiIntegrationConfig = () => {
   useEffect(() => {
     fetchApiKeyExistence();
   }, []);
+
+  // Inicia el proceso de regeneración de clave con confirmación
+  const initiateKeyGeneration = () => {
+    setShowConfirmDialog(true);
+  };
 
   const generateNewApiKey = async () => {
     setIsLoading(true);
@@ -106,6 +136,7 @@ export const ApiIntegrationConfig = () => {
       });
     } finally {
       setIsLoading(false);
+      setShowConfirmDialog(false);
     }
   };
 
@@ -171,7 +202,22 @@ export const ApiIntegrationConfig = () => {
         </div>
 
         <div className="space-y-2 pt-4">
-          <Label htmlFor="api-key">Clave API Secreta:</Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="api-key">Clave API Secreta:</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full p-0">
+                    <HelpCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only">Ayuda</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  Esta clave secreta permite a sistemas externos enviar pedidos a tu POS. Genérala y cópiala en tu sistema externo (ej: n8n). Por seguridad, solo se muestra una vez después de generarla.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           
           {apiKey && isVisible ? (
             <div className="mt-2 relative">
@@ -209,7 +255,7 @@ export const ApiIntegrationConfig = () => {
           <div className="flex gap-2 mt-2">
             <Button
               variant="default"
-              onClick={generateNewApiKey}
+              onClick={initiateKeyGeneration}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -270,6 +316,24 @@ export const ApiIntegrationConfig = () => {
           </div>
         </div>
       </CardContent>
+
+      {/* Diálogo de confirmación para generación de nueva clave */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Regenerar clave API?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro? Regenerar la clave API invalidará la conexión existente y deberás actualizarla en sistemas externos como n8n.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={generateNewApiKey}>
+              Sí, Generar Nueva Clave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

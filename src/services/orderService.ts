@@ -330,7 +330,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
     const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('external_id', filterValue(externalId))
+      .eq('external_id', externalId)
       .maybeSingle();
 
     if (error) {
@@ -338,7 +338,11 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
 
-    return mapSingleResponse<Order>(data, 'Failed to map order data');
+    if (!data) {
+      return null;
+    }
+    
+    return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

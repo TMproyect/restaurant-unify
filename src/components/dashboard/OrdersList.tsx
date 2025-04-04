@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getOrders, subscribeToOrders, updateOrderStatus } from '@/services/orderService';
-import { Order } from '@/types/order.types';
+import { Order, OrderStatus as OrderStatusType } from '@/types/order.types';
 import { 
   DropdownMenu,
   DropdownMenuContent,

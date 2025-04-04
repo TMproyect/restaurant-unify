@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -71,7 +70,6 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Simple query approach to avoid type recursion
     const { data, error } = await supabase
       .from('orders')
       .select('*')

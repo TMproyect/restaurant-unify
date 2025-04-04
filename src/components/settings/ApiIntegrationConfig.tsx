@@ -23,8 +23,8 @@ export const ApiIntegrationConfig = () => {
     setApiUrl(`https://${projectId}.supabase.co/functions/v1/ingresar-pedido`);
   }, []);
 
-  const fetchApiKey = async () => {
-    setIsLoading(true);
+  // Verifica si existe una clave API configurada, pero no la muestra
+  const fetchApiKeyExistence = async () => {
     try {
       const { data, error } = await supabase
         .from('system_settings')
@@ -33,45 +33,25 @@ export const ApiIntegrationConfig = () => {
         .single();
 
       if (error) {
-        console.error('Error fetching API key:', error);
-        toast({
-          title: "Error",
-          description: "No se pudo obtener la clave API",
-          variant: "destructive"
-        });
+        console.error('Error verificando la existencia de la clave API:', error);
         return;
       }
 
+      // Solo guardamos el estado de si existe una clave, no la clave en sí
       if (data?.value) {
-        setApiKey(data.value);
-        setIsVisible(true);
-        
-        // Ocultar automáticamente después de 30 segundos
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 30000);
-        
-        toast({
-          title: "Clave API",
-          description: "La clave API se mostrará por 30 segundos",
-        });
+        setApiKey('exists');
       } else {
-        toast({
-          title: "Información",
-          description: "No hay clave API configurada",
-        });
+        setApiKey(null);
       }
     } catch (error) {
-      console.error('Error inesperado:', error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al procesar la solicitud",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      console.error('Error inesperado al verificar la clave API:', error);
     }
   };
+
+  // Cargar al inicio solo para verificar si existe una clave
+  useEffect(() => {
+    fetchApiKeyExistence();
+  }, []);
 
   const generateNewApiKey = async () => {
     setIsLoading(true);
@@ -102,12 +82,15 @@ export const ApiIntegrationConfig = () => {
         return;
       }
 
+      // Solo mostramos la clave temporalmente
       setApiKey(newApiKey);
       setIsVisible(true);
       
       // Ocultar automáticamente después de 30 segundos
       setTimeout(() => {
         setIsVisible(false);
+        // No eliminamos la clave del estado, solo la ocultamos
+        fetchApiKeyExistence(); // Actualiza el estado a 'exists' después de ocultar
       }, 30000);
 
       toast({
@@ -127,7 +110,7 @@ export const ApiIntegrationConfig = () => {
   };
 
   const copyToClipboard = () => {
-    if (!apiKey) return;
+    if (!apiKey || apiKey === 'exists') return;
     
     navigator.clipboard.writeText(apiKey)
       .then(() => {
@@ -148,10 +131,6 @@ export const ApiIntegrationConfig = () => {
           variant: "destructive"
         });
       });
-  };
-
-  const toggleVisibility = () => {
-    setIsVisible(!isVisible);
   };
 
   return (
@@ -206,7 +185,7 @@ export const ApiIntegrationConfig = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={toggleVisibility}
+                  onClick={() => setIsVisible(false)}
                   className="h-full rounded-l-none"
                 >
                   <EyeOff className="h-4 w-4" />
@@ -223,29 +202,11 @@ export const ApiIntegrationConfig = () => {
             </div>
           ) : (
             <div className="flex items-center h-10 px-3 py-2 text-sm border rounded-md">
-              {apiKey ? "****************************************" : "No hay clave configurada"}
+              {apiKey === 'exists' ? "****************************************" : "No hay clave configurada"}
             </div>
           )}
           
           <div className="flex gap-2 mt-2">
-            <Button
-              variant="outline"
-              onClick={fetchApiKey}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Cargando...
-                </>
-              ) : (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Ver clave actual
-                </>
-              )}
-            </Button>
-            
             <Button
               variant="default"
               onClick={generateNewApiKey}

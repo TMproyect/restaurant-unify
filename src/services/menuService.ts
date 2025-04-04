@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -50,7 +51,7 @@ export const createMenuCategory = async (category: { name: string, icon?: string
     console.log('Creating menu category:', category);
     const { data, error } = await supabase
       .from('menu_categories')
-      .insert([category as any])
+      .insert([category])
       .select()
       .single();
 
@@ -73,7 +74,7 @@ export const updateMenuCategory = async (id: string, updates: Partial<MenuCatego
     console.log('Updating menu category:', id, updates);
     const { data, error } = await supabase
       .from('menu_categories')
-      .update(updates as any)
+      .update(updates)
       .eq('id', filterValue(id))
       .select()
       .single();
@@ -151,7 +152,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     
     const { data, error } = await supabase
       .from('menu_items')
-      .insert([item as any])
+      .insert([item])
       .select()
       .single();
 
@@ -191,7 +192,7 @@ export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Pr
 
     const { data, error } = await supabase
       .from('menu_items')
-      .update(updatesWithTimestamp as any)
+      .update(updatesWithTimestamp)
       .eq('id', filterValue(id))
       .select()
       .single();

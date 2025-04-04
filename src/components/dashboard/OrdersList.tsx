@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { getOrders, subscribeToOrders, updateOrderStatus } from '@/services/orders';
-import { Order, OrderStatus } from '@/types/order.types';
+import { getOrders, subscribeToOrders, updateOrderStatus } from '@/services/orderService';
+import { Order } from '@/types/order.types';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 // Define order status types for UI purposes
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
+type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
 
 // Status badge component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -55,7 +56,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 interface OrdersListProps {
-  filter?: OrderStatus;
+  filter?: OrderStatusUI;
   limit?: number;
   onRefresh?: () => void;
   searchQuery?: string;

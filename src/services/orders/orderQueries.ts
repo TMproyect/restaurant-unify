@@ -115,13 +115,13 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       updated_at: matchingOrder.updated_at,
     };
     
-    // Add optional properties if they exist in the database record
-    if ('external_id' in matchingOrder) {
-      order.external_id = matchingOrder.external_id;
+    // Add optional properties if they exist in the database record with proper type casting
+    if ('external_id' in matchingOrder && matchingOrder.external_id !== null) {
+      order.external_id = matchingOrder.external_id as string;
     }
     
-    if ('discount' in matchingOrder) {
-      order.discount = matchingOrder.discount;
+    if ('discount' in matchingOrder && matchingOrder.discount !== null) {
+      order.discount = matchingOrder.discount as number;
     }
     
     return order;

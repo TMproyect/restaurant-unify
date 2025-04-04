@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -65,11 +66,12 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID
+// Get order by external ID - Fixed to avoid deep type instantiation
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
+    // Use a more explicit approach to avoid type recursion
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -86,8 +88,24 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Return first result as Order type
-    return data[0] as Order;
+    // Use direct type assertion instead of complex type inference
+    const order: Order = {
+      id: data[0].id,
+      table_number: data[0].table_number,
+      customer_name: data[0].customer_name,
+      status: data[0].status,
+      total: data[0].total,
+      items_count: data[0].items_count,
+      is_delivery: data[0].is_delivery,
+      table_id: data[0].table_id,
+      kitchen_id: data[0].kitchen_id,
+      discount: data[0].discount,
+      created_at: data[0].created_at,
+      updated_at: data[0].updated_at,
+      external_id: data[0].external_id
+    };
+    
+    return order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

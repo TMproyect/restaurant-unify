@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -159,7 +158,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       // In a real implementation, this would come from configuration
       const printerName = "IMPRESORA_PRECUENTA";
       
-      // Use printService to print directly
+      // Use printService directly through the usePrintService hook
       const success = await window.printService.printRaw(printerName, ticketContent, {
         encoding: 'UTF-8',
         language: 'escpos'

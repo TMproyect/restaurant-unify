@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -82,35 +81,32 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Use explicit typing for the query response
-    type QueryResponse = { data: Order | null; error: any };
-    
-    // Try to query with external_id
-    const result: QueryResponse = await supabase
+    // Try to query with external_id - avoid complex typings by using any for the intermediate response
+    const response: { data: any; error: any } = await supabase
       .from('orders')
       .select('*')
       .eq('external_id', externalId)
       .maybeSingle();
     
     // Handle error - check specifically for missing column
-    if (result.error) {
-      if (result.error.message && result.error.message.includes("column 'external_id' does not exist")) {
+    if (response.error) {
+      if (response.error.message && response.error.message.includes("column 'external_id' does not exist")) {
         console.error('The external_id column does not exist in the orders table');
         return null;
       }
       
-      console.error('Error buscando orden por ID externo:', result.error);
+      console.error('Error buscando orden por ID externo:', response.error);
       return null;
     }
     
     // No data found
-    if (!result.data) {
+    if (!response.data) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Return the data as Order
-    return result.data;
+    // Only convert to Order type at the end
+    return response.data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

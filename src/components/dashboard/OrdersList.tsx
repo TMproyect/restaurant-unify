@@ -13,10 +13,8 @@ import { MoreHorizontal, Check, Loader2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
-// Define order status types for UI purposes
 type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
 
-// Status badge component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const statusConfig: Record<string, { label: string, classes: string }> = {
     pending: {
@@ -41,7 +39,6 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     },
   };
 
-  // Default case for unexpected status values
   const { label, classes } = statusConfig[status] || {
     label: status,
     classes: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
@@ -71,7 +68,6 @@ const OrdersList: React.FC<OrdersListProps> = ({
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  // Cargar órdenes
   const loadOrders = async () => {
     setLoading(true);
     try {
@@ -94,7 +90,6 @@ const OrdersList: React.FC<OrdersListProps> = ({
   useEffect(() => {
     loadOrders();
     
-    // Subscribe to order changes
     const unsubscribe = subscribeToOrders((payload) => {
       console.log('Realtime order update received in OrdersList:', payload);
       loadOrders();
@@ -105,7 +100,6 @@ const OrdersList: React.FC<OrdersListProps> = ({
     };
   }, [filter]);
   
-  // Actualizar una orden
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
     try {
       console.log(`Updating order ${orderId} status to ${newStatus}`);
@@ -145,13 +139,10 @@ const OrdersList: React.FC<OrdersListProps> = ({
     }
   };
   
-  // Filtrar órdenes
   const filteredOrders = orders
     .filter(order => {
-      // Filter by status
       if (filter !== 'all' && order.status !== filter) return false;
       
-      // Filter by search query
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
         const orderIdMatch = order.id?.toLowerCase().includes(searchLower);
@@ -282,9 +273,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                               Cancelar pedido
                             </DropdownMenuItem>
                           )}
-                          {/* Add option to view order details */}
                           <DropdownMenuItem onClick={() => {
-                            // Implementation for viewing order details
                             console.log('View order details for:', order.id);
                             toast({
                               title: "Ver detalles",

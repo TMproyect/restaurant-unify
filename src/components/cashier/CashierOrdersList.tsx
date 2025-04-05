@@ -53,9 +53,10 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
   useEffect(() => {
     loadOrders();
     
-    // Subscribe to order changes
+    // Subscribe to order changes with improved logging
     const unsubscribe = subscribeToOrders((payload) => {
       console.log('Realtime order update received in CashierOrdersList:', payload);
+      // Always reload to ensure we have the latest data
       loadOrders();
     });
     

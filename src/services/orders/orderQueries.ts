@@ -82,25 +82,26 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Avoid type complexity by using any for the intermediate result
-    const result: any = await supabase
+    // Use a simpler approach without complex type inference
+    const response = await supabase
       .from('orders')
       .select('*')
       .eq('external_id', externalId)
       .maybeSingle();
     
-    if (result.error) {
-      if (result.error.message && result.error.message.includes("column 'external_id' does not exist")) {
+    if (response.error) {
+      if (response.error.message && response.error.message.includes("column 'external_id' does not exist")) {
         console.error('The external_id column does not exist in the orders table');
         return null;
       }
       
-      console.error('Error buscando orden por ID externo:', result.error);
+      console.error('Error buscando orden por ID externo:', response.error);
       return null;
     }
     
-    // Explicitly cast to Order or null at the end
-    return result.data as Order | null;
+    // Since we're already specifying the return type as Order | null for the function,
+    // we can use a simple type assertion here without complex type inference
+    return response.data as Order | null;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

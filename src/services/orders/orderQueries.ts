@@ -71,38 +71,45 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // First check if the external_id column exists to avoid the type error
-    const { error: columnCheckError } = await supabase
+    // First try a simpler query to check if the table exists and is accessible
+    const { error: tableCheckError } = await supabase
       .from('orders')
       .select('id')
       .limit(1);
     
-    // If we get an error about missing external_id column, handle it gracefully
-    if (columnCheckError && 
-        columnCheckError.message && 
-        columnCheckError.message.includes("column 'external_id' does not exist")) {
-      console.error('The external_id column does not exist in the orders table');
+    if (tableCheckError) {
+      console.error('Error checking orders table:', tableCheckError);
       return null;
     }
     
-    // If no column error, proceed with the query
-    const { data, error } = await supabase
+    // Now run the full query with explicit type handling
+    const response = await supabase
       .from('orders')
       .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at, external_id, discount')
       .eq('external_id', externalId)
       .maybeSingle();
     
-    if (error) {
-      console.error('Error buscando orden por ID externo:', error);
+    // Handle the error case first
+    if (response.error) {
+      // If the error is about missing external_id column
+      if (response.error.message && 
+          response.error.message.includes("column 'external_id' does not exist")) {
+        console.error('The external_id column does not exist in the orders table');
+        return null;
+      }
+      
+      console.error('Error buscando orden por ID externo:', response.error);
       return null;
     }
-
-    if (!data) {
+    
+    // Handle the case where no data was found
+    if (!response.data) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    return data as Order;
+    // The data is valid, return it as Order
+    return response.data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

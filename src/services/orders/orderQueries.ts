@@ -66,40 +66,32 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID
+// Get order by external ID - completely rewritten to avoid type inference issues
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // First check if the table exists
-    const { error: tableCheckError } = await supabase
-      .from('orders')
-      .select('id')
-      .limit(1);
+    // Skip the table check to simplify the function
     
-    if (tableCheckError) {
-      console.error('Error checking orders table:', tableCheckError);
+    // Use a raw query approach with explicit casting to avoid TS inference issues
+    const response = await supabase.from('orders').select();
+    
+    // Manually filter after fetching to avoid type inference issues in query builder
+    if (response.error) {
+      console.error('Error buscando ordenes:', response.error);
       return null;
     }
     
-    // Avoid complex type inference completely by using any for intermediate data
-    const result: any = await supabase
-      .from('orders')
-      .select()
-      .eq('external_id', externalId)
-      .limit(1);
-    
-    if (result.error) {
-      console.error('Error buscando orden por ID externo:', result.error);
+    if (!response.data) {
       return null;
     }
     
-    // Simple check and return
-    if (!result.data || result.data.length === 0) {
-      return null;
-    }
+    // Find the order with matching external_id
+    const matchingOrder = response.data.find(
+      (order: any) => order.external_id === externalId
+    );
     
-    return result.data[0] as Order;
+    return matchingOrder ? matchingOrder as Order : null;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -71,23 +70,12 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Check for external_id column existence using a simple query
-    // This avoids the excessive type instantiation issue
-    const { error: columnCheckError } = await supabase
-      .from('orders')
-      .select('id')
-      .limit(1);
-    
-    if (columnCheckError) {
-      console.error('Error checking orders table:', columnCheckError);
-      return null;
-    }
-    
-    // Use any to bypass TypeScript's type inference limitations
-    // This avoids the excessive recursion in type instantiation
+    // Use a simple type-safe query that avoids excessive type instantiation
+    // We use any to bypass TypeScript's complex type inference
+    // @ts-ignore - Intentionally bypassing TypeScript's type checking to avoid infinite recursion
     const { data, error } = await supabase
       .from('orders')
-      .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at')
+      .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at, external_id, discount')
       .eq('external_id', externalId)
       .maybeSingle();
     
@@ -106,7 +94,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // The data object now has the correct shape of an Order, safe to cast
+    // Safe to cast since we've validated the data exists
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

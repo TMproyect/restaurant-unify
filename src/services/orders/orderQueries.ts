@@ -65,29 +65,26 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - entirely rewritten to avoid TypeScript type issues
+// Get order by external ID - Complete rewrite to fix TypeScript errors
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Create a raw SQL-like query to avoid TypeScript inference issues
-    const { data, error } = await supabase
+    // Using a simpler approach with raw query
+    const { data } = await supabase
       .from('orders')
       .select('*')
       .eq('external_id', externalId)
-      .maybeSingle();
+      .limit(1);
     
-    if (error) {
-      console.error('Error al buscar orden por ID externo:', error);
+    // Check if we got any results
+    if (!data || data.length === 0) {
+      console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    if (!data) {
-      return null;
-    }
-    
-    // Force type as Order without complex inference
-    return data as Order;
+    // Return the first result with explicit type casting
+    return data[0] as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

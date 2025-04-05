@@ -65,26 +65,30 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - Complete rewrite to fix TypeScript errors
+// Get order by external ID - Using direct approach to avoid type inference issues
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Using a simpler approach with raw query
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('external_id', externalId)
-      .limit(1);
+    // Use the RPC function instead of direct query to avoid TypeScript inference issues
+    const { data, error } = await supabase.rpc(
+      'get_order_by_external_id',
+      { p_external_id: externalId }
+    );
     
-    // Check if we got any results
-    if (!data || data.length === 0) {
+    if (error) {
+      console.error('Error al obtener orden por ID externo:', error);
+      return null;
+    }
+    
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Return the first result with explicit type casting
-    return data[0] as Order;
+    // Handle both array and single object responses
+    const orderData = Array.isArray(data) ? data[0] : data;
+    return orderData as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

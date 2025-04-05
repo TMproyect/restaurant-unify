@@ -69,8 +69,11 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
 }
 
 serve(async (req) => {
+  console.log("Función ingresar-pedido recibió una solicitud:", req.method);
+  
   // Manejar solicitudes OPTIONS para CORS
   if (req.method === 'OPTIONS') {
+    console.log("Procesando solicitud OPTIONS para CORS");
     return new Response(null, {
       status: 204,
       headers: corsHeaders
@@ -79,6 +82,7 @@ serve(async (req) => {
   
   // Verificar que sea un método POST
   if (req.method !== 'POST') {
+    console.log("Método no permitido:", req.method);
     return new Response(JSON.stringify({ error: "Método no permitido" }), {
       status: 405,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -88,6 +92,7 @@ serve(async (req) => {
   // Obtener la API key del encabezado
   const apiKey = req.headers.get('x-api-key');
   if (!apiKey) {
+    console.log("API Key no proporcionada");
     return new Response(JSON.stringify({ error: "API Key requerida" }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -102,6 +107,7 @@ serve(async (req) => {
   // Validar API Key
   const isValidApiKey = await validateApiKey(supabase, apiKey);
   if (!isValidApiKey) {
+    console.log("API Key inválida:", apiKey);
     return new Response(JSON.stringify({ error: "API Key inválida" }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -115,6 +121,7 @@ serve(async (req) => {
     // Validar estructura del payload
     const validationError = validatePayload(payload);
     if (validationError) {
+      console.log("Error de validación del payload:", validationError);
       return new Response(JSON.stringify({ error: validationError }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -132,6 +139,7 @@ serve(async (req) => {
         .single();
       
       if (menuError || !menuItem) {
+        console.log("SKU no encontrado:", item.sku_producto);
         return new Response(JSON.stringify({ 
           error: `SKU no encontrado: ${item.sku_producto}`
         }), {

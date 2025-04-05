@@ -13,8 +13,8 @@ interface TestingTabProps {
 
 const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
   const { toast } = useToast();
-  const projectUrl = window.location.origin;
-  const apiEndpoint = `${projectUrl}/api/v1/ingresar-pedido`;
+  const projectId = 'imcxvnivqrckgjrimzck';
+  const apiEndpoint = `https://${projectId}.supabase.co/functions/v1/ingresar-pedido`;
   
   const copyToClipboard = (text: string, message: string = "Copiado al portapapeles") => {
     navigator.clipboard.writeText(text).then(

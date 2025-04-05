@@ -82,25 +82,24 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Using a totally different approach to avoid type inference issues
-    const { data, error } = await supabase
+    // Avoid complex type inference completely by using any for intermediate data
+    const result: any = await supabase
       .from('orders')
-      .select('*')
+      .select()
       .eq('external_id', externalId)
       .limit(1);
     
-    if (error) {
-      console.error('Error buscando orden por ID externo:', error);
+    if (result.error) {
+      console.error('Error buscando orden por ID externo:', result.error);
       return null;
     }
     
-    // If no data or empty array, return null
-    if (!data || data.length === 0) {
+    // Simple check and return
+    if (!result.data || result.data.length === 0) {
       return null;
     }
     
-    // Return the first item as Order
-    return data[0] as Order;
+    return result.data[0] as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

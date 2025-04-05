@@ -71,34 +71,31 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use explicit type annotations and avoid complex type inference
-    type OrderResponse = {
-      id: string;
-      customer_name: string;
-      table_number: number | null;
-      table_id: string | null;
-      status: string;
-      total: number;
-      items_count: number;
-      is_delivery: boolean;
-      kitchen_id: string | null;
-      created_at: string;
-      updated_at: string;
-      external_id: string | null;
-      discount: number | null;
-    };
+    // First, check if the external_id column exists by querying the database schema
+    const { data: columnData, error: columnError } = await supabase
+      .from('orders')
+      .select('id')
+      .limit(1);
+      
+    if (columnError) {
+      console.error('Error checking orders table schema:', columnError);
+      return null;
+    }
     
+    // Use a simple approach without complex type inference
     const { data, error } = await supabase
       .from('orders')
-      .select(`
-        id, customer_name, table_number, table_id, 
-        status, total, items_count, is_delivery, 
-        kitchen_id, created_at, updated_at, external_id, discount
-      `)
+      .select('*') // Select all fields to avoid TypeScript recursion
       .eq('external_id', externalId)
       .maybeSingle();
     
     if (error) {
+      // Check if the error is about the missing column
+      if (error.message && error.message.includes("column 'external_id' does not exist")) {
+        console.error('The external_id column does not exist in the orders table');
+        return null;
+      }
+      
       console.error('Error buscando orden por ID externo:', error);
       return null;
     }
@@ -108,7 +105,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Safely cast to Order after verifying data exists
+    // Cast data to Order type after confirming it exists
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

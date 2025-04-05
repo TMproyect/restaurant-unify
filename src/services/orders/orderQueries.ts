@@ -66,15 +66,15 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID 
+// Get order by external ID
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use maybeSingle instead of select+eq+filter to avoid excessive type instantiation
+    // Use a simpler approach with raw SQL to avoid TypeScript recursion issues
     const { data, error } = await supabase
       .from('orders')
-      .select()
+      .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at, external_id, discount')
       .eq('external_id', externalId)
       .maybeSingle();
     
@@ -88,7 +88,6 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Cast data to Order type directly to avoid complex type checking
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

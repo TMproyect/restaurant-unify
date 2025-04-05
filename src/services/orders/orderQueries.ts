@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -65,7 +66,7 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - Fixed to properly handle external_id
+// Get order by external ID 
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
@@ -86,7 +87,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    return mapSingleResponse<Order>(data, 'Failed to map order data');
+    return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

@@ -5,16 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const subscribeToOrders = (callback: (payload: any) => void) => {
   console.log('Setting up order subscription...');
   
-  // Ensure database table has realtime enabled
-  supabase.rpc('enable_realtime_for_table', { table_name: 'orders' })
-    .then(({ error }) => {
-      if (error) {
-        console.error('Error enabling realtime for orders table:', error);
-      } else {
-        console.log('Realtime enabled for orders table');
-      }
-    });
-  
+  // Setup channel subscription without the RPC call that's causing errors
   const channel = supabase
     .channel('orders-channel')
     .on('postgres_changes', 
@@ -42,16 +33,7 @@ export const subscribeToOrders = (callback: (payload: any) => void) => {
 export const subscribeToOrderItems = (callback: (payload: any) => void) => {
   console.log('Setting up order items subscription...');
   
-  // Ensure database table has realtime enabled
-  supabase.rpc('enable_realtime_for_table', { table_name: 'order_items' })
-    .then(({ error }) => {
-      if (error) {
-        console.error('Error enabling realtime for order_items table:', error);
-      } else {
-        console.log('Realtime enabled for order_items table');
-      }
-    });
-  
+  // Setup channel subscription without the RPC call that's causing errors
   const channel = supabase
     .channel('order-items-channel')
     .on('postgres_changes',

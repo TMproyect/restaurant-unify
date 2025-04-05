@@ -71,9 +71,10 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
+    // Use maybeSingle instead of select+eq+filter to avoid excessive type instantiation
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select()
       .eq('external_id', externalId)
       .maybeSingle();
     
@@ -87,6 +88,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
+    // Cast data to Order type directly to avoid complex type checking
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

@@ -71,23 +71,29 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Manually specifying each field to avoid TypeScript recursion issues
+    // Use explicit type annotations and avoid complex type inference
+    type OrderResponse = {
+      id: string;
+      customer_name: string;
+      table_number: number | null;
+      table_id: string | null;
+      status: string;
+      total: number;
+      items_count: number;
+      is_delivery: boolean;
+      kitchen_id: string | null;
+      created_at: string;
+      updated_at: string;
+      external_id: string | null;
+      discount: number | null;
+    };
+    
     const { data, error } = await supabase
       .from('orders')
       .select(`
-        id, 
-        customer_name, 
-        table_number, 
-        table_id, 
-        status, 
-        total, 
-        items_count, 
-        is_delivery, 
-        kitchen_id, 
-        created_at, 
-        updated_at, 
-        external_id, 
-        discount
+        id, customer_name, table_number, table_id, 
+        status, total, items_count, is_delivery, 
+        kitchen_id, created_at, updated_at, external_id, discount
       `)
       .eq('external_id', externalId)
       .maybeSingle();
@@ -102,6 +108,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
+    // Safely cast to Order after verifying data exists
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

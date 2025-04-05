@@ -66,32 +66,40 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - completely rewritten to avoid type inference issues
+// Get order by external ID - solución final para resolver el error de tipos
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Skip the table check to simplify the function
+    // Usar una consulta directa a la base de datos sin tipado complejo
+    // Esto evita problemas de inferencia de tipos que causan errores de recursión
+    const { data, error } = await supabase.rpc('get_order_by_external_id', {
+      p_external_id: externalId
+    });
     
-    // Use a raw query approach with explicit casting to avoid TS inference issues
-    const response = await supabase.from('orders').select();
-    
-    // Manually filter after fetching to avoid type inference issues in query builder
-    if (response.error) {
-      console.error('Error buscando ordenes:', response.error);
-      return null;
+    if (error) {
+      console.error('Error al consultar RPC:', error);
+      
+      // Plan B: Si falla el RPC, usar una consulta simple con select pero evitando
+      // problemas de tipado estricto
+      const result = await supabase
+        .from('orders')
+        .select('*')
+        .eq('external_id', externalId)
+        .limit(1)
+        .single();
+      
+      if (result.error) {
+        console.error('Error en la consulta de respaldo:', result.error);
+        return null;
+      }
+      
+      // Convertir manualmente al tipo Order
+      return result.data as Order;
     }
     
-    if (!response.data) {
-      return null;
-    }
-    
-    // Find the order with matching external_id
-    const matchingOrder = response.data.find(
-      (order: any) => order.external_id === externalId
-    );
-    
-    return matchingOrder ? matchingOrder as Order : null;
+    // Si la función RPC tuvo éxito, devolver el resultado
+    return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

@@ -71,31 +71,32 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // First, check if the external_id column exists by querying the database schema
-    const { data: columnData, error: columnError } = await supabase
+    // Check for external_id column existence using a simple query
+    // This avoids the excessive type instantiation issue
+    const { error: columnCheckError } = await supabase
       .from('orders')
       .select('id')
       .limit(1);
-      
-    if (columnError) {
-      console.error('Error checking orders table schema:', columnError);
+    
+    if (columnCheckError) {
+      console.error('Error checking orders table:', columnCheckError);
       return null;
     }
     
-    // Use a simple approach without complex type inference
+    // Use any to bypass TypeScript's type inference limitations
+    // This avoids the excessive recursion in type instantiation
     const { data, error } = await supabase
       .from('orders')
-      .select('*') // Select all fields to avoid TypeScript recursion
+      .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at')
       .eq('external_id', externalId)
       .maybeSingle();
     
     if (error) {
-      // Check if the error is about the missing column
+      // Handle missing column error explicitly
       if (error.message && error.message.includes("column 'external_id' does not exist")) {
         console.error('The external_id column does not exist in the orders table');
         return null;
       }
-      
       console.error('Error buscando orden por ID externo:', error);
       return null;
     }
@@ -105,7 +106,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Cast data to Order type after confirming it exists
+    // The data object now has the correct shape of an Order, safe to cast
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

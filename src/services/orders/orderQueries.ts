@@ -71,9 +71,21 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use a simple type-safe query that avoids excessive type instantiation
-    // We use any to bypass TypeScript's complex type inference
-    // @ts-ignore - Intentionally bypassing TypeScript's type checking to avoid infinite recursion
+    // First check if the external_id column exists to avoid the type error
+    const { error: columnCheckError } = await supabase
+      .from('orders')
+      .select('id')
+      .limit(1);
+    
+    // If we get an error about missing external_id column, handle it gracefully
+    if (columnCheckError && 
+        columnCheckError.message && 
+        columnCheckError.message.includes("column 'external_id' does not exist")) {
+      console.error('The external_id column does not exist in the orders table');
+      return null;
+    }
+    
+    // If no column error, proceed with the query
     const { data, error } = await supabase
       .from('orders')
       .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at, external_id, discount')
@@ -81,11 +93,6 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       .maybeSingle();
     
     if (error) {
-      // Handle missing column error explicitly
-      if (error.message && error.message.includes("column 'external_id' does not exist")) {
-        console.error('The external_id column does not exist in the orders table');
-        return null;
-      }
       console.error('Error buscando orden por ID externo:', error);
       return null;
     }
@@ -95,7 +102,6 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Safe to cast since we've validated the data exists
     return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);

@@ -71,10 +71,24 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use a simpler approach with raw SQL to avoid TypeScript recursion issues
+    // Manually specifying each field to avoid TypeScript recursion issues
     const { data, error } = await supabase
       .from('orders')
-      .select('id, customer_name, table_number, table_id, status, total, items_count, is_delivery, kitchen_id, created_at, updated_at, external_id, discount')
+      .select(`
+        id, 
+        customer_name, 
+        table_number, 
+        table_id, 
+        status, 
+        total, 
+        items_count, 
+        is_delivery, 
+        kitchen_id, 
+        created_at, 
+        updated_at, 
+        external_id, 
+        discount
+      `)
       .eq('external_id', externalId)
       .maybeSingle();
     

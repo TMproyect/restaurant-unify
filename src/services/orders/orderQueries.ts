@@ -82,34 +82,25 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Completely avoid type issues by using the most basic approach
-    const { data, error } = await supabase.rpc('get_order_by_external_id', { 
-      p_external_id: externalId 
-    }).maybeSingle();
+    // Simple direct query approach without any complex typing
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('external_id', externalId)
+      .maybeSingle();
     
-    // If RPC doesn't exist, try direct query with minimal typing
-    if (error && error.message && error.message.includes('function get_order_by_external_id does not exist')) {
-      // Fallback to direct query
-      const orderResult = await supabase
-        .from('orders')
-        .select('*')
-        .eq('external_id', externalId)
-        .maybeSingle();
-      
-      if (orderResult.error) {
-        if (orderResult.error.message && orderResult.error.message.includes("column 'external_id' does not exist")) {
-          console.error('The external_id column does not exist in the orders table');
-          return null;
-        }
-        
-        console.error('Error buscando orden por ID externo:', orderResult.error);
+    if (error) {
+      if (error.message && error.message.includes("column 'external_id' does not exist")) {
+        console.error('The external_id column does not exist in the orders table');
         return null;
       }
       
-      return orderResult.data as Order;
+      console.error('Error buscando orden por ID externo:', error);
+      return null;
     }
     
-    return data as Order;
+    // Simply return the data as Order or null
+    return data as Order | null;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

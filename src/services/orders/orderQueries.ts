@@ -82,25 +82,25 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Simple direct query approach without any complex typing
-    const { data, error } = await supabase
+    // Avoid type complexity by using any for the intermediate result
+    const result: any = await supabase
       .from('orders')
       .select('*')
       .eq('external_id', externalId)
       .maybeSingle();
     
-    if (error) {
-      if (error.message && error.message.includes("column 'external_id' does not exist")) {
+    if (result.error) {
+      if (result.error.message && result.error.message.includes("column 'external_id' does not exist")) {
         console.error('The external_id column does not exist in the orders table');
         return null;
       }
       
-      console.error('Error buscando orden por ID externo:', error);
+      console.error('Error buscando orden por ID externo:', result.error);
       return null;
     }
     
-    // Simply return the data as Order or null
-    return data as Order | null;
+    // Explicitly cast to Order or null at the end
+    return result.data as Order | null;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

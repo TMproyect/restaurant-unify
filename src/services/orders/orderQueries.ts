@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -65,27 +66,26 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - completely rewritten to avoid typing issues
+// Get order by external ID - simplest possible implementation to avoid type errors
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use a direct query approach to avoid type inference issues
-    // This bypasses the RPC call which is causing type errors
-    const { data, error } = await supabase
+    // Use the simplest query structure possible to avoid TypeScript type inference issues
+    const response = await supabase
       .from('orders')
-      .select('*')
+      .select()
       .eq('external_id', externalId)
       .limit(1)
       .single();
     
-    if (error) {
-      console.error('Error al buscar orden por ID externo:', error);
+    if (response.error) {
+      console.error('Error al buscar orden por ID externo:', response.error);
       return null;
     }
     
-    // Cast the result to Order type
-    return data as unknown as Order;
+    // Explicit type assertion with unknown intermediate step to satisfy TypeScript
+    return response.data as unknown as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

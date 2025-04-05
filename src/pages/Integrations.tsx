@@ -13,8 +13,8 @@ const Integrations = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
-  // Example payload for testing
-  const examplePayload = {
+  // Example payload for testing - as a JSON string
+  const examplePayload = JSON.stringify({
     external_id: "ORD-123456",
     items: [
       { name: "Hamburguesa", price: 8.99, quantity: 2 },
@@ -25,7 +25,7 @@ const Integrations = () => {
       name: "Juan Pérez",
       phone: "555-123-4567"
     }
-  };
+  }, null, 2);
 
   // Function to generate new API key
   const generateNewApiKey = async () => {

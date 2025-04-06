@@ -10,6 +10,7 @@ export function useLoginEffects() {
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
   const [redirectAttempts, setRedirectAttempts] = useState(0);
+  const [hasErrors, setHasErrors] = useState(false);
 
   // Detailed debug logging
   useEffect(() => {
@@ -22,7 +23,17 @@ export function useLoginEffects() {
         role: user.role
       } : null
     });
-  }, [isAuthenticated, isLoading, user]);
+    
+    // Force showContent to true if taking too long
+    const forceContentTimer = setTimeout(() => {
+      if (!showContent) {
+        console.log("Forcing showContent to true after timeout");
+        setShowContent(true);
+      }
+    }, 2000);
+    
+    return () => clearTimeout(forceContentTimer);
+  }, [isAuthenticated, isLoading, user, showContent]);
 
   // Show content after a brief delay to avoid flickering
   useEffect(() => {
@@ -40,6 +51,7 @@ export function useLoginEffects() {
     
     if (error) {
       console.log("Login page: URL contiene error:", error);
+      setHasErrors(true);
       toast.error('Error de autenticación', {
         description: message || error,
       });
@@ -60,16 +72,21 @@ export function useLoginEffects() {
       localStorage.removeItem('login_test');
     } catch (e) {
       console.error("Login page: LocalStorage no funciona:", e);
+      setHasErrors(true);
     }
     
     // Verificar la conexión a Supabase
     const testSupabaseConnection = async () => {
       try {
-        const { data, error } = await fetch('https://imcxvnivqrckgjrimzck.supabase.co/auth/v1/health')
-          .then(res => res.json());
-        console.log("Login page: Conexión a Supabase health check:", { data, error, status: "ok" });
+        const response = await fetch('https://imcxvnivqrckgjrimzck.supabase.co/auth/v1/health');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Login page: Conexión a Supabase health check:", { data, status: "ok" });
       } catch (err) {
         console.error("Login page: Error verificando conexión a Supabase:", err);
+        setHasErrors(true);
       }
     };
     
@@ -94,13 +111,14 @@ export function useLoginEffects() {
       redirectTimeout = window.setTimeout(() => {
         console.log("Executing redirect to dashboard now for user:", user.email);
         navigate('/dashboard', { replace: true });
-      }, 300); // Increased timeout to ensure state is fully processed
-    } else if (!isLoading && !isAuthenticated && redirectAttempts < 3) {
-      console.log("Not authenticated but not loading, will check again in case of race condition");
+      }, 500); // Increased timeout to ensure state is fully processed
+      
+    } else if (!isLoading && !isAuthenticated && redirectAttempts < 5) {
+      console.log(`Not authenticated but not loading (attempt ${redirectAttempts}), will check again in case of race condition`);
       // En caso de que haya una condición de carrera, intentar de nuevo después de un breve tiempo
       redirectTimeout = window.setTimeout(() => {
         setRedirectAttempts(prev => prev + 1);
-      }, 500);
+      }, 1000);
     }
     
     return () => {
@@ -115,6 +133,7 @@ export function useLoginEffects() {
   useEffect(() => {
     const handleOnlineStatusChange = () => {
       if (!navigator.onLine) {
+        setHasErrors(true);
         toast.error('Error de conexión', {
           description: 'Se ha perdido la conexión a internet',
         });
@@ -128,6 +147,9 @@ export function useLoginEffects() {
 
     // Verificar estado actual de conexión
     console.log("Estado actual de conexión:", navigator.onLine ? "Online" : "Offline");
+    if (!navigator.onLine) {
+      setHasErrors(true);
+    }
 
     return () => {
       window.removeEventListener('online', handleOnlineStatusChange);
@@ -141,6 +163,8 @@ export function useLoginEffects() {
     user,
     activeTab,
     setActiveTab,
-    showContent
+    showContent,
+    hasErrors,
+    redirectAttempts
   };
 }

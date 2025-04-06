@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoginForm from '@/components/auth/LoginForm';
@@ -7,6 +7,7 @@ import SignupForm from '@/components/auth/SignupForm';
 import LoadingState from '@/components/auth/LoadingState';
 import AuthRedirectState from '@/components/auth/AuthRedirectState';
 import { useLoginEffects } from '@/hooks/use-login-effects';
+import { toast } from 'sonner';
 
 const Login = () => {
   const { 
@@ -15,13 +16,49 @@ const Login = () => {
     user, 
     activeTab, 
     setActiveTab, 
-    showContent 
+    showContent,
+    hasErrors
   } = useLoginEffects();
+
+  // Log component rendering for debugging
+  useEffect(() => {
+    console.log("Login page rendered with state:", {
+      isAuthenticated,
+      isLoading,
+      showContent,
+      hasUser: !!user,
+      hasErrors
+    });
+  }, [isAuthenticated, isLoading, user, showContent, hasErrors]);
+
+  // Show timeout toast if still loading after 8 seconds
+  useEffect(() => {
+    let timeoutId: number | undefined;
+    
+    if (isLoading) {
+      timeoutId = window.setTimeout(() => {
+        toast.warning("La carga está tomando más tiempo de lo esperado", {
+          description: "Estamos experimentando cierta lentitud. Por favor espere un momento.",
+          duration: 5000,
+        });
+      }, 8000);
+    }
+    
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [isLoading]);
 
   // Show loading indicator
   if (isLoading || !showContent) {
-    console.log("Showing loading state on Login page");
-    return <LoadingState />;
+    console.log("Showing loading state on Login page", {
+      isLoading,
+      showContent
+    });
+    return <LoadingState 
+      message="Iniciando sesión"
+      subMessage={hasErrors ? "Verificando conexión con el servidor..." : "Preparando todo..."}
+    />;
   }
 
   // If user is authenticated, we should not render this page but be redirected

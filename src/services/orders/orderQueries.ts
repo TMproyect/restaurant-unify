@@ -71,26 +71,26 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Type-safe approach avoiding deep type instantiation issues
-    const response = await supabase
+    // Use a direct query approach to avoid type inference issues
+    const { data, error } = await supabase
       .from('orders')
       .select('*')
       .eq('external_id', externalId)
       .limit(1);
     
-    if (response.error) {
-      console.error('Error al obtener orden por ID externo:', response.error);
+    if (error) {
+      console.error('Error al obtener orden por ID externo:', error);
       return null;
     }
     
-    if (!response.data || response.data.length === 0) {
+    if (!data || data.length === 0) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Safely convert to Order type
-    const orderData = response.data[0];
-    return {
+    // Map only the properties we know exist on the Order type
+    const orderData = data[0];
+    const order: Order = {
       id: orderData.id,
       customer_name: orderData.customer_name,
       table_number: orderData.table_number,
@@ -101,10 +101,19 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       is_delivery: orderData.is_delivery,
       kitchen_id: orderData.kitchen_id,
       created_at: orderData.created_at,
-      updated_at: orderData.updated_at,
-      external_id: orderData.external_id,
-      discount: orderData.discount
-    } as Order;
+      updated_at: orderData.updated_at
+    };
+    
+    // Add optional properties only if they exist in the data
+    if ('external_id' in orderData) {
+      order.external_id = orderData.external_id;
+    }
+    
+    if ('discount' in orderData) {
+      order.discount = orderData.discount;
+    }
+    
+    return order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

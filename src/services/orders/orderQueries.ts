@@ -71,7 +71,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use a direct query approach to avoid type inference issues
+    // Avoid filterValue and use direct string value to prevent type recursion
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -104,13 +104,13 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       updated_at: orderData.updated_at
     };
     
-    // Add optional properties only if they exist in the data
-    if ('external_id' in orderData) {
-      order.external_id = orderData.external_id;
+    // Add optional properties with proper type casting
+    if ('external_id' in orderData && orderData.external_id !== null) {
+      order.external_id = String(orderData.external_id);
     }
     
-    if ('discount' in orderData) {
-      order.discount = orderData.discount;
+    if ('discount' in orderData && orderData.discount !== null) {
+      order.discount = Number(orderData.discount);
     }
     
     return order;

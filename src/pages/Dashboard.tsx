@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, DollarSign, Package, UserRound, Utensils } from 'lucide-react';
@@ -10,6 +11,54 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Add error handling and initial loading state
+  useEffect(() => {
+    // Simple initialization to make sure components can mount safely
+    try {
+      console.log("Dashboard mounted successfully");
+      setIsReady(true);
+    } catch (err) {
+      console.error("Error initializing dashboard:", err);
+      setError("Error al cargar el dashboard. Por favor, recargue la página.");
+    }
+  }, []);
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <div className="text-center p-6 bg-red-50 rounded-lg">
+            <h2 className="text-xl font-bold text-red-700 mb-2">Error</h2>
+            <p className="text-red-600">{error}</p>
+            <button 
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
+              onClick={() => window.location.reload()}
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show loading state until ready
+  if (!isReady) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <div className="text-center">
+            <div className="h-8 w-8 border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando dashboard...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

@@ -71,7 +71,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Custom fetch for RPC to avoid TypeScript issues
+    // Use the more reliable direct query approach
     const { data, error } = await supabase
       .from('orders')
       .select('*')

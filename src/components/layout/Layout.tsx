@@ -30,18 +30,29 @@ const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) => {
   
   // Emergency timer to ensure UI always renders something
   useEffect(() => {
+    console.log('🔄 [Layout] Emergency render effect activated');
+    
+    // Force render after a timeout if we're stuck
     const timer = setTimeout(() => {
       console.log('🔄 [Layout] Emergency render timer triggered, attempt:', renderAttempt + 1);
       setRenderAttempt(prev => prev + 1);
       
-      if (renderAttempt >= 2) {
+      if (renderAttempt >= 2 && !isAuthenticated) {
         console.log('🔄 [Layout] Activating emergency content render');
         setShowEmergencyContent(true);
       }
     }, 3000);
     
     return () => clearTimeout(timer);
-  }, [renderAttempt]);
+  }, [renderAttempt, isAuthenticated]);
+
+  // Reset emergency content when auth state changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('🔄 [Layout] User authenticated, hiding emergency content');
+      setShowEmergencyContent(false);
+    }
+  }, [isAuthenticated, user]);
 
   // Detect session issues
   useEffect(() => {
@@ -73,7 +84,7 @@ const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) => {
   }
 
   // Handle emergency content render
-  if (showEmergencyContent) {
+  if (showEmergencyContent && !isAuthenticated) {
     console.log('🔄 [Layout] Showing emergency content');
     return (
       <div className="flex h-screen bg-background overflow-hidden">
@@ -108,7 +119,6 @@ const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) => {
                   </button>
                 </div>
               </div>
-              {children}
             </div>
           </main>
         </div>

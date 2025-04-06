@@ -17,6 +17,14 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [renderAttempt, setRenderAttempt] = useState(0);
   
+  // Force UI to render if user is authenticated
+  useEffect(() => {
+    if (user && isAuthenticated && !isReady) {
+      console.log('🔄 [Dashboard] User authenticated, forcing ready state');
+      setIsReady(true);
+    }
+  }, [user, isAuthenticated, isReady]);
+  
   // Emergency fallback to ensure UI renders
   useEffect(() => {
     console.log('🔄 [Dashboard] Emergency render effect activated');
@@ -24,12 +32,17 @@ const Dashboard = () => {
     // Force render after a timeout if we're stuck
     const forceRenderTimer = setTimeout(() => {
       console.log('🔄 [Dashboard] Force render emergency trigger activated');
-      setIsReady(true);
       setRenderAttempt(prev => prev + 1);
-    }, 3000);
+      
+      // After a few attempts, force the ready state
+      if (renderAttempt >= 1) {
+        console.log('🔄 [Dashboard] Forcing ready state after multiple attempts');
+        setIsReady(true);
+      }
+    }, 2000);
     
     return () => clearTimeout(forceRenderTimer);
-  }, []);
+  }, [renderAttempt]);
   
   // Log auth state for debugging
   useEffect(() => {
@@ -73,14 +86,14 @@ const Dashboard = () => {
           }
         }, 5000);
         
-        // Normal initialization timer
+        // Normal initialization timer - shorter to improve user experience
         initTimer = window.setTimeout(() => {
           if (mounted) {
             console.log("✅ [Dashboard] Initialization completed successfully");
             clearTimeout(timeoutId);
             setIsReady(true);
           }
-        }, 1000);
+        }, 500);
       }
       
       return () => {
@@ -100,7 +113,7 @@ const Dashboard = () => {
         mounted = false;
       };
     }
-  }, [error]);
+  }, [error, isReady]);
   
   // Log render decisions
   if (error) {
@@ -130,7 +143,7 @@ const Dashboard = () => {
   }
 
   // Emergency fallback if user is still null but we're technically ready
-  if (!user && renderAttempt > 1) {
+  if (!user && renderAttempt > 0) {
     console.log('⚠️ [Dashboard] Emergency fallback - no user but rendering empty dashboard shell');
     return (
       <Layout>

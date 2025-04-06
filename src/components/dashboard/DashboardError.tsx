@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +12,9 @@ const DashboardError: React.FC<DashboardErrorProps> = ({ error }) => {
   const navigate = useNavigate();
   
   console.log('🔄 [DashboardError] Rendering error state:', error);
+  
+  // If error contains timeout, provide specific message
+  const isTimeoutError = error.toLowerCase().includes('tiempo') || error.toLowerCase().includes('timeout');
   
   return (
     <div className="flex items-center justify-center h-[80vh]">
@@ -63,6 +66,17 @@ const DashboardError: React.FC<DashboardErrorProps> = ({ error }) => {
             <Home className="h-4 w-4 mr-2" />
             Ir a inicio
           </Button>
+          
+          {isTimeoutError && (
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/login')}
+              className="flex items-center"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a iniciar sesión
+            </Button>
+          )}
         </div>
       </div>
     </div>

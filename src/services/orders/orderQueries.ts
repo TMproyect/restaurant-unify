@@ -71,12 +71,11 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Avoid filterValue and use direct string value to prevent type recursion
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('external_id', externalId)
-      .limit(1);
+    // Using string interpolation for the SQL query to completely avoid type recursion
+    const { data, error } = await supabase.rpc(
+      'get_order_by_external_id',
+      { external_id_param: externalId }
+    );
     
     if (error) {
       console.error('Error al obtener orden por ID externo:', error);
@@ -88,32 +87,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    // Map only the properties we know exist on the Order type
-    const orderData = data[0];
-    const order: Order = {
-      id: orderData.id,
-      customer_name: orderData.customer_name,
-      table_number: orderData.table_number,
-      table_id: orderData.table_id,
-      status: orderData.status,
-      total: orderData.total,
-      items_count: orderData.items_count,
-      is_delivery: orderData.is_delivery,
-      kitchen_id: orderData.kitchen_id,
-      created_at: orderData.created_at,
-      updated_at: orderData.updated_at
-    };
-    
-    // Add optional properties with proper type casting
-    if ('external_id' in orderData && orderData.external_id !== null) {
-      order.external_id = String(orderData.external_id);
-    }
-    
-    if ('discount' in orderData && orderData.discount !== null) {
-      order.discount = Number(orderData.discount);
-    }
-    
-    return order;
+    return data as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

@@ -71,18 +71,19 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Using string interpolation for the SQL query to completely avoid type recursion
-    const { data, error } = await supabase.rpc(
-      'get_order_by_external_id',
-      { p_external_id: externalId }
-    );
+    // Custom fetch for RPC to avoid TypeScript issues
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('external_id', externalId)
+      .maybeSingle();
     
     if (error) {
       console.error('Error al obtener orden por ID externo:', error);
       return null;
     }
     
-    if (!data || data.length === 0) {
+    if (!data) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }

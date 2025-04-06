@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -65,30 +66,29 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - Using direct approach to avoid type inference issues
+// Get order by external ID - Using a direct query approach instead of RPC
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use the RPC function instead of direct query to avoid TypeScript inference issues
-    const { data, error } = await supabase.rpc(
-      'get_order_by_external_id',
-      { p_external_id: externalId }
-    );
+    // Direct query to orders table with external_id filter
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('external_id', filterValue(externalId))
+      .limit(1);
     
     if (error) {
       console.error('Error al obtener orden por ID externo:', error);
       return null;
     }
     
-    if (!data || (Array.isArray(data) && data.length === 0)) {
+    if (!data || data.length === 0) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Handle both array and single object responses
-    const orderData = Array.isArray(data) ? data[0] : data;
-    return orderData as Order;
+    return mapSingleResponse<Order>(data[0], 'Failed to map order data');
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

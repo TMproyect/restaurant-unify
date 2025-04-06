@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import AlertsBanner from '@/components/dashboard/AlertsBanner';
 import UpgradeToAdmin from '@/components/dashboard/UpgradeToAdmin';
@@ -12,8 +12,17 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 const Dashboard = () => {
   console.log('🔄 [Dashboard] Component rendering');
   
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { error, isReady } = useDashboardInit();
+  
+  // Log auth state for debugging
+  useEffect(() => {
+    console.log('🔄 [Dashboard] Auth state:', { 
+      isAuthenticated, 
+      authLoading, 
+      user: user ? { id: user.id, email: user?.email, role: user.role } : 'No user' 
+    });
+  }, [isAuthenticated, authLoading, user]);
   
   // Log render decisions
   if (error) {

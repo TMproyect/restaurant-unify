@@ -9,6 +9,7 @@ const DashboardLoading: React.FC = () => {
       <div className="text-center">
         <div className="h-8 w-8 border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <p className="text-muted-foreground">Cargando dashboard...</p>
+        <p className="text-xs text-muted-foreground mt-2">Si continúa viendo esta pantalla, intente refrescar la página</p>
       </div>
     </div>
   );

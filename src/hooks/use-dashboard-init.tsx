@@ -16,15 +16,23 @@ export function useDashboardInit() {
       // Check if all required services are available
       console.log("🔍 [useDashboardInit] Checking required services...");
       
-      // Set a small timeout to ensure any async initializations can complete
+      // Add a timeout to detect if initialization is taking too long
+      const timeoutId = setTimeout(() => {
+        console.error("❌ [useDashboardInit] Initialization timeout reached");
+        setError("La inicialización está tomando demasiado tiempo. Puede haber un problema con la conexión o con los servicios requeridos.");
+      }, 10000); // 10-second timeout
+      
+      // Normal initialization timer
       const timer = setTimeout(() => {
         console.log("✅ [useDashboardInit] Initialization completed successfully");
+        clearTimeout(timeoutId); // Clear the timeout if initialization completes
         setIsReady(true);
       }, 500);
       
       return () => {
-        console.log("🔄 [useDashboardInit] Cleaning up initialization timer");
+        console.log("🔄 [useDashboardInit] Cleaning up initialization timers");
         clearTimeout(timer);
+        clearTimeout(timeoutId);
       };
     } catch (err) {
       console.error("❌ [useDashboardInit] Error initializing dashboard:", err);

@@ -281,6 +281,8 @@ export type Database = {
         Row: {
           created_at: string
           customer_name: string
+          discount: number | null
+          external_id: string | null
           id: string
           is_delivery: boolean
           items_count: number
@@ -294,6 +296,8 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_name: string
+          discount?: number | null
+          external_id?: string | null
           id?: string
           is_delivery?: boolean
           items_count?: number
@@ -307,6 +311,8 @@ export type Database = {
         Update: {
           created_at?: string
           customer_name?: string
+          discount?: number | null
+          external_id?: string | null
           id?: string
           is_delivery?: boolean
           items_count?: number
@@ -472,6 +478,26 @@ export type Database = {
           id: string
           name: string
           role: string
+        }[]
+      }
+      get_order_by_external_id: {
+        Args: {
+          p_external_id: string
+        }
+        Returns: {
+          id: string
+          created_at: string
+          kitchen_id: string
+          status: string
+          customer_name: string
+          table_id: string
+          table_number: number
+          total: number
+          items_count: number
+          is_delivery: boolean
+          updated_at: string
+          external_id: string
+          discount: number
         }[]
       }
       get_profile_by_id: {

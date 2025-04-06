@@ -74,7 +74,7 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
     // Using string interpolation for the SQL query to completely avoid type recursion
     const { data, error } = await supabase.rpc(
       'get_order_by_external_id',
-      { external_id_param: externalId }
+      { p_external_id: externalId }
     );
     
     if (error) {

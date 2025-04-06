@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import OrderPrintController from '@/components/OrderPrintController';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
+import DashboardError from '@/components/dashboard/DashboardError';
+import DashboardLoading from '@/components/dashboard/DashboardLoading';
 
 const Tables: React.FC = () => {
   const [activeTab, setActiveTab] = useState('lista');
@@ -74,6 +76,28 @@ const Tables: React.FC = () => {
     refetchZones();
     toast.success('Datos actualizados');
   };
+  
+  // Show error state if there's an error with tables or zones
+  if (tablesError || zonesError) {
+    const errorMessage = tablesError 
+      ? `Error al cargar las mesas: ${(tablesError as Error).message}` 
+      : `Error al cargar las zonas: ${(zonesError as Error).message}`;
+    
+    return (
+      <Layout>
+        <DashboardError error={errorMessage} />
+      </Layout>
+    );
+  }
+
+  // Show loading state when loading tables or zones
+  if (tablesLoading || zonesLoading) {
+    return (
+      <Layout>
+        <DashboardLoading />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

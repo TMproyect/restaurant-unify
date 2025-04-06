@@ -1,58 +1,37 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-// Subscribe to order changes
-export const subscribeToOrders = (callback: (payload: any) => void) => {
-  console.log('Setting up order subscription...');
+export const subscribeToOrders = (callback: (payload: RealtimePostgresChangesPayload<any>) => void) => {
+  console.log('🔄 [subscribeToOrders] Setting up realtime subscription to orders table');
   
-  // Setup channel subscription without the RPC call that's causing errors
-  const channel = supabase
-    .channel('orders-channel')
-    .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'orders' 
-        }, 
-        payload => {
-          console.log('Order realtime update received:', payload);
+  try {
+    const subscription = supabase
+      .channel('orders-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('✅ [subscribeToOrders] Received realtime update:', payload);
           callback(payload);
-        })
-    .subscribe((status) => {
-      console.log(`Orders channel subscription status: ${status}`);
-    });
+        }
+      )
+      .subscribe((status) => {
+        console.log(`🔄 [subscribeToOrders] Subscription status:`, status);
+      });
 
-  console.log('Subscribed to orders channel');
-  return () => {
-    console.log('Unsubscribing from orders channel');
-    supabase.removeChannel(channel);
-  };
-};
-
-// Subscribe to order items changes
-export const subscribeToOrderItems = (callback: (payload: any) => void) => {
-  console.log('Setting up order items subscription...');
-  
-  // Setup channel subscription without the RPC call that's causing errors
-  const channel = supabase
-    .channel('order-items-channel')
-    .on('postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items'
-        },
-        payload => {
-          console.log('Order items realtime update received:', payload);
-          callback(payload);
-        })
-    .subscribe((status) => {
-      console.log(`Order items channel subscription status: ${status}`);
-    });
-
-  console.log('Subscribed to order items channel');
-  return () => {
-    console.log('Unsubscribing from order items channel');
-    supabase.removeChannel(channel);
-  };
+    console.log('✅ [subscribeToOrders] Subscription set up successfully');
+    
+    // Return an unsubscribe function
+    return () => {
+      console.log('🔄 [subscribeToOrders] Unsubscribing from orders channel');
+      supabase.removeChannel(subscription);
+    };
+  } catch (error) {
+    console.error('❌ [subscribeToOrders] Error setting up subscription:', error);
+    // Return a no-op function if subscription fails
+    return () => {
+      console.log('🔄 [subscribeToOrders] No-op unsubscribe called (subscription had failed)');
+    };
+  }
 };

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getOrders, subscribeToOrders, updateOrderStatus } from '@/services/orderService';
@@ -64,49 +65,64 @@ const OrdersList: React.FC<OrdersListProps> = ({
   onRefresh,
   searchQuery = ''
 }) => {
+  console.log('🔄 [OrdersList] Component rendering with filter:', filter, 'and limit:', limit);
+  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
   const loadOrders = async () => {
+    console.log('🔍 [OrdersList] Starting to load orders...');
     setLoading(true);
     try {
-      console.log(`Loading orders with filter: ${filter}`);
+      console.log(`🔍 [OrdersList] Calling getOrders with filter: ${filter}`);
       const data = await getOrders();
+      console.log(`✅ [OrdersList] Received orders data, length:`, data?.length || 0);
+      console.log(`✅ [OrdersList] Sample order:`, data?.[0] || 'No orders');
+      
       setOrders(data || []);
-      console.log(`Loaded ${data?.length || 0} orders`);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('❌ [OrdersList] Error loading orders:', error);
+      console.error('❌ [OrdersList] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       toast({
         title: "Error",
         description: "No se pudieron cargar las órdenes",
         variant: "destructive"
       });
     } finally {
+      console.log('✅ [OrdersList] Setting loading state to false');
       setLoading(false);
     }
   };
   
   useEffect(() => {
+    console.log('🔄 [OrdersList] useEffect triggered, loading orders...');
     loadOrders();
     
-    const unsubscribe = subscribeToOrders((payload) => {
-      console.log('Realtime order update received in OrdersList:', payload);
-      loadOrders();
-    });
-    
-    return () => {
-      unsubscribe();
-    };
+    try {
+      console.log('🔄 [OrdersList] Setting up realtime subscription...');
+      const unsubscribe = subscribeToOrders((payload) => {
+        console.log('✅ [OrdersList] Realtime order update received:', payload);
+        loadOrders();
+      });
+      
+      return () => {
+        console.log('🔄 [OrdersList] Cleaning up realtime subscription');
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('❌ [OrdersList] Error setting up realtime subscription:', error);
+    }
   }, [filter]);
   
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
     try {
-      console.log(`Updating order ${orderId} status to ${newStatus}`);
+      console.log(`🔄 [OrdersList] Updating order ${orderId} status to ${newStatus}`);
       setLoading(true);
       const success = await updateOrderStatus(orderId, newStatus);
       
       if (success) {
+        console.log(`✅ [OrdersList] Successfully updated order status`);
         toast({
           title: "Estado actualizado",
           description: `La orden ha sido actualizada a "${
@@ -118,6 +134,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
           }"`
         });
       } else {
+        console.error(`❌ [OrdersList] Failed to update order status`);
         toast({
           title: "Error",
           description: "No se pudo actualizar el estado de la orden",
@@ -126,9 +143,12 @@ const OrdersList: React.FC<OrdersListProps> = ({
       }
       
       await loadOrders();
-      if (onRefresh) onRefresh();
+      if (onRefresh) {
+        console.log(`🔄 [OrdersList] Calling onRefresh callback`);
+        onRefresh();
+      }
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error('❌ [OrdersList] Error updating order status:', error);
       toast({
         title: "Error",
         description: "Ocurrió un error al actualizar el estado",
@@ -139,21 +159,33 @@ const OrdersList: React.FC<OrdersListProps> = ({
     }
   };
   
+  console.log('🔍 [OrdersList] Current orders state length:', orders.length);
+  
   const filteredOrders = orders
     .filter(order => {
-      if (filter !== 'all' && order.status !== filter) return false;
+      console.log(`🔍 [OrdersList] Filtering order ${order.id} with status ${order.status}, comparing to filter ${filter}`);
+      
+      if (filter !== 'all' && order.status !== filter) {
+        console.log(`🔍 [OrdersList] Order ${order.id} filtered out due to status mismatch`);
+        return false;
+      }
       
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
         const orderIdMatch = order.id?.toLowerCase().includes(searchLower);
-        const tableMatch = order.table_number.toString().includes(searchLower);
+        const tableMatch = order.table_number?.toString().includes(searchLower);
         const customerMatch = order.customer_name.toLowerCase().includes(searchLower);
-        return orderIdMatch || tableMatch || customerMatch;
+        const match = orderIdMatch || tableMatch || customerMatch;
+        
+        console.log(`🔍 [OrdersList] Order ${order.id} search match: ${match}`);
+        return match;
       }
       
       return true;
     })
     .slice(0, limit);
+  
+  console.log(`🔍 [OrdersList] Filtered orders length: ${filteredOrders.length}`);
   
   return (
     <div className="overflow-hidden">

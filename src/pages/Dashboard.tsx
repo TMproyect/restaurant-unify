@@ -8,24 +8,60 @@ import OrdersList from '@/components/dashboard/OrdersList';
 import InventoryAlert from '@/components/dashboard/InventoryAlert';
 import UpgradeToAdmin from '@/components/dashboard/UpgradeToAdmin';
 import { useAuth } from '@/contexts/auth/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
+  console.log('🔄 [Dashboard] Component rendering');
+  
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const { toast } = useToast();
 
-  // Add error handling and initial loading state
+  // Add detailed error handling and initial loading state
   useEffect(() => {
+    console.log('🔄 [Dashboard] useEffect running for initialization');
+    
     // Simple initialization to make sure components can mount safely
     try {
-      console.log("Dashboard mounted successfully");
-      setIsReady(true);
+      console.log("✅ [Dashboard] Starting initialization...");
+      
+      // Check if all required services are available
+      console.log("🔍 [Dashboard] Checking auth context...");
+      console.log("🔍 [Dashboard] User from auth context:", user);
+      
+      // Set a small timeout to ensure any async initializations can complete
+      const timer = setTimeout(() => {
+        console.log("✅ [Dashboard] Initialization completed successfully");
+        setIsReady(true);
+      }, 500);
+      
+      return () => {
+        console.log("🔄 [Dashboard] Cleaning up initialization timer");
+        clearTimeout(timer);
+      };
     } catch (err) {
-      console.error("Error initializing dashboard:", err);
+      console.error("❌ [Dashboard] Error initializing dashboard:", err);
+      console.error("❌ [Dashboard] Error stack:", err instanceof Error ? err.stack : 'No stack trace');
       setError("Error al cargar el dashboard. Por favor, recargue la página.");
+      
+      toast({
+        title: "Error en el Dashboard",
+        description: "Hubo un problema al inicializar el dashboard. Intente recargar la página.",
+        variant: "destructive"
+      });
     }
   }, []);
 
+  // Log render decisions
+  if (error) {
+    console.log('🔄 [Dashboard] Rendering error state:', error);
+  } else if (!isReady) {
+    console.log('🔄 [Dashboard] Rendering loading state');
+  } else {
+    console.log('🔄 [Dashboard] Rendering normal dashboard');
+  }
+  
   // Show error state if there's an error
   if (error) {
     return (
@@ -36,7 +72,10 @@ const Dashboard = () => {
             <p className="text-red-600">{error}</p>
             <button 
               className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                console.log('🔄 [Dashboard] Reload button clicked');
+                window.location.reload();
+              }}
             >
               Recargar página
             </button>
@@ -60,6 +99,9 @@ const Dashboard = () => {
     );
   }
 
+  // Normal dashboard render
+  console.log('🔄 [Dashboard] Rendering complete dashboard UI');
+  
   return (
     <Layout>
       <div className="space-y-6">

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -65,31 +66,45 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   }
 };
 
-// Get order by external ID - Using a direct query approach instead of RPC
+// Get order by external ID
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Using a simplified query approach to avoid TypeScript inference issues
-    // Cast the external_id value directly without using filterValue helper
-    const { data, error } = await supabase
+    // Type-safe approach avoiding deep type instantiation issues
+    const response = await supabase
       .from('orders')
       .select('*')
-      .eq('external_id', externalId as any)
+      .eq('external_id', externalId)
       .limit(1);
     
-    if (error) {
-      console.error('Error al obtener orden por ID externo:', error);
+    if (response.error) {
+      console.error('Error al obtener orden por ID externo:', response.error);
       return null;
     }
     
-    if (!data || data.length === 0) {
+    if (!response.data || response.data.length === 0) {
       console.log('No se encontró orden con ese ID externo');
       return null;
     }
     
-    // Cast the first result directly to Order type
-    return data[0] as Order;
+    // Safely convert to Order type
+    const orderData = response.data[0];
+    return {
+      id: orderData.id,
+      customer_name: orderData.customer_name,
+      table_number: orderData.table_number,
+      table_id: orderData.table_id,
+      status: orderData.status,
+      total: orderData.total,
+      items_count: orderData.items_count,
+      is_delivery: orderData.is_delivery,
+      kitchen_id: orderData.kitchen_id,
+      created_at: orderData.created_at,
+      updated_at: orderData.updated_at,
+      external_id: orderData.external_id,
+      discount: orderData.discount
+    } as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

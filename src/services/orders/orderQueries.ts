@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -71,11 +70,12 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
   try {
     console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Direct query to orders table with external_id filter
+    // Using a simplified query approach to avoid TypeScript inference issues
+    // Cast the external_id value directly without using filterValue helper
     const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('external_id', filterValue(externalId))
+      .eq('external_id', externalId as any)
       .limit(1);
     
     if (error) {
@@ -88,7 +88,8 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       return null;
     }
     
-    return mapSingleResponse<Order>(data[0], 'Failed to map order data');
+    // Cast the first result directly to Order type
+    return data[0] as Order;
   } catch (error) {
     console.error('Error al obtener orden por ID externo:', error);
     return null;

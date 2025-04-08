@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
@@ -13,23 +14,17 @@ const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [storageInitialized, setStorageInitialized] = useState(false);
   
   // Inicialización que solo se ejecuta una vez al cargar la página
   useEffect(() => {
-    // Simplificamos para realizar una sola inicialización sin bucles ni retries
+    // Inicializar almacenamiento
     const initializeApp = async () => {
-      if (!storageInitialized) {
-        console.log('📦 Inicializando almacenamiento una única vez');
-        try {
-          const success = await initializeStorage();
-          console.log('📦 Resultado de inicialización:', success ? '✅ Exitoso' : '⚠️ Con advertencias');
-          // Siempre marcamos como inicializado para evitar reintentos
-          setStorageInitialized(true);
-        } catch (error) {
-          console.error('❌ Error crítico al inicializar almacenamiento:', error);
-          setStorageInitialized(true); // Evitamos reintentos incluso en error
-        }
+      console.log('📦 Inicializando almacenamiento...');
+      try {
+        const success = await initializeStorage();
+        console.log('📦 Resultado de inicialización:', success ? '✅ Exitoso' : '⚠️ Con advertencias');
+      } catch (error) {
+        console.error('❌ Error crítico al inicializar almacenamiento:', error);
       }
     };
     

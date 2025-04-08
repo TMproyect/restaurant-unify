@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -48,7 +49,7 @@ const verifyBucketExists = async (): Promise<boolean> => {
 };
 
 /**
- * Sube una imagen con manejo mejorado de errores, sin cachés y URL simples
+ * Sube una imagen con manejo mejorado de errores y URLs simples
  */
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   if (!file) {
@@ -76,12 +77,13 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes`);
     
-    // Subimos la imagen
+    // Subimos la imagen con configuración para asegurar acceso público
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, {
         cacheControl: '3600',
-        upsert: true
+        upsert: true,
+        contentType: file.type // Aseguramos que el tipo de contenido sea correcto
       });
     
     if (error) {
@@ -95,7 +97,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Obtenemos la URL pública sin parámetros adicionales para máxima compatibilidad
+    // Obtenemos la URL pública DIRECTA sin transformaciones ni parámetros adicionales
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);
@@ -105,7 +107,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // NO añadimos parámetros extra para evitar problemas de compatibilidad
+    // URL pública sin parámetros extras
     const publicUrl = publicUrlData.publicUrl;
     console.log('📦 URL pública generada:', publicUrl);
     
@@ -118,6 +120,9 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       
       if (!response.ok) {
         console.warn(`📦 URL pública no accesible, código: ${response.status}`);
+        if (response.status === 403) {
+          console.error('📦 Error de permisos (403) al acceder a la imagen. Verificar políticas de bucket.');
+        }
       } else {
         console.log('📦 URL verificada correctamente, código:', response.status);
       }
@@ -178,12 +183,15 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
  */
 export const initializeStorage = async (): Promise<boolean> => {
   try {
+    console.log('📦 Iniciando verificación de acceso al bucket...');
     // Verificar si el bucket existe y tenemos acceso
     const hasAccess = await verifyBucketExists();
     
     if (!hasAccess) {
       console.warn('📦 No se pudo verificar acceso al bucket menu_images');
       toast.error("Error de almacenamiento. Esto puede afectar la carga de imágenes.");
+    } else {
+      console.log('📦 Acceso al bucket verificado correctamente');
     }
     
     return hasAccess;
@@ -193,7 +201,7 @@ export const initializeStorage = async (): Promise<boolean> => {
   }
 };
 
-// Simplificamos para evitar problemas con cache busting
+// Sin cache busting ni parámetros extra para evitar problemas
 export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
   if (!imageUrl) return '';
   

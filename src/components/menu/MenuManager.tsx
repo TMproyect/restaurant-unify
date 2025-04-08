@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -53,6 +52,7 @@ import {
 } from '@/services/menu';
 import { uploadMenuItemImage, deleteMenuItemImage } from '@/services/storage/imageStorage';
 import { Skeleton } from '@/components/ui/skeleton';
+import MenuItemImage from './MenuItemImage';
 
 interface MenuItemOption {
   name: string;
@@ -71,108 +71,6 @@ interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
 }
-
-// Improved image component to handle loading states and errors
-const MenuItemImage = ({ 
-  imageUrl, 
-  alt, 
-  className = "rounded-t-lg w-full h-44 object-cover" 
-}: { 
-  imageUrl: string, 
-  alt: string, 
-  className?: string 
-}) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2;
-  
-  // Clean image URL for better compatibility
-  const cleanImageUrl = imageUrl.split('?')[0]; // Remove any query parameters
-  
-  const retryLoading = () => {
-    if (retryCount < maxRetries) {
-      console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, imageUrl);
-      setIsLoading(true);
-      setHasError(false);
-      setRetryCount(prev => prev + 1);
-      
-      // Force reload by changing the src attribute directly (without cache busting)
-      const imgElement = document.querySelector(`img[data-src="${cleanImageUrl}"]`) as HTMLImageElement;
-      if (imgElement) {
-        // Clean URL approach for retry
-        imgElement.src = cleanImageUrl;
-      }
-    }
-  };
-  
-  // Use the clean URL for initial rendering
-  const displayUrl = cleanImageUrl;
-  
-  useEffect(() => {
-    // Reset states when image URL changes
-    setIsLoading(true);
-    setHasError(false);
-    setRetryCount(0);
-  }, [imageUrl]);
-  
-  return (
-    <div className="relative w-full">
-      {isLoading && !hasError && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="animate-pulse bg-gray-200 w-full h-full rounded-t-lg"></div>
-        </div>
-      )}
-      
-      {hasError ? (
-        <div className="flex items-center justify-center h-44 bg-muted text-muted-foreground">
-          <div className="flex flex-col items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={retryLoading}
-              disabled={retryCount >= maxRetries}
-            >
-              {retryCount < maxRetries ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reintentar
-                </>
-              ) : (
-                <>
-                  <ImageOff className="h-4 w-4 mr-2" />
-                  Imagen no disponible
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <img 
-          src={displayUrl} 
-          alt={alt} 
-          className={className}
-          data-src={cleanImageUrl}
-          style={{ display: isLoading ? 'none' : 'block' }}
-          onLoad={() => {
-            console.log('🖼️ Imagen cargada correctamente:', displayUrl);
-            setIsLoading(false);
-          }}
-          onError={(e) => {
-            console.error('🖼️ Error al cargar imagen:', displayUrl);
-            setIsLoading(false);
-            setHasError(true);
-            
-            // Automatic first retry without delay
-            if (retryCount === 0) {
-              retryLoading();
-            }
-          }}
-        />
-      )}
-    </div>
-  );
-};
 
 const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);

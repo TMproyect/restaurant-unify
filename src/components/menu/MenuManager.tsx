@@ -4,9 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Pencil, Trash, Plus, Search, Tag, DollarSign, Check, X, Coffee, Utensils } from 'lucide-react';
+import { Pencil, Trash, Plus, Search, Coffee, Utensils, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMenuItems, MenuItem } from '@/services/menu/menuItemService';
 import MenuItemForm from './MenuItemForm';
@@ -14,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { formatCurrency } from '@/utils/formatters';
-import { deleteMenuItemWithConfirmation } from '@/integrations/menuItemIntegration';
+import { DeleteConfirmDialog, useDeleteConfirmDialog } from '@/integrations/menuItemIntegration';
 
 interface MenuManagerProps {
   categories: MenuCategory[];
@@ -31,6 +30,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [activeTab, setActiveTab] = useState('grid');
+  
+  const { itemToDelete, openDeleteDialog, closeDeleteDialog } = useDeleteConfirmDialog();
 
   const loadMenuItems = async () => {
     setLoading(true);
@@ -104,16 +105,20 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
     setShowForm(true);
   };
 
-  const handleDeleteItem = async (id: string) => {
-    const success = await deleteMenuItemWithConfirmation(id);
-    if (success) {
-      loadMenuItems();
-    }
+  const handleDeleteItem = (id: string) => {
+    openDeleteDialog(id);
   };
 
   const handleFormClose = (itemSaved: boolean) => {
     setShowForm(false);
     if (itemSaved) {
+      loadMenuItems();
+    }
+  };
+
+  const handleDeleteDialogClose = (success: boolean) => {
+    closeDeleteDialog();
+    if (success) {
       loadMenuItems();
     }
   };
@@ -423,6 +428,14 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
           categories={categories}
           item={editingItem}
           onClose={handleFormClose}
+        />
+      )}
+
+      {itemToDelete && (
+        <DeleteConfirmDialog
+          id={itemToDelete}
+          isOpen={!!itemToDelete}
+          onClose={handleDeleteDialogClose}
         />
       )}
     </div>

@@ -109,22 +109,43 @@ const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
 
       console.log("Ejecutando prueba con endpoint:", apiEndpoint);
       console.log("API Key:", keyToUse.substring(0, 4) + "****" + keyToUse.substring(keyToUse.length - 4));
-      console.log("Headers de la solicitud:", JSON.stringify({
+      
+      // Log de todas las cabeceras para depuración
+      const headers = {
         'Content-Type': 'application/json',
-        'x-api-key': keyToUse.substring(0, 4) + "****" + keyToUse.substring(keyToUse.length - 4)
-      }));
+        'x-api-key': keyToUse
+      };
+      
+      console.log("Headers enviados:", JSON.stringify(headers));
+      console.log("Payload enviado:", JSON.stringify(payload));
       
       const response = await fetch(apiEndpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': keyToUse
-        },
+        headers: headers,
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
-      console.log("Respuesta de la prueba:", data);
+      console.log("Código de estado HTTP recibido:", response.status);
+      
+      let data;
+      const responseText = await response.text();
+      console.log("Texto de respuesta completo:", responseText);
+      
+      try {
+        data = JSON.parse(responseText);
+        console.log("Respuesta parseada:", data);
+      } catch (error) {
+        console.error("Error al parsear la respuesta como JSON:", error);
+        setTestStatus('error');
+        setTestResult(`Error: No se pudo parsear la respuesta como JSON. Respuesta recibida: ${responseText}`);
+        toast({
+          title: "Error",
+          description: "Formato de respuesta inválido",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
       
       setTestStatus(response.ok ? 'success' : 'error');
       setTestResult(JSON.stringify(data, null, 2));

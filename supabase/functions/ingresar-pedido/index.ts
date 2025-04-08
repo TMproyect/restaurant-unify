@@ -104,7 +104,10 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
 
 serve(async (req) => {
   console.log("Función ingresar-pedido recibió una solicitud:", req.method);
-  console.log("Headers recibidos:", JSON.stringify(Array.from(req.headers.entries())));
+  
+  // Imprimir todas las cabeceras recibidas para diagnóstico
+  const headerEntries = Array.from(req.headers.entries());
+  console.log("Todas las cabeceras recibidas:", JSON.stringify(headerEntries));
   
   // Manejar solicitudes OPTIONS para CORS
   if (req.method === 'OPTIONS') {
@@ -125,26 +128,33 @@ serve(async (req) => {
   }
   
   // Obtener la API key del encabezado (probar diferentes variantes del encabezado)
-  let apiKey = req.headers.get('x-api-key');
-  if (!apiKey) {
-    // Intentar con otras variantes de capitalización
-    apiKey = req.headers.get('X-API-KEY') || req.headers.get('X-Api-Key');
-  }
+  const apiKeyHeader = req.headers.get('x-api-key') || 
+                      req.headers.get('X-API-KEY') || 
+                      req.headers.get('X-Api-Key') ||
+                      req.headers.get('authorization') ||
+                      req.headers.get('Authorization');
   
-  console.log(`API Key recibida: ${apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada'}`);
-  
-  if (!apiKey) {
-    console.log("API Key no proporcionada en la cabecera 'x-api-key'");
-    console.log("Cabeceras disponibles:", JSON.stringify(Array.from(req.headers.entries())));
+  if (!apiKeyHeader) {
+    console.log("API Key no encontrada en ninguna cabecera");
+    console.log("Cabeceras disponibles:", JSON.stringify(headerEntries));
     return new Response(JSON.stringify({ 
       error: "API Key requerida", 
       details: "Debe proporcionar una clave API válida en la cabecera 'x-api-key'",
-      headers_received: Object.fromEntries(req.headers)
+      headers_received: Object.fromEntries(headerEntries)
     }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
+  
+  // Limpiar apiKey si viene con el prefijo "Bearer "
+  let apiKey = apiKeyHeader;
+  if (apiKey.startsWith('Bearer ')) {
+    apiKey = apiKey.substring(7);
+    console.log("Se encontró formato Bearer token, extrayendo la clave");
+  }
+  
+  console.log(`API Key recibida: ${apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada'}`);
   
   // Inicializar cliente Supabase
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -157,9 +167,7 @@ serve(async (req) => {
     console.log(`API Key inválida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
     return new Response(JSON.stringify({ 
       error: "API Key inválida",
-      details: "La clave API proporcionada no coincide con la clave registrada en el sistema",
-      key_hint: `La clave proporcionada comienza con: ${apiKey.substring(0, 4)} y termina con: ${apiKey.substring(apiKey.length - 4)}`,
-      header_name_used: "x-api-key"
+      details: "La clave API proporcionada no coincide con la clave registrada en el sistema"
     }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -171,7 +179,7 @@ serve(async (req) => {
     let payload;
     try {
       payload = await req.json();
-      console.log("Payload recibido:", JSON.stringify(payload).substring(0, 200) + "...");
+      console.log("Payload recibido:", JSON.stringify(payload));
     } catch (error) {
       console.error("Error al parsear JSON:", error);
       return new Response(JSON.stringify({ 

@@ -169,25 +169,33 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
       console.log("Endpoint:", testEndpoint);
       console.log("Payload:", JSON.stringify(testPayload));
       
+      // Construir y mostrar las cabeceras para depuración
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey
+      };
+      console.log("Cabeceras enviadas:", JSON.stringify(headers));
+      
       const response = await fetch(testEndpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey
-        },
+        headers: headers,
         body: JSON.stringify(testPayload)
       });
 
       console.log("Status de la respuesta:", response.status);
       
-      // Intentar obtener el cuerpo de la respuesta como JSON
+      // Obtener el texto de la respuesta primero para depuración
+      const responseText = await response.text();
+      console.log("Texto de respuesta completo:", responseText);
+      
+      // Intentar analizar como JSON
       let result;
       try {
-        result = await response.json();
-        console.log("Respuesta completa:", result);
+        result = JSON.parse(responseText);
+        console.log("Respuesta parseada:", result);
       } catch (jsonError) {
         console.error("Error al parsear la respuesta como JSON:", jsonError);
-        result = { error: "No se pudo leer la respuesta" };
+        result = { error: `No se pudo leer la respuesta como JSON: ${responseText}` };
       }
       
       if (response.ok) {
@@ -199,7 +207,7 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         });
       } else {
         setTestStatus('error');
-        const errorDetail = result.error || "Respuesta inválida";
+        const errorDetail = result.error || result.message || "Respuesta inválida";
         setTestMessage(`Error: ${errorDetail}`);
         toast({
           title: "Error",

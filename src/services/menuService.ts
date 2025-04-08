@@ -239,6 +239,23 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     console.log(`Uploading file: ${file.name}, Size: ${file.size} bytes, Type: ${file.type}`);
     console.log(`Generated filename: ${uniqueFileName}`);
     
+    // Primero intentar crear el bucket si no existe
+    try {
+      const { data: createBucketData, error: createBucketError } = await supabase
+        .storage
+        .createBucket('menu_images', {
+          public: true,
+          fileSizeLimit: 20971520, // 20MB
+        });
+      
+      if (!createBucketError) {
+        console.log('Bucket created or already exists:', createBucketData);
+      }
+    } catch (bucketError) {
+      console.log('Bucket probably already exists or cannot be created now:', bucketError);
+      // Continuar de todos modos
+    }
+    
     // Verificar que el bucket existe
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
     
@@ -317,6 +334,29 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
 // Agregar una función para verificar el estado del storage
 export const verifyStorageConnection = async (): Promise<boolean | { connected: boolean, message: string }> => {
   try {
+    console.log('Verificando conexión de almacenamiento y buckets...');
+    
+    // Primero, intentar crear el bucket si no existe
+    try {
+      const { data: createBucketData, error: createBucketError } = await supabase
+        .storage
+        .createBucket('menu_images', {
+          public: true,
+          fileSizeLimit: 20971520, // 20MB
+        });
+      
+      if (!createBucketError) {
+        console.log('Bucket created successfully or already exists:', createBucketData);
+      } else {
+        console.error('Error creating bucket:', createBucketError);
+      }
+    } catch (bucketError) {
+      console.error('Error attempting to create bucket:', bucketError);
+    }
+    
+    // Esperar un momento para que se propague la creación del bucket
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // Intenta listar los buckets para verificar la conexión
     const { data, error } = await supabase.storage.listBuckets();
     
@@ -328,15 +368,55 @@ export const verifyStorageConnection = async (): Promise<boolean | { connected: 
       };
     }
     
+    console.log("Buckets encontrados:", data);
+    
     // Buscar el bucket de imágenes de menú
     const menuImagesBucket = data.find(bucket => bucket.name === 'menu_images');
     
     if (!menuImagesBucket) {
       console.warn('Menu images bucket not found');
-      return { 
-        connected: false,
-        message: 'El bucket "menu_images" no existe. Es necesario crear este bucket para almacenar imágenes.' 
-      };
+      
+      // Intentar crear el bucket nuevamente
+      try {
+        const { error: retryError } = await supabase.storage.createBucket('menu_images', {
+          public: true,
+          fileSizeLimit: 20971520, // 20MB
+        });
+        
+        if (retryError) {
+          console.error('Error creating bucket on retry:', retryError);
+          return { 
+            connected: false,
+            message: 'No se pudo crear el bucket "menu_images". Error: ' + retryError.message
+          };
+        }
+        
+        console.log('Bucket created on retry');
+        
+        // Verificar si ahora existe el bucket
+        const { data: retryData, error: retryListError } = await supabase.storage.listBuckets();
+        
+        if (retryListError) {
+          return { 
+            connected: false,
+            message: 'Error al verificar la creación del bucket: ' + retryListError.message 
+          };
+        }
+        
+        const bucketExists = retryData.some(bucket => bucket.name === 'menu_images');
+        if (!bucketExists) {
+          return { 
+            connected: false,
+            message: 'El bucket "menu_images" no pudo ser creado. Intente recargar la página.' 
+          };
+        }
+      } catch (retryCreateError) {
+        console.error('Error on bucket create retry:', retryCreateError);
+        return { 
+          connected: false,
+          message: 'Error al intentar crear el bucket: ' + (retryCreateError.message || retryCreateError) 
+        };
+      }
     }
     
     // Probar que podemos listar contenido del bucket
@@ -354,12 +434,40 @@ export const verifyStorageConnection = async (): Promise<boolean | { connected: 
     
     console.log('Storage connection verified, menu_images bucket exists with', files?.length || 0, 'files');
     
+    // Comprobar RLS policies para el bucket
+    try {
+      // Intentar subir un archivo de prueba pequeño para verificar permisos
+      const testBlob = new Blob(['test'], { type: 'text/plain' });
+      const testFile = new File([testBlob], 'connection_test.txt');
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('menu_images')
+        .upload('connection_test.txt', testFile, { upsert: true });
+        
+      if (uploadError) {
+        console.error('Error on test upload (permissions check):', uploadError);
+        return {
+          connected: true,
+          message: 'Bucket accesible pero posible problema de permisos: ' + uploadError.message
+        };
+      }
+      
+      // Eliminar el archivo de prueba
+      await supabase.storage
+        .from('menu_images')
+        .remove(['connection_test.txt']);
+        
+      console.log('Permissions check passed successfully');
+    } catch (permissionsError) {
+      console.error('Error checking permissions:', permissionsError);
+    }
+    
     return { connected: true, message: 'Conexión al almacenamiento verificada correctamente' };
   } catch (error) {
     console.error('Error in verifyStorageConnection:', error);
     return { 
       connected: false, 
-      message: `Error inesperado al verificar la conexión: ${error}` 
+      message: `Error inesperado al verificar la conexión: ${error.message || error}` 
     };
   }
 };

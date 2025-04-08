@@ -16,9 +16,4 @@ CREATE POLICY "Update Menu Images" ON storage.objects FOR UPDATE TO authenticate
 -- Allow authenticated users to delete menu images
 CREATE POLICY "Delete Menu Images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'menu_images');
 
--- Add CORS configuration to allow access from any origin (this helps with image loading)
-UPDATE storage.buckets 
-SET cors_origins = '{*}'
-WHERE id = 'menu_images';
-
 -- Increase file size limit in config.toml (already set to 10MB, which should be sufficient)

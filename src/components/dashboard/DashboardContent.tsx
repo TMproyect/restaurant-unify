@@ -5,8 +5,12 @@ import OrdersList from './OrdersList';
 import InventoryAlert from './InventoryAlert';
 import DashboardStats from './DashboardStats';
 
-const DashboardContent: React.FC = () => {
-  console.log('🔄 [DashboardContent] Rendering dashboard content');
+interface DashboardContentProps {
+  showOrders?: boolean;
+}
+
+const DashboardContent: React.FC<DashboardContentProps> = ({ showOrders }) => {
+  console.log('🔄 [DashboardContent] Rendering dashboard content', showOrders ? 'showing orders' : 'showing sales');
   
   return (
     <>
@@ -16,7 +20,7 @@ const DashboardContent: React.FC = () => {
         {/* Lista de pedidos recientes - 4 columnas */}
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle>Pedidos Recientes</CardTitle>
+            <CardTitle>{showOrders ? 'Pedidos Recientes' : 'Ventas Recientes'}</CardTitle>
           </CardHeader>
           <CardContent>
             <OrdersList />

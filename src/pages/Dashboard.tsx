@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DashboardCardsRealtime } from '@/components/dashboard/DashboardCardRealtime';
@@ -9,22 +9,10 @@ import { useDashboardInit } from '@/hooks/use-dashboard-init';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Dashboard() {
-  const { authState, isInitialized, isError, initialize, renderAttempt } = useDashboardInit();
-  
-  useEffect(() => {
-    // Este efecto sólo es necesario porque estamos en desarrollo
-    // y queremos asegurarnos de que el componente vuelva a renderizarse
-    // después de que se resuelva el estado de autenticación
-    console.log('🔄 [Dashboard] Emergency render effect activated');
-    console.log('🔄 [Dashboard] Auth state:', authState);
-    
-    return () => {
-      console.log('🔄 [Dashboard] Cleaning up initialization timers');
-    };
-  }, [authState]);
+  const { error, isReady } = useDashboardInit();
   
   // Si no está inicializado, esperar
-  if (!isInitialized && !isError) {
+  if (!isReady && !error) {
     return (
       <Layout>
         <div className="animate-pulse space-y-4">
@@ -67,7 +55,7 @@ export default function Dashboard() {
               </TabsContent>
 
               <TabsContent value="pedidos" className="space-y-4">
-                <DashboardContent showOrders={true} />
+                <DashboardContent />
               </TabsContent>
             </Tabs>
           </div>

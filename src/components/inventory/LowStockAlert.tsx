@@ -16,7 +16,7 @@ const LowStockAlert: React.FC<LowStockAlertProps> = ({ onViewInventory }) => {
   
   const { data: alertItems = [], isLoading } = useQuery({
     queryKey: ['low-stock-items'],
-    queryFn: () => getLowStockItems(5),
+    queryFn: () => getLowStockItems(),
     staleTime: 1000 * 60 * 10, // 10 minutos
   });
 

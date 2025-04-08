@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.ingresar-pedido]
 verify_jwt = false
+
+[storage]
+file_size_limit = "10MB" 

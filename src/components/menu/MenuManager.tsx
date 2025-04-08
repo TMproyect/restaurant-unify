@@ -33,7 +33,8 @@ import {
   Search,
   ImagePlus,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -84,6 +85,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     sku: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   useEffect(() => {
     const loadData = async () => {
@@ -142,6 +144,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       sku: '',
     });
     setImageFile(null);
+    setImagePreview(null);
   };
   
   const handleAddItem = async () => {
@@ -247,6 +250,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       sku: item.sku || '',
     });
     setImageFile(null);
+    setImagePreview(null);
     setIsEditDialogOpen(true);
   };
   
@@ -336,10 +340,23 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     
     setImageFile(file);
     
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+    
     toast({
       title: "Imagen seleccionada",
       description: "La imagen será subida al guardar el plato"
     });
+  };
+  
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('Failed to load image:', event.currentTarget.src);
+    event.currentTarget.style.display = 'none';
+    
+    const fallbackDiv = document.createElement('div');
+    fallbackDiv.className = 'flex items-center justify-center h-44 bg-muted text-muted-foreground';
+    fallbackDiv.innerHTML = '<span>Imagen no disponible</span>';
+    event.currentTarget.parentNode?.appendChild(fallbackDiv);
   };
   
   return (
@@ -484,7 +501,18 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                     />
                   </div>
                 </div>
-                {(newItem.image_url || imageFile) && (
+                {imagePreview && (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
+                    <img 
+                      src={imagePreview} 
+                      alt="Vista previa" 
+                      className="h-32 object-contain rounded border border-border"
+                      onError={handleImageError}
+                    />
+                  </div>
+                )}
+                {(newItem.image_url || imageFile) && !imagePreview && (
                   <p className="text-xs text-muted-foreground">
                     {imageFile 
                       ? `Imagen seleccionada: ${imageFile.name}` 
@@ -562,15 +590,24 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
           {filteredItems.map((item) => (
             <Card key={item.id} className={item.available ? "" : "opacity-60"}>
               {item.image_url && (
-                <div className="w-full">
+                <div className="w-full relative">
                   <img 
                     src={item.image_url} 
                     alt={item.name} 
                     className="rounded-t-lg w-full h-44 object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
+                    onError={handleImageError}
                   />
+                  {item.image_url && (
+                    <a 
+                      href={item.image_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="absolute top-2 right-2 bg-black/40 text-white p-1 rounded-full hover:bg-black/60 transition-colors"
+                      title="Ver imagen"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </a>
+                  )}
                 </div>
               )}
               <CardHeader className="pb-2">
@@ -776,7 +813,18 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                   />
                 </div>
               </div>
-              {(newItem.image_url || imageFile) && (
+              {imagePreview && (
+                <div className="mt-2">
+                  <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
+                  <img 
+                    src={imagePreview} 
+                    alt="Vista previa" 
+                    className="h-32 object-contain rounded border border-border"
+                    onError={handleImageError}
+                  />
+                </div>
+              )}
+              {(newItem.image_url || imageFile) && !imagePreview && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">
                     {imageFile 
@@ -788,6 +836,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                       src={newItem.image_url} 
                       alt="Imagen actual" 
                       className="h-32 object-contain rounded border border-border"
+                      onError={handleImageError}
                     />
                   )}
                 </div>

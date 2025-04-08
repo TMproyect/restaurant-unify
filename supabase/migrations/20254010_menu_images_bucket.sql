@@ -1,0 +1,17 @@
+
+-- Create menu_images bucket if it doesn't exist
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('menu_images', 'menu_images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public access to the menu_images bucket
+CREATE POLICY "Public Access to Menu Images" ON storage.objects FOR SELECT TO public USING (bucket_id = 'menu_images');
+
+-- Allow authenticated users to upload to menu_images
+CREATE POLICY "Upload Menu Images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'menu_images');
+
+-- Allow users to update menu images
+CREATE POLICY "Update Menu Images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'menu_images');
+
+-- Allow users to delete menu images
+CREATE POLICY "Delete Menu Images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'menu_images');

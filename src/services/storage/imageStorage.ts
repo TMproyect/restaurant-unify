@@ -2,44 +2,48 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Almacenar nombre del bucket en una constante para evitar errores de tipeo
+// Store the bucket name in a constant to avoid typos
 const BUCKET_NAME = 'menu_images';
 
+// Get Supabase URL and key from the same constants used to initialize the client
+const SUPABASE_URL = "https://imcxvnivqrckgjrimzck.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltY3h2bml2cXJja2dqcmltemNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5NjM4NjIsImV4cCI6MjA1ODUzOTg2Mn0.BGIWnSFMuz4AR0FuYeH8kRvRwoa72x6JMtdnTbOE6k0";
+
 /**
- * Verifica que el bucket exista sin intentar crearlo repetidamente
- * Esta verificación solo se hace cuando es absolutamente necesario
+ * Verifies that the bucket exists without repeatedly trying to create it
+ * This verification is only done when absolutely necessary
  */
 const verifyBucketExists = async (): Promise<boolean> => {
   try {
-    // Primero intentamos listar archivos que es una operación menos intrusiva
+    // First try listing files which is a less intrusive operation
     const { error } = await supabase.storage
       .from(BUCKET_NAME)
       .list('', { limit: 1 });
       
     if (!error) {
-      return true; // Si podemos listar, el bucket existe y tenemos acceso
+      return true; // If we can list, the bucket exists and we have access
     }
 
-    // Si hay un error, puede ser que el bucket no exista o no tengamos permisos
-    // Verificamos si existe consultando buckets disponibles
+    // If there's an error, the bucket might not exist or we don't have permissions
+    // Verify if it exists by querying available buckets
     const { data: buckets } = await supabase.storage.listBuckets();
     const bucketExists = buckets?.some(b => b.name === BUCKET_NAME) || false;
     
     if (bucketExists) {
-      // El bucket existe pero no podemos acceder, es problema de permisos
+      // The bucket exists but we can't access it, it's a permissions issue
       console.warn('📦 Bucket exists but cannot be accessed - permissions issue');
       return false;
     }
     
-    // El bucket probablemente no existe o hay problemas de permisos
-    // Usamos reset_menu_images_permissions para reiniciar permisos/crear bucket
+    // The bucket probably doesn't exist or there are permissions issues
+    // Use reset_menu_images_permissions to reset permissions/create bucket
     try {
       const { data, error } = await supabase.rpc('reset_menu_images_permissions');
       if (error) throw error;
-      console.log('📦 Permisos de bucket reiniciados correctamente');
+      console.log('📦 Bucket permissions reset successfully');
       return true;
     } catch (rpcError) {
-      console.error('📦 Error al intentar reiniciar permisos:', rpcError);
+      console.error('📦 Error trying to reset permissions:', rpcError);
       return false;
     }
   } catch (error) {
@@ -57,44 +61,44 @@ export interface UploadResult {
 }
 
 /**
- * Sube una imagen con manejo mejorado de errores y correcto contentType
- * @param file El archivo a subir
- * @param fileName Nombre opcional del archivo
- * @returns Una URL de string o un objeto con url/error
+ * Uploads an image with improved error handling and correct contentType
+ * @param file The file to upload
+ * @param fileName Optional file name
+ * @returns A URL string or an object with url/error
  */
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | UploadResult> => {
   if (!file) {
-    toast.error("No se seleccionó ningún archivo");
-    return { error: "No se seleccionó ningún archivo" };
+    toast.error("No file was selected");
+    return { error: "No file was selected" };
   }
 
-  // Validaciones básicas
+  // Basic validations
   if (file.size > 5 * 1024 * 1024) {
-    toast.error("La imagen no debe superar los 5MB");
-    return { error: "La imagen no debe superar los 5MB" };
+    toast.error("Image should not exceed 5MB");
+    return { error: "Image should not exceed 5MB" };
   }
 
   const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   if (!validFormats.includes(file.type)) {
-    toast.error("Formato de imagen no válido. Use JPG, PNG, GIF o WebP");
-    return { error: "Formato de imagen no válido" };
+    toast.error("Invalid image format. Use JPG, PNG, GIF or WebP");
+    return { error: "Invalid image format" };
   }
 
   try {
-    // Verificamos que el bucket exista, pero solo una vez
+    // Verify that the bucket exists, but only once
     await verifyBucketExists();
     
-    // Generamos un nombre único para evitar conflictos
+    // Generate a unique name to avoid conflicts
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
+    console.log(`📦 Uploading image: ${uniqueFileName}, size: ${file.size} bytes, type: ${file.type}`);
     
-    // Aseguramos que el contentType esté explícitamente definido y sea correcto
+    // Ensure that contentType is explicitly defined and correct
     const contentType = file.type;
-    console.log(`📦 Usando contentType explícito: ${contentType}`);
+    console.log(`📦 Using explicit contentType: ${contentType}`);
     
-    // Configuración mejorada con forzado de contentType
+    // Improved configuration with forced contentType
     const uploadOptions = {
-      contentType: contentType, // Pasamos explícitamente el contentType
+      contentType: contentType, // Explicitly pass the contentType
       upsert: false
     };
     
@@ -103,192 +107,196 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       .upload(uniqueFileName, file, uploadOptions);
     
     if (error) {
-      console.error('📦 Error al subir imagen:', error);
-      toast.error("Error al subir imagen. Intente nuevamente");
+      console.error('📦 Error uploading image:', error);
+      toast.error("Error uploading image. Please try again");
       return { error: error.message };
     }
     
     if (!data || !data.path) {
-      toast.error("Error al procesar imagen subida");
-      return { error: "Error al procesar imagen subida" };
+      toast.error("Error processing uploaded image");
+      return { error: "Error processing uploaded image" };
     }
     
-    // Verificamos los metadatos del objeto recién subido para confirmar el contentType
+    // Check the metadata of the newly uploaded object to confirm contentType
     try {
-      // Bypass directo a la API de almacenamiento de Supabase para verificar metadatos
-      const { data: objectData, error: objectError } = await supabase.auth.getSession().then(({ data: { session } }) => {
-        const apiUrl = `${supabase.supabaseUrl}/storage/v1/object/info/${BUCKET_NAME}/${data.path}`;
-        return fetch(apiUrl, {
+      // Direct HTTP request to check object metadata instead of using protected properties
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      
+      if (token) {
+        const metadataUrl = `${SUPABASE_URL}/storage/v1/object/info/${BUCKET_NAME}/${data.path}`;
+        const metadataResponse = await fetch(metadataUrl, {
           headers: {
-            'Authorization': `Bearer ${session?.access_token ?? ''}`,
-            'apikey': supabase.supabaseKey,
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_KEY,
             'Content-Type': 'application/json'
           }
-        }).then(res => res.json());
-      });
+        });
         
-      if (objectError) {
-        console.log('📦 Error al verificar metadatos:', objectError);
-      } else {
-        console.log('📦 Metadatos del objeto subido:', objectData);
+        if (metadataResponse.ok) {
+          const objectData = await metadataResponse.json();
+          console.log('📦 Uploaded object metadata:', objectData);
+        } else {
+          console.log('📦 Error checking metadata:', await metadataResponse.text());
+        }
       }
     } catch (e) {
-      console.log('📦 No se pudieron verificar metadatos:', e);
+      console.log('📦 Could not verify metadata:', e);
     }
     
-    // Obtenemos la URL pública
+    // Get the public URL
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);
     
     if (!publicUrlData || !publicUrlData.publicUrl) {
-      toast.error("Error al generar URL pública para la imagen");
-      return { error: "Error al generar URL pública" };
+      toast.error("Error generating public URL for image");
+      return { error: "Error generating public URL" };
     }
     
     const publicUrl = publicUrlData.publicUrl;
-    console.log('📦 URL pública generada:', publicUrl);
+    console.log('📦 Public URL generated:', publicUrl);
     
-    // Verificamos que la URL sea accesible y el tipo de contenido correcto
+    // Check that the URL is accessible and the content type is correct
     try {
       const response = await fetch(publicUrl, { 
         method: 'HEAD',
         cache: 'no-cache'
       });
       
-      console.log('📦 Verificación de URL:', response.status, response.ok ? 'OK' : 'Error');
-      console.log('📦 Content-Type devuelto:', response.headers.get('content-type'));
+      console.log('📦 URL verification:', response.status, response.ok ? 'OK' : 'Error');
+      console.log('📦 Returned Content-Type:', response.headers.get('content-type'));
       
       if (!response.ok) {
-        console.warn('📦 La URL pública no está accesible correctamente');
+        console.warn('📦 Public URL is not correctly accessible');
       }
       
-      // Verificar si el content-type es correcto
+      // Check if the content-type is correct
       const returnedContentType = response.headers.get('content-type');
       if (returnedContentType && !returnedContentType.startsWith('image/')) {
-        console.error(`📦 Content-Type incorrecto: ${returnedContentType}, esperaba: ${contentType}`);
+        console.error(`📦 Incorrect Content-Type: ${returnedContentType}, expected: ${contentType}`);
         
-        // Intento directo de corrección a través de una llamada RPC personalizada
+        // Attempt direct correction through a direct HTTP call instead of RPC
         try {
-          // Usar una llamada HTTP directa en lugar de RPC
           const session = await supabase.auth.getSession();
           const token = session.data.session?.access_token;
           
           if (token) {
-            const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/fix_image_metadata`, {
+            // Instead of using RPC, we'll use a direct HTTP call to update metadata
+            const fixMetadataUrl = `${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${data.path}`;
+            const fixResponse = await fetch(fixMetadataUrl, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
-                'apikey': supabase.supabaseKey,
+                'apikey': SUPABASE_KEY,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                bucket_id: BUCKET_NAME,
-                file_path: data.path,
-                mime_type: contentType
+                cacheControl: '3600',
+                contentType: contentType, // Explicitly set correct contentType
+                upsert: true
               })
             });
             
-            if (response.ok) {
-              console.log('📦 Metadatos de imagen corregidos correctamente');
+            if (fixResponse.ok) {
+              console.log('📦 Image metadata corrected successfully');
             } else {
-              console.log('📦 Error al corregir metadatos:', await response.text());
+              console.log('📦 Error correcting metadata:', await fixResponse.text());
             }
           }
         } catch (e) {
-          console.log('📦 No se pudo corregir metadatos automáticamente:', e);
+          console.log('📦 Could not correct metadata automatically:', e);
         }
       }
     } catch (e) {
-      console.warn('📦 No se pudo verificar la URL:', e);
+      console.warn('📦 Could not verify URL:', e);
     }
     
-    // Retornar URL como string para compatibilidad con código existente
+    // Return URL as string for compatibility with existing code
     return publicUrl;
   } catch (error) {
-    console.error('📦 Error general en uploadMenuItemImage:', error);
-    toast.error("Error inesperado al subir imagen");
-    return { error: "Error inesperado al subir imagen" };
+    console.error('📦 General error in uploadMenuItemImage:', error);
+    toast.error("Unexpected error uploading image");
+    return { error: "Unexpected error uploading image" };
   }
 };
 
 /**
- * Elimina una imagen con validación robusta
+ * Deletes an image with robust validation
  */
 export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> => {
   if (!imageUrl) return false;
   
   try {
-    // Extraemos el nombre del archivo de la URL
+    // Extract the file name from the URL
     const urlObj = new URL(imageUrl);
     const pathParts = urlObj.pathname.split('/');
-    // El último segmento del path debería ser el nombre del archivo
+    // The last segment of the path should be the file name
     const fileName = pathParts[pathParts.length - 1];
     
     if (!fileName) {
-      console.error('📦 Nombre de archivo no válido en URL:', imageUrl);
+      console.error('📦 Invalid file name in URL:', imageUrl);
       return false;
     }
     
-    console.log('📦 Eliminando imagen:', fileName);
+    console.log('📦 Deleting image:', fileName);
     
     const { error } = await supabase.storage
       .from(BUCKET_NAME)
       .remove([fileName]);
     
     if (error) {
-      console.error('📦 Error al eliminar imagen:', error);
-      toast.error('Error al eliminar la imagen');
+      console.error('📦 Error deleting image:', error);
+      toast.error('Error deleting image');
       return false;
     }
     
-    console.log('📦 Imagen eliminada correctamente');
+    console.log('📦 Image deleted successfully');
     return true;
   } catch (error) {
-    console.error('📦 Error en deleteMenuItemImage:', error);
-    toast.error('Error al eliminar la imagen');
+    console.error('📦 Error in deleteMenuItemImage:', error);
+    toast.error('Error deleting image');
     return false;
   }
 };
 
 /**
- * Inicialización simplificada que verifica el bucket
+ * Simplified initialization that verifies the bucket
  */
 export const initializeStorage = async (): Promise<boolean> => {
   try {
-    console.log('📦 Verificando acceso al bucket menu_images...');
+    console.log('📦 Verifying access to menu_images bucket...');
     const hasAccess = await verifyBucketExists();
     
     if (!hasAccess) {
-      console.warn('📦 No se pudo verificar acceso al bucket menu_images');
-      toast.error("Error de almacenamiento. Esto puede afectar la carga de imágenes.");
+      console.warn('📦 Could not verify access to menu_images bucket');
+      toast.error("Storage error. This may affect image uploading.");
     } else {
-      console.log('📦 Acceso al bucket verificado correctamente');
+      console.log('📦 Bucket access verified successfully');
     }
     
     return hasAccess;
   } catch (error) {
-    console.error('📦 Error en initializeStorage:', error);
+    console.error('📦 Error in initializeStorage:', error);
     return false;
   }
 };
 
 /**
- * Añade un parámetro de cache busting a la URL de la imagen
- * para evitar problemas de caché con imágenes actualizadas
+ * Adds a cache busting parameter to the image URL
+ * to avoid caching issues with updated images
  */
 export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
   if (!imageUrl) return '';
   
   try {
-    // Añadir un parámetro de tiempo para invalidar la caché del navegador
+    // Add a time parameter to invalidate browser cache
     const url = new URL(imageUrl);
     url.searchParams.set('_cb', Date.now().toString());
     return url.toString();
   } catch (error) {
-    // Si hay un error al procesar la URL, devolver la original
-    console.warn('📦 Error al procesar URL para cache busting:', error);
+    // If there's an error processing the URL, return the original
+    console.warn('📦 Error processing URL for cache busting:', error);
     return imageUrl;
   }
 };
-

@@ -5,18 +5,18 @@ import MenuManager from '@/components/menu/MenuManager';
 import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Utensils, Tag, RefreshCw } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
 import { getLowStockItems } from '@/services/inventoryService';
 import { supabase } from '@/integrations/supabase/client';
+import { initializeStorage } from '@/services/storage/imageStorage';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSynchronizing, setIsSynchronizing] = useState(false);
-  const { toast } = useToast();
   
   const loadCategories = async () => {
     try {
@@ -25,36 +25,22 @@ const Menu: React.FC = () => {
       setCategories(categoriesData);
     } catch (error) {
       console.error('Error al cargar categorías:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las categorías",
-        variant: "destructive"
-      });
+      toast.error("No se pudieron cargar las categorías");
     } finally {
       setLoading(false);
     }
   };
 
-  const initializeBucket = async () => {
+  const initializeBucketAndVerify = async () => {
     try {
       setIsSynchronizing(true);
       console.log('🚀 Iniciando sincronización de almacenamiento...');
       
-      // Usar la función Edge con JWT desactivado
-      const { data, error } = await supabase.functions.invoke('storage-reinitialize');
+      // Usar directamente la función de almacenamiento
+      const success = await initializeStorage(true);
       
-      if (error) {
-        console.error('🚀 Error al invocar función Edge:', error);
-        throw error;
-      }
-      
-      console.log('🚀 Respuesta de la función Edge:', data);
-      
-      if (data && data.success) {
+      if (success) {
         console.log('🚀 Almacenamiento inicializado correctamente');
-        
-        // Esperar un momento para que se apliquen los cambios
-        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Verificar acceso al bucket como prueba adicional
         try {
@@ -64,17 +50,28 @@ const Menu: React.FC = () => {
             
           if (listError) {
             console.error('🚀 Error al listar archivos del bucket:', listError);
+            throw listError;
           } else {
             console.log('🚀 Lista de archivos obtenida:', files?.length || 0, 'archivos');
+            return true;
           }
         } catch (listError) {
           console.error('🚀 Error capturado al listar archivos:', listError);
+          throw listError;
+        }
+      } else {
+        console.error('🚀 La inicialización falló');
+        
+        // Como último recurso, intentar llamar directamente a la Edge Function
+        const { data, error } = await supabase.functions.invoke('storage-reinitialize');
+        
+        if (error) {
+          console.error('🚀 Error al invocar función Edge como último recurso:', error);
+          throw error;
         }
         
-        return true;
-      } else {
-        console.error('🚀 La función Edge falló:', data?.message || 'Sin mensaje');
-        throw new Error(data?.message || 'Error desconocido en la función Edge');
+        console.log('🚀 Respuesta de la función Edge (último recurso):', data);
+        return data && data.success;
       }
     } catch (error) {
       console.error('🚀 Error general en initializeBucket:', error);
@@ -90,14 +87,12 @@ const Menu: React.FC = () => {
     const init = async () => {
       try {
         // Forzamos la inicialización del bucket al cargar la página
-        await initializeBucket();
+        console.log('🔄 Inicializando almacenamiento automáticamente al cargar la página...');
+        await initializeBucketAndVerify();
+        console.log('🔄 Inicialización automática completada');
       } catch (error) {
         console.error('Error al inicializar bucket:', error);
-        toast({
-          title: "Error de almacenamiento",
-          description: "No se pudo inicializar el almacenamiento. Intente presionar el botón 'Sincronizar Imágenes'",
-          variant: "destructive"
-        });
+        toast.error("Error de almacenamiento. Intente presionar el botón 'Sincronizar Imágenes'");
       }
     };
     
@@ -108,11 +103,7 @@ const Menu: React.FC = () => {
         const lowStockItems = await getLowStockItems();
         
         lowStockItems.forEach(item => {
-          toast({
-            title: `Alerta de inventario: ${item.name}`,
-            description: `Quedan ${item.stock_quantity}${item.unit || ''} (Mínimo: ${item.min_stock_level}${item.unit || ''})`,
-            variant: "destructive"
-          });
+          toast.error(`Alerta de inventario: ${item.name} - Quedan ${item.stock_quantity}${item.unit || ''} (Mínimo: ${item.min_stock_level}${item.unit || ''})`);
         });
       } catch (error) {
         console.error('Error loading inventory alerts:', error);
@@ -120,39 +111,29 @@ const Menu: React.FC = () => {
     };
 
     showInventoryAlerts();
-  }, [toast]);
+  }, []);
 
   const handleSynchronize = async () => {
     setIsSynchronizing(true);
     
     try {
-      toast({
-        title: "Sincronizando",
-        description: "Actualizando acceso al almacenamiento. Espere un momento..."
-      });
+      toast.loading("Sincronizando imágenes. Por favor espere...");
       
-      const success = await initializeBucket();
+      const success = await initializeBucketAndVerify();
+      
+      toast.dismiss();
       
       if (success) {
-        toast({
-          title: "Sincronización completada",
-          description: "Los permisos de almacenamiento y las imágenes han sido sincronizados correctamente"
-        });
+        toast.success("Las imágenes han sido sincronizadas correctamente");
       } else {
-        toast({
-          title: "Sincronización parcial",
-          description: "Se produjo un error durante la sincronización, intente nuevamente"
-        });
+        toast.error("Se produjo un error durante la sincronización, intente nuevamente");
       }
       
+      // Forzar actualización de la UI
       window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
     } catch (error) {
       console.error('Error en sincronización:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo completar la sincronización. Intente nuevamente más tarde.",
-        variant: "destructive"
-      });
+      toast.error("No se pudo completar la sincronización. Intente nuevamente más tarde.");
     } finally {
       setIsSynchronizing(false);
     }

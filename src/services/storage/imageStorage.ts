@@ -7,46 +7,69 @@ export const initializeStorageBucket = async (forceRecreate: boolean = false): P
   try {
     console.log('📦 Inicializando bucket de almacenamiento...');
     
-    // Llamar a la función Edge storage-reinitialize que ahora no requiere JWT
+    // Llamar a la función Edge storage-reinitialize (sin verificación JWT)
     console.log('📦 Invocando función Edge storage-reinitialize...');
     
     const { data, error } = await supabase.functions.invoke('storage-reinitialize');
     
     if (error) {
       console.error('📦 Error al llamar función Edge:', error);
+      
+      // Intentar crear el bucket directamente como fallback
+      try {
+        console.log('📦 Intentando crear bucket directamente...');
+        const { error: createError } = await supabase.storage.createBucket('menu_images', {
+          public: true
+        });
+        
+        if (createError) {
+          console.error('📦 Error al crear bucket directamente:', createError);
+        } else {
+          console.log('📦 Bucket creado directamente');
+        }
+      } catch (directError) {
+        console.error('📦 Error al crear bucket directamente:', directError);
+      }
+      
       return false;
     }
     
     console.log('📦 Respuesta de función Edge:', data);
     
-    if (data && data.success) {
-      console.log('📦 Bucket inicializado correctamente por Edge Function');
+    // Aunque haya habido errores específicos, intentamos verificar el acceso para confirmar
+    try {
+      console.log('📦 Verificando acceso al bucket menu_images...');
+      const { data: files, error: listError } = await supabase.storage
+        .from('menu_images')
+        .list('', { limit: 1 });
       
-      // Verificar acceso al bucket
-      try {
-        console.log('📦 Verificando acceso al bucket menu_images...');
-        const { data: files, error: listError } = await supabase.storage
-          .from('menu_images')
-          .list('', { limit: 1 });
-        
-        if (listError) {
-          console.error('📦 Error al listar archivos del bucket:', listError);
-        } else {
-          console.log('📦 El bucket es accesible, archivos encontrados:', files?.length || 0);
-        }
-      } catch (testError) {
-        console.error('📦 Error al verificar acceso al bucket:', testError);
+      if (listError) {
+        console.error('📦 Error al listar archivos del bucket:', listError);
+        return false;
+      } else {
+        console.log('📦 El bucket es accesible, archivos encontrados:', files?.length || 0);
+        return true;
       }
-      
-      return true;
-    } else {
-      console.error('📦 La función Edge no reportó éxito:', data);
+    } catch (testError) {
+      console.error('📦 Error al verificar acceso al bucket:', testError);
       return false;
     }
   } catch (error) {
     console.error('📦 Error general en initializeStorageBucket:', error);
     return false;
   }
+};
+
+// Función para generar URLs públicas absolutas a partir de una URL relativa
+const ensureAbsoluteUrl = (url: string): string => {
+  if (!url) return '';
+  
+  // Si ya es una URL completa, devolverla
+  if (url.startsWith('http')) return url;
+  
+  // Construir URL completa utilizando la URL de Supabase
+  const baseUrl = "https://imcxvnivqrckgjrimzck.supabase.co";
+  return `${baseUrl}/storage/v1/object/public/${url}`;
 };
 
 // Función mejorada para subir imágenes con múltiples intentos y mejor manejo de errores
@@ -111,23 +134,29 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
         continue;
       }
       
-      console.log('📦 URL pública obtenida:', publicUrlData.publicUrl);
+      const finalUrl = publicUrlData.publicUrl;
+      console.log('📦 URL pública obtenida:', finalUrl);
       
       // Verificar que la URL sea accesible
       try {
-        const response = await fetch(publicUrlData.publicUrl, { method: 'HEAD' });
-        console.log('📦 Verificación de URL pública:', response.status);
+        const testResponse = await fetch(finalUrl, { method: 'HEAD' });
+        console.log('📦 Verificación de URL pública:', testResponse.status);
         
-        // Si la URL no es accesible (404, 403, etc.), mostrar advertencia pero devolver la URL de todos modos
-        if (!response.ok) {
-          console.warn('📦 La URL pública puede no ser accesible:', response.status);
-          toast.warning("La imagen se subió pero puede tardar unos momentos en estar visible");
+        if (!testResponse.ok) {
+          console.warn('📦 La URL pública puede no ser accesible:', testResponse.status);
+          
+          // Forzar verificación de la imagen cargándola en un elemento Image
+          const img = new Image();
+          img.src = finalUrl;
+          
+          // Esperar un pequeño tiempo para que el navegador intente cargar la imagen
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       } catch (verifyError) {
         console.warn('📦 No se pudo verificar la URL pública:', verifyError);
       }
       
-      return publicUrlData.publicUrl;
+      return finalUrl;
     } catch (uploadError) {
       console.error(`📦 Error general en intento ${attempts}:`, uploadError);
       
@@ -140,7 +169,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
   
   // Si llegamos aquí, todos los intentos fallaron
   console.error('📦 Todos los intentos de subida fallaron');
-  toast.error('No se pudo subir la imagen después de varios intentos. Intente usar el botón "Sincronizar Imágenes" y luego subir nuevamente.');
+  toast.error('No se pudo subir la imagen después de varios intentos.');
   return null;
 };
 

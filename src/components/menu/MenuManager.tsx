@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -38,7 +37,8 @@ import {
   Eye,
   X,
   XCircle,
-  ImageOff
+  ImageOff,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -186,25 +186,25 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       if (imageFile) {
         console.log('🖼️ Iniciando subida de imagen...');
         
-        // Asegurar que el almacenamiento esté inicializado antes de subir
-        try {
-          await initializeStorage();
-        } catch (storageError) {
-          console.error('🖼️ Error al inicializar almacenamiento:', storageError);
-          // Continuar de todos modos
-        }
+        // Forzar inicialización del almacenamiento antes de subir
+        await initializeStorage();
         
-        const uploadedUrl = await uploadMenuItemImage(imageFile);
-        if (uploadedUrl) {
-          console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
-          imageUrl = uploadedUrl;
-        } else {
-          console.error('🖼️ Error al subir la imagen - URL vacía');
-          toast({
-            title: "Advertencia",
-            description: "No se pudo subir la imagen, pero se guardará el producto sin imagen.",
-            variant: "destructive"
-          });
+        // Intentar la subida con reintentos
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          console.log(`🖼️ Intento de subida ${attempt}/3`);
+          const uploadedUrl = await uploadMenuItemImage(imageFile);
+          
+          if (uploadedUrl) {
+            console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
+            imageUrl = uploadedUrl;
+            break;
+          } else if (attempt < 3) {
+            console.log('🖼️ Reintentando subida...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            console.error('🖼️ Todos los intentos de subida fallaron');
+            toast.error("No se pudo subir la imagen. Se guardará el producto sin imagen.");
+          }
         }
       }
       
@@ -493,11 +493,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     // Verificar tamaño de archivo (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
       console.warn('🖼️ Archivo demasiado grande:', file.size, 'bytes');
-      toast({
-        title: "Archivo demasiado grande",
-        description: "La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.",
-        variant: "destructive"
-      });
+      toast.error("La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.");
       return;
     }
     
@@ -505,25 +501,19 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validFormats.includes(file.type)) {
       console.warn('🖼️ Formato no válido:', file.type);
-      toast({
-        title: "Formato no válido",
-        description: "Por favor, utilice imágenes en formato JPG, PNG, GIF o WebP.",
-        variant: "destructive"
-      });
+      toast.error("Por favor, utilice imágenes en formato JPG, PNG, GIF o WebP.");
       return;
     }
     
     setImageFile(file);
     
+    // Crear un preview temporal para mostrar la imagen antes de subirla
     const previewUrl = URL.createObjectURL(file);
     setImagePreview(previewUrl);
     
     console.log('🖼️ Vista previa creada:', previewUrl);
     
-    toast({
-      title: "Imagen seleccionada",
-      description: "La imagen será subida al guardar el plato"
-    });
+    toast.success("Imagen seleccionada. Se subirá al guardar el plato.");
   };
   
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -560,37 +550,99 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
   
-  // Componente de imagen mejorado con fallback controlado
-  const MenuItemImage = ({ imageUrl, alt, className = "rounded-t-lg w-full h-44 object-cover" }: { imageUrl: string, alt: string, className?: string }) => {
+  // Componente de imagen mejorado con mejor manejo de errores
+  const MenuItemImage = ({ 
+    imageUrl, 
+    alt, 
+    className = "rounded-t-lg w-full h-44 object-cover" 
+  }: { 
+    imageUrl: string, 
+    alt: string, 
+    className?: string 
+  }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
+    const maxRetries = 2;
+    
+    // Función para forzar recarga de la imagen
+    const retryLoading = () => {
+      if (retryCount < maxRetries) {
+        console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, imageUrl);
+        setIsLoading(true);
+        setHasError(false);
+        setRetryCount(prev => prev + 1);
+        
+        // Agregar timestamp para evitar caché
+        const bustCache = `?t=${Date.now()}`;
+        const imgElement = document.querySelector(`img[data-src="${imageUrl}"]`) as HTMLImageElement;
+        if (imgElement) {
+          imgElement.src = `${imageUrl}${bustCache}`;
+        }
+      }
+    };
+    
+    // URL completa con timestamp para evitar caché
+    const fullImageUrl = `${imageUrl}${hasError && retryCount < maxRetries ? `?retry=${retryCount}` : ''}`;
+    
+    useEffect(() => {
+      // Reiniciar estado cuando cambia la URL
+      setIsLoading(true);
+      setHasError(false);
+      setRetryCount(0);
+    }, [imageUrl]);
     
     return (
       <div className="relative w-full">
         {isLoading && !hasError && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Skeleton className={className} />
+            <div className="animate-pulse bg-gray-200 w-full h-full rounded-t-lg"></div>
           </div>
         )}
         
         {hasError ? (
           <div className="flex items-center justify-center h-44 bg-muted text-muted-foreground">
             <div className="flex flex-col items-center gap-2">
-              <ImageOff className="h-8 w-8 text-muted-foreground" />
-              <span>Imagen no disponible</span>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={retryLoading}
+                disabled={retryCount >= maxRetries}
+              >
+                {retryCount < maxRetries ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reintentar
+                  </>
+                ) : (
+                  <>
+                    <ImageOff className="h-4 w-4 mr-2" />
+                    Imagen no disponible
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         ) : (
           <img 
-            src={imageUrl} 
+            src={fullImageUrl} 
             alt={alt} 
             className={className}
+            data-src={imageUrl}
             style={{ display: isLoading ? 'none' : 'block' }}
-            onLoad={() => setIsLoading(false)}
-            onError={() => {
+            onLoad={() => {
+              console.log('🖼️ Imagen cargada correctamente:', imageUrl);
+              setIsLoading(false);
+            }}
+            onError={(e) => {
+              console.error('🖼️ Error al cargar imagen:', imageUrl);
               setIsLoading(false);
               setHasError(true);
-              console.error('Error al cargar imagen:', imageUrl);
+              
+              // Intentar recargar automáticamente una vez
+              if (retryCount === 0) {
+                retryLoading();
+              }
             }}
           />
         )}

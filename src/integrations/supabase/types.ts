@@ -520,6 +520,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      reset_menu_images_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       validate_external_api_key: {
         Args: { api_key: string }
         Returns: boolean

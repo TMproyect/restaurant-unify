@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import OrdersList from './OrdersList';
-import InventoryAlert from './InventoryAlert';
+import LowStockAlert from '../inventory/LowStockAlert';
 import DashboardStats from './DashboardStats';
 
 interface DashboardContentProps {
@@ -14,8 +14,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ showOrders }) => {
   
   return (
     <>
-      <DashboardStats />
-      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         {/* Lista de pedidos recientes - 4 columnas */}
         <Card className="lg:col-span-4">
@@ -33,7 +31,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ showOrders }) => {
             <CardTitle>Alertas de Inventario</CardTitle>
           </CardHeader>
           <CardContent>
-            <InventoryAlert />
+            <LowStockAlert 
+              onViewInventory={() => console.log('Ver todo el inventario')} 
+              compact={true}
+            />
           </CardContent>
         </Card>
       </div>

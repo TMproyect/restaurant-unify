@@ -525,7 +525,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     });
   };
   
-  // Mejoramos la función de manejo de error de imagen
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     console.error('Error al cargar imagen:', event.currentTarget.src);
     
@@ -549,7 +548,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
             <path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"></path>
             <line x1="13.5" y1="6.5" x2="17.5" y2="10.5"></line>
             <path d="M14.5 17.5 5 8c-.64.64-1 1.5-1 2.4v7.6a2 2 0 0 0 2 2h14a2 2 0 0 0 1.48-.63"></path>
-            <path d="M22 13.8V6a2 2 0 0 0-2-2h-7.8\"></path>
+            <path d="M22 13.8V6a2 2 0 0 0-2-2h-7.8"></path>
           </svg>
           <span>Imagen no disponible</span>
         `;
@@ -950,4 +949,5 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <div className
+              <div className="grid gap-2">
+                <Label htmlFor="edit-

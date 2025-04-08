@@ -2,167 +2,146 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Centralized function for initializing storage bucket automatically
-export const initializeStorageBucket = async (forceRecreate: boolean = false): Promise<void> => {
+// Función principal para inicializar y verificar el bucket de almacenamiento
+export const initializeStorageBucket = async (forceRecreate: boolean = false): Promise<boolean> => {
   try {
     console.log('📦 Inicializando bucket de almacenamiento...');
     
     // Llamar a la función Edge storage-reinitialize que ahora no requiere JWT
-    try {
-      console.log('📦 Invocando función Edge storage-reinitialize...');
-      const { data, error } = await supabase.functions.invoke('storage-reinitialize');
+    console.log('📦 Invocando función Edge storage-reinitialize...');
+    
+    const { data, error } = await supabase.functions.invoke('storage-reinitialize');
+    
+    if (error) {
+      console.error('📦 Error al llamar función Edge:', error);
+      return false;
+    }
+    
+    console.log('📦 Respuesta de función Edge:', data);
+    
+    if (data && data.success) {
+      console.log('📦 Bucket inicializado correctamente por Edge Function');
       
-      if (error) {
-        console.error('📦 Error al llamar función Edge:', error);
-      } else {
-        console.log('📦 Respuesta de función Edge:', data);
-        if (data && data.success) {
-          console.log('📦 Bucket inicializado correctamente por Edge Function');
-          // Continuamos con el resto de la función para tener un enfoque de redundancia
+      // Verificar acceso al bucket
+      try {
+        console.log('📦 Verificando acceso al bucket menu_images...');
+        const { data: files, error: listError } = await supabase.storage
+          .from('menu_images')
+          .list('', { limit: 1 });
+        
+        if (listError) {
+          console.error('📦 Error al listar archivos del bucket:', listError);
+        } else {
+          console.log('📦 El bucket es accesible, archivos encontrados:', files?.length || 0);
         }
+      } catch (testError) {
+        console.error('📦 Error al verificar acceso al bucket:', testError);
       }
-    } catch (edgeFunctionError) {
-      console.error('📦 Error al invocar Edge Function:', edgeFunctionError);
-    }
-    
-    // Intentar verificar y asegurar que el bucket exista localmente
-    try {
-      console.log('📦 Verificando acceso al bucket menu_images...');
-      const { data: files, error: listError } = await supabase.storage
-        .from('menu_images')
-        .list();
       
-      if (listError) {
-        console.error('📦 Error al listar archivos del bucket:', listError);
-      } else {
-        console.log('📦 El bucket parece estar accesible, archivos:', files?.length || 0);
-      }
-    } catch (testError) {
-      console.error('📦 Error al probar acceso al bucket:', testError);
-    }
-    
-    // Registrar el estatus de inicialización en system_settings
-    try {
-      console.log('📦 Registrando estado de inicialización...');
-      const { error: settingsError } = await supabase.from('system_settings')
-        .upsert([{ 
-          key: 'menu_images_bucket_status', 
-          value: JSON.stringify({
-            initialized: true,
-            updated_at: new Date().toISOString()
-          })
-        }]);
-      
-      if (settingsError) {
-        console.error('📦 Error al registrar estado del bucket:', settingsError);
-      }
-    } catch (settingsError) {
-      console.error('📦 Error al actualizar settings:', settingsError);
+      return true;
+    } else {
+      console.error('📦 La función Edge no reportó éxito:', data);
+      return false;
     }
   } catch (error) {
     console.error('📦 Error general en initializeStorageBucket:', error);
+    return false;
   }
 };
 
+// Función mejorada para subir imágenes con múltiples intentos y mejor manejo de errores
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   console.log('📦 Iniciando proceso de subida de imagen...');
   console.log(`📦 Archivo a subir: ${file.name}, Tamaño: ${file.size} bytes, Tipo: ${file.type}`);
   
-  try {
-    // Inicializar bucket automáticamente sin preguntar al usuario
-    console.log('📦 Inicializando bucket de almacenamiento antes de subir...');
-    await initializeStorageBucket();
+  // Inicializar bucket automáticamente primero
+  await initializeStorageBucket();
+  
+  // Crear un nombre de archivo único
+  const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+  console.log(`📦 Nombre de archivo generado: ${uniqueFileName}`);
+  
+  // Intentar la subida con manejo mejorado de errores y reintentos
+  let attempts = 0;
+  const maxAttempts = 3;
+  
+  while (attempts < maxAttempts) {
+    attempts++;
+    console.log(`📦 Intento ${attempts} de ${maxAttempts}...`);
     
-    // Crear un nombre de archivo único que preserve la extensión original
-    const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    
-    console.log(`📦 Nombre de archivo generado: ${uniqueFileName}`);
-    
-    // Intentar subir el archivo
-    console.log('📦 Subiendo archivo...');
-    const { data, error } = await supabase.storage
-      .from('menu_images')
-      .upload(uniqueFileName, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-    
-    if (error) {
-      console.error('📦 Error al subir archivo:', error);
-      throw error;
-    }
-    
-    if (!data || !data.path) {
-      throw new Error('No se recibió información del archivo subido');
-    }
-    
-    console.log('📦 Archivo subido exitosamente. Ruta:', data.path);
-    
-    // Obtener URL pública
-    const { data: publicUrlData } = supabase.storage
-      .from('menu_images')
-      .getPublicUrl(data.path);
-    
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-      throw new Error('No se pudo obtener la URL pública del archivo');
-    }
-    
-    console.log('📦 URL pública obtenida:', publicUrlData.publicUrl);
-    
-    return publicUrlData.publicUrl;
-  } catch (error) {
-    console.error('📦 Error en uploadMenuItemImage:', error);
-    
-    // Intentar una vez más con el método de Edge Function
     try {
-      console.log('📦 Intentando reinicializar bucket vía Edge Function y reintentar...');
+      // Subir el archivo
+      const { data, error } = await supabase.storage
+        .from('menu_images')
+        .upload(uniqueFileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
       
-      // Llamar explícitamente a la Edge Function
-      const { error: edgeError } = await supabase.functions.invoke('storage-reinitialize');
-      
-      if (edgeError) {
-        console.error('📦 Error al llamar Edge Function en reintento:', edgeError);
-      } else {
-        console.log('📦 Edge Function ejecutada correctamente en reintento');
+      if (error) {
+        console.error(`📦 Error en intento ${attempts}:`, error);
         
-        // Esperar un momento para que se apliquen los cambios
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Crear nombre único de archivo para el segundo intento
-        const uniqueFileName = `retry_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-        
-        // Reintentar subida
-        const { data: retryData, error: retryError } = await supabase.storage
-          .from('menu_images')
-          .upload(uniqueFileName, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
-        
-        if (retryError) {
-          console.error('📦 Error en segundo intento de subida:', retryError);
-        } else if (retryData && retryData.path) {
-          console.log('📦 Segundo intento exitoso. Ruta:', retryData.path);
-          
-          // Obtener URL pública del segundo intento
-          const { data: retryUrlData } = supabase.storage
-            .from('menu_images')
-            .getPublicUrl(retryData.path);
-          
-          if (retryUrlData && retryUrlData.publicUrl) {
-            console.log('📦 URL pública del segundo intento:', retryUrlData.publicUrl);
-            return retryUrlData.publicUrl;
-          }
+        // Si es el último intento, reinicializar el bucket y reintentar
+        if (attempts === maxAttempts - 1) {
+          console.log('📦 Último intento fallido, reinicializando bucket...');
+          await initializeStorageBucket(true);
+          // Continuar al siguiente intento después de reinicializar
+          continue;
         }
+        
+        // Si no es el último intento, esperar y reintentar
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
       }
-    } catch (retryError) {
-      console.error('📦 Error en segundo intento completo:', retryError);
+      
+      if (!data || !data.path) {
+        console.error('📦 No se recibió información del archivo subido');
+        continue;
+      }
+      
+      console.log('📦 Archivo subido exitosamente. Ruta:', data.path);
+      
+      // Obtener URL pública
+      const { data: publicUrlData } = supabase.storage
+        .from('menu_images')
+        .getPublicUrl(data.path);
+      
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        console.error('📦 No se pudo obtener la URL pública del archivo');
+        continue;
+      }
+      
+      console.log('📦 URL pública obtenida:', publicUrlData.publicUrl);
+      
+      // Verificar que la URL sea accesible
+      try {
+        const response = await fetch(publicUrlData.publicUrl, { method: 'HEAD' });
+        console.log('📦 Verificación de URL pública:', response.status);
+        
+        // Si la URL no es accesible (404, 403, etc.), mostrar advertencia pero devolver la URL de todos modos
+        if (!response.ok) {
+          console.warn('📦 La URL pública puede no ser accesible:', response.status);
+          toast.warning("La imagen se subió pero puede tardar unos momentos en estar visible");
+        }
+      } catch (verifyError) {
+        console.warn('📦 No se pudo verificar la URL pública:', verifyError);
+      }
+      
+      return publicUrlData.publicUrl;
+    } catch (uploadError) {
+      console.error(`📦 Error general en intento ${attempts}:`, uploadError);
+      
+      // Esperar antes del siguiente intento
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
-    
-    toast.error('Error al subir la imagen. Intente usar el botón "Sincronizar Imágenes" y luego subir nuevamente.');
-    return null;
   }
+  
+  // Si llegamos aquí, todos los intentos fallaron
+  console.error('📦 Todos los intentos de subida fallaron');
+  toast.error('No se pudo subir la imagen después de varios intentos. Intente usar el botón "Sincronizar Imágenes" y luego subir nuevamente.');
+  return null;
 };
 
 export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> => {
@@ -179,14 +158,14 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
     
     if (error) {
       console.error('📦 Error al eliminar imagen:', error);
-      throw error;
+      return false;
     }
     
     console.log('📦 Imagen eliminada exitosamente');
     return true;
   } catch (error) {
     console.error('📦 Error en deleteMenuItemImage:', error);
-    toast.error('Error al eliminar la imagen del menú');
+    toast.error('Error al eliminar la imagen');
     return false;
   }
 };

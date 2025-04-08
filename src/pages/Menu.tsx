@@ -52,6 +52,25 @@ const Menu: React.FC = () => {
       
       if (data && data.success) {
         console.log('🚀 Almacenamiento inicializado correctamente');
+        
+        // Esperar un momento para que se apliquen los cambios
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verificar acceso al bucket como prueba adicional
+        try {
+          const { data: files, error: listError } = await supabase.storage
+            .from('menu_images')
+            .list();
+            
+          if (listError) {
+            console.error('🚀 Error al listar archivos del bucket:', listError);
+          } else {
+            console.log('🚀 Lista de archivos obtenida:', files?.length || 0, 'archivos');
+          }
+        } catch (listError) {
+          console.error('🚀 Error capturado al listar archivos:', listError);
+        }
+        
         return true;
       } else {
         console.error('🚀 La función Edge falló:', data?.message || 'Sin mensaje');
@@ -75,8 +94,8 @@ const Menu: React.FC = () => {
       } catch (error) {
         console.error('Error al inicializar bucket:', error);
         toast({
-          title: "Error",
-          description: "No se pudo inicializar el almacenamiento. Intente usando el botón 'Sincronizar Imágenes'",
+          title: "Error de almacenamiento",
+          description: "No se pudo inicializar el almacenamiento. Intente presionar el botón 'Sincronizar Imágenes'",
           variant: "destructive"
         });
       }
@@ -107,12 +126,17 @@ const Menu: React.FC = () => {
     setIsSynchronizing(true);
     
     try {
+      toast({
+        title: "Sincronizando",
+        description: "Actualizando acceso al almacenamiento. Espere un momento..."
+      });
+      
       const success = await initializeBucket();
       
       if (success) {
         toast({
           title: "Sincronización completada",
-          description: "Los permisos de almacenamiento y las imágenes han sido sincronizados"
+          description: "Los permisos de almacenamiento y las imágenes han sido sincronizados correctamente"
         });
       } else {
         toast({
@@ -126,7 +150,7 @@ const Menu: React.FC = () => {
       console.error('Error en sincronización:', error);
       toast({
         title: "Error",
-        description: "No se pudo completar la sincronización",
+        description: "No se pudo completar la sincronización. Intente nuevamente más tarde.",
         variant: "destructive"
       });
     } finally {

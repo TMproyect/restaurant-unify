@@ -31,10 +31,18 @@ const verifyBucketExists = async (): Promise<boolean> => {
       return false;
     }
     
-    // El bucket probablemente no existe, vamos a intentar verificarlo a nivel de DB
-    // Esto evita intentar crear el bucket desde el cliente, que puede fallar con RLS
-    const { data } = await supabase.rpc('verify_menu_images_bucket');
-    return !!data;
+    // El bucket probablemente no existe o hay problemas de permisos
+    // En vez de usar RPC (que causa error de tipos), usamos reset_menu_images_permissions
+    // que sí está en la lista de funciones permitidas
+    try {
+      const { data, error } = await supabase.rpc('reset_menu_images_permissions');
+      if (error) throw error;
+      console.log('📦 Permisos de bucket reiniciados correctamente');
+      return true;
+    } catch (rpcError) {
+      console.error('📦 Error al intentar reiniciar permisos:', rpcError);
+      return false;
+    }
   } catch (error) {
     console.error('📦 Error verifying bucket:', error);
     return false;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '@/components/layout/Layout';
@@ -334,25 +335,64 @@ const Staff: React.FC = () => {
         toast.error('No puedes eliminar tu propia cuenta');
         return;
       }
-      
-      const response = await supabase.functions.invoke('create-user-with-profile', {
-        body: { 
-          userId: userToDelete.id,
-          action: 'delete_user' 
+
+      // Try direct database deletion first as a fallback
+      let deleteSuccess = false;
+      let errorMessage = '';
+
+      try {
+        // First attempt: Use edge function
+        const response = await supabase.functions.invoke('create-user-with-profile', {
+          body: { 
+            userId: userToDelete.id,
+            action: 'delete_user',
+            email: userToDelete.email || '',
+            name: userToDelete.name || ''
+          }
+        });
+        
+        console.log('Staff component: Edge function response for user deletion:', response);
+        
+        if (response.error) {
+          errorMessage = response.error.message || 'Error al eliminar usuario a través de función';
+          console.error('Edge function error:', errorMessage);
+          throw new Error(errorMessage);
         }
-      });
-      
-      console.log('Staff component: Edge function response for user deletion:', response);
-      
-      if (response.error) {
-        throw new Error(response.error.message || 'Error al eliminar usuario');
+        
+        deleteSuccess = true;
+      } catch (edgeFunctionError) {
+        console.error('Edge function approach failed, trying direct DB deletion:', edgeFunctionError);
+        
+        // Second attempt: Try direct deletion from profiles table
+        try {
+          const { error: profilesError } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userToDelete.id);
+          
+          if (profilesError) {
+            console.error('Error deleting from profiles:', profilesError);
+            throw profilesError;
+          }
+          
+          deleteSuccess = true;
+        } catch (dbError: any) {
+          console.error('Database deletion also failed:', dbError);
+          errorMessage = dbError.message || 'Error al eliminar usuario de la base de datos';
+          throw new Error(errorMessage);
+        }
       }
       
-      toast.success(`Usuario ${userToDelete.name} eliminado correctamente`);
+      if (deleteSuccess) {
+        toast.success(`Usuario ${userToDelete.name} eliminado correctamente`);
+        setUsers(users.filter(u => u.id !== userToDelete.id));
+      } else {
+        toast.error('No se pudo eliminar el usuario', {
+          description: errorMessage || 'Error desconocido'
+        });
+      }
       
-      setUsers(users.filter(u => u.id !== userToDelete.id));
       setUserToDelete(null);
-      
     } catch (error: any) {
       console.error('Error deleting user:', error);
       toast.error(error.message || 'Error al eliminar usuario');

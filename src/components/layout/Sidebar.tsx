@@ -199,7 +199,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
         
         {/* Staff - accessible to admin and manager */}
-        {isAdmin && (
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
           <NavItem
             to="/staff"
             icon={<Users />}
@@ -238,7 +238,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           label="Mensajes"
           onClick={closeMobileSidebar}
           active={location.pathname === "/messages"}
-        />
+          />
       </div>
     </aside>
   );

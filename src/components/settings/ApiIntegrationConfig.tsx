@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,19 +5,17 @@ import { ApiEndpointDisplay } from './api/ApiEndpointDisplay';
 import { ApiKeySection } from './api/ApiKeySection';
 import { ApiFormatExample } from './api/ApiFormatExample';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import TestingTab from '@/components/integration/TestingTab';
+import { TestingTab } from '@/components/integration/testing';
 
 export const ApiIntegrationConfig = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiUrl, setApiUrl] = useState('');
   const [examplePayload, setExamplePayload] = useState('');
 
-  // Establecer la URL base para la API Edge Function
   useEffect(() => {
     const projectId = 'imcxvnivqrckgjrimzck';
     setApiUrl(`https://${projectId}.supabase.co/functions/v1/ingresar-pedido`);
     
-    // Ejemplo de payload para la documentación
     const payload = {
       "id_externo": "order-123",
       "nombre_cliente": "Juan Pérez",
@@ -44,7 +41,6 @@ export const ApiIntegrationConfig = () => {
     setExamplePayload(JSON.stringify(payload, null, 2));
   }, []);
 
-  // Verifica si existe una clave API configurada, pero no la muestra
   const fetchApiKeyExistence = async () => {
     try {
       const { data, error } = await supabase
@@ -58,7 +54,6 @@ export const ApiIntegrationConfig = () => {
         return;
       }
 
-      // Solo guardamos el estado de si existe una clave, no la clave en sí
       if (data?.value) {
         setApiKey('exists');
       } else {
@@ -69,7 +64,6 @@ export const ApiIntegrationConfig = () => {
     }
   };
 
-  // Cargar al inicio solo para verificar si existe una clave
   useEffect(() => {
     fetchApiKeyExistence();
   }, []);

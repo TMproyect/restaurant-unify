@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ApiKeyTab from '@/components/integration/ApiKeyTab';
 import DocumentationTab from '@/components/integration/DocumentationTab';
-import TestingTab from '@/components/integration/TestingTab';
+import { TestingTab } from '@/components/integration/testing';
 
 const Integrations = () => {
   // State for API key management

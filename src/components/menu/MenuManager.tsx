@@ -41,6 +41,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { 
   MenuItem, 
   MenuCategory, 
@@ -203,7 +204,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           } else {
             console.error('🖼️ Todos los intentos de subida fallaron');
-            toast.error("No se pudo subir la imagen. Se guardará el producto sin imagen.");
+            sonnerToast.error("No se pudo subir la imagen. Se guardará el producto sin imagen.");
           }
         }
       }
@@ -493,7 +494,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     // Verificar tamaño de archivo (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
       console.warn('🖼️ Archivo demasiado grande:', file.size, 'bytes');
-      toast.error("La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.");
+      sonnerToast.error("La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.");
       return;
     }
     
@@ -501,7 +502,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validFormats.includes(file.type)) {
       console.warn('🖼️ Formato no válido:', file.type);
-      toast.error("Por favor, utilice imágenes en formato JPG, PNG, GIF o WebP.");
+      sonnerToast.error("Por favor, utilice imágenes en formato JPG, PNG, GIF o WebP.");
       return;
     }
     
@@ -513,7 +514,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     
     console.log('🖼️ Vista previa creada:', previewUrl);
     
-    toast.success("Imagen seleccionada. Se subirá al guardar el plato.");
+    sonnerToast.success("Imagen seleccionada. Se subirá al guardar el plato.");
   };
   
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -946,216 +947,4 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                     onClick={() => handleDeleteItem(item.id)}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No se encontraron platos</p>
-          <p className="text-sm mt-1">Intenta con otra búsqueda o añade nuevos platos</p>
-        </div>
-      )}
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Editar Plato
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-name">Nombre</Label>
-              <Input
-                id="edit-name"
-                value={newItem.name || ''}
-                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                placeholder="Nombre del plato"
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-sku">SKU (Código único para integraciones)</Label>
-              <Input
-                id="edit-sku"
-                value={newItem.sku || ''}
-                onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
-                placeholder="SKU o código de producto"
-              />
-              <p className="text-xs text-muted-foreground">
-                Un código único para identificar este producto en integraciones externas
-              </p>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-description">Descripción</Label>
-              <Textarea
-                id="edit-description"
-                value={newItem.description || ''}
-                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                placeholder="Descripción del plato"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-price">Precio</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  value={newItem.price || 0}
-                  onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Categoría</Label>
-                <Select
-                  value={newItem.category_id || ''}
-                  onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
-                >
-                  <SelectTrigger id="edit-category">
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-available">Disponibilidad</Label>
-                <Select
-                  value={newItem.available ? "true" : "false"}
-                  onValueChange={(value) => setNewItem({ ...newItem, available: value === "true" })}
-                >
-                  <SelectTrigger id="edit-available">
-                    <SelectValue placeholder="Disponibilidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Disponible</SelectItem>
-                    <SelectItem value="false">No disponible</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="edit-popular">Popular</Label>
-                <Select
-                  value={newItem.popular ? "true" : "false"}
-                  onValueChange={(value) => setNewItem({ ...newItem, popular: value === "true" })}
-                >
-                  <SelectTrigger id="edit-popular">
-                    <SelectValue placeholder="¿Es popular?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Sí</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-image">Imagen</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full flex justify-start text-muted-foreground"
-                    onClick={() => document.getElementById('edit-image')?.click()}
-                  >
-                    <ImagePlus className="h-4 w-4 mr-2" />
-                    {imageFile ? imageFile.name : "Seleccionar archivo"}
-                  </Button>
-                  <Input
-                    id="edit-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="sr-only"
-                  />
-                </div>
-                
-                {newItem.image_url && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon"
-                    onClick={handleDeleteImage}
-                    disabled={isDeletingImage}
-                  >
-                    <XCircle className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              {imagePreview && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
-                  <img 
-                    src={imagePreview} 
-                    alt="Vista previa" 
-                    className="h-32 object-contain rounded border border-border"
-                    onError={handleImageError}
-                  />
-                </div>
-              )}
-              {newItem.image_url && !imagePreview && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground mb-1">Imagen actual:</p>
-                  <div className="relative">
-                    <img 
-                      src={newItem.image_url} 
-                      alt="Imagen actual" 
-                      className="h-32 object-contain rounded border border-border"
-                      onError={handleImageError}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-allergens">Alérgenos (separados por coma)</Label>
-              <Input
-                id="edit-allergens"
-                value={newItem.allergens?.join(', ') || ''}
-                onChange={(e) => setNewItem({ 
-                  ...newItem, 
-                  allergens: e.target.value.split(',').map(item => item.trim()).filter(Boolean) 
-                })}
-                placeholder="lácteos, gluten, frutos secos..."
-              />
-            </div>
-          </div>
-          
-          <DialogFooter className="flex justify-between sm:justify-end">
-            <div className="space-x-2">
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSaveEdit}>
-                Guardar Cambios
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default MenuManager;
+                  </Button

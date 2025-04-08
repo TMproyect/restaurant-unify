@@ -1,4 +1,7 @@
 
+// Re-export the components from the .tsx file
+export { DeleteConfirmDialog, useDeleteConfirmDialog } from './menuItemIntegration.tsx';
+
 import { deleteMenuItem } from '@/services/menu/menuItemService';
 import { toast } from 'sonner';
 

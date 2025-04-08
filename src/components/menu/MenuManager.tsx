@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { formatCurrency } from '@/utils/formatters';
-import { DeleteConfirmDialog, useDeleteConfirmDialog } from '@/integrations/menuItemIntegration';
+import { DeleteConfirmDialog, useDeleteConfirmDialog } from '@/integrations/menuItemIntegration.tsx';
 
 interface MenuManagerProps {
   categories: MenuCategory[];

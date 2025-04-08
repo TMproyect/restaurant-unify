@@ -66,9 +66,10 @@ export const testApiKey = async (apiKey: string) => {
     console.log("Endpoint:", testEndpoint);
     
     // Usar explícitamente el formato "Bearer token" - sin comillas en el token
+    const cleanApiKey = apiKey.trim().replace(/^["']|["']$/g, '');
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      'Authorization': `Bearer ${cleanApiKey}`
     };
     
     console.log("Headers enviados:", JSON.stringify(headers));

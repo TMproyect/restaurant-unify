@@ -1,4 +1,3 @@
-
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -44,7 +43,7 @@ function validatePayload(payload: any): string | null {
   return null; // Sin errores
 }
 
-// Validar API Key con mejor manejo de formatos
+// Función para extraer y validar la API Key
 async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   if (!apiKey) {
     console.log("Error de validación: API Key no proporcionada");
@@ -131,9 +130,8 @@ serve(async (req) => {
   let apiKey = null;
   
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-  const xApiKeyHeader = req.headers.get('x-api-key') || req.headers.get('X-API-KEY') || req.headers.get('X-Api-Key');
   
-  // Primero intentar obtener del encabezado Authorization (preferido)
+  // Extraer la API key del encabezado Authorization
   if (authHeader) {
     console.log("Se encontró encabezado Authorization:", authHeader.substring(0, 10) + "****");
     // Comprobar si comienza con "Bearer " y extraer el token
@@ -144,11 +142,6 @@ serve(async (req) => {
       apiKey = authHeader.trim();
       console.log("API Key extraída de Authorization (sin Bearer):", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
     }
-  } 
-  // Si no se encontró en Authorization, intentar con x-api-key (compatibilidad)
-  else if (xApiKeyHeader) {
-    apiKey = xApiKeyHeader.trim();
-    console.log("API Key extraída de encabezado x-api-key (compatibilidad):", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
   }
   
   if (!apiKey) {
@@ -164,12 +157,14 @@ serve(async (req) => {
     });
   }
   
-  // Inicializar cliente Supabase
+  // Inicializar cliente Supabase sin incluir ningún token de autenticación
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  
+  // Usar directamente el service role key para conectar a la DB sin autenticación JWT
   const supabase = createClient(supabaseUrl, supabaseKey);
   
-  // Validar API Key
+  // Validar API Key contra la base de datos
   const isValidApiKey = await validateApiKey(supabase, apiKey);
   if (!isValidApiKey) {
     console.log(`API Key inválida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
@@ -181,6 +176,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
+  
+  console.log("✅ Autenticación exitosa con API Key");
   
   try {
     // Procesar el cuerpo de la solicitud

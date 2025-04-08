@@ -72,7 +72,7 @@ interface MenuManagerProps {
   isLoading: boolean;
 }
 
-// Image component to handle loading states and errors
+// Improved image component to handle loading states and errors
 const MenuItemImage = ({ 
   imageUrl, 
   alt, 
@@ -87,6 +87,9 @@ const MenuItemImage = ({
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
   
+  // Clean image URL for better compatibility
+  const cleanImageUrl = imageUrl.split('?')[0]; // Remove any query parameters
+  
   const retryLoading = () => {
     if (retryCount < maxRetries) {
       console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, imageUrl);
@@ -94,17 +97,20 @@ const MenuItemImage = ({
       setHasError(false);
       setRetryCount(prev => prev + 1);
       
-      const bustCache = `?t=${Date.now()}`;
-      const imgElement = document.querySelector(`img[data-src="${imageUrl}"]`) as HTMLImageElement;
+      // Force reload by changing the src attribute directly (without cache busting)
+      const imgElement = document.querySelector(`img[data-src="${cleanImageUrl}"]`) as HTMLImageElement;
       if (imgElement) {
-        imgElement.src = `${imageUrl}${bustCache}`;
+        // Clean URL approach for retry
+        imgElement.src = cleanImageUrl;
       }
     }
   };
   
-  const fullImageUrl = `${imageUrl}${hasError && retryCount < maxRetries ? `?retry=${retryCount}` : ''}`;
+  // Use the clean URL for initial rendering
+  const displayUrl = cleanImageUrl;
   
   useEffect(() => {
+    // Reset states when image URL changes
     setIsLoading(true);
     setHasError(false);
     setRetryCount(0);
@@ -143,20 +149,21 @@ const MenuItemImage = ({
         </div>
       ) : (
         <img 
-          src={fullImageUrl} 
+          src={displayUrl} 
           alt={alt} 
           className={className}
-          data-src={imageUrl}
+          data-src={cleanImageUrl}
           style={{ display: isLoading ? 'none' : 'block' }}
           onLoad={() => {
-            console.log('🖼️ Imagen cargada correctamente:', imageUrl);
+            console.log('🖼️ Imagen cargada correctamente:', displayUrl);
             setIsLoading(false);
           }}
           onError={(e) => {
-            console.error('🖼️ Error al cargar imagen:', imageUrl);
+            console.error('🖼️ Error al cargar imagen:', displayUrl);
             setIsLoading(false);
             setHasError(true);
             
+            // Automatic first retry without delay
             if (retryCount === 0) {
               retryLoading();
             }

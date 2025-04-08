@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,8 +31,7 @@ const verifyBucketExists = async (): Promise<boolean> => {
     }
     
     // El bucket probablemente no existe o hay problemas de permisos
-    // En vez de usar RPC (que causa error de tipos), usamos reset_menu_images_permissions
-    // que sí está en la lista de funciones permitidas
+    // Usamos reset_menu_images_permissions para reiniciar permisos/crear bucket
     try {
       const { data, error } = await supabase.rpc('reset_menu_images_permissions');
       if (error) throw error;
@@ -50,7 +48,7 @@ const verifyBucketExists = async (): Promise<boolean> => {
 };
 
 /**
- * Sube una imagen con manejo mejorado de errores y caché
+ * Sube una imagen con manejo mejorado de errores, sin cachés y URL simples
  */
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   if (!file) {
@@ -97,8 +95,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Obtenemos la URL pública SIN transformaciones para evitar errores de sintaxis
-    // Esto soluciona el problema de URLs mal formadas
+    // Obtenemos la URL pública sin parámetros adicionales para máxima compatibilidad
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);
@@ -108,12 +105,8 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Añadimos un parámetro de tiempo para evitar caché del navegador
-    // Corregimos la concatenación de parámetros para que sea una URL válida
-    const publicUrl = publicUrlData.publicUrl.includes('?') 
-      ? `${publicUrlData.publicUrl}&t=${Date.now()}` 
-      : `${publicUrlData.publicUrl}?t=${Date.now()}`;
-    
+    // NO añadimos parámetros extra para evitar problemas de compatibilidad
+    const publicUrl = publicUrlData.publicUrl;
     console.log('📦 URL pública generada:', publicUrl);
     
     // Verificamos que la URL sea accesible enviando una solicitud HEAD
@@ -200,17 +193,10 @@ export const initializeStorage = async (): Promise<boolean> => {
   }
 };
 
-// Función de utilidad para añadir parámetro anti-caché a las URLs de imágenes
-// Corregida para manejar correctamente la concatenación de parámetros
+// Simplificamos para evitar problemas con cache busting
 export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
   if (!imageUrl) return '';
   
-  // Evaluamos si la URL ya tiene parámetros para concatenar correctamente
-  const hasParams = imageUrl.includes('?');
-  
-  // Si ya tiene parámetros, añadimos el timestamp como parámetro adicional con &
-  // Si no tiene parámetros, añadimos el timestamp como primer parámetro con ?
-  return hasParams 
-    ? `${imageUrl}&t=${Date.now()}` 
-    : `${imageUrl}?t=${Date.now()}`;
+  // Retornamos la URL original sin parámetros para máxima compatibilidad
+  return imageUrl;
 };

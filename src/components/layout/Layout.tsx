@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
@@ -19,32 +19,53 @@ const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) => {
   const navigate = useNavigate();
   const [renderAttempt, setRenderAttempt] = useState(0);
   const [showEmergencyContent, setShowEmergencyContent] = useState(false);
-
-  // Debug log for layout rendering
-  console.log('🔄 [Layout] Rendering with auth state:', { 
-    isAuthenticated, 
-    isLoading, 
-    user: user?.email,
-    renderAttempt 
-  });
   
-  // Emergency timer to ensure UI always renders something
+  // Use ref to prevent multiple timers and effect loops
+  const timerRef = useRef<number | null>(null);
+  const isInitialMount = useRef(true);
+
+  // Debug log for layout rendering - Only log on first mount or changes to auth state
   useEffect(() => {
-    console.log('🔄 [Layout] Emergency render effect activated');
-    
-    // Force render after a timeout if we're stuck
-    const timer = setTimeout(() => {
-      console.log('🔄 [Layout] Emergency render timer triggered, attempt:', renderAttempt + 1);
-      setRenderAttempt(prev => prev + 1);
+    if (isInitialMount.current) {
+      console.log('🔄 [Layout] Initial rendering with auth state:', { 
+        isAuthenticated, 
+        isLoading, 
+        user: user?.email,
+        renderAttempt 
+      });
+      isInitialMount.current = false;
+    }
+  }, [isAuthenticated, isLoading, user, renderAttempt]);
+  
+  // Emergency timer to ensure UI always renders something, with safeguards
+  useEffect(() => {
+    // Only set the timer once
+    if (timerRef.current === null) {
+      console.log('🔄 [Layout] Emergency render effect activated once');
       
-      if (renderAttempt >= 2 && !isAuthenticated) {
-        console.log('🔄 [Layout] Activating emergency content render');
-        setShowEmergencyContent(true);
-      }
-    }, 3000);
+      // Force render after a timeout if we're stuck
+      timerRef.current = window.setTimeout(() => {
+        console.log('🔄 [Layout] Emergency render timer triggered, attempt:', renderAttempt + 1);
+        setRenderAttempt(prev => prev + 1);
+        
+        if (renderAttempt >= 2 && !isAuthenticated) {
+          console.log('🔄 [Layout] Activating emergency content render');
+          setShowEmergencyContent(true);
+        }
+        
+        // Clear ref to allow a new timer on next mount if needed
+        timerRef.current = null;
+      }, 5000); // Longer timeout for reduced frequency
+    }
     
-    return () => clearTimeout(timer);
-  }, [renderAttempt, isAuthenticated]);
+    return () => {
+      // Clean up timer on unmount
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array to run only once on mount
 
   // Reset emergency content when auth state changes
   useEffect(() => {
@@ -54,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) => {
     }
   }, [isAuthenticated, user]);
 
-  // Detect session issues
+  // Detect session issues - only run when auth state changes
   useEffect(() => {
     if (!isLoading && requireAuth && !isAuthenticated) {
       console.log('🔄 [Layout] User not authenticated, redirecting to login');

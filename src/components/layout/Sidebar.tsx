@@ -7,7 +7,6 @@ import {
   FileText,
   Settings,
   Utensils,
-  ShoppingBag,
   Users,
   Truck,
   BarChart,
@@ -129,17 +128,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             label="Menú"
             onClick={closeMobileSidebar}
             active={location.pathname === "/menu"}
-          />
-        )}
-        
-        {/* Inventory - accessible to admin and manager */}
-        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
-          <NavItem
-            to="/inventory"
-            icon={<ShoppingBag />}
-            label="Inventario"
-            onClick={closeMobileSidebar}
-            active={location.pathname === "/inventory"}
           />
         )}
         

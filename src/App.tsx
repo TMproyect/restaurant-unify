@@ -16,7 +16,6 @@ import { setupRealtimeForTables } from './utils/enableRealtimeFunction';
 import { AuthProvider } from '@/contexts/auth/AuthContext';
 import Login from '@/pages/Login';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Inventory from '@/pages/Inventory';
 import Sales from '@/pages/Sales';
 import Notifications from '@/pages/Notifications';
 import Messages from '@/pages/Messages';
@@ -57,7 +56,6 @@ function App() {
               <Route path="/kitchen" element={<Kitchen />} />
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/inventory" element={<Inventory />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/messages" element={<Messages />} />

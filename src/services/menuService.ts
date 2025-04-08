@@ -3,30 +3,32 @@
 // All functionality has been moved to separate modules
 
 import { 
-  MenuCategory, 
-  MenuItem,
   fetchMenuCategories,
   createMenuCategory,
   updateMenuCategory,
   deleteMenuCategory,
+} from './menu/categoryService';
+
+import {
   fetchMenuItems,
   createMenuItem,
   updateMenuItem,
   deleteMenuItem
-} from './menu/index';
+} from './menu/menuItemService';
 
 import {
   uploadMenuItemImage,
   deleteMenuItemImage,
   initializeStorage
-} from './storage/imageStorage';
+} from './menu/storageService';
 
 // Re-export all the interfaces and functions for backward compatibility
+// Use 'export type' for TypeScript interfaces to fix the isolatedModules error
+export type { MenuCategory } from './menu/categoryService';
+export type { MenuItem } from './menu/menuItemService';
+
+// Re-export all functions
 export {
-  // Interfaces
-  MenuCategory,
-  MenuItem,
-  
   // Category functions
   fetchMenuCategories,
   createMenuCategory,

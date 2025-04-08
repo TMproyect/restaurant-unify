@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -37,7 +36,8 @@ import {
   AlertCircle,
   Eye,
   X,
-  XCircle
+  XCircle,
+  ImageOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -51,7 +51,7 @@ import {
   deleteMenuItemImage,
   initializeStorage
 } from '@/services/menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MenuItemOption {
   name: string;
@@ -101,8 +101,14 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       try {
         console.log('🍽️ Cargando ítems del menú...');
         
-        // Inicializar el almacenamiento automáticamente
-        await initializeStorage();
+        // Inicializar el almacenamiento automáticamente - importante para las imágenes
+        try {
+          await initializeStorage();
+          console.log('🍽️ Almacenamiento inicializado correctamente');
+        } catch (storageError) {
+          console.error('🍽️ Error al inicializar almacenamiento:', storageError);
+          // Continuar de todos modos
+        }
         
         const itemsData = await fetchMenuItems();
         console.log('🍽️ Datos cargados:', itemsData.length, 'ítems');
@@ -178,8 +184,14 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       let imageUrl = newItem.image_url;
       if (imageFile) {
         console.log('🖼️ Iniciando subida de imagen...');
-        // Inicializar el almacenamiento antes de subir
-        await initializeStorage();
+        
+        // Asegurar que el almacenamiento esté inicializado antes de subir
+        try {
+          await initializeStorage();
+        } catch (storageError) {
+          console.error('🖼️ Error al inicializar almacenamiento:', storageError);
+          // Continuar de todos modos
+        }
         
         const uploadedUrl = await uploadMenuItemImage(imageFile);
         if (uploadedUrl) {
@@ -513,14 +525,77 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     });
   };
   
+  // Mejoramos la función de manejo de error de imagen
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('Failed to load image:', event.currentTarget.src);
-    event.currentTarget.style.display = 'none';
+    console.error('Error al cargar imagen:', event.currentTarget.src);
     
-    const fallbackDiv = document.createElement('div');
-    fallbackDiv.className = 'flex items-center justify-center h-44 bg-muted text-muted-foreground';
-    fallbackDiv.innerHTML = '<span>Imagen no disponible</span>';
-    event.currentTarget.parentNode?.appendChild(fallbackDiv);
+    const img = event.currentTarget;
+    const container = img.parentElement;
+    
+    if (container) {
+      // Ocultar la imagen
+      img.style.display = 'none';
+      
+      // Crear un elemento fallback si no existe ya
+      if (!container.querySelector('.image-fallback')) {
+        const fallbackDiv = document.createElement('div');
+        fallbackDiv.className = 'flex items-center justify-center h-44 bg-muted text-muted-foreground image-fallback';
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'flex flex-col items-center gap-2';
+        iconSpan.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off">
+            <line x1="2" y1="2" x2="22" y2="22"></line>
+            <path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"></path>
+            <line x1="13.5" y1="6.5" x2="17.5" y2="10.5"></line>
+            <path d="M14.5 17.5 5 8c-.64.64-1 1.5-1 2.4v7.6a2 2 0 0 0 2 2h14a2 2 0 0 0 1.48-.63"></path>
+            <path d="M22 13.8V6a2 2 0 0 0-2-2h-7.8"></path>
+          </svg>
+          <span>Imagen no disponible</span>
+        `;
+        
+        fallbackDiv.appendChild(iconSpan);
+        container.appendChild(fallbackDiv);
+      }
+    }
+  };
+  
+  // Componente de imagen mejorado con fallback controlado
+  const MenuItemImage = ({ imageUrl, alt, className = "rounded-t-lg w-full h-44 object-cover" }: { imageUrl: string, alt: string, className?: string }) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+    
+    return (
+      <div className="relative w-full">
+        {isLoading && !hasError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Skeleton className={className} />
+          </div>
+        )}
+        
+        {hasError ? (
+          <div className="flex items-center justify-center h-44 bg-muted text-muted-foreground">
+            <div className="flex flex-col items-center gap-2">
+              <ImageOff className="h-8 w-8 text-muted-foreground" />
+              <span>Imagen no disponible</span>
+            </div>
+          </div>
+        ) : (
+          <img 
+            src={imageUrl} 
+            alt={alt} 
+            className={className}
+            style={{ display: isLoading ? 'none' : 'block' }}
+            onLoad={() => setIsLoading(false)}
+            onError={() => {
+              setIsLoading(false);
+              setHasError(true);
+              console.error('Error al cargar imagen:', imageUrl);
+            }}
+          />
+        )}
+      </div>
+    );
   };
   
   return (
@@ -754,43 +829,12 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
           {filteredItems.map((item) => (
             <Card key={item.id} className={item.available ? "" : "opacity-60"}>
               {item.image_url && (
-                <div className="w-full relative">
-                  <img 
-                    src={item.image_url} 
-                    alt={item.name} 
-                    className="rounded-t-lg w-full h-44 object-cover"
-                    onError={handleImageError}
-                  />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 bg-black/40 text-white hover:bg-black/60 transition-colors"
-                        onClick={() => setViewingImage(item.image_url)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="p-1 sm:max-w-[80vw] max-h-[90vh] flex items-center justify-center bg-background/95 backdrop-blur">
-                      <img 
-                        src={item.image_url} 
-                        alt={item.name}
-                        className="max-w-full max-h-[80vh] object-contain"
-                        onError={handleImageError}
-                      />
-                      <Button 
-                        className="absolute top-2 right-2 rounded-full" 
-                        size="icon" 
-                        variant="ghost"
-                        onClick={() => setViewingImage(null)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                <MenuItemImage 
+                  imageUrl={item.image_url}
+                  alt={item.name}
+                />
               )}
+              
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg mr-2">{item.name}</CardTitle>
@@ -906,192 +950,4 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-price">Precio</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  value={newItem.price || 0}
-                  onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Categoría</Label>
-                <Select
-                  value={newItem.category_id || ''}
-                  onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
-                >
-                  <SelectTrigger id="edit-category">
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-available">Disponibilidad</Label>
-                <Select
-                  value={newItem.available ? "true" : "false"}
-                  onValueChange={(value) => setNewItem({ ...newItem, available: value === "true" })}
-                >
-                  <SelectTrigger id="edit-available">
-                    <SelectValue placeholder="Disponibilidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Disponible</SelectItem>
-                    <SelectItem value="false">No disponible</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="edit-popular">Popular</Label>
-                <Select
-                  value={newItem.popular ? "true" : "false"}
-                  onValueChange={(value) => setNewItem({ ...newItem, popular: value === "true" })}
-                >
-                  <SelectTrigger id="edit-popular">
-                    <SelectValue placeholder="¿Es popular?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Sí</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-image">Imagen</Label>
-              <div className="flex flex-col gap-2">
-                <div className="relative flex-1">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full flex justify-start text-muted-foreground"
-                    onClick={() => document.getElementById('edit-image')?.click()}
-                  >
-                    <ImagePlus className="h-4 w-4 mr-2" />
-                    {imageFile ? imageFile.name : "Seleccionar archivo"}
-                  </Button>
-                  <Input
-                    id="edit-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="sr-only"
-                  />
-                </div>
-                
-                {newItem.image_url && !imageFile && (
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={handleDeleteImage}
-                      disabled={isDeletingImage}
-                    >
-                      {isDeletingImage ? (
-                        <span>Eliminando...</span>
-                      ) : (
-                        <>
-                          <XCircle className="h-4 w-4 mr-2" />
-                          <span>Eliminar imagen</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              
-              {imagePreview && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground mb-1">Vista previa de nueva imagen:</p>
-                  <img 
-                    src={imagePreview} 
-                    alt="Vista previa" 
-                    className="h-32 object-contain rounded border border-border"
-                    onError={handleImageError}
-                  />
-                </div>
-              )}
-              
-              {newItem.image_url && !imagePreview && (
-                <div className="mt-2">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-muted-foreground mb-1">Imagen actual:</p>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 px-2">
-                          <Eye className="h-3 w-3 mr-1" /> Ver
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="p-1 sm:max-w-[80vw] max-h-[90vh] flex items-center justify-center bg-background/95 backdrop-blur">
-                        <img 
-                          src={newItem.image_url} 
-                          alt={newItem.name || "Imagen del producto"}
-                          className="max-w-full max-h-[80vh] object-contain"
-                          onError={handleImageError}
-                        />
-                        <Button 
-                          className="absolute top-2 right-2 rounded-full" 
-                          size="icon" 
-                          variant="ghost"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <img 
-                    src={newItem.image_url} 
-                    alt="Imagen actual" 
-                    className="h-32 object-contain rounded border border-border"
-                    onError={handleImageError}
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-allergens">Alérgenos (separados por coma)</Label>
-              <Input
-                id="edit-allergens"
-                value={newItem.allergens?.join(', ') || ''}
-                onChange={(e) => setNewItem({ 
-                  ...newItem, 
-                  allergens: e.target.value.split(',').map(item => item.trim()).filter(Boolean) 
-                })}
-                placeholder="lácteos, gluten, frutos secos..."
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEdit}>
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Popup de vista previa de imagen (diálogo) se encuentra arriba integrado */}
-    </div>
-  );
-};
-
-export default MenuManager;
+              <

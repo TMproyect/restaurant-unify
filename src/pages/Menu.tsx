@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
@@ -6,14 +5,16 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Tag } from 'lucide-react';
+import { Utensils, Tag, RefreshCw } from 'lucide-react';
 import { fetchMenuCategories, initializeStorage } from '@/services/menu';
 import { getLowStockItems } from '@/services/inventoryService';
+import { supabase } from '@/integrations/supabase/client';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSynchronizing, setIsSynchronizing] = useState(false);
   const { toast } = useToast();
   
   const loadCategories = async () => {
@@ -33,39 +34,42 @@ const Menu: React.FC = () => {
     }
   };
 
-  // Inicializar almacenamiento silenciosamente en segundo plano
-  const initStorageBackend = async () => {
+  const initializeBucket = async () => {
     try {
-      console.log('🔄 Inicializando backend de almacenamiento...');
-      await initializeStorage();
-      console.log('🔄 Inicialización de almacenamiento completada');
+      const { error } = await supabase.rpc('initialize_menu_images_bucket');
+      if (error) throw error;
+      console.log('🛠️ Bucket reinicializado mediante RPC');
+      return true;
     } catch (error) {
-      console.error('🔄 Error al inicializar almacenamiento:', error);
-      // No mostrar errores al usuario, manejar silenciosamente
+      console.error('🛠️ Error al reinicializar bucket mediante RPC:', error);
+      
+      try {
+        await initializeStorage();
+        return true;
+      } catch (storageError) {
+        console.error('🛠️ Error en segundo intento de inicialización:', storageError);
+        return false;
+      }
     }
   };
 
   useEffect(() => {
     loadCategories();
     
-    // Inicializar almacenamiento automáticamente
-    initStorageBackend();
+    const init = async () => {
+      try {
+        await initializeBucket();
+      } catch (error) {
+        console.error('Error al inicializar bucket:', error);
+      }
+    };
     
-    // Programar verificaciones periódicas de almacenamiento en segundo plano
-    const intervalId = setInterval(() => {
-      initStorageBackend();
-    }, 60000); // Verificar cada minuto
+    init();
     
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    // Load low stock alerts from Supabase
     const showInventoryAlerts = async () => {
       try {
         const lowStockItems = await getLowStockItems();
         
-        // Show toast notifications for each alert item
         lowStockItems.forEach(item => {
           toast({
             title: `Alerta de inventario: ${item.name}`,
@@ -81,23 +85,39 @@ const Menu: React.FC = () => {
     showInventoryAlerts();
   }, [toast]);
 
-  const handleSynchronize = () => {
-    // Iniciar sincronización y verificación de almacenamiento
-    initStorageBackend();
+  const handleSynchronize = async () => {
+    setIsSynchronizing(true);
     
-    toast({
-      title: "Sincronización completada",
-      description: "Los cambios han sido sincronizados con todos los dispositivos"
-    });
-    
-    // Dispatch events to update other components
-    window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+    try {
+      const success = await initializeBucket();
+      
+      if (success) {
+        toast({
+          title: "Sincronización completada",
+          description: "Los permisos de almacenamiento y las imágenes han sido sincronizados"
+        });
+      } else {
+        toast({
+          title: "Sincronización parcial",
+          description: "Se produjo un error durante la sincronización, intente nuevamente"
+        });
+      }
+      
+      window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+    } catch (error) {
+      console.error('Error en sincronización:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo completar la sincronización",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSynchronizing(false);
+    }
   };
 
   const handleCategoriesUpdated = () => {
-    // Reload categories
     loadCategories();
-    // Force refresh of menu items with new categories
     window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
   };
   
@@ -107,8 +127,13 @@ const Menu: React.FC = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gestión de Menú</h1>
           <div className="flex gap-2">
-            <Button onClick={handleSynchronize}>
-              Sincronizar Cambios
+            <Button 
+              onClick={handleSynchronize} 
+              disabled={isSynchronizing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSynchronizing ? 'animate-spin' : ''}`} />
+              {isSynchronizing ? 'Sincronizando...' : 'Sincronizar Imágenes'}
             </Button>
           </div>
         </div>

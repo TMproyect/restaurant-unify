@@ -109,7 +109,4 @@ export const useDeleteConfirmDialog = () => {
   };
 };
 
-export default {
-  DeleteConfirmDialog,
-  useDeleteConfirmDialog
-};
+// Export individually instead of as a default object

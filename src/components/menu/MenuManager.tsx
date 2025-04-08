@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -49,10 +50,8 @@ import {
   createMenuItem, 
   updateMenuItem, 
   deleteMenuItem,
-  uploadMenuItemImage,
-  deleteMenuItemImage,
-  initializeStorage
 } from '@/services/menu';
+import { uploadMenuItemImage, deleteMenuItemImage } from '@/services/storage/imageStorage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MenuItemOption {
@@ -72,6 +71,101 @@ interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
 }
+
+// Image component to handle loading states and errors
+const MenuItemImage = ({ 
+  imageUrl, 
+  alt, 
+  className = "rounded-t-lg w-full h-44 object-cover" 
+}: { 
+  imageUrl: string, 
+  alt: string, 
+  className?: string 
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
+  
+  const retryLoading = () => {
+    if (retryCount < maxRetries) {
+      console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, imageUrl);
+      setIsLoading(true);
+      setHasError(false);
+      setRetryCount(prev => prev + 1);
+      
+      const bustCache = `?t=${Date.now()}`;
+      const imgElement = document.querySelector(`img[data-src="${imageUrl}"]`) as HTMLImageElement;
+      if (imgElement) {
+        imgElement.src = `${imageUrl}${bustCache}`;
+      }
+    }
+  };
+  
+  const fullImageUrl = `${imageUrl}${hasError && retryCount < maxRetries ? `?retry=${retryCount}` : ''}`;
+  
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+    setRetryCount(0);
+  }, [imageUrl]);
+  
+  return (
+    <div className="relative w-full">
+      {isLoading && !hasError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="animate-pulse bg-gray-200 w-full h-full rounded-t-lg"></div>
+        </div>
+      )}
+      
+      {hasError ? (
+        <div className="flex items-center justify-center h-44 bg-muted text-muted-foreground">
+          <div className="flex flex-col items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={retryLoading}
+              disabled={retryCount >= maxRetries}
+            >
+              {retryCount < maxRetries ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reintentar
+                </>
+              ) : (
+                <>
+                  <ImageOff className="h-4 w-4 mr-2" />
+                  Imagen no disponible
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <img 
+          src={fullImageUrl} 
+          alt={alt} 
+          className={className}
+          data-src={imageUrl}
+          style={{ display: isLoading ? 'none' : 'block' }}
+          onLoad={() => {
+            console.log('🖼️ Imagen cargada correctamente:', imageUrl);
+            setIsLoading(false);
+          }}
+          onError={(e) => {
+            console.error('🖼️ Error al cargar imagen:', imageUrl);
+            setIsLoading(false);
+            setHasError(true);
+            
+            if (retryCount === 0) {
+              retryLoading();
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
@@ -102,15 +196,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     const loadData = async () => {
       try {
         console.log('🍽️ Cargando ítems del menú...');
-        
-        try {
-          await initializeStorage();
-          console.log('🍽️ Almacenamiento inicializado correctamente');
-        } catch (storageError) {
-          console.error('🍽️ Error al inicializar almacenamiento:', storageError);
-          // Continuar de todos modos
-        }
-        
         const itemsData = await fetchMenuItems();
         console.log('🍽️ Datos cargados:', itemsData.length, 'ítems');
         
@@ -185,24 +270,14 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       let imageUrl = newItem.image_url;
       if (imageFile) {
         console.log('🖼️ Iniciando subida de imagen...');
+        const uploadedUrl = await uploadMenuItemImage(imageFile);
         
-        await initializeStorage();
-        
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          console.log(`🖼️ Intento de subida ${attempt}/3`);
-          const uploadedUrl = await uploadMenuItemImage(imageFile);
-          
-          if (uploadedUrl) {
-            console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
-            imageUrl = uploadedUrl;
-            break;
-          } else if (attempt < 3) {
-            console.log('🖼️ Reintentando subida...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } else {
-            console.error('🖼️ Todos los intentos de subida fallaron');
-            sonnerToast.error("No se pudo subir la imagen. Se guardará el producto sin imagen.");
-          }
+        if (uploadedUrl) {
+          console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
+          imageUrl = uploadedUrl;
+        } else {
+          console.error('🖼️ Error al subir imagen');
+          sonnerToast.error("No se pudo subir la imagen. Se guardará el producto sin imagen.");
         }
       }
       
@@ -269,8 +344,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       let imageUrl = newItem.image_url;
       if (imageFile) {
         console.log('🖼️ Iniciando subida de imagen (continuar)...');
-        await initializeStorage();
-        
         const uploadedUrl = await uploadMenuItemImage(imageFile);
         if (uploadedUrl) {
           console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
@@ -540,100 +613,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         container.appendChild(fallbackDiv);
       }
     }
-  };
-  
-  const MenuItemImage = ({ 
-    imageUrl, 
-    alt, 
-    className = "rounded-t-lg w-full h-44 object-cover" 
-  }: { 
-    imageUrl: string, 
-    alt: string, 
-    className?: string 
-  }) => {
-    const [isLoading, setIsLoading] = useState(true);
-    const [hasError, setHasError] = useState(false);
-    const [retryCount, setRetryCount] = useState(0);
-    const maxRetries = 2;
-    
-    const retryLoading = () => {
-      if (retryCount < maxRetries) {
-        console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, imageUrl);
-        setIsLoading(true);
-        setHasError(false);
-        setRetryCount(prev => prev + 1);
-        
-        const bustCache = `?t=${Date.now()}`;
-        const imgElement = document.querySelector(`img[data-src="${imageUrl}"]`) as HTMLImageElement;
-        if (imgElement) {
-          imgElement.src = `${imageUrl}${bustCache}`;
-        }
-      }
-    };
-    
-    const fullImageUrl = `${imageUrl}${hasError && retryCount < maxRetries ? `?retry=${retryCount}` : ''}`;
-    
-    useEffect(() => {
-      setIsLoading(true);
-      setHasError(false);
-      setRetryCount(0);
-    }, [imageUrl]);
-    
-    return (
-      <div className="relative w-full">
-        {isLoading && !hasError && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-pulse bg-gray-200 w-full h-full rounded-t-lg"></div>
-          </div>
-        )}
-        
-        {hasError ? (
-          <div className="flex items-center justify-center h-44 bg-muted text-muted-foreground">
-            <div className="flex flex-col items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={retryLoading}
-                disabled={retryCount >= maxRetries}
-              >
-                {retryCount < maxRetries ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Reintentar
-                  </>
-                ) : (
-                  <>
-                    <ImageOff className="h-4 w-4 mr-2" />
-                    Imagen no disponible
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <img 
-            src={fullImageUrl} 
-            alt={alt} 
-            className={className}
-            data-src={imageUrl}
-            style={{ display: isLoading ? 'none' : 'block' }}
-            onLoad={() => {
-              console.log('🖼️ Imagen cargada correctamente:', imageUrl);
-              setIsLoading(false);
-            }}
-            onError={(e) => {
-              console.error('🖼️ Error al cargar imagen:', imageUrl);
-              setIsLoading(false);
-              setHasError(true);
-              
-              if (retryCount === 0) {
-                retryLoading();
-              }
-            }}
-          />
-        )}
-      </div>
-    );
   };
   
   return (

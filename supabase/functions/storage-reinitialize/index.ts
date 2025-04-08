@@ -2,14 +2,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-// Configuración CORS para permitir solicitudes desde cualquier origen
+// CORS headers to ensure the function can be called from any origin
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  // Manejo de solicitudes OPTIONS (CORS preflight)
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -17,7 +17,7 @@ serve(async (req) => {
   try {
     console.log('🔄 Iniciando reinicialización del bucket menu_images...');
     
-    // Crear cliente Supabase utilizando variables de entorno
+    // Create Supabase client with admin privileges
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -29,78 +29,74 @@ serve(async (req) => {
       }
     );
 
-    // También intentar llamar a la función SQL para reiniciar permisos
+    // Try to run the SQL function to reset permissions
     try {
-      const { data: resetResult, error: resetError } = await supabaseAdmin.rpc('reset_menu_images_permissions');
+      await supabaseAdmin.rpc('reset_menu_images_permissions');
+      console.log('🔄 Permisos reiniciados con función SQL');
+    } catch (resetError) {
+      console.log('🔄 Nota: No se pudo llamar a reset_menu_images_permissions:', resetError.message);
       
-      if (resetError) {
-        console.log('🔄 Nota: No se pudo llamar a reset_menu_images_permissions, pero continuamos:', resetError.message);
-      } else {
-        console.log('🔄 Permisos reiniciados con función SQL');
-      }
-    } catch (resetFnError) {
-      // Ignorar cualquier error aquí
-      console.log('🔄 Error ignorable al reiniciar permisos con función SQL:', resetFnError);
-    }
-
-    // Verificar si el bucket existe y asegurar que sea público
-    try {
-      // Lista de buckets
-      const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
-      
-      let bucketExists = false;
-      if (!listError && buckets) {
-        bucketExists = buckets.some(b => b.name === 'menu_images');
-        console.log(`🔄 Bucket existe: ${bucketExists}`);
-      }
-      
-      if (bucketExists) {
-        // Asegurar que el bucket sea público
-        const { error: updateError } = await supabaseAdmin.storage.updateBucket('menu_images', {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024 // 10MB
-        });
+      // Fallback: Try to manually set the RLS policies
+      try {
+        // Check if bucket exists
+        const { data: buckets, error: bucketsError } = await supabaseAdmin.storage.listBuckets();
         
-        if (updateError) {
-          console.log('🔄 Error al actualizar bucket (ignorable):', updateError);
+        if (bucketsError) {
+          console.log('🔄 Error al listar buckets:', bucketsError.message);
         } else {
-          console.log('🔄 Bucket actualizado como público');
+          console.log(`🔄 Buckets encontrados: ${buckets?.length || 0}`);
+          const bucketExists = buckets?.some(b => b.name === 'menu_images') || false;
+          console.log(`🔄 Bucket existe: ${bucketExists}`);
+          
+          // Create or update bucket
+          if (bucketExists) {
+            const { error: updateError } = await supabaseAdmin.storage.updateBucket(
+              'menu_images', 
+              { public: true }
+            );
+            
+            if (updateError) {
+              console.log('🔄 Error al actualizar bucket:', updateError.message);
+            } else {
+              console.log('🔄 Bucket actualizado correctamente');
+            }
+          } else {
+            const { error: createError } = await supabaseAdmin.storage.createBucket(
+              'menu_images', 
+              { public: true }
+            );
+            
+            if (createError) {
+              console.log('🔄 Error al crear bucket:', createError.message);
+            } else {
+              console.log('🔄 Bucket creado correctamente');
+            }
+          }
         }
-      } else {
-        // Crear bucket
-        const { error: createError } = await supabaseAdmin.storage.createBucket('menu_images', {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024 // 10MB
-        });
-        
-        if (createError) {
-          console.log('🔄 Error al crear bucket (ignorable):', createError);
-        } else {
-          console.log('🔄 Bucket creado exitosamente');
-        }
+      } catch (manualError) {
+        console.log('🔄 Error en manejo manual de bucket:', manualError);
       }
-    } catch (bucketError) {
-      console.log('🔄 Error en operación de bucket (continuando):', bucketError);
     }
-
-    // Verificar listado de archivos para comprobar permisos
+    
+    // Verify access by listing files in the bucket
     try {
-      const { data: files, error: listFilesError } = await supabaseAdmin.storage.from('menu_images').list();
+      const { data: files, error: listError } = await supabaseAdmin.storage
+        .from('menu_images')
+        .list();
       
-      if (listFilesError) {
-        console.log('🔄 Error al listar archivos (informativo):', listFilesError);
+      if (listError) {
+        console.log('🔄 Error al listar archivos:', listError.message);
       } else {
         console.log(`🔄 Se pudieron listar ${files?.length || 0} archivos`);
       }
     } catch (listError) {
-      console.log('🔄 Error al intentar listar archivos (informativo):', listError);
+      console.log('🔄 Error al verificar archivos:', listError);
     }
 
-    // Siempre retornar éxito, independientemente de errores específicos
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Proceso de inicialización de bucket completado',
+        message: 'Bucket menu_images inicializado correctamente',
         timestamp: new Date().toISOString()
       }),
       { 
@@ -108,19 +104,17 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
-    
   } catch (error) {
-    console.error('🔄 Error general en el proceso:', error);
+    console.error('🔄 Error general:', error);
     
-    // Intentamos retornar éxito de todos modos para evitar bloquear el flujo
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: 'Proceso completado pero con advertencias',
+        success: false, 
+        message: 'Error al inicializar bucket menu_images',
         error: error.message
       }),
       { 
-        status: 200, 
+        status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );

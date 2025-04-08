@@ -1,5 +1,5 @@
 
-// This file is now just a re-export for backward compatibility
+// This file is just a re-export for backward compatibility
 // All functionality has been moved to separate modules
 
 import { 
@@ -20,10 +20,9 @@ import {
   uploadMenuItemImage,
   deleteMenuItemImage,
   initializeStorage
-} from './menu/storageService';
+} from './storage/imageStorage';
 
 // Re-export all the interfaces and functions for backward compatibility
-// Use 'export type' for TypeScript interfaces to fix the isolatedModules error
 export type { MenuCategory } from './menu/categoryService';
 export type { MenuItem } from './menu/menuItemService';
 

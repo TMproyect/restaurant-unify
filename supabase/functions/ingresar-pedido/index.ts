@@ -41,35 +41,61 @@ function validatePayload(payload: any): string | null {
     return "Campo 'total_pedido' debe ser un número válido";
   }
   
-  // Validar estado inicial
-  if (!payload.estado_pedido_inicial) {
-    return "Campo 'estado_pedido_inicial' es requerido";
-  }
-
   return null; // Sin errores
 }
 
-// Validar API Key
+// Validar API Key - Versión mejorada con más logging
 async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
-  if (!apiKey) return false;
-  
-  console.log("Validando API key:", apiKey.substring(0, 4) + "****");
-  
-  // Obtener API key almacenada en system_settings
-  const { data, error } = await supabase
-    .from('system_settings')
-    .select('value')
-    .eq('key', 'external_api_key')
-    .single();
-  
-  if (error || !data) {
-    console.error("Error validando API key:", error);
+  if (!apiKey) {
+    console.log("Error de validación: API Key no proporcionada");
     return false;
   }
   
-  const isValid = apiKey === data.value;
-  console.log("¿API key válida?:", isValid);
-  return isValid;
+  console.log(`Intento de validación de API key: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
+  
+  try {
+    // Obtener API key almacenada en system_settings
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value, updated_at')
+      .eq('key', 'external_api_key')
+      .single();
+    
+    if (error) {
+      console.error("Error obteniendo API key de la base de datos:", error.message);
+      console.error("Detalles completos del error:", JSON.stringify(error));
+      return false;
+    }
+    
+    if (!data || !data.value) {
+      console.error("No se encontró una API key configurada en system_settings");
+      return false;
+    }
+    
+    console.log(`API key en DB: ${data.value.substring(0, 4)}****${data.value.substring(data.value.length - 4)}, actualizada: ${data.updated_at}`);
+    console.log(`API key recibida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
+    
+    const isValid = apiKey.trim() === data.value.trim();
+    console.log("¿API key válida?:", isValid);
+    
+    if (!isValid) {
+      console.log("Las API keys no coinciden. Verificando caracteres por caracteres:");
+      if (apiKey.length !== data.value.length) {
+        console.log(`Longitudes diferentes: Recibida (${apiKey.length}) vs. Almacenada (${data.value.length})`);
+      } else {
+        for (let i = 0; i < apiKey.length; i++) {
+          if (apiKey[i] !== data.value[i]) {
+            console.log(`Diferencia en posición ${i}: '${apiKey[i]}' vs '${data.value[i]}'`);
+          }
+        }
+      }
+    }
+    
+    return isValid;
+  } catch (e) {
+    console.error("Error inesperado al validar API key:", e);
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -95,6 +121,8 @@ serve(async (req) => {
   
   // Obtener la API key del encabezado
   const apiKey = req.headers.get('x-api-key');
+  console.log(`API Key recibida: ${apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada'}`);
+  
   if (!apiKey) {
     console.log("API Key no proporcionada en la cabecera 'x-api-key'");
     return new Response(JSON.stringify({ 
@@ -114,7 +142,7 @@ serve(async (req) => {
   // Validar API Key
   const isValidApiKey = await validateApiKey(supabase, apiKey);
   if (!isValidApiKey) {
-    console.log("API Key inválida:", apiKey.substring(0, 4) + "****");
+    console.log(`API Key inválida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
     return new Response(JSON.stringify({ 
       error: "API Key inválida",
       details: "La clave API proporcionada no coincide con la clave registrada en el sistema"
@@ -185,13 +213,15 @@ serve(async (req) => {
       customer_name: payload.nombre_cliente,
       table_number: payload.numero_mesa ? parseInt(payload.numero_mesa, 10) : null,
       table_id: payload.table_id || null,
-      status: payload.estado_pedido_inicial,
+      status: payload.estado_pedido_inicial || 'pending',
       total: payload.total_pedido,
       items_count: validatedItems.length,
       is_delivery: !!payload.is_delivery,
       kitchen_id: payload.kitchen_id || null,
       external_id: payload.id_externo || null
     };
+    
+    console.log("Creando nuevo pedido con datos:", JSON.stringify(orderData));
     
     // Insertar el pedido
     const { data: order, error: orderError } = await supabase
@@ -211,11 +241,15 @@ serve(async (req) => {
       });
     }
     
+    console.log("Pedido creado exitosamente con ID:", order.id);
+    
     // Insertar los items del pedido
     const orderItems = validatedItems.map(item => ({
       ...item,
       order_id: order.id
     }));
+    
+    console.log("Insertando", orderItems.length, "items para el pedido");
     
     const { error: itemsError } = await supabase
       .from('order_items')
@@ -235,6 +269,8 @@ serve(async (req) => {
       });
     }
     
+    console.log("Items del pedido creados exitosamente");
+    
     // Crear notificación para el nuevo pedido
     try {
       await supabase
@@ -247,6 +283,8 @@ serve(async (req) => {
           link: `/orders?id=${order.id}`,
           action_text: "Ver pedido"
         });
+      
+      console.log("Notificación creada exitosamente para el nuevo pedido");
     } catch (notifError) {
       console.error("Error al crear notificación:", notifError);
       // No interrumpimos el flujo por un error en la notificación

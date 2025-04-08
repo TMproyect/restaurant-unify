@@ -50,6 +50,8 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
+      console.log("Generando nueva API key:", newApiKey.substring(0, 4) + "****" + newApiKey.substring(newApiKey.length - 4));
+      
       // Guardar la nueva clave en la base de datos
       const { error } = await supabase
         .from('system_settings')
@@ -69,6 +71,8 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         return;
       }
 
+      console.log("API key guardada exitosamente en la base de datos");
+      
       // Solo mostramos la clave temporalmente
       onApiKeyChange(newApiKey);
       setIsVisible(true);

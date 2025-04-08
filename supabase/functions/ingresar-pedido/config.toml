@@ -1,3 +1,5 @@
 
+# Configuración para la función ingresar-pedido
+# Última actualización: 2025-04-08
 project_id = "imcxvnivqrckgjrimzck"
 verify_jwt = false

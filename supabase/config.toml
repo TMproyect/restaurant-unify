@@ -17,6 +17,8 @@ major_version = 15
 [functions]
 [functions.storage-reinitialize]
 verify_jwt = false
+[functions.ingresar-pedido]
+verify_jwt = false
 
 [studio]
 port = 54323

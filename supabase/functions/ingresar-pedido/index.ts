@@ -1,4 +1,5 @@
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
+// Versión 2.0 - Forzar redespliegue - 2025-04-08
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -51,6 +52,7 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   }
   
   console.log(`Intento de validación de API key: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
+  console.log("Verificación de API key forzando redespliegue - 2025-04-08");
   
   try {
     // Obtener API key almacenada en system_settings
@@ -102,7 +104,8 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
 }
 
 serve(async (req) => {
-  console.log("Función ingresar-pedido recibió una solicitud:", req.method);
+  console.log("Función ingresar-pedido v2.0 recibió una solicitud:", req.method);
+  console.log("Redespliegue forzado activado - 2025-04-08");
   
   // Imprimir todas las cabeceras recibidas para diagnóstico
   const headerEntries = Array.from(req.headers.entries());

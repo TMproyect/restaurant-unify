@@ -8,7 +8,7 @@ export const setupRealtimeForTables = async () => {
     
     // Enable realtime for specific tables using direct channel subscription
     // instead of RPC calls which may not be available
-    const tablesWithRealtime = ['orders', 'order_items', 'notifications'];
+    const tablesWithRealtime = ['orders', 'order_items', 'notifications', 'inventory_items', 'inventory_categories'];
     
     // Log realtime setup
     console.log(`Setting up realtime for tables: ${tablesWithRealtime.join(', ')}`);

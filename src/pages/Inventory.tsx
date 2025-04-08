@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Plus, AlertTriangle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   fetchInventoryItems, 
   fetchInventoryCategories, 
@@ -25,6 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import DashboardError from '@/components/dashboard/DashboardError';
+import DashboardLoading from '@/components/dashboard/DashboardLoading';
 
 const Inventory = () => {
   const { toast } = useToast();
@@ -41,12 +43,12 @@ const Inventory = () => {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
-  // For category management
+  // Para gestión de categorías
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null);
   
-  // Fetch inventory items
+  // Obtener items de inventario
   const { 
     data: inventoryItems = [], 
     isLoading: itemsLoading, 
@@ -56,16 +58,17 @@ const Inventory = () => {
     queryFn: fetchInventoryItems
   });
   
-  // Fetch inventory categories
+  // Obtener categorías de inventario
   const { 
     data: categories = [], 
-    isLoading: categoriesLoading 
+    isLoading: categoriesLoading,
+    error: categoriesError
   } = useQuery({
     queryKey: ['inventoryCategories'],
     queryFn: fetchInventoryCategories
   });
   
-  // Create item mutation
+  // Mutación para crear item
   const createItemMutation = useMutation({
     mutationFn: createInventoryItem,
     onSuccess: () => {
@@ -94,7 +97,7 @@ const Inventory = () => {
     }
   });
   
-  // Update item mutation
+  // Mutación para actualizar item
   const updateItemMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string, updates: Partial<InventoryItem> }) => 
       updateInventoryItem(id, updates),
@@ -124,7 +127,7 @@ const Inventory = () => {
     }
   });
   
-  // Delete item mutation
+  // Mutación para eliminar item
   const deleteItemMutation = useMutation({
     mutationFn: deleteInventoryItem,
     onSuccess: () => {
@@ -144,7 +147,7 @@ const Inventory = () => {
     }
   });
   
-  // Update stock mutation
+  // Mutación para actualizar stock
   const updateStockMutation = useMutation({
     mutationFn: ({ id, newQuantity }: { id: string, newQuantity: number }) => 
       updateInventoryItemStock(id, newQuantity),
@@ -165,7 +168,7 @@ const Inventory = () => {
     }
   });
   
-  // Create category mutation
+  // Mutación para crear categoría
   const createCategoryMutation = useMutation({
     mutationFn: (name: string) => createInventoryCategory(name),
     onSuccess: () => {
@@ -187,7 +190,7 @@ const Inventory = () => {
     }
   });
   
-  // Update category mutation
+  // Mutación para actualizar categoría
   const updateCategoryMutation = useMutation({
     mutationFn: ({ id, name }: { id: string, name: string }) => 
       updateInventoryCategory(id, name),
@@ -210,7 +213,7 @@ const Inventory = () => {
     }
   });
   
-  // Delete category mutation
+  // Mutación para eliminar categoría
   const deleteCategoryMutation = useMutation({
     mutationFn: deleteInventoryCategory,
     onSuccess: () => {
@@ -231,7 +234,7 @@ const Inventory = () => {
     }
   });
   
-  // Filter items based on search term and category
+  // Filtrar items basado en término de búsqueda y categoría
   const filteredItems = inventoryItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || 
@@ -239,7 +242,7 @@ const Inventory = () => {
     return matchesSearch && matchesCategory;
   });
     
-  // Calculate stats
+  // Calcular estadísticas
   const totalItems = inventoryItems.length;
   const outOfStockItems = inventoryItems.filter(item => item.stock_quantity <= 0).length;
   const lowStockItems = inventoryItems.filter(item => 
@@ -248,7 +251,7 @@ const Inventory = () => {
     item.stock_quantity < item.min_stock_level
   ).length;
   
-  // Render alert banner for low stock items
+  // Renderizar banner de alerta para items con stock bajo
   const renderAlertBanner = () => {
     const alertItems = inventoryItems.filter(item => 
       item.min_stock_level && 
@@ -280,10 +283,10 @@ const Inventory = () => {
     );
   };
 
-  // Handle form submission for new/edited item
+  // Manejar envío de formulario para nuevo/editado item
   const handleSubmit = async () => {
     try {
-      // Validation
+      // Validación
       if (!newItem.name || newItem.stock_quantity === undefined) {
         toast({
           title: "Error",
@@ -294,13 +297,13 @@ const Inventory = () => {
       }
 
       if (editingItem) {
-        // Update existing item
+        // Actualizar item existente
         updateItemMutation.mutate({ 
           id: editingItem.id, 
           updates: newItem 
         });
       } else {
-        // Create new item
+        // Crear nuevo item
         createItemMutation.mutate(newItem as Omit<InventoryItem, 'id' | 'created_at'>);
       }
     } catch (error) {
@@ -313,7 +316,7 @@ const Inventory = () => {
     }
   };
 
-  // Handle category form submission
+  // Manejar envío de formulario de categoría
   const handleCategorySubmit = () => {
     if (!newCategoryName.trim()) {
       toast({
@@ -336,7 +339,7 @@ const Inventory = () => {
     setIsCategoryDialogOpen(false);
   };
 
-  // Edit item
+  // Editar item
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
     setNewItem({
@@ -349,7 +352,7 @@ const Inventory = () => {
     setIsAddDialogOpen(true);
   };
 
-  // Delete item
+  // Eliminar item
   const handleDelete = async (id: string) => {
     try {
       deleteItemMutation.mutate(id);
@@ -358,7 +361,7 @@ const Inventory = () => {
     }
   };
 
-  // Update stock quantity
+  // Actualizar cantidad de stock
   const handleUpdateStock = async (id: string, amount: number) => {
     try {
       const item = inventoryItems.find(item => item.id === id);
@@ -373,24 +376,38 @@ const Inventory = () => {
     }
   };
 
-  // Edit category
+  // Editar categoría
   const handleEditCategory = (category: InventoryCategory) => {
     setEditingCategory(category);
     setNewCategoryName(category.name);
     setIsCategoryDialogOpen(true);
   };
 
-  // Delete category
+  // Eliminar categoría
   const handleDeleteCategory = (id: string) => {
     deleteCategoryMutation.mutate(id);
   };
 
-  if (itemsError) {
-    toast({
-      title: "Error al cargar inventario",
-      description: "No se pudo obtener los datos del inventario",
-      variant: "destructive"
-    });
+  // Mostrar error si hay algún problema
+  if (itemsError || categoriesError) {
+    const errorMessage = itemsError 
+      ? `Error al cargar inventario: ${(itemsError as Error).message}` 
+      : `Error al cargar categorías: ${(categoriesError as Error).message}`;
+    
+    return (
+      <Layout>
+        <DashboardError error={errorMessage} />
+      </Layout>
+    );
+  }
+
+  // Mostrar estado de carga
+  if (itemsLoading || categoriesLoading) {
+    return (
+      <Layout>
+        <DashboardLoading />
+      </Layout>
+    );
   }
 
   return (
@@ -581,7 +598,7 @@ const Inventory = () => {
           </Card>
         </div>
         
-        {/* Categories section */}
+        {/* Sección de categorías */}
         <Card className="mb-4">
           <CardHeader>
             <CardTitle>Categorías de Inventario</CardTitle>
@@ -680,7 +697,7 @@ const Inventory = () => {
             </TableHeader>
             <TableBody>
               {filteredItems.map(item => {
-                // Determine row styling based on stock level
+                // Determinar estilo de fila basado en nivel de stock
                 let rowClassName = "";
                 if (item.stock_quantity <= 0) {
                   rowClassName = "bg-red-50";

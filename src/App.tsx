@@ -16,6 +16,7 @@ import { setupRealtimeForTables } from './utils/enableRealtimeFunction';
 import { AuthProvider } from '@/contexts/auth/AuthContext';
 import Login from '@/pages/Login';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Inventory from '@/pages/Inventory';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -48,6 +49,7 @@ function App() {
               <Route path="/kitchen" element={<Kitchen />} />
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/inventory" element={<Inventory />} />
             </Routes>
           </Router>
           <Toaster />

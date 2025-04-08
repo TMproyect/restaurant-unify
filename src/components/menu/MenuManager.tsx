@@ -103,7 +103,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       try {
         console.log('🍽️ Cargando ítems del menú...');
         
-        // Inicializar el almacenamiento automáticamente - importante para las imágenes
         try {
           await initializeStorage();
           console.log('🍽️ Almacenamiento inicializado correctamente');
@@ -187,10 +186,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       if (imageFile) {
         console.log('🖼️ Iniciando subida de imagen...');
         
-        // Forzar inicialización del almacenamiento antes de subir
         await initializeStorage();
         
-        // Intentar la subida con reintentos
         for (let attempt = 1; attempt <= 3; attempt++) {
           console.log(`🖼️ Intento de subida ${attempt}/3`);
           const uploadedUrl = await uploadMenuItemImage(imageFile);
@@ -272,7 +269,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       let imageUrl = newItem.image_url;
       if (imageFile) {
         console.log('🖼️ Iniciando subida de imagen (continuar)...');
-        // Inicializar el almacenamiento antes de subir
         await initializeStorage();
         
         const uploadedUrl = await uploadMenuItemImage(imageFile);
@@ -491,14 +487,12 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     
     console.log('🖼️ Archivo seleccionado:', file.name, 'Tamaño:', file.size, 'bytes');
     
-    // Verificar tamaño de archivo (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
       console.warn('🖼️ Archivo demasiado grande:', file.size, 'bytes');
       sonnerToast.error("La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.");
       return;
     }
     
-    // Verificar formato de archivo
     const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validFormats.includes(file.type)) {
       console.warn('🖼️ Formato no válido:', file.type);
@@ -508,7 +502,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     
     setImageFile(file);
     
-    // Crear un preview temporal para mostrar la imagen antes de subirla
     const previewUrl = URL.createObjectURL(file);
     setImagePreview(previewUrl);
     
@@ -524,10 +517,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     const container = img.parentElement;
     
     if (container) {
-      // Ocultar la imagen
       img.style.display = 'none';
       
-      // Crear un elemento fallback si no existe ya
       if (!container.querySelector('.image-fallback')) {
         const fallbackDiv = document.createElement('div');
         fallbackDiv.className = 'flex items-center justify-center h-44 bg-muted text-muted-foreground image-fallback';
@@ -551,7 +542,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
   
-  // Componente de imagen mejorado con mejor manejo de errores
   const MenuItemImage = ({ 
     imageUrl, 
     alt, 
@@ -566,7 +556,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     const [retryCount, setRetryCount] = useState(0);
     const maxRetries = 2;
     
-    // Función para forzar recarga de la imagen
     const retryLoading = () => {
       if (retryCount < maxRetries) {
         console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, imageUrl);
@@ -574,7 +563,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         setHasError(false);
         setRetryCount(prev => prev + 1);
         
-        // Agregar timestamp para evitar caché
         const bustCache = `?t=${Date.now()}`;
         const imgElement = document.querySelector(`img[data-src="${imageUrl}"]`) as HTMLImageElement;
         if (imgElement) {
@@ -583,11 +571,9 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       }
     };
     
-    // URL completa con timestamp para evitar caché
     const fullImageUrl = `${imageUrl}${hasError && retryCount < maxRetries ? `?retry=${retryCount}` : ''}`;
     
     useEffect(() => {
-      // Reiniciar estado cuando cambia la URL
       setIsLoading(true);
       setHasError(false);
       setRetryCount(0);
@@ -640,7 +626,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
               setIsLoading(false);
               setHasError(true);
               
-              // Intentar recargar automáticamente una vez
               if (retryCount === 0) {
                 retryLoading();
               }
@@ -947,4 +932,266 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                     onClick={() => handleDeleteItem(item.id)}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-muted rounded-lg p-8 text-center">
+          <p className="text-muted-foreground mb-2">No se encontraron platos que coincidan con los criterios de búsqueda.</p>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedCategory(null);
+            }}
+          >
+            Mostrar todos los platos
+          </Button>
+        </div>
+      )}
+      
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Editar Plato: {editingItem?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Nombre</Label>
+              <Input
+                id="edit-name"
+                value={newItem.name || ''}
+                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                placeholder="Nombre del plato"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-sku">SKU (Código único para integraciones)</Label>
+              <Input
+                id="edit-sku"
+                value={newItem.sku || ''}
+                onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
+                placeholder="SKU o código de producto"
+              />
+              <p className="text-xs text-muted-foreground">
+                Un código único para identificar este producto en integraciones externas
+              </p>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Descripción</Label>
+              <Textarea
+                id="edit-description"
+                value={newItem.description || ''}
+                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                placeholder="Descripción del plato"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-price">Precio</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  value={newItem.price || 0}
+                  onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Categoría</Label>
+                <Select
+                  value={newItem.category_id || ''}
+                  onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
+                >
+                  <SelectTrigger id="edit-category">
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-available">Disponibilidad</Label>
+                <Select
+                  value={newItem.available ? "true" : "false"}
+                  onValueChange={(value) => setNewItem({ ...newItem, available: value === "true" })}
+                >
+                  <SelectTrigger id="edit-available">
+                    <SelectValue placeholder="Disponibilidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Disponible</SelectItem>
+                    <SelectItem value="false">No disponible</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-popular">Popular</Label>
+                <Select
+                  value={newItem.popular ? "true" : "false"}
+                  onValueChange={(value) => setNewItem({ ...newItem, popular: value === "true" })}
+                >
+                  <SelectTrigger id="edit-popular">
+                    <SelectValue placeholder="¿Es popular?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Imagen Actual</Label>
+              {newItem.image_url ? (
+                <div className="relative">
+                  <div 
+                    className="cursor-pointer" 
+                    onClick={() => setViewingImage(newItem.image_url || null)}
+                  >
+                    <img 
+                      src={newItem.image_url} 
+                      alt={newItem.name || 'Imagen de producto'} 
+                      className="h-32 object-cover rounded border border-border"
+                      onError={handleImageError}
+                    />
+                  </div>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={handleDeleteImage}
+                    disabled={isDeletingImage}
+                  >
+                    {isDeletingImage ? (
+                      <span className="flex items-center">
+                        <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                        Eliminando...
+                      </span>
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-32 bg-muted rounded border border-border">
+                  <div className="text-muted-foreground text-sm flex flex-col items-center">
+                    <ImageOff className="h-8 w-8 mb-2" />
+                    <span>Sin imagen</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-image">Nueva Imagen</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full flex justify-start text-muted-foreground"
+                    onClick={() => document.getElementById('edit-image')?.click()}
+                  >
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    {imageFile ? imageFile.name : "Seleccionar archivo"}
+                  </Button>
+                  <Input
+                    id="edit-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="sr-only"
+                  />
+                </div>
+              </div>
+              {imagePreview && (
+                <div className="mt-2">
+                  <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
+                  <img 
+                    src={imagePreview} 
+                    alt="Vista previa" 
+                    className="h-32 object-contain rounded border border-border"
+                    onError={handleImageError}
+                  />
+                </div>
+              )}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-allergens">Alérgenos (separados por coma)</Label>
+              <Input
+                id="edit-allergens"
+                value={newItem.allergens?.join(', ') || ''}
+                onChange={(e) => setNewItem({ 
+                  ...newItem, 
+                  allergens: e.target.value.split(',').map(item => item.trim()).filter(Boolean) 
+                })}
+                placeholder="lácteos, gluten, frutos secos..."
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Vista Previa de Imagen
+            </DialogTitle>
+          </DialogHeader>
+          
+          {viewingImage && (
+            <div className="flex justify-center">
+              <img 
+                src={viewingImage} 
+                alt="Imagen ampliada" 
+                className="max-h-[70vh] object-contain"
+                onError={handleImageError}
+              />
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingImage(null)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default MenuManager;

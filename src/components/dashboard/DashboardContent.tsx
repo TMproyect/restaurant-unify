@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import OrdersList from './OrdersList';
 import LowStockAlert from '../inventory/LowStockAlert';
 import DashboardStats from './DashboardStats';
+import { toast } from 'sonner';
 
 interface DashboardContentProps {
   showOrders?: boolean;
@@ -11,6 +12,20 @@ interface DashboardContentProps {
 
 const DashboardContent: React.FC<DashboardContentProps> = ({ showOrders }) => {
   console.log('🔄 [DashboardContent] Rendering dashboard content', showOrders ? 'showing orders' : 'showing sales');
+  
+  // Add error boundary effect
+  useEffect(() => {
+    try {
+      console.log('🔄 [DashboardContent] Component mounted successfully');
+    } catch (error) {
+      console.error('❌ [DashboardContent] Error in component initialization:', error);
+      toast.error('Error al cargar el contenido del dashboard');
+    }
+    
+    return () => {
+      console.log('🔄 [DashboardContent] Component unmounting');
+    };
+  }, []);
   
   return (
     <>

@@ -17,6 +17,7 @@ import { AuthProvider } from '@/contexts/auth/AuthContext';
 import Login from '@/pages/Login';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Inventory from '@/pages/Inventory';
+import Sales from '@/pages/Sales';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -50,6 +51,7 @@ function App() {
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/login" element={<Login />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/sales" element={<Sales />} />
             </Routes>
           </Router>
           <Toaster />

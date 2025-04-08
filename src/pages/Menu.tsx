@@ -36,7 +36,7 @@ const Menu: React.FC = () => {
 
   const initializeBucket = async () => {
     try {
-      const { error } = await supabase.rpc('initialize_menu_images_bucket');
+      const { error } = await supabase.rpc('reinitialize_menu_images_bucket');
       if (error) throw error;
       console.log('🛠️ Bucket reinicializado mediante RPC');
       return true;

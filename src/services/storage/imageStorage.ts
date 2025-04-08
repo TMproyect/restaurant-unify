@@ -97,15 +97,11 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Obtenemos la URL pública con transformaciones mínimas para mejor rendimiento
+    // Obtenemos la URL pública SIN transformaciones para evitar errores de sintaxis
+    // Esto soluciona el problema de URLs mal formadas
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
-      .getPublicUrl(data.path, {
-        transform: {
-          quality: 80,
-          width: 800
-        }
-      });
+      .getPublicUrl(data.path);
     
     if (!publicUrlData || !publicUrlData.publicUrl) {
       toast.error("Error al generar URL pública para la imagen");
@@ -113,7 +109,11 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     }
     
     // Añadimos un parámetro de tiempo para evitar caché del navegador
-    const publicUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    // Corregimos la concatenación de parámetros para que sea una URL válida
+    const publicUrl = publicUrlData.publicUrl.includes('?') 
+      ? `${publicUrlData.publicUrl}&t=${Date.now()}` 
+      : `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    
     console.log('📦 URL pública generada:', publicUrl);
     
     // Verificamos que la URL sea accesible enviando una solicitud HEAD
@@ -125,6 +125,8 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       
       if (!response.ok) {
         console.warn(`📦 URL pública no accesible, código: ${response.status}`);
+      } else {
+        console.log('📦 URL verificada correctamente, código:', response.status);
       }
     } catch (e) {
       console.warn('📦 No se pudo verificar accesibilidad de URL:', e);
@@ -199,14 +201,16 @@ export const initializeStorage = async (): Promise<boolean> => {
 };
 
 // Función de utilidad para añadir parámetro anti-caché a las URLs de imágenes
+// Corregida para manejar correctamente la concatenación de parámetros
 export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
   if (!imageUrl) return '';
   
-  // Si la URL ya tiene parámetros, añadimos el timestamp
-  if (imageUrl.includes('?')) {
-    return `${imageUrl}&t=${Date.now()}`;
-  }
+  // Evaluamos si la URL ya tiene parámetros para concatenar correctamente
+  const hasParams = imageUrl.includes('?');
   
-  // Si no tiene parámetros, añadimos el timestamp como primer parámetro
-  return `${imageUrl}?t=${Date.now()}`;
+  // Si ya tiene parámetros, añadimos el timestamp como parámetro adicional con &
+  // Si no tiene parámetros, añadimos el timestamp como primer parámetro con ?
+  return hasParams 
+    ? `${imageUrl}&t=${Date.now()}` 
+    : `${imageUrl}?t=${Date.now()}`;
 };

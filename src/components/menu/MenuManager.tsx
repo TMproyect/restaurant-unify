@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -34,7 +35,9 @@ import {
   ImagePlus,
   Tag,
   AlertCircle,
-  Eye
+  Eye,
+  X,
+  XCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -44,8 +47,10 @@ import {
   createMenuItem, 
   updateMenuItem, 
   deleteMenuItem,
-  uploadMenuItemImage
+  uploadMenuItemImage,
+  deleteMenuItemImage
 } from '@/services/menuService';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface MenuItemOption {
   name: string;
@@ -86,6 +91,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
   
   useEffect(() => {
     const loadData = async () => {
@@ -311,6 +318,59 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         title: "Plato eliminado",
         description: `${itemToDelete.name} ha sido eliminado del menú`
       });
+    }
+  };
+  
+  const handleDeleteImage = async () => {
+    if (!editingItem || !newItem.image_url) return;
+    
+    setIsDeletingImage(true);
+    
+    try {
+      const success = await deleteMenuItemImage(newItem.image_url);
+      
+      if (success) {
+        // Actualizar el item sin la imagen
+        const updates = {
+          ...newItem,
+          image_url: null
+        };
+        
+        const updatedItem = await updateMenuItem(editingItem.id, updates);
+        
+        if (updatedItem) {
+          setMenuItems(prev => 
+            prev.map(item => 
+              item.id === editingItem.id ? { ...updatedItem, options: item.options } as ExtendedMenuItem : item
+            )
+          );
+          
+          setNewItem({
+            ...newItem,
+            image_url: null
+          });
+          
+          toast({
+            title: "Imagen eliminada",
+            description: "La imagen del producto ha sido eliminada"
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo eliminar la imagen",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al eliminar la imagen",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingImage(false);
     }
   };
   
@@ -597,17 +657,34 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                     className="rounded-t-lg w-full h-44 object-cover"
                     onError={handleImageError}
                   />
-                  {item.image_url && (
-                    <a 
-                      href={item.image_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="absolute top-2 right-2 bg-black/40 text-white p-1 rounded-full hover:bg-black/60 transition-colors"
-                      title="Ver imagen"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </a>
-                  )}
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 bg-black/40 text-white hover:bg-black/60 transition-colors"
+                        onClick={() => setViewingImage(item.image_url)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="p-1 sm:max-w-[80vw] max-h-[90vh] flex items-center justify-center bg-background/95 backdrop-blur">
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name}
+                        className="max-w-full max-h-[80vh] object-contain"
+                        onError={handleImageError}
+                      />
+                      <Button 
+                        className="absolute top-2 right-2 rounded-full" 
+                        size="icon" 
+                        variant="ghost"
+                        onClick={() => setViewingImage(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
               <CardHeader className="pb-2">
@@ -793,7 +870,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
             
             <div className="grid gap-2">
               <Label htmlFor="edit-image">Imagen</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 <div className="relative flex-1">
                   <Button 
                     type="button" 
@@ -812,10 +889,31 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                     className="sr-only"
                   />
                 </div>
+                
+                {newItem.image_url && !imageFile && (
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteImage}
+                      disabled={isDeletingImage}
+                    >
+                      {isDeletingImage ? (
+                        <span>Eliminando...</span>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 mr-2" />
+                          <span>Eliminar imagen</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
+              
               {imagePreview && (
                 <div className="mt-2">
-                  <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
+                  <p className="text-xs text-muted-foreground mb-1">Vista previa de nueva imagen:</p>
                   <img 
                     src={imagePreview} 
                     alt="Vista previa" 
@@ -824,21 +922,40 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
                   />
                 </div>
               )}
-              {(newItem.image_url || imageFile) && !imagePreview && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {imageFile 
-                      ? `Nueva imagen seleccionada: ${imageFile.name}` 
-                      : `Imagen actual: ${newItem.image_url?.split('/').pop()}`}
-                  </p>
-                  {newItem.image_url && !imageFile && (
-                    <img 
-                      src={newItem.image_url} 
-                      alt="Imagen actual" 
-                      className="h-32 object-contain rounded border border-border"
-                      onError={handleImageError}
-                    />
-                  )}
+              
+              {newItem.image_url && !imagePreview && (
+                <div className="mt-2">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-muted-foreground mb-1">Imagen actual:</p>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 px-2">
+                          <Eye className="h-3 w-3 mr-1" /> Ver
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="p-1 sm:max-w-[80vw] max-h-[90vh] flex items-center justify-center bg-background/95 backdrop-blur">
+                        <img 
+                          src={newItem.image_url} 
+                          alt={newItem.name || "Imagen del producto"}
+                          className="max-w-full max-h-[80vh] object-contain"
+                          onError={handleImageError}
+                        />
+                        <Button 
+                          className="absolute top-2 right-2 rounded-full" 
+                          size="icon" 
+                          variant="ghost"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  <img 
+                    src={newItem.image_url} 
+                    alt="Imagen actual" 
+                    className="h-32 object-contain rounded border border-border"
+                    onError={handleImageError}
+                  />
                 </div>
               )}
             </div>
@@ -867,6 +984,8 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Popup de vista previa de imagen (diálogo) se encuentra arriba integrado */}
     </div>
   );
 };

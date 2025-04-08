@@ -259,3 +259,57 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     return null;
   }
 };
+
+export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> => {
+  try {
+    // Extraer el nombre del archivo de la URL
+    const bucketName = 'menu_images';
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    
+    console.log('Attempting to delete image:', fileName, 'from bucket:', bucketName);
+    
+    const { error } = await supabase
+      .storage
+      .from(bucketName)
+      .remove([fileName]);
+
+    if (error) {
+      console.error('Error deleting menu item image:', error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteMenuItemImage:', error);
+    toast.error('Error al eliminar la imagen del menú');
+    return false;
+  }
+};
+
+// Agregar una función para verificar el estado del storage
+export const verifyStorageConnection = async (): Promise<boolean> => {
+  try {
+    // Intenta listar los buckets para verificar la conexión
+    const { data, error } = await supabase.storage.listBuckets();
+    
+    if (error) {
+      console.error('Error verifying storage connection:', error);
+      return false;
+    }
+    
+    // Buscar el bucket de imágenes de menú
+    const menuImagesBucket = data.find(bucket => bucket.name === 'menu_images');
+    
+    if (!menuImagesBucket) {
+      console.warn('Menu images bucket not found');
+    } else {
+      console.log('Storage connection verified, menu_images bucket exists');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in verifyStorageConnection:', error);
+    return false;
+  }
+};

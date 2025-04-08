@@ -6,14 +6,15 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Tag } from 'lucide-react';
-import { fetchMenuCategories } from '@/services/menuService';
+import { Utensils, Tag, AlertTriangle } from 'lucide-react';
+import { fetchMenuCategories, verifyStorageConnection } from '@/services/menuService';
 import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [storageConnected, setStorageConnected] = useState(true);
   const { toast } = useToast();
   
   const loadCategories = async () => {
@@ -35,6 +36,22 @@ const Menu: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
+    
+    // Verificar la conexión al almacenamiento
+    const checkStorageConnection = async () => {
+      const isConnected = await verifyStorageConnection();
+      setStorageConnected(isConnected);
+      
+      if (!isConnected) {
+        toast({
+          title: "Advertencia",
+          description: "No se pudo verificar la conexión al almacenamiento. Las imágenes pueden no funcionar correctamente.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    checkStorageConnection();
   }, []);
 
   useEffect(() => {
@@ -85,6 +102,20 @@ const Menu: React.FC = () => {
             Sincronizar Cambios
           </Button>
         </div>
+        
+        {!storageConnected && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
+              <div>
+                <h3 className="font-medium text-amber-800">Problemas con el almacenamiento</h3>
+                <p className="text-sm text-amber-700 mt-1">
+                  No se pudo conectar con el servicio de almacenamiento. La subida y visualización de imágenes puede no funcionar correctamente.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <Tabs defaultValue="menu" onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2">

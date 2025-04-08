@@ -49,7 +49,7 @@ const verifyBucketExists = async (): Promise<boolean> => {
 };
 
 /**
- * Sube una imagen con manejo mejorado de errores y URLs simples
+ * Sube una imagen con manejo mejorado de errores
  */
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   if (!file) {
@@ -75,15 +75,15 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     
     // Generamos un nombre único para evitar conflictos
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes`);
+    console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
     
-    // Configuración crítica para asegurar que se almacene correctamente
+    // PROBLEMA ENCONTRADO: Opciones incorrectas en upload pueden causar que se sirva multipart/form-data
+    // Simplificamos al máximo las opciones para evitar problemas
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type // Crucial para servir la imagen correctamente
+        contentType: file.type, // Esto es crítico para que se sirva correctamente
+        upsert: true
       });
     
     if (error) {
@@ -97,7 +97,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Obtenemos la URL directa sin ningún parámetro de transformación
+    // Obtenemos la URL pública más directa posible
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);
@@ -107,28 +107,8 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // URL pública sin parámetros extras
     const publicUrl = publicUrlData.publicUrl;
     console.log('📦 URL pública generada:', publicUrl);
-    
-    // Verificamos que la URL sea accesible enviando una solicitud HEAD
-    try {
-      const response = await fetch(publicUrl, { 
-        method: 'HEAD',
-        cache: 'no-cache'
-      });
-      
-      if (!response.ok) {
-        console.warn(`📦 URL pública no accesible, código: ${response.status}`);
-        if (response.status === 403) {
-          console.error('📦 Error de permisos (403) al acceder a la imagen. Verificar políticas de bucket.');
-        }
-      } else {
-        console.log('📦 URL verificada correctamente, código:', response.status);
-      }
-    } catch (e) {
-      console.warn('📦 No se pudo verificar accesibilidad de URL:', e);
-    }
     
     return publicUrl;
   } catch (error) {
@@ -178,13 +158,11 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
 };
 
 /**
- * Inicialización simple que solo verifica acceso al bucket
- * Esta función solo debe llamarse en la carga inicial
+ * Inicialización simplificada que verifica el bucket
  */
 export const initializeStorage = async (): Promise<boolean> => {
   try {
-    console.log('📦 Iniciando verificación de acceso al bucket...');
-    // Verificar si el bucket existe y tenemos acceso
+    console.log('📦 Verificando acceso al bucket menu_images...');
     const hasAccess = await verifyBucketExists();
     
     if (!hasAccess) {
@@ -201,10 +179,8 @@ export const initializeStorage = async (): Promise<boolean> => {
   }
 };
 
-// Sin cache busting ni parámetros extra para evitar problemas
+// Retornamos la URL original sin modificaciones
 export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
   if (!imageUrl) return '';
-  
-  // Retornamos la URL original sin parámetros para máxima compatibilidad
   return imageUrl;
 };

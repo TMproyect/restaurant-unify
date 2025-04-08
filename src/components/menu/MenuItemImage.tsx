@@ -19,8 +19,8 @@ const MenuItemImage = ({
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
   
-  // URL limpia para máxima compatibilidad
-  const cleanImageUrl = imageUrl.split('?')[0]; // Eliminar cualquier parámetro de URL
+  // URL limpia para máxima compatibilidad - sin parámetros
+  const cleanImageUrl = imageUrl.split('?')[0];
   
   const retryLoading = () => {
     if (retryCount < maxRetries) {
@@ -29,10 +29,10 @@ const MenuItemImage = ({
       setHasError(false);
       setRetryCount(prev => prev + 1);
       
-      // Forzar recarga cambiando el atributo src directamente
+      // Forzar recarga con un nuevo timestamp para evitar caché
       const imgElement = document.querySelector(`img[data-src="${cleanImageUrl}"]`) as HTMLImageElement;
       if (imgElement) {
-        const forcedUrl = `${cleanImageUrl}?forceReload=${Date.now()}`;
+        const forcedUrl = `${cleanImageUrl}?t=${Date.now()}`;
         imgElement.src = forcedUrl;
         console.log('🖼️ Forzando recarga con URL:', forcedUrl);
       }
@@ -93,7 +93,7 @@ const MenuItemImage = ({
             setIsLoading(false);
             setHasError(true);
             
-            // Reintento automático sin demora
+            // Reintento automático sin demora la primera vez
             if (retryCount === 0) {
               retryLoading();
             }

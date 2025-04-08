@@ -37,18 +37,35 @@ export const getInventoryItems = async (): Promise<InventoryItem[]> => {
 // Obtener items con stock bajo
 export const getLowStockItems = async (): Promise<InventoryItem[]> => {
   try {
-    // Corregir la consulta para comparar correctamente min_stock_level
+    // Consulta para obtener items con stock por debajo del nivel mínimo
     const { data, error } = await supabase
       .from('inventory_items')
       .select('*')
-      .not('min_stock_level', 'is', null)  // Solo items con min_stock_level definido
-      .filter('stock_quantity', 'lt', 'min_stock_level')  // Usar el filtro correcto para comparación numérica
+      .not('min_stock_level', 'is', null)
+      .lt('stock_quantity', 'min_stock_level')
       .order('name');
     
     if (error) throw error;
     return data || [];
   } catch (error) {
     console.error('Error al obtener items con stock bajo:', error);
+    throw error;
+  }
+};
+
+// Obtener items agotados (stock = 0)
+export const getOutOfStockItems = async (): Promise<InventoryItem[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('stock_quantity', 0)
+      .order('name');
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error al obtener items agotados:', error);
     throw error;
   }
 };

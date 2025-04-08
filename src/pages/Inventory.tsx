@@ -8,12 +8,11 @@ import { Search, Plus, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  fetchInventoryItems, 
-  fetchInventoryCategories, 
+  getInventoryItems, 
+  getInventoryCategories, 
   createInventoryItem, 
   updateInventoryItem, 
   deleteInventoryItem, 
-  updateInventoryItemStock,
   createInventoryCategory,
   updateInventoryCategory,
   deleteInventoryCategory,
@@ -56,7 +55,7 @@ const Inventory = () => {
     error: itemsError,
   } = useQuery({
     queryKey: ['inventoryItems'],
-    queryFn: fetchInventoryItems
+    queryFn: getInventoryItems
   });
   
   // Obtener categorías de inventario
@@ -66,7 +65,7 @@ const Inventory = () => {
     error: categoriesError
   } = useQuery({
     queryKey: ['inventoryCategories'],
-    queryFn: fetchInventoryCategories
+    queryFn: getInventoryCategories
   });
   
   // Mutación para crear item
@@ -151,13 +150,15 @@ const Inventory = () => {
   // Mutación para actualizar stock
   const updateStockMutation = useMutation({
     mutationFn: ({ id, newQuantity }: { id: string, newQuantity: number }) => 
-      updateInventoryItemStock(id, newQuantity),
+      updateInventoryItem(id, { stock_quantity: newQuantity }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      toast({
-        title: "Stock actualizado",
-        description: `${data.name}: ${data.stock_quantity} ${data.unit || 'unidades'}`
-      });
+      if (data) {
+        toast({
+          title: "Stock actualizado",
+          description: `${data.name}: ${data.stock_quantity} ${data.unit || 'unidades'}`
+        });
+      }
     },
     onError: (error) => {
       console.error('Error updating stock:', error);
@@ -239,7 +240,7 @@ const Inventory = () => {
   const filteredItems = inventoryItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || 
-      (item.category && item.category.id === categoryFilter);
+      (item.category_id === categoryFilter);
     return matchesSearch && matchesCategory;
   });
     
@@ -706,13 +707,18 @@ const Inventory = () => {
                   rowClassName = "bg-amber-50";
                 }
                 
+                // Buscar nombre de categoría
+                const categoryName = item.category_id 
+                  ? categories.find(cat => cat.id === item.category_id)?.name || 'Sin categoría'
+                  : 'Sin categoría';
+                
                 return (
                   <TableRow key={item.id} className={rowClassName}>
                     <TableCell className="font-medium">
                       {item.name}
                     </TableCell>
                     <TableCell>
-                      {item.category ? item.category.name : 'Sin categoría'}
+                      {categoryName}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">

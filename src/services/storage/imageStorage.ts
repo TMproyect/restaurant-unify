@@ -115,14 +115,23 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     
     // Verificamos los metadatos del objeto recién subido para confirmar el contentType
     try {
-      const { data: objectData } = await supabase
-        .from('storage.objects')
-        .select('name, metadata, mime_type')
-        .eq('bucket_id', BUCKET_NAME)
-        .eq('name', data.path)
-        .single();
+      // Bypass directo a la API de almacenamiento de Supabase para verificar metadatos
+      const { data: objectData, error: objectError } = await supabase.auth.getSession().then(({ data: { session } }) => {
+        const apiUrl = `${supabase.supabaseUrl}/storage/v1/object/info/${BUCKET_NAME}/${data.path}`;
+        return fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${session?.access_token ?? ''}`,
+            'apikey': supabase.supabaseKey,
+            'Content-Type': 'application/json'
+          }
+        }).then(res => res.json());
+      });
         
-      console.log('📦 Metadatos del objeto subido:', objectData);
+      if (objectError) {
+        console.log('📦 Error al verificar metadatos:', objectError);
+      } else {
+        console.log('📦 Metadatos del objeto subido:', objectData);
+      }
     } catch (e) {
       console.log('📦 No se pudieron verificar metadatos:', e);
     }
@@ -159,15 +168,33 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       if (returnedContentType && !returnedContentType.startsWith('image/')) {
         console.error(`📦 Content-Type incorrecto: ${returnedContentType}, esperaba: ${contentType}`);
         
-        // Intentar forzar la actualización de metadatos directamente (experimental)
+        // Intento directo de corrección a través de una llamada RPC personalizada
         try {
-          // Esto es experimental y podría no funcionar dependiendo de la configuración
-          await supabase.rpc('force_update_image_metadata', {
-            bucket_id: BUCKET_NAME,
-            file_path: data.path,
-            mime_type: contentType
-          });
-          console.log('📦 Intento de corrección de metadatos realizado');
+          // Usar una llamada HTTP directa en lugar de RPC
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          
+          if (token) {
+            const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/fix_image_metadata`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'apikey': supabase.supabaseKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                bucket_id: BUCKET_NAME,
+                file_path: data.path,
+                mime_type: contentType
+              })
+            });
+            
+            if (response.ok) {
+              console.log('📦 Metadatos de imagen corregidos correctamente');
+            } else {
+              console.log('📦 Error al corregir metadatos:', await response.text());
+            }
+          }
         } catch (e) {
           console.log('📦 No se pudo corregir metadatos automáticamente:', e);
         }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -49,7 +50,7 @@ import {
   uploadMenuItemImage,
   deleteMenuItemImage,
   initializeStorage
-} from '@/services/menuService';
+} from '@/services/menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface MenuItemOption {

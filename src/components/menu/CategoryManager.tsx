@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -24,7 +25,6 @@ import {
   Pencil, 
   Trash2,
   Coffee,
-  Utensils,
   Wine,
   IceCream,
   Pizza,
@@ -35,7 +35,8 @@ import {
   Cake,
   Fish,
   Soup,
-  Croissant
+  Croissant,
+  Utensils
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -44,7 +45,7 @@ import {
   createMenuCategory,
   updateMenuCategory,
   deleteMenuCategory
-} from '@/services/menuService';
+} from '@/services/menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CategoryManagerProps {

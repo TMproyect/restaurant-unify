@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CartItem } from './OrderCart';
-import { fetchMenuItems, fetchMenuCategories, MenuItem, MenuCategory } from '@/services/menuService';
+import { fetchMenuItems, fetchMenuCategories, MenuItem, MenuCategory } from '@/services/menu';
 import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemsProps {

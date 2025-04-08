@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Utensils, Tag } from 'lucide-react';
-import { fetchMenuCategories, initializeStorage } from '@/services/menuService';
+import { fetchMenuCategories, initializeStorage } from '@/services/menu';
 import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {

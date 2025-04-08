@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ApiKeyTab from '@/components/integration/ApiKeyTab';
 import DocumentationTab from '@/components/integration/DocumentationTab';
-import TestingTab from '@/components/integration/TestingTab';
+import { TestingTab } from '@/components/integration/testing';
 
 const Integration = () => {
   const [apiKey, setApiKey] = useState<string>("");
@@ -16,7 +15,6 @@ const Integration = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { toast } = useToast();
   
-  // Ejemplo de payload para la documentación
   const examplePayload = `{
   "id_externo": "order-123",
   "nombre_cliente": "Juan Pérez",
@@ -75,7 +73,6 @@ const Integration = () => {
     try {
       setRefreshing(true);
       
-      // Generar un nuevo API key
       const newKey = `pos_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
       
       const { error } = await supabase

@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { UserPlus, PencilIcon, UserCog, UploadIcon, RefreshCcw } from 'lucide-react';
+import { UserPlus, PencilIcon, UserCog, UploadIcon, RefreshCcw, UserX, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { AuthUser, UserRole } from '@/contexts/auth/types';
@@ -49,6 +50,8 @@ const Staff: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<AuthUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -318,6 +321,44 @@ const Staff: React.FC = () => {
     editForm.setValue('role', user.role);
     setAvatarUrl(user.avatar || null);
     setShowEditDialog(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      console.log('Staff component: Deleting user:', userToDelete.id);
+      
+      if (userToDelete.id === user?.id) {
+        toast.error('No puedes eliminar tu propia cuenta');
+        return;
+      }
+      
+      const response = await supabase.functions.invoke('create-user-with-profile', {
+        body: { 
+          userId: userToDelete.id,
+          action: 'delete_user' 
+        }
+      });
+      
+      console.log('Staff component: Edge function response for user deletion:', response);
+      
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al eliminar usuario');
+      }
+      
+      toast.success(`Usuario ${userToDelete.name} eliminado correctamente`);
+      
+      setUsers(users.filter(u => u.id !== userToDelete.id));
+      setUserToDelete(null);
+      
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Error al eliminar usuario');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const uploadAvatar = async () => {
@@ -626,10 +667,38 @@ const Staff: React.FC = () => {
     </Dialog>
   );
 
+  const renderDeleteDialog = () => (
+    <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción eliminará al usuario <strong>{userToDelete?.name}</strong> permanentemente.
+            No podrás deshacer esta acción después.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={(e) => {
+              e.preventDefault();
+              handleDeleteUser();
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Eliminando..." : "Eliminar"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   return (
     <Layout>
       {renderAddStaffDialog()}
       {renderEditRoleDialog()}
+      {renderDeleteDialog()}
       
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -727,7 +796,7 @@ const Staff: React.FC = () => {
                         </div>
                       </CardContent>
                       {canEdit && staffUser.id !== user?.id && (
-                        <CardFooter className="pt-0 flex justify-end">
+                        <CardFooter className="pt-0 flex justify-between">
                           <Button 
                             variant="ghost" 
                             size="sm"
@@ -736,6 +805,16 @@ const Staff: React.FC = () => {
                           >
                             <UserCog size={16} />
                             Editar Rol
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="flex items-center gap-1 text-destructive hover:text-destructive hover:bg-red-100"
+                            onClick={() => setUserToDelete(staffUser)}
+                          >
+                            <Trash2 size={16} />
+                            Eliminar
                           </Button>
                         </CardFooter>
                       )}

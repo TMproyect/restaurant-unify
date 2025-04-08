@@ -68,14 +68,29 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
 
   if (!user) {
+    console.log("🔴 Sidebar: No user found, not rendering sidebar");
     return null;
   }
 
+  // Determine user's role access
   const isAdmin = user.role === "admin" || user.role === "propietario";
+  const isManager = user.role === "gerente";
+  const isWaiter = user.role === "mesero";
+  const isKitchen = user.role === "cocina" || user.role === "kitchen";
+  const isDelivery = user.role === "repartidor" || user.role === "delivery";
+
+  console.log(`🔵 Sidebar: User role detected as '${user.role}'`);
+
+  // Helper function to determine if a menu item should be shown based on role
+  const shouldShowMenuItem = (allowedRoles: string[]): boolean => {
+    if (!user || !user.role) return false;
+    return allowedRoles.includes(user.role) || isAdmin;
+  };
 
   return (
     <aside className="flex flex-col h-full overflow-y-auto">
       <div className="space-y-1.5 py-4">
+        {/* Dashboard - accessible to all */}
         <NavItem
           to="/"
           icon={<Home />}
@@ -83,69 +98,107 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={closeMobileSidebar}
           active={location.pathname === "/" || location.pathname === "/dashboard"}
         />
-        <NavItem
-          to="/orders"
-          icon={<ClipboardList />}
-          label="Órdenes"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/orders"}
-        />
-        <NavItem
-          to="/kitchen"
-          icon={<ChefHat />}
-          label="Cocina"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/kitchen"}
-        />
-        <NavItem
-          to="/menu"
-          icon={<Utensils />}
-          label="Menú"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/menu"}
-        />
-        <NavItem
-          to="/inventory"
-          icon={<ShoppingBag />}
-          label="Inventario"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/inventory"}
-        />
-        <NavItem
-          to="/tables"
-          icon={<LayoutGrid />}
-          label="Mesas"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/tables"}
-        />
-        <NavItem
-          to="/cashier"
-          icon={<CircleDollarSign />}
-          label="Caja"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/cashier"}
-        />
-        <NavItem
-          to="/delivery"
-          icon={<Truck />}
-          label="Deliveries"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/delivery"}
-        />
-        <NavItem
-          to="/sales"
-          icon={<BarChart />}
-          label="Ventas"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/sales"}
-        />
-        <NavItem
-          to="/reports"
-          icon={<FileText />}
-          label="Reportes"
-          onClick={closeMobileSidebar}
-          active={location.pathname === "/reports"}
-        />
+        
+        {/* Orders - accessible to all except kitchen */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'mesero', 'repartidor', 'delivery']) && (
+          <NavItem
+            to="/orders"
+            icon={<ClipboardList />}
+            label="Órdenes"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/orders"}
+          />
+        )}
+        
+        {/* Kitchen - accessible to kitchen staff, admin, and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'cocina', 'kitchen']) && (
+          <NavItem
+            to="/kitchen"
+            icon={<ChefHat />}
+            label="Cocina"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/kitchen"}
+          />
+        )}
+        
+        {/* Menu - accessible to all except delivery */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'mesero', 'cocina', 'kitchen']) && (
+          <NavItem
+            to="/menu"
+            icon={<Utensils />}
+            label="Menú"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/menu"}
+          />
+        )}
+        
+        {/* Inventory - accessible to admin and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+          <NavItem
+            to="/inventory"
+            icon={<ShoppingBag />}
+            label="Inventario"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/inventory"}
+          />
+        )}
+        
+        {/* Tables - accessible to waiters, admin, and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'mesero']) && (
+          <NavItem
+            to="/tables"
+            icon={<LayoutGrid />}
+            label="Mesas"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/tables"}
+          />
+        )}
+        
+        {/* Cashier - accessible to admin and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+          <NavItem
+            to="/cashier"
+            icon={<CircleDollarSign />}
+            label="Caja"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/cashier"}
+          />
+        )}
+        
+        {/* Delivery - accessible to delivery staff, admin, and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'repartidor', 'delivery']) && (
+          <NavItem
+            to="/delivery"
+            icon={<Truck />}
+            label="Deliveries"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/delivery"}
+          />
+        )}
+        
+        {/* Sales - accessible to admin and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+          <NavItem
+            to="/sales"
+            icon={<BarChart />}
+            label="Ventas"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/sales"}
+          />
+        )}
+        
+        {/* Reports - accessible to admin and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+          <NavItem
+            to="/reports"
+            icon={<FileText />}
+            label="Reportes"
+            onClick={closeMobileSidebar}
+            active={location.pathname === "/reports"}
+          />
+        )}
+        
+        {/* Staff - accessible to admin and manager */}
         {isAdmin && (
           <NavItem
             to="/staff"
@@ -155,16 +208,21 @@ const Sidebar: React.FC<SidebarProps> = ({
             active={location.pathname === "/staff"}
           />
         )}
-        <NavItem
-          to="/settings"
-          icon={<Settings />}
-          label="Configuración"
-          onClick={closeMobileSidebar}
-          active={location.pathname.startsWith("/settings") || location.pathname === "/roles-and-permissions"}
-        />
+        
+        {/* Settings - accessible to admin and manager */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+          <NavItem
+            to="/settings"
+            icon={<Settings />}
+            label="Configuración"
+            onClick={closeMobileSidebar}
+            active={location.pathname.startsWith("/settings") || location.pathname === "/roles-and-permissions"}
+          />
+        )}
       </div>
 
       <div className="mt-auto border-t pt-4">
+        {/* Notifications - accessible to all */}
         <NavItem
           to="/notifications"
           icon={<Bell />}
@@ -172,6 +230,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={closeMobileSidebar}
           active={location.pathname === "/notifications"}
         />
+        
+        {/* Messages - accessible to all */}
         <NavItem
           to="/messages"
           icon={<MessageSquare />}

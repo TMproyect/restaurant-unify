@@ -1,4 +1,3 @@
-
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -127,34 +126,42 @@ serve(async (req) => {
     });
   }
   
-  // Obtener la API key del encabezado (probar diferentes variantes del encabezado)
-  const apiKeyHeader = req.headers.get('x-api-key') || 
-                      req.headers.get('X-API-KEY') || 
-                      req.headers.get('X-Api-Key') ||
-                      req.headers.get('authorization') ||
-                      req.headers.get('Authorization');
+  // Obtener la API key del encabezado Authorization o como alternativa de x-api-key para mantener compatibilidad
+  let apiKey = null;
   
-  if (!apiKeyHeader) {
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+  const xApiKeyHeader = req.headers.get('x-api-key') || req.headers.get('X-API-KEY') || req.headers.get('X-Api-Key');
+  
+  // Primero intentar obtener del encabezado Authorization (preferido)
+  if (authHeader) {
+    console.log("Se encontró encabezado Authorization:", authHeader.substring(0, 10) + "****");
+    // Comprobar si comienza con "Bearer " y extraer el token
+    if (authHeader.startsWith('Bearer ')) {
+      apiKey = authHeader.substring(7).trim();
+      console.log("API Key extraída de encabezado Bearer:", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
+    } else {
+      apiKey = authHeader.trim();
+      console.log("API Key extraída de Authorization (sin Bearer):", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
+    }
+  } 
+  // Si no se encontró en Authorization, intentar con x-api-key (compatibilidad)
+  else if (xApiKeyHeader) {
+    apiKey = xApiKeyHeader.trim();
+    console.log("API Key extraída de encabezado x-api-key (compatibilidad):", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
+  }
+  
+  if (!apiKey) {
     console.log("API Key no encontrada en ninguna cabecera");
     console.log("Cabeceras disponibles:", JSON.stringify(headerEntries));
     return new Response(JSON.stringify({ 
       error: "API Key requerida", 
-      details: "Debe proporcionar una clave API válida en la cabecera 'x-api-key'",
+      details: "Debe proporcionar una clave API válida en la cabecera 'Authorization: Bearer <API_KEY>'",
       headers_received: Object.fromEntries(headerEntries)
     }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-  
-  // Limpiar apiKey si viene con el prefijo "Bearer "
-  let apiKey = apiKeyHeader;
-  if (apiKey.startsWith('Bearer ')) {
-    apiKey = apiKey.substring(7);
-    console.log("Se encontró formato Bearer token, extrayendo la clave");
-  }
-  
-  console.log(`API Key recibida: ${apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada'}`);
   
   // Inicializar cliente Supabase
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";

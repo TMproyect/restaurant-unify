@@ -97,10 +97,10 @@ export const DirectTestSection: React.FC<DirectTestSectionProps> = ({
       console.log("Ejecutando prueba con endpoint:", apiEndpoint);
       console.log("API Key:", keyToUse.substring(0, 4) + "****" + keyToUse.substring(keyToUse.length - 4));
       
-      // Log de todas las cabeceras para depuración
+      // Actualización: Usar Authorization Bearer en lugar de x-api-key
       const headers = {
         'Content-Type': 'application/json',
-        'x-api-key': keyToUse
+        'Authorization': `Bearer ${keyToUse}`
       };
       
       console.log("Headers enviados:", JSON.stringify(headers));

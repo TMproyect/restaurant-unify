@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Generates a secure random API key
- * @returns A 48-character hexadecimal string
+ * Genera una clave API segura aleatoria
+ * @returns Un string hexadecimal de 48 caracteres
  */
 export const generateSecureApiKey = (): string => {
   const randomBytes = new Uint8Array(24);
@@ -15,12 +15,12 @@ export const generateSecureApiKey = (): string => {
 };
 
 /**
- * Saves an API key to the database
- * @param apiKey The API key to save
- * @returns Result of the database operation
+ * Guarda una clave API en la base de datos
+ * @param apiKey La clave API a guardar
+ * @returns Resultado de la operación en la base de datos
  */
 export const saveApiKeyToDatabase = async (apiKey: string) => {
-  console.log("Saving API key to database:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
+  console.log("Guardando clave API en la base de datos:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
   
   return await supabase
     .from('system_settings')
@@ -32,9 +32,9 @@ export const saveApiKeyToDatabase = async (apiKey: string) => {
 };
 
 /**
- * Tests an API key against the ingresar-pedido endpoint
- * @param apiKey The API key to test
- * @returns Result object with status and message
+ * Prueba una clave API contra el endpoint ingresar-pedido
+ * @param apiKey La clave API a probar
+ * @returns Objeto con el resultado de la prueba (status y message)
  */
 export const testApiKey = async (apiKey: string) => {
   if (!apiKey || apiKey === 'exists') {
@@ -48,7 +48,7 @@ export const testApiKey = async (apiKey: string) => {
     const projectId = 'imcxvnivqrckgjrimzck';
     const testEndpoint = `https://${projectId}.supabase.co/functions/v1/ingresar-pedido`;
     
-    // Simple test payload
+    // Payload de prueba simple
     const testPayload = {
       nombre_cliente: "Cliente de Prueba API",
       numero_mesa: "1",
@@ -62,12 +62,13 @@ export const testApiKey = async (apiKey: string) => {
       total_pedido: 10.0
     };
 
-    console.log("Testing API key:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
+    console.log("Probando clave API:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
     console.log("Endpoint:", testEndpoint);
     
+    // Actualización: Usar Authorization Bearer en lugar de x-api-key
     const headers = {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey
+      'Authorization': `Bearer ${apiKey}`
     };
     
     const response = await fetch(testEndpoint, {
@@ -76,16 +77,16 @@ export const testApiKey = async (apiKey: string) => {
       body: JSON.stringify(testPayload)
     });
 
-    console.log("Response status:", response.status);
+    console.log("Código de estado de respuesta:", response.status);
     
     const responseText = await response.text();
-    console.log("Response text:", responseText);
+    console.log("Texto de respuesta:", responseText);
     
     let result;
     try {
       result = JSON.parse(responseText);
     } catch (jsonError) {
-      result = { error: `Invalid JSON response: ${responseText}` };
+      result = { error: `Respuesta JSON inválida: ${responseText}` };
     }
     
     if (response.ok) {
@@ -101,7 +102,7 @@ export const testApiKey = async (apiKey: string) => {
       };
     }
   } catch (error) {
-    console.error('Error testing API key:', error);
+    console.error('Error al probar la clave API:', error);
     return {
       status: 'error' as const,
       message: `Error de conexión: ${error instanceof Error ? error.message : "Error desconocido"}`

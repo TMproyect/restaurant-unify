@@ -43,16 +43,16 @@ const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
     );
   };
 
-  // Genera un comando cURL completo para n8n
+  // Genera un comando cURL completo para n8n con el formato Authorization Bearer
   const curlCommand = `curl -X POST "${apiEndpoint}" \\
   -H "Content-Type: application/json" \\
-  -H "x-api-key: ${apiKey || 'YOUR_API_KEY_HERE'}" \\
+  -H "Authorization: Bearer ${apiKey || 'YOUR_API_KEY_HERE'}" \\
   -d '${testPayload.replace(/\n/g, ' ')}'`;
   
   // Genera una versión del comando para importar directamente en n8n
   const n8nImportCommand = `${apiEndpoint}
 Content-Type: application/json
-x-api-key: ${apiKey || 'YOUR_API_KEY_HERE'}
+Authorization: Bearer ${apiKey || 'YOUR_API_KEY_HERE'}
 
 ${testPayload}`;
   
@@ -69,7 +69,7 @@ ${testPayload}`;
           <AlertTriangle className="h-4 w-4 text-amber-500" />
           <AlertDescription className="text-amber-800">
             <span className="font-bold">Importante:</span> Para autenticar las solicitudes, 
-            debe incluir la cabecera <code className="px-1 py-0.5 bg-amber-100 rounded text-amber-800 font-mono">x-api-key</code> con 
+            debe incluir la cabecera <code className="px-1 py-0.5 bg-amber-100 rounded text-amber-800 font-mono">Authorization: Bearer &lt;API_KEY&gt;</code> con 
             el valor de su clave API.
           </AlertDescription>
         </Alert>

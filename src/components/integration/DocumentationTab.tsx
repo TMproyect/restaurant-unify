@@ -89,11 +89,11 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ apiKey }) => {
           <div className="space-y-2">
             <h3 className="font-medium">Autenticación</h3>
             <p>
-              Todas las solicitudes deben incluir el encabezado <code className="bg-muted px-1">x-api-key</code> con 
-              la clave API proporcionada en la sección "Clave API".
+              Todas las solicitudes deben incluir el encabezado <code className="bg-muted px-1">Authorization</code> con 
+              el formato Bearer seguido de la clave API proporcionada en la sección "Clave API".
             </p>
             <code className="block bg-muted p-2 rounded">
-              x-api-key: {apiKey ? apiKey.substring(0, 10) + "..." : "[Su clave API]"}
+              Authorization: Bearer {apiKey ? apiKey.substring(0, 10) + "..." : "[Su clave API]"}
             </code>
           </div>
         </CardContent>

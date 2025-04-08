@@ -1,3 +1,4 @@
+
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -43,7 +44,7 @@ function validatePayload(payload: any): string | null {
   return null; // Sin errores
 }
 
-// Validar API Key - Versión mejorada con más logging
+// Validar API Key con mejor manejo de formatos
 async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   if (!apiKey) {
     console.log("Error de validación: API Key no proporcionada");
@@ -74,9 +75,9 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
     console.log(`API key en DB: ${data.value.substring(0, 4)}****${data.value.substring(data.value.length - 4)}, actualizada: ${data.updated_at}`);
     console.log(`API key recibida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
     
-    // Comparación insensible a espacios en blanco
-    const storedKey = data.value.trim();
-    const receivedKey = apiKey.trim();
+    // Comparación insensible a espacios en blanco y comillas
+    const storedKey = data.value.trim().replace(/^["']|["']$/g, '');
+    const receivedKey = apiKey.trim().replace(/^["']|["']$/g, '');
     const isValid = receivedKey === storedKey;
     
     console.log("¿API key válida?:", isValid);
@@ -126,7 +127,7 @@ serve(async (req) => {
     });
   }
   
-  // Obtener la API key del encabezado Authorization o como alternativa de x-api-key para mantener compatibilidad
+  // Obtener la API key del encabezado Authorization
   let apiKey = null;
   
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
@@ -136,7 +137,7 @@ serve(async (req) => {
   if (authHeader) {
     console.log("Se encontró encabezado Authorization:", authHeader.substring(0, 10) + "****");
     // Comprobar si comienza con "Bearer " y extraer el token
-    if (authHeader.startsWith('Bearer ')) {
+    if (authHeader.toLowerCase().startsWith('bearer ')) {
       apiKey = authHeader.substring(7).trim();
       console.log("API Key extraída de encabezado Bearer:", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
     } else {

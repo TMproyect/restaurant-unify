@@ -65,11 +65,13 @@ export const testApiKey = async (apiKey: string) => {
     console.log("Probando clave API:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
     console.log("Endpoint:", testEndpoint);
     
-    // Actualización: Usar Authorization Bearer en lugar de x-api-key
+    // Usar explícitamente el formato "Bearer token" - sin comillas en el token
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     };
+    
+    console.log("Headers enviados:", JSON.stringify(headers));
     
     const response = await fetch(testEndpoint, {
       method: 'POST',

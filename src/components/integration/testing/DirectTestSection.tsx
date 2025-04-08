@@ -97,10 +97,11 @@ export const DirectTestSection: React.FC<DirectTestSectionProps> = ({
       console.log("Ejecutando prueba con endpoint:", apiEndpoint);
       console.log("API Key:", keyToUse.substring(0, 4) + "****" + keyToUse.substring(keyToUse.length - 4));
       
-      // Actualización: Usar Authorization Bearer en lugar de x-api-key
+      // Usamos Authorization: Bearer <API_KEY> - asegurándose de que la llave no tenga comillas
+      const cleanKey = keyToUse.trim().replace(/^["']|["']$/g, '');
       const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${keyToUse}`
+        'Authorization': `Bearer ${cleanKey}`
       };
       
       console.log("Headers enviados:", JSON.stringify(headers));

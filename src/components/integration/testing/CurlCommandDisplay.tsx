@@ -34,6 +34,10 @@ export const CurlCommandDisplay: React.FC<CurlCommandDisplayProps> = ({
         <Copy className="mr-2 h-3 w-3" />
         Copiar comando
       </Button>
+      <p className="text-xs text-muted-foreground mt-1">
+        <strong>Nota:</strong> Asegúrese de reemplazar <code>YOUR_API_KEY_HERE</code> con su clave API real.
+        El formato correcto para la autenticación es <code>Authorization: Bearer &lt;API_KEY&gt;</code>.
+      </p>
     </div>
   );
 };

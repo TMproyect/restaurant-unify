@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -248,7 +249,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     console.log(`📦 Subiendo archivo: ${file.name}, Tamaño: ${file.size} bytes, Tipo: ${file.type}`);
     console.log(`📦 Nombre de archivo generado: ${uniqueFileName}`);
     
-    // Subir la imagen
+    // Subir la imagen - Usamos let en lugar de const para poder reasignarlo después
     let uploadResult = await supabase
       .storage
       .from('menu_images')

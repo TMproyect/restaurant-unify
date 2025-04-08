@@ -49,7 +49,7 @@ const verifyBucketExists = async (): Promise<boolean> => {
 };
 
 /**
- * Sube una imagen con manejo mejorado de errores
+ * Sube una imagen con manejo mejorado de errores - CORREGIDO PARA SOLUCIONAR EL PROBLEMA DE MULTIPART/FORM-DATA
  */
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   if (!file) {
@@ -77,13 +77,12 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
     
-    // PROBLEMA ENCONTRADO: Opciones incorrectas en upload pueden causar que se sirva multipart/form-data
-    // Simplificamos al máximo las opciones para evitar problemas
+    // SOLUCIÓN: Reducir al mínimo las opciones y garantizar que el contentType sea correcto
+    // El problema estaba en las opciones de subida que causaban que el objeto se sirviera como multipart/form-data
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, {
-        contentType: file.type, // Esto es crítico para que se sirva correctamente
-        upsert: true
+        contentType: file.type // Esto es CRÍTICO para que se sirva correctamente
       });
     
     if (error) {
@@ -97,7 +96,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Obtenemos la URL pública más directa posible
+    // Obtenemos la URL pública
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);
@@ -109,6 +108,23 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     
     const publicUrl = publicUrlData.publicUrl;
     console.log('📦 URL pública generada:', publicUrl);
+    
+    // Verificamos que la URL sea accesible y el tipo de contenido correcto
+    try {
+      const response = await fetch(publicUrl, { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      });
+      
+      console.log('📦 Verificación de URL:', response.status, response.ok ? 'OK' : 'Error');
+      console.log('📦 Content-Type devuelto:', response.headers.get('content-type'));
+      
+      if (!response.ok) {
+        console.warn('📦 La URL pública no está accesible correctamente');
+      }
+    } catch (e) {
+      console.warn('📦 No se pudo verificar la URL:', e);
+    }
     
     return publicUrl;
   } catch (error) {

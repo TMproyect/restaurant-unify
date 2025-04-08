@@ -8,4 +8,4 @@ verify_jwt = true
 verify_jwt = false
 
 [storage]
-file_size_limit = "10MB" 
+file_size_limit = "20MB" 

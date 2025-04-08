@@ -15,6 +15,7 @@ const Menu: React.FC = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storageConnected, setStorageConnected] = useState(true);
+  const [storageMessage, setStorageMessage] = useState<string | null>(null);
   const { toast } = useToast();
   
   const loadCategories = async () => {
@@ -39,15 +40,29 @@ const Menu: React.FC = () => {
     
     // Verificar la conexión al almacenamiento
     const checkStorageConnection = async () => {
-      const isConnected = await verifyStorageConnection();
-      setStorageConnected(isConnected);
+      const connectionResult = await verifyStorageConnection();
       
-      if (!isConnected) {
-        toast({
-          title: "Advertencia",
-          description: "No se pudo verificar la conexión al almacenamiento. Las imágenes pueden no funcionar correctamente.",
-          variant: "destructive"
-        });
+      if (typeof connectionResult === 'object') {
+        setStorageConnected(connectionResult.connected);
+        setStorageMessage(connectionResult.message);
+        
+        if (!connectionResult.connected) {
+          toast({
+            title: "Advertencia de almacenamiento",
+            description: connectionResult.message || "No se pudo verificar la conexión al almacenamiento",
+            variant: "destructive"
+          });
+        }
+      } else {
+        setStorageConnected(connectionResult);
+        if (!connectionResult) {
+          setStorageMessage("No se pudo verificar la conexión al almacenamiento");
+          toast({
+            title: "Advertencia",
+            description: "No se pudo verificar la conexión al almacenamiento. Las imágenes pueden no funcionar correctamente.",
+            variant: "destructive"
+          });
+        }
       }
     };
     
@@ -110,7 +125,7 @@ const Menu: React.FC = () => {
               <div>
                 <h3 className="font-medium text-amber-800">Problemas con el almacenamiento</h3>
                 <p className="text-sm text-amber-700 mt-1">
-                  No se pudo conectar con el servicio de almacenamiento. La subida y visualización de imágenes puede no funcionar correctamente.
+                  {storageMessage || "No se pudo conectar con el servicio de almacenamiento. La subida y visualización de imágenes puede no funcionar correctamente."}
                 </p>
               </div>
             </div>

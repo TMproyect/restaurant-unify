@@ -232,14 +232,36 @@ export const deleteMenuItem = async (id: string): Promise<boolean> => {
 
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
   try {
+    // Crear un nombre de archivo único que preserve la extensión original
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     
+    console.log(`Uploading file: ${file.name}, Size: ${file.size} bytes, Type: ${file.type}`);
+    console.log(`Generated filename: ${uniqueFileName}`);
+    
+    // Verificar que el bucket existe
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    
+    if (bucketsError) {
+      console.error('Error listing buckets:', bucketsError);
+      throw new Error('Error al verificar buckets de almacenamiento');
+    }
+    
+    const menuBucketExists = buckets.some(bucket => bucket.name === 'menu_images');
+    console.log('menu_images bucket exists:', menuBucketExists);
+    
+    if (!menuBucketExists) {
+      toast.error('El bucket de imágenes no existe. Por favor contacte al administrador.');
+      throw new Error('El bucket menu_images no existe');
+    }
+    
+    // Subir la imagen
     const { data, error } = await supabase
       .storage
       .from('menu_images')
       .upload(uniqueFileName, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: true
       });
 
     if (error) {
@@ -247,12 +269,17 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       throw error;
     }
 
-    const { data: { publicUrl } } = supabase
+    console.log('Upload successful. Path:', data?.path);
+    
+    // Obtener la URL pública
+    const { data: publicUrlData } = supabase
       .storage
       .from('menu_images')
       .getPublicUrl(data.path);
+    
+    console.log('Public URL:', publicUrlData.publicUrl);
 
-    return publicUrl;
+    return publicUrlData.publicUrl;
   } catch (error) {
     console.error('Error in uploadMenuItemImage:', error);
     toast.error('Error al subir la imagen del menú');
@@ -288,14 +315,17 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
 };
 
 // Agregar una función para verificar el estado del storage
-export const verifyStorageConnection = async (): Promise<boolean> => {
+export const verifyStorageConnection = async (): Promise<boolean | { connected: boolean, message: string }> => {
   try {
     // Intenta listar los buckets para verificar la conexión
     const { data, error } = await supabase.storage.listBuckets();
     
     if (error) {
       console.error('Error verifying storage connection:', error);
-      return false;
+      return { 
+        connected: false,
+        message: `Error de conexión: ${error.message}`
+      };
     }
     
     // Buscar el bucket de imágenes de menú
@@ -303,13 +333,33 @@ export const verifyStorageConnection = async (): Promise<boolean> => {
     
     if (!menuImagesBucket) {
       console.warn('Menu images bucket not found');
-    } else {
-      console.log('Storage connection verified, menu_images bucket exists');
+      return { 
+        connected: false,
+        message: 'El bucket "menu_images" no existe. Es necesario crear este bucket para almacenar imágenes.' 
+      };
     }
     
-    return true;
+    // Probar que podemos listar contenido del bucket
+    const { data: files, error: listError } = await supabase.storage
+      .from('menu_images')
+      .list();
+      
+    if (listError) {
+      console.error('Error listing files from menu_images bucket:', listError);
+      return { 
+        connected: false,
+        message: `El bucket existe pero no se puede acceder: ${listError.message}` 
+      };
+    }
+    
+    console.log('Storage connection verified, menu_images bucket exists with', files?.length || 0, 'files');
+    
+    return { connected: true, message: 'Conexión al almacenamiento verificada correctamente' };
   } catch (error) {
     console.error('Error in verifyStorageConnection:', error);
-    return false;
+    return { 
+      connected: false, 
+      message: `Error inesperado al verificar la conexión: ${error}` 
+    };
   }
 };

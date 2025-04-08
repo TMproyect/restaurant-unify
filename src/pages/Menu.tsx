@@ -6,7 +6,7 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Tag, AlertTriangle } from 'lucide-react';
+import { Utensils, Tag, AlertTriangle, RefreshCw } from 'lucide-react';
 import { fetchMenuCategories, verifyStorageConnection } from '@/services/menuService';
 import { getLowStockItems } from '@/services/inventoryService';
 
@@ -16,6 +16,7 @@ const Menu: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [storageConnected, setStorageConnected] = useState(true);
   const [storageMessage, setStorageMessage] = useState<string | null>(null);
+  const [checkingStorage, setCheckingStorage] = useState(false);
   const { toast } = useToast();
   
   const loadCategories = async () => {
@@ -35,11 +36,11 @@ const Menu: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadCategories();
-    
-    // Verificar la conexión al almacenamiento
-    const checkStorageConnection = async () => {
+  // Verificar la conexión al almacenamiento
+  const checkStorageConnection = async () => {
+    try {
+      setCheckingStorage(true);
+      console.log('Verificando conexión al almacenamiento...');
       const connectionResult = await verifyStorageConnection();
       
       if (typeof connectionResult === 'object') {
@@ -51,6 +52,11 @@ const Menu: React.FC = () => {
             title: "Advertencia de almacenamiento",
             description: connectionResult.message || "No se pudo verificar la conexión al almacenamiento",
             variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Conexión al almacenamiento",
+            description: "Conexión al almacenamiento verificada correctamente"
           });
         }
       } else {
@@ -64,8 +70,17 @@ const Menu: React.FC = () => {
           });
         }
       }
-    };
-    
+    } catch (error) {
+      console.error('Error al verificar conexión de almacenamiento:', error);
+      setStorageConnected(false);
+      setStorageMessage("Error al verificar la conexión al almacenamiento: " + (error.message || error));
+    } finally {
+      setCheckingStorage(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
     checkStorageConnection();
   }, []);
 
@@ -122,11 +137,30 @@ const Menu: React.FC = () => {
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
             <div className="flex items-start">
               <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-medium text-amber-800">Problemas con el almacenamiento</h3>
                 <p className="text-sm text-amber-700 mt-1">
                   {storageMessage || "No se pudo conectar con el servicio de almacenamiento. La subida y visualización de imágenes puede no funcionar correctamente."}
                 </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 bg-white" 
+                  onClick={checkStorageConnection}
+                  disabled={checkingStorage}
+                >
+                  {checkingStorage ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Verificar conexión
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>

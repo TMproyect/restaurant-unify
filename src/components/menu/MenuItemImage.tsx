@@ -39,8 +39,6 @@ const MenuItemImage = ({
     }
   };
   
-  // Usar URL limpia para renderizado inicial
-  
   useEffect(() => {
     // Resetear estados cuando cambia la URL de la imagen
     setIsLoading(true);
@@ -86,7 +84,6 @@ const MenuItemImage = ({
           className={className}
           data-src={cleanImageUrl}
           style={{ display: isLoading ? 'none' : 'block' }}
-          crossOrigin="anonymous" // Importante para problemas de CORS
           onLoad={() => {
             console.log('🖼️ Imagen cargada correctamente:', cleanImageUrl);
             setIsLoading(false);

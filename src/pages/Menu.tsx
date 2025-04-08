@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
 import CategoryManager from '@/components/menu/CategoryManager';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
-import { fetchMenuCategories, initializeStorage } from '@/services/menu';
+import { fetchMenuCategories } from '@/services/menu';
+import { initializeStorage } from '@/services/storage/imageStorage';
 import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {
@@ -15,21 +15,18 @@ const Menu: React.FC = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Inicialización que solo se ejecuta una vez al cargar la página
+  // Inicialización de almacenamiento - simplificada para evitar re-renderizados
   useEffect(() => {
-    // Inicializar almacenamiento
-    const initializeApp = async () => {
-      console.log('📦 Inicializando almacenamiento...');
+    const initStorage = async () => {
       try {
-        const success = await initializeStorage();
-        console.log('📦 Resultado de inicialización:', success ? '✅ Exitoso' : '⚠️ Con advertencias');
+        await initializeStorage();
       } catch (error) {
-        console.error('❌ Error crítico al inicializar almacenamiento:', error);
+        console.error('Error al inicializar almacenamiento:', error);
       }
     };
     
-    initializeApp();
-  }, []); // Sin dependencias para ejecutar solo en montaje
+    initStorage();
+  }, []);
   
   const loadCategories = async () => {
     try {

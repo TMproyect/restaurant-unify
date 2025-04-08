@@ -77,13 +77,13 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes`);
     
-    // Subimos la imagen con configuración para asegurar acceso público
+    // Configuración crítica para asegurar que se almacene correctamente
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, {
         cacheControl: '3600',
         upsert: true,
-        contentType: file.type // Aseguramos que el tipo de contenido sea correcto
+        contentType: file.type // Crucial para servir la imagen correctamente
       });
     
     if (error) {
@@ -97,7 +97,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       return null;
     }
     
-    // Obtenemos la URL pública DIRECTA sin transformaciones ni parámetros adicionales
+    // Obtenemos la URL directa sin ningún parámetro de transformación
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);

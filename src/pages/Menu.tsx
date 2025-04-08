@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Utensils, Tag, RefreshCw } from 'lucide-react';
-import { fetchMenuCategories, initializeStorage } from '@/services/menu';
+import { fetchMenuCategories } from '@/services/menu';
 import { getLowStockItems } from '@/services/inventoryService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -37,20 +37,31 @@ const Menu: React.FC = () => {
 
   const initializeBucket = async () => {
     try {
-      // Corrigiendo el nombre de la función RPC para que coincida con la definida en supabase/migrations
-      await supabase.functions.invoke('storage-reinitialize');
-      console.log('🛠️ Bucket reinicializado mediante función Edge');
-      return true;
-    } catch (error) {
-      console.error('🛠️ Error al reinicializar bucket mediante función Edge:', error);
+      setIsSynchronizing(true);
+      console.log('🚀 Iniciando sincronización de almacenamiento...');
       
-      try {
-        await initializeStorage();
-        return true;
-      } catch (storageError) {
-        console.error('🛠️ Error en segundo intento de inicialización:', storageError);
-        return false;
+      // Usar la función Edge con JWT desactivado
+      const { data, error } = await supabase.functions.invoke('storage-reinitialize');
+      
+      if (error) {
+        console.error('🚀 Error al invocar función Edge:', error);
+        throw error;
       }
+      
+      console.log('🚀 Respuesta de la función Edge:', data);
+      
+      if (data && data.success) {
+        console.log('🚀 Almacenamiento inicializado correctamente');
+        return true;
+      } else {
+        console.error('🚀 La función Edge falló:', data?.message || 'Sin mensaje');
+        throw new Error(data?.message || 'Error desconocido en la función Edge');
+      }
+    } catch (error) {
+      console.error('🚀 Error general en initializeBucket:', error);
+      return false;
+    } finally {
+      setIsSynchronizing(false);
     }
   };
 
@@ -59,9 +70,15 @@ const Menu: React.FC = () => {
     
     const init = async () => {
       try {
+        // Forzamos la inicialización del bucket al cargar la página
         await initializeBucket();
       } catch (error) {
         console.error('Error al inicializar bucket:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo inicializar el almacenamiento. Intente usando el botón 'Sincronizar Imágenes'",
+          variant: "destructive"
+        });
       }
     };
     

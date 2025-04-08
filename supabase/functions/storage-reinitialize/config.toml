@@ -3,4 +3,4 @@
 # Se ejecuta con permisos elevados para gestionar buckets y políticas
 
 [functions.storage-reinitialize]
-verify_jwt = true
+verify_jwt = false

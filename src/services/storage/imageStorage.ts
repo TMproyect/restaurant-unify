@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -56,7 +57,7 @@ export interface UploadResult {
 }
 
 /**
- * Sube una imagen con manejo mejorado de errores
+ * Sube una imagen con manejo mejorado de errores y correcto contentType
  * @param file El archivo a subir
  * @param fileName Nombre opcional del archivo
  * @returns Una URL de string o un objeto con url/error
@@ -87,12 +88,19 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
     
-    // Reducir al mínimo las opciones y garantizar que el contentType sea correcto
+    // Aseguramos que el contentType esté explícitamente definido y sea correcto
+    const contentType = file.type;
+    console.log(`📦 Usando contentType explícito: ${contentType}`);
+    
+    // Configuración mejorada con forzado de contentType
+    const uploadOptions = {
+      contentType: contentType, // Pasamos explícitamente el contentType
+      upsert: false
+    };
+    
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
-      .upload(uniqueFileName, file, {
-        contentType: file.type // Esto es CRÍTICO para que se sirva correctamente
-      });
+      .upload(uniqueFileName, file, uploadOptions);
     
     if (error) {
       console.error('📦 Error al subir imagen:', error);
@@ -103,6 +111,20 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     if (!data || !data.path) {
       toast.error("Error al procesar imagen subida");
       return { error: "Error al procesar imagen subida" };
+    }
+    
+    // Verificamos los metadatos del objeto recién subido para confirmar el contentType
+    try {
+      const { data: objectData } = await supabase
+        .from('storage.objects')
+        .select('name, metadata, mime_type')
+        .eq('bucket_id', BUCKET_NAME)
+        .eq('name', data.path)
+        .single();
+        
+      console.log('📦 Metadatos del objeto subido:', objectData);
+    } catch (e) {
+      console.log('📦 No se pudieron verificar metadatos:', e);
     }
     
     // Obtenemos la URL pública
@@ -130,6 +152,25 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       
       if (!response.ok) {
         console.warn('📦 La URL pública no está accesible correctamente');
+      }
+      
+      // Verificar si el content-type es correcto
+      const returnedContentType = response.headers.get('content-type');
+      if (returnedContentType && !returnedContentType.startsWith('image/')) {
+        console.error(`📦 Content-Type incorrecto: ${returnedContentType}, esperaba: ${contentType}`);
+        
+        // Intentar forzar la actualización de metadatos directamente (experimental)
+        try {
+          // Esto es experimental y podría no funcionar dependiendo de la configuración
+          await supabase.rpc('force_update_image_metadata', {
+            bucket_id: BUCKET_NAME,
+            file_path: data.path,
+            mime_type: contentType
+          });
+          console.log('📦 Intento de corrección de metadatos realizado');
+        } catch (e) {
+          console.log('📦 No se pudo corregir metadatos automáticamente:', e);
+        }
       }
     } catch (e) {
       console.warn('📦 No se pudo verificar la URL:', e);
@@ -205,8 +246,22 @@ export const initializeStorage = async (): Promise<boolean> => {
   }
 };
 
-// Retornamos la URL original sin modificaciones
+/**
+ * Añade un parámetro de cache busting a la URL de la imagen
+ * para evitar problemas de caché con imágenes actualizadas
+ */
 export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
   if (!imageUrl) return '';
-  return imageUrl;
+  
+  try {
+    // Añadir un parámetro de tiempo para invalidar la caché del navegador
+    const url = new URL(imageUrl);
+    url.searchParams.set('_cb', Date.now().toString());
+    return url.toString();
+  } catch (error) {
+    // Si hay un error al procesar la URL, devolver la original
+    console.warn('📦 Error al procesar URL para cache busting:', error);
+    return imageUrl;
+  }
 };
+

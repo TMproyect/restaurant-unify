@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { deleteMenuItem } from '@/services/menu/menuItemService';
 import { toast } from 'sonner';
@@ -30,7 +29,6 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmProps> = ({ id, isOpen, 
       const success = await deleteMenuItem(id, force);
       
       if (!success && !force) {
-        // Si falla sin forzar, mostrar opción para forzar eliminación
         setShowForceDelete(true);
         setIsDeleting(false);
         return;
@@ -38,7 +36,6 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmProps> = ({ id, isOpen, 
       
       if (success) {
         toast.success("Elemento eliminado con éxito");
-        // Disparar evento para actualizar la lista
         window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
         onClose(true);
       } else {
@@ -108,5 +105,3 @@ export const useDeleteConfirmDialog = () => {
     closeDeleteDialog
   };
 };
-
-// Export individually instead of as a default object

@@ -34,6 +34,8 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [testStatus, setTestStatus] = useState<null | 'success' | 'error'>(null);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
   const initiateKeyGeneration = () => {
@@ -68,6 +70,8 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
           description: "No se pudo guardar la nueva clave API",
           variant: "destructive"
         });
+        setTestStatus('error');
+        setTestMessage("Error al guardar la clave API en la base de datos");
         return;
       }
 
@@ -76,6 +80,8 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
       // Solo mostramos la clave temporalmente
       onApiKeyChange(newApiKey);
       setIsVisible(true);
+      setTestStatus(null);
+      setTestMessage(null);
       
       // Ocultar automáticamente después de 30 segundos
       setTimeout(() => {
@@ -95,6 +101,8 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         description: "Ocurrió un error al generar la clave",
         variant: "destructive"
       });
+      setTestStatus('error');
+      setTestMessage("Error inesperado al generar la clave API");
     } finally {
       setIsLoading(false);
       setShowConfirmDialog(false);
@@ -123,6 +131,78 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
           variant: "destructive"
         });
       });
+  };
+
+  const testApiKey = async () => {
+    if (!apiKey || apiKey === 'exists') {
+      toast({
+        title: "Error",
+        description: "No hay una clave API visible para probar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setTestStatus(null);
+    setTestMessage(null);
+
+    try {
+      const projectId = 'imcxvnivqrckgjrimzck';
+      const testEndpoint = `https://${projectId}.supabase.co/functions/v1/ingresar-pedido`;
+      
+      const testPayload = {
+        nombre_cliente: "Cliente de Prueba",
+        numero_mesa: "1",
+        items_pedido: [
+          {
+            sku_producto: "TEST-SKU",
+            cantidad: 1,
+            precio_unitario: 10.0
+          }
+        ],
+        total_pedido: 10.0
+      };
+
+      const response = await fetch(testEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey
+        },
+        body: JSON.stringify(testPayload)
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        setTestStatus('success');
+        setTestMessage("La clave API funciona correctamente");
+        toast({
+          title: "Éxito",
+          description: "La clave API funciona correctamente",
+        });
+      } else {
+        setTestStatus('error');
+        setTestMessage(`Error: ${result.error || "Respuesta inválida"}`);
+        toast({
+          title: "Error",
+          description: result.error || "La prueba falló",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error testing API key:', error);
+      setTestStatus('error');
+      setTestMessage("Error de conexión al probar la clave API");
+      toast({
+        title: "Error",
+        description: "Error de conexión al probar la clave API",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -195,12 +275,36 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
             </>
           )}
         </Button>
+        
+        {apiKey && isVisible && (
+          <Button
+            variant="outline"
+            onClick={testApiKey}
+            disabled={isLoading}
+          >
+            Probar clave
+          </Button>
+        )}
       </div>
 
       {apiKey && isVisible && (
         <Alert className="mt-4 border-amber-200 bg-amber-50">
           <AlertDescription className="text-amber-600">
             <strong>¡Importante!</strong> Copia y guarda esta clave ahora. Por seguridad, no se mostrará de nuevo automáticamente.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {testStatus && (
+        <Alert className={`mt-4 ${
+          testStatus === 'success' 
+            ? 'border-green-200 bg-green-50' 
+            : 'border-red-200 bg-red-50'
+          }`}>
+          <AlertDescription className={`${
+            testStatus === 'success' ? 'text-green-600' : 'text-red-600'
+          }`}>
+            {testMessage}
           </AlertDescription>
         </Alert>
       )}

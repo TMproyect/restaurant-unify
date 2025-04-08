@@ -3,11 +3,14 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, ExternalLink, Info, Send, Terminal } from 'lucide-react';
+import { Copy, ExternalLink, Info, Send, Terminal, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TestingTabProps {
   apiKey: string;
@@ -20,9 +23,37 @@ const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
   const [testPayload, setTestPayload] = useState(examplePayload);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testStatus, setTestStatus] = useState<'success' | 'error' | null>(null);
+  const [manualApiKey, setManualApiKey] = useState('');
+  const [useStoredKey, setUseStoredKey] = useState(true);
   
   const projectId = 'imcxvnivqrckgjrimzck';
   const apiEndpoint = `https://${projectId}.supabase.co/functions/v1/ingresar-pedido`;
+  
+  // Función para obtener la API key almacenada en la base de datos
+  const fetchStoredApiKey = async (): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'external_api_key')
+        .single();
+        
+      if (error) {
+        console.error('Error al obtener la API key almacenada:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo obtener la API key almacenada",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      return data?.value || null;
+    } catch (error) {
+      console.error('Error inesperado al obtener la API key:', error);
+      return null;
+    }
+  };
   
   const copyToClipboard = (text: string, message: string = "Copiado al portapapeles") => {
     navigator.clipboard.writeText(text).then(
@@ -40,18 +71,25 @@ const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
   };
 
   const runTest = async () => {
-    if (!apiKey) {
-      toast({
-        title: "Error",
-        description: "Necesitas generar una API key primero",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     setTestResult(null);
     setTestStatus(null);
+
+    let keyToUse = useStoredKey ? await fetchStoredApiKey() : manualApiKey;
+    
+    if (!keyToUse) {
+      toast({
+        title: "Error",
+        description: useStoredKey ? 
+          "No se pudo obtener la API key almacenada" : 
+          "Por favor ingrese una API key manual",
+        variant: "destructive",
+      });
+      setTestStatus('error');
+      setTestResult("Error: No hay una API key válida para usar");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       let payload;
@@ -70,13 +108,17 @@ const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
       }
 
       console.log("Ejecutando prueba con endpoint:", apiEndpoint);
-      console.log("API Key:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
+      console.log("API Key:", keyToUse.substring(0, 4) + "****" + keyToUse.substring(keyToUse.length - 4));
+      console.log("Headers de la solicitud:", JSON.stringify({
+        'Content-Type': 'application/json',
+        'x-api-key': keyToUse.substring(0, 4) + "****" + keyToUse.substring(keyToUse.length - 4)
+      }));
       
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey
+          'x-api-key': keyToUse
         },
         body: JSON.stringify(payload)
       });
@@ -145,40 +187,76 @@ ${testPayload}`;
           </AlertDescription>
         </Alert>
         
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Prueba directa</h3>
-            <Badge variant={apiKey ? "default" : "destructive"}>
-              {apiKey ? "API Key configurada" : "Sin API Key"}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground mb-2">
-            Modifique el payload según sus necesidades y ejecute la prueba:
-          </p>
-          <Textarea 
-            value={testPayload}
-            onChange={(e) => setTestPayload(e.target.value)}
-            rows={10}
-            className="font-mono text-sm"
-          />
-          <div className="flex justify-end mt-2">
-            <Button
-              onClick={runTest}
-              disabled={isLoading || !apiKey}
-              className="ml-auto"
-            >
-              {isLoading ? (
-                <>
-                  <Terminal className="mr-2 h-4 w-4 animate-spin" />
-                  Ejecutando...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Ejecutar prueba
-                </>
+        <div className="space-y-4">
+          <div>
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Atención</AlertTitle>
+              <AlertDescription>
+                Debe generar una API key en la sección "Configuración > Integraciones" antes de poder realizar pruebas.
+                Las claves API se regeneran completamente, no se modifican.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input 
+                  type="checkbox" 
+                  id="useStoredKey" 
+                  checked={useStoredKey} 
+                  onChange={() => setUseStoredKey(!useStoredKey)} 
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="useStoredKey">Usar API key almacenada en la base de datos</Label>
+              </div>
+              
+              {!useStoredKey && (
+                <div className="space-y-2">
+                  <Label htmlFor="manualApiKey">API Key Manual:</Label>
+                  <Input
+                    id="manualApiKey"
+                    value={manualApiKey}
+                    onChange={(e) => setManualApiKey(e.target.value)}
+                    placeholder="Ingrese la API key manualmente"
+                    className="font-mono"
+                  />
+                </div>
               )}
-            </Button>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Prueba directa</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Modifique el payload según sus necesidades y ejecute la prueba:
+            </p>
+            <Textarea 
+              value={testPayload}
+              onChange={(e) => setTestPayload(e.target.value)}
+              rows={10}
+              className="font-mono text-sm"
+            />
+            <div className="flex justify-end mt-2">
+              <Button
+                onClick={runTest}
+                disabled={isLoading}
+                className="ml-auto"
+              >
+                {isLoading ? (
+                  <>
+                    <Terminal className="mr-2 h-4 w-4 animate-spin" />
+                    Ejecutando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Ejecutar prueba
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
         

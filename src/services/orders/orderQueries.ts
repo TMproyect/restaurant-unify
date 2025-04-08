@@ -95,31 +95,40 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
 // Get order by external ID
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
-    console.log(`🔍 [getOrderByExternalId] Buscando orden con ID externo: ${externalId}`);
+    console.log(`Buscando orden con ID externo: ${externalId}`);
     
-    // Use the more reliable direct query approach
+    // Get the order by external_id
     const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('external_id', externalId)
-      .maybeSingle();
+      .rpc('get_order_by_external_id', { 
+        p_external_id: externalId 
+      });
     
     if (error) {
-      console.error('❌ [getOrderByExternalId] Error al obtener orden por ID externo:', error);
-      console.error('❌ [getOrderByExternalId] Error details:', JSON.stringify(error, null, 2));
+      console.error('Error obteniendo orden por ID externo (RPC):', error);
+      // Fallback: try direct query
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('external_id', externalId)
+        .maybeSingle();
+      
+      if (fallbackError) {
+        console.error('Error en fallback para obtener orden por ID externo:', fallbackError);
+        return null;
+      }
+      
+      return fallbackData as Order;
+    }
+    
+    if (!data || data.length === 0) {
+      console.log('No se encontró orden con ID externo:', externalId);
       return null;
     }
     
-    if (!data) {
-      console.log('⚠️ [getOrderByExternalId] No se encontró orden con ese ID externo');
-      return null;
-    }
-    
-    console.log('✅ [getOrderByExternalId] Orden encontrada:', data);
-    return data as Order;
+    console.log('Orden encontrada por ID externo:', data[0]);
+    return data[0] as Order;
   } catch (error) {
-    console.error('❌ [getOrderByExternalId] Error inesperado al obtener orden por ID externo:', error);
-    console.error('❌ [getOrderByExternalId] Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Error inesperado al obtener orden por ID externo:', error);
     return null;
   }
 };

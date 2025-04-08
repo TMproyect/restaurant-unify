@@ -75,17 +75,21 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
     console.log(`API key en DB: ${data.value.substring(0, 4)}****${data.value.substring(data.value.length - 4)}, actualizada: ${data.updated_at}`);
     console.log(`API key recibida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
     
-    const isValid = apiKey.trim() === data.value.trim();
+    // Comparación insensible a espacios en blanco
+    const storedKey = data.value.trim();
+    const receivedKey = apiKey.trim();
+    const isValid = receivedKey === storedKey;
+    
     console.log("¿API key válida?:", isValid);
     
     if (!isValid) {
       console.log("Las API keys no coinciden. Verificando caracteres por caracteres:");
-      if (apiKey.length !== data.value.length) {
-        console.log(`Longitudes diferentes: Recibida (${apiKey.length}) vs. Almacenada (${data.value.length})`);
+      if (receivedKey.length !== storedKey.length) {
+        console.log(`Longitudes diferentes: Recibida (${receivedKey.length}) vs. Almacenada (${storedKey.length})`);
       } else {
-        for (let i = 0; i < apiKey.length; i++) {
-          if (apiKey[i] !== data.value[i]) {
-            console.log(`Diferencia en posición ${i}: '${apiKey[i]}' vs '${data.value[i]}'`);
+        for (let i = 0; i < receivedKey.length; i++) {
+          if (receivedKey[i] !== storedKey[i]) {
+            console.log(`Diferencia en posición ${i}: '${receivedKey[i]}' vs '${storedKey[i]}'`);
           }
         }
       }
@@ -100,6 +104,7 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
 
 serve(async (req) => {
   console.log("Función ingresar-pedido recibió una solicitud:", req.method);
+  console.log("Headers recibidos:", JSON.stringify(Array.from(req.headers.entries())));
   
   // Manejar solicitudes OPTIONS para CORS
   if (req.method === 'OPTIONS') {
@@ -119,15 +124,22 @@ serve(async (req) => {
     });
   }
   
-  // Obtener la API key del encabezado
-  const apiKey = req.headers.get('x-api-key');
+  // Obtener la API key del encabezado (probar diferentes variantes del encabezado)
+  let apiKey = req.headers.get('x-api-key');
+  if (!apiKey) {
+    // Intentar con otras variantes de capitalización
+    apiKey = req.headers.get('X-API-KEY') || req.headers.get('X-Api-Key');
+  }
+  
   console.log(`API Key recibida: ${apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada'}`);
   
   if (!apiKey) {
     console.log("API Key no proporcionada en la cabecera 'x-api-key'");
+    console.log("Cabeceras disponibles:", JSON.stringify(Array.from(req.headers.entries())));
     return new Response(JSON.stringify({ 
       error: "API Key requerida", 
-      details: "Debe proporcionar una clave API válida en la cabecera 'x-api-key'"
+      details: "Debe proporcionar una clave API válida en la cabecera 'x-api-key'",
+      headers_received: Object.fromEntries(req.headers)
     }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -145,7 +157,9 @@ serve(async (req) => {
     console.log(`API Key inválida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
     return new Response(JSON.stringify({ 
       error: "API Key inválida",
-      details: "La clave API proporcionada no coincide con la clave registrada en el sistema"
+      details: "La clave API proporcionada no coincide con la clave registrada en el sistema",
+      key_hint: `La clave proporcionada comienza con: ${apiKey.substring(0, 4)} y termina con: ${apiKey.substring(apiKey.length - 4)}`,
+      header_name_used: "x-api-key"
     }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

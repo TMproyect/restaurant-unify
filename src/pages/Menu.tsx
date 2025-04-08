@@ -6,7 +6,7 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Tag, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
+import { Utensils, Tag, RefreshCw } from 'lucide-react';
 import { fetchMenuCategories, verifyStorageConnection } from '@/services/menuService';
 import { getLowStockItems } from '@/services/inventoryService';
 
@@ -15,9 +15,7 @@ const Menu: React.FC = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storageConnected, setStorageConnected] = useState(true);
-  const [storageMessage, setStorageMessage] = useState<string | null>(null);
   const [checkingStorage, setCheckingStorage] = useState(false);
-  const [storageCheckComplete, setStorageCheckComplete] = useState(false);
   const { toast } = useToast();
   
   const loadCategories = async () => {
@@ -37,80 +35,111 @@ const Menu: React.FC = () => {
     }
   };
 
-  // Verificar la conexión al almacenamiento
-  const checkStorageConnection = async () => {
+  // Verificar la conexión al almacenamiento de manera silenciosa
+  const silentStorageCheck = async () => {
     try {
-      setCheckingStorage(true);
-      setStorageCheckComplete(false);
-      console.log('Verificando conexión al almacenamiento...');
-      
+      console.log('📦 Verificando conexión al almacenamiento silenciosamente...');
       const connectionResult = await verifyStorageConnection();
+      
+      console.log('📦 Resultado de la verificación silenciosa:', connectionResult);
       
       if (typeof connectionResult === 'object') {
         setStorageConnected(connectionResult.connected);
-        setStorageMessage(connectionResult.message);
         
-        if (!connectionResult.connected) {
-          toast({
-            title: "Advertencia de almacenamiento",
-            description: connectionResult.message || "No se pudo verificar la conexión al almacenamiento",
-            variant: "destructive"
-          });
+        if (connectionResult.connected) {
+          console.log('📦 Conexión al almacenamiento verificada correctamente');
         } else {
-          toast({
-            title: "Conexión al almacenamiento",
-            description: connectionResult.message || "Conexión al almacenamiento verificada correctamente"
-          });
-        }
-      } else {
-        setStorageConnected(connectionResult);
-        if (!connectionResult) {
-          setStorageMessage("No se pudo verificar la conexión al almacenamiento");
-          toast({
-            title: "Advertencia",
-            description: "No se pudo verificar la conexión al almacenamiento. Las imágenes pueden no funcionar correctamente.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Conexión verificada",
-            description: "Conexión al almacenamiento verificada correctamente"
-          });
+          console.error('📦 Error de conexión al almacenamiento:', connectionResult.message);
+          // Intentamos crear el bucket de forma silenciosa
+          await verifyStorageConnection(true);
         }
       }
+    } catch (error) {
+      console.error('📦 Error en verificación silenciosa de almacenamiento:', error);
+      setStorageConnected(false);
+    }
+  };
+
+  // Verificar la conexión al almacenamiento (botón manual)
+  const checkStorageConnection = async () => {
+    try {
+      setCheckingStorage(true);
+      toast({
+        title: "Verificando almacenamiento",
+        description: "Comprobando conexión al sistema de almacenamiento...",
+      });
       
-      // Cuando se completa la verificación
-      setStorageCheckComplete(true);
+      console.log('📦 Verificando conexión al almacenamiento (manual)...');
       
-      // Recargar automáticamente la página si la conexión se establece correctamente
-      if (
-        (typeof connectionResult === 'object' && connectionResult.connected) ||
-        (typeof connectionResult === 'boolean' && connectionResult)
-      ) {
+      const connectionResult = await verifyStorageConnection(true);
+      
+      console.log('📦 Resultado verificación manual:', connectionResult);
+      
+      if (typeof connectionResult === 'object') {
+        setStorageConnected(connectionResult.connected);
+        
+        if (connectionResult.connected) {
+          toast({
+            title: "Conexión establecida",
+            description: "Sistema de almacenamiento conectado correctamente"
+          });
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          toast({
+            title: "Problema de conexión",
+            description: "Intentándolo nuevamente en segundo plano...",
+            variant: "destructive"
+          });
+        }
+      } else if (connectionResult === true) {
+        setStorageConnected(true);
         toast({
-          title: "Recargando página",
-          description: "La conexión se ha establecido correctamente. Recargando para aplicar cambios..."
+          title: "Conexión establecida",
+          description: "Sistema de almacenamiento conectado correctamente"
         });
         
         setTimeout(() => {
           window.location.reload();
         }, 2000);
+      } else {
+        toast({
+          title: "Problema de conexión",
+          description: "Intentándolo nuevamente en segundo plano...",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('Error al verificar conexión de almacenamiento:', error);
-      setStorageConnected(false);
-      setStorageMessage("Error al verificar la conexión al almacenamiento: " + (error.message || error));
-      setStorageCheckComplete(true);
+      console.error('📦 Error al verificar conexión de almacenamiento (manual):', error);
+      toast({
+        title: "Error de verificación",
+        description: "Intentándolo nuevamente en segundo plano...",
+        variant: "destructive"
+      });
     } finally {
       setTimeout(() => {
         setCheckingStorage(false);
       }, 1500);
+      
+      // Intentar nuevamente en segundo plano después de un error
+      setTimeout(() => {
+        silentStorageCheck();
+      }, 3000);
     }
   };
 
   useEffect(() => {
     loadCategories();
-    checkStorageConnection();
+    silentStorageCheck();
+    
+    // Programar verificaciones periódicas de almacenamiento en segundo plano
+    const intervalId = setInterval(() => {
+      silentStorageCheck();
+    }, 60000); // Verificar cada minuto
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -157,65 +186,33 @@ const Menu: React.FC = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gestión de Menú</h1>
-          <Button onClick={handleSynchronize}>
-            Sincronizar Cambios
-          </Button>
+          <div className="flex gap-2">
+            {!storageConnected && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={checkStorageConnection}
+                disabled={checkingStorage}
+                className="text-xs"
+              >
+                {checkingStorage ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Conectar almacenamiento
+                  </>
+                )}
+              </Button>
+            )}
+            <Button onClick={handleSynchronize}>
+              Sincronizar Cambios
+            </Button>
+          </div>
         </div>
-        
-        {!storageConnected && (
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
-            <div className="flex items-start">
-              <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
-              <div className="flex-1">
-                <h3 className="font-medium text-amber-800">Problemas con el almacenamiento</h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  {storageMessage || "No se pudo conectar con el servicio de almacenamiento. La subida y visualización de imágenes puede no funcionar correctamente."}
-                </p>
-                <div className="mt-2 flex items-center">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="bg-white mr-2" 
-                    onClick={checkStorageConnection}
-                    disabled={checkingStorage}
-                  >
-                    {checkingStorage ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Verificando...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Verificar conexión
-                      </>
-                    )}
-                  </Button>
-                  
-                  {storageCheckComplete && (
-                    <span className="text-xs text-amber-700">
-                      Verificación completada. Intente recargar la página o contacte al administrador.
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {storageConnected && storageCheckComplete && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4">
-            <div className="flex items-start">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 mr-2" />
-              <div>
-                <h3 className="font-medium text-green-800">Almacenamiento conectado</h3>
-                <p className="text-sm text-green-700 mt-1">
-                  La conexión al almacenamiento está funcionando correctamente. Puede subir imágenes sin problemas.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
         
         <Tabs defaultValue="menu" onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2">
@@ -230,7 +227,12 @@ const Menu: React.FC = () => {
           </TabsList>
           
           <TabsContent value="menu" className="mt-4">
-            <MenuManager categories={categories} isLoading={loading} />
+            <MenuManager 
+              categories={categories} 
+              isLoading={loading} 
+              storageConnected={storageConnected}
+              onRetryStorage={checkStorageConnection}
+            />
           </TabsContent>
           
           <TabsContent value="categories" className="mt-4">

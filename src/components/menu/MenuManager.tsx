@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -68,9 +67,11 @@ interface ExtendedMenuItem extends MenuItem {
 interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
+  storageConnected?: boolean;
+  onRetryStorage?: () => void;
 }
 
-const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
+const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storageConnected, onRetryStorage }) => {
   const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<ExtendedMenuItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -330,7 +331,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
       const success = await deleteMenuItemImage(newItem.image_url);
       
       if (success) {
-        // Actualizar el item sin la imagen
         const updates = {
           ...newItem,
           image_url: null

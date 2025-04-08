@@ -1,1079 +1,445 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardFooter
-} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { 
-  PlusCircle, 
-  Pencil, 
-  Trash2, 
-  Search,
-  ImagePlus,
-  Tag,
-  AlertCircle,
-  Eye,
-  X,
-  XCircle,
-  ImageOff,
-  RefreshCw
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { toast as sonnerToast } from 'sonner';
-import { 
-  MenuItem, 
-  MenuCategory, 
-  fetchMenuItems, 
-  createMenuItem, 
-  updateMenuItem, 
-  deleteMenuItem,
-} from '@/services/menu';
-import { uploadMenuItemImage, deleteMenuItemImage } from '@/services/storage/imageStorage';
+import { Pencil, Trash, Plus, Search, Tag, DollarSign, Check, X, Coffee, Utensils } from 'lucide-react';
+import { toast } from 'sonner';
+import { fetchMenuItems, MenuItem, deleteMenuItem } from '@/services/menu/menuItemService';
+import MenuItemForm from './MenuItemForm';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import MenuItemImage from './MenuItemImage';
-
-interface MenuItemOption {
-  name: string;
-  choices: {
-    id: string;
-    name: string;
-    price: number;
-  }[];
-}
-
-interface ExtendedMenuItem extends MenuItem {
-  options?: MenuItemOption[];
-}
+import { MenuCategory } from '@/services/menu/menuCategoryService';
+import { formatCurrency } from '@/utils/formatters';
 
 interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
 }
 
-const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
-  const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<ExtendedMenuItem[]>([]);
+const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: categoriesLoading }) => {
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const { toast } = useToast();
-  
-  const [editingItem, setEditingItem] = useState<ExtendedMenuItem | null>(null);
-  const [newItem, setNewItem] = useState<Partial<ExtendedMenuItem>>({
-    name: '',
-    description: '',
-    price: 0,
-    category_id: '',
-    available: true,
-    allergens: [],
-    sku: '',
-  });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [isDeletingImage, setIsDeletingImage] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>('all');
+  const [showForm, setShowForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [activeTab, setActiveTab] = useState('grid');
+
+  const loadMenuItems = async () => {
+    setLoading(true);
+    try {
+      const items = await fetchMenuItems();
+      setMenuItems(items);
+      applyFilters(items, searchTerm, categoryFilter, availabilityFilter);
+    } catch (error) {
+      console.error('Error loading menu items:', error);
+      toast.error('Error al cargar los elementos del menú');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        console.log('🍽️ Cargando ítems del menú...');
-        const itemsData = await fetchMenuItems();
-        console.log('🍽️ Datos cargados:', itemsData.length, 'ítems');
-        
-        setMenuItems(itemsData as ExtendedMenuItem[]);
-        setFilteredItems(itemsData as ExtendedMenuItem[]);
-      } catch (error) {
-        console.error('Error loading menu data:', error);
-        toast({
-          title: "Error de carga",
-          description: "No se pudieron cargar los datos del menú",
-          variant: "destructive"
-        });
-      }
+    loadMenuItems();
+    
+    // Listen for updates from other components
+    const handleMenuItemsUpdated = () => {
+      loadMenuItems();
     };
     
-    loadData();
+    window.addEventListener('menuItemsUpdated', handleMenuItemsUpdated);
     
-    const handleMenuUpdated = () => {
-      loadData();
-    };
-    
-    window.addEventListener('menuItemsUpdated', handleMenuUpdated);
     return () => {
-      window.removeEventListener('menuItemsUpdated', handleMenuUpdated);
+      window.removeEventListener('menuItemsUpdated', handleMenuItemsUpdated);
     };
-  }, [toast]);
-  
+  }, []);
+
   useEffect(() => {
-    let filtered = menuItems;
+    applyFilters(menuItems, searchTerm, categoryFilter, availabilityFilter);
+  }, [searchTerm, categoryFilter, availabilityFilter, menuItems]);
+
+  const applyFilters = (
+    items: MenuItem[], 
+    search: string, 
+    category: string, 
+    availability: string
+  ) => {
+    let result = [...items];
     
-    if (searchTerm) {
-      filtered = filtered.filter(item => 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    // Apply search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(item => 
+        item.name.toLowerCase().includes(searchLower) || 
+        item.description.toLowerCase().includes(searchLower) ||
+        (item.sku && item.sku.toLowerCase().includes(searchLower))
       );
     }
     
-    if (selectedCategory) {
-      filtered = filtered.filter(item => item.category_id === selectedCategory);
+    // Apply category filter
+    if (category && category !== 'all') {
+      result = result.filter(item => item.category_id === category);
     }
     
-    setFilteredItems(filtered);
-  }, [menuItems, searchTerm, selectedCategory]);
-  
-  const resetForm = () => {
-    setNewItem({
-      name: '',
-      description: '',
-      price: 0,
-      category_id: '',
-      available: true,
-      allergens: [],
-      sku: '',
-    });
-    setImageFile(null);
-    setImagePreview(null);
+    // Apply availability filter
+    if (availability === 'available') {
+      result = result.filter(item => item.available);
+    } else if (availability === 'unavailable') {
+      result = result.filter(item => !item.available);
+    }
+    
+    setFilteredItems(result);
   };
-  
-  const handleAddItem = async () => {
-    if (!newItem.name || !newItem.category_id) {
-      toast({
-        title: "Error al guardar",
-        description: "Por favor complete el nombre y seleccione una categoría",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsUploading(true);
-    
-    try {
-      let imageUrl = newItem.image_url;
-      if (imageFile) {
-        console.log('🖼️ Iniciando subida de imagen...');
-        const uploadedUrl = await uploadMenuItemImage(imageFile);
-        
-        if (uploadedUrl) {
-          console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
-          imageUrl = uploadedUrl;
-        } else {
-          console.error('🖼️ Error al subir imagen');
-          sonnerToast.error("No se pudo subir la imagen. Se guardará el producto sin imagen.");
-        }
-      }
-      
-      const itemToAdd = {
-        name: newItem.name,
-        description: newItem.description || '',
-        price: newItem.price || 0,
-        category_id: newItem.category_id,
-        available: newItem.available !== undefined ? newItem.available : true,
-        popular: newItem.popular || false,
-        allergens: newItem.allergens || [],
-        image_url: imageUrl,
-        sku: newItem.sku || null,
-      };
-      
-      console.log('🍽️ Guardando nuevo plato:', itemToAdd);
-      
-      const createdItem = await createMenuItem(itemToAdd);
-      
-      if (createdItem) {
-        console.log('🍽️ Plato creado exitosamente:', createdItem);
-        setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
-        
-        toast({
-          title: "Plato añadido",
-          description: `${createdItem.name} ha sido añadido al menú`
-        });
-        
-        setIsAddDialogOpen(false);
-        resetForm();
-      } else {
-        console.error('🍽️ Error al crear plato - respuesta vacía');
-        toast({
-          title: "Error",
-          description: "No se pudo crear el plato. Verifique los datos e intente nuevamente.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('🍽️ Error en handleAddItem:', error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar el plato. Intente nuevamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUploading(false);
-    }
+
+  const handleAddItem = () => {
+    setEditingItem(null);
+    setShowForm(true);
   };
-  
-  const handleAddAndContinue = async () => {
-    if (!newItem.name || !newItem.category_id) {
-      toast({
-        title: "Error al guardar",
-        description: "Por favor complete el nombre y seleccione una categoría",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsUploading(true);
-    
-    try {
-      let imageUrl = newItem.image_url;
-      if (imageFile) {
-        console.log('🖼️ Iniciando subida de imagen (continuar)...');
-        const uploadedUrl = await uploadMenuItemImage(imageFile);
-        if (uploadedUrl) {
-          console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
-          imageUrl = uploadedUrl;
-        } else {
-          console.error('🖼️ Error al subir la imagen - URL vacía');
-          toast({
-            title: "Advertencia",
-            description: "No se pudo subir la imagen, pero se guardará el producto sin imagen.",
-            variant: "destructive"
-          });
-        }
-      }
-      
-      const itemToAdd = {
-        name: newItem.name,
-        description: newItem.description || '',
-        price: newItem.price || 0,
-        category_id: newItem.category_id,
-        available: newItem.available !== undefined ? newItem.available : true,
-        popular: newItem.popular || false,
-        allergens: newItem.allergens || [],
-        image_url: imageUrl,
-        sku: newItem.sku || null,
-      };
-      
-      console.log('🍽️ Guardando nuevo plato (continuar):', itemToAdd);
-      
-      const createdItem = await createMenuItem(itemToAdd);
-      
-      if (createdItem) {
-        console.log('🍽️ Plato creado exitosamente:', createdItem);
-        setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
-        
-        resetForm();
-        
-        toast({
-          title: "Plato añadido",
-          description: `${createdItem.name} ha sido añadido al menú. Puede continuar añadiendo más platos.`
-        });
-      } else {
-        console.error('🍽️ Error al crear plato - respuesta vacía');
-        toast({
-          title: "Error",
-          description: "No se pudo crear el plato. Verifique los datos e intente nuevamente.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('🍽️ Error en handleAddAndContinue:', error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar el plato. Intente nuevamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  
-  const handleEditItem = (item: ExtendedMenuItem) => {
+
+  const handleEditItem = (item: MenuItem) => {
     setEditingItem(item);
-    setNewItem({
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      category_id: item.category_id,
-      available: item.available,
-      popular: item.popular,
-      allergens: item.allergens,
-      image_url: item.image_url,
-      sku: item.sku || '',
-    });
-    setImageFile(null);
-    setImagePreview(null);
-    setIsEditDialogOpen(true);
+    setShowForm(true);
   };
-  
-  const handleSaveEdit = async () => {
-    if (!editingItem) return;
-    
-    let imageUrl = newItem.image_url;
-    if (imageFile) {
-      const uploadedUrl = await uploadMenuItemImage(imageFile);
-      if (uploadedUrl) {
-        imageUrl = uploadedUrl;
-      }
-    }
-    
-    const updates = {
-      name: newItem.name,
-      description: newItem.description,
-      price: newItem.price,
-      category_id: newItem.category_id,
-      available: newItem.available,
-      popular: newItem.popular,
-      allergens: newItem.allergens,
-      image_url: imageUrl,
-      sku: newItem.sku || null,
-    };
-    
-    const updatedItem = await updateMenuItem(editingItem.id, updates);
-    
-    if (updatedItem) {
-      setMenuItems(prev => 
-        prev.map(item => 
-          item.id === editingItem.id ? { ...updatedItem, options: item.options } as ExtendedMenuItem : item
-        )
-      );
-      
-      setEditingItem(null);
-      setIsEditDialogOpen(false);
-      
-      resetForm();
-      
-      toast({
-        title: "Plato actualizado",
-        description: `${updatedItem.name} ha sido actualizado`
-      });
-    }
-  };
-  
+
   const handleDeleteItem = async (id: string) => {
-    const itemToDelete = menuItems.find(item => item.id === id);
-    if (!itemToDelete) return;
-    
-    const success = await deleteMenuItem(id);
-    
-    if (success) {
-      setMenuItems(prev => prev.filter(item => item.id !== id));
-      
-      toast({
-        title: "Plato eliminado",
-        description: `${itemToDelete.name} ha sido eliminado del menú`
-      });
-    }
-  };
-  
-  const handleDeleteImage = async () => {
-    if (!editingItem || !newItem.image_url) return;
-    
-    setIsDeletingImage(true);
-    
-    try {
-      const success = await deleteMenuItemImage(newItem.image_url);
-      
-      if (success) {
-        const updates = {
-          ...newItem,
-          image_url: null
-        };
-        
-        const updatedItem = await updateMenuItem(editingItem.id, updates);
-        
-        if (updatedItem) {
-          setMenuItems(prev => 
-            prev.map(item => 
-              item.id === editingItem.id ? { ...updatedItem, options: item.options } as ExtendedMenuItem : item
-            )
-          );
-          
-          setNewItem({
-            ...newItem,
-            image_url: null
-          });
-          
-          toast({
-            title: "Imagen eliminada",
-            description: "La imagen del producto ha sido eliminada"
-          });
+    if (window.confirm("¿Está seguro de que desea eliminar este elemento?")) {
+      const success = await deleteMenuItem(id, false);
+      if (!success) {
+        // If failed, possibly due to order constraints, ask if they want to force delete
+        if (window.confirm("Este plato está siendo usado en pedidos. ¿Desea eliminarlo de todas formas? Esto eliminará también las referencias en los pedidos.")) {
+          const forceSuccess = await deleteMenuItem(id, true);
+          if (forceSuccess) {
+            toast.success("Elemento eliminado con éxito");
+            loadMenuItems();
+          }
         }
       } else {
-        toast({
-          title: "Error",
-          description: "No se pudo eliminar la imagen",
-          variant: "destructive"
-        });
+        toast.success("Elemento eliminado con éxito");
+        loadMenuItems();
       }
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al eliminar la imagen",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeletingImage(false);
     }
   };
-  
-  const handleToggleAvailability = async (id: string) => {
-    const item = menuItems.find(item => item.id === id);
-    if (!item) return;
-    
-    const updatedItem = await updateMenuItem(id, { available: !item.available });
-    
-    if (updatedItem) {
-      setMenuItems(prev => 
-        prev.map(item => 
-          item.id === id ? { ...updatedItem, options: item.options } as ExtendedMenuItem : item
-        )
+
+  const handleFormClose = (itemSaved: boolean) => {
+    setShowForm(false);
+    if (itemSaved) {
+      loadMenuItems();
+    }
+  };
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'Sin categoría';
+  };
+
+  const renderSkeletons = () => {
+    return Array(6).fill(0).map((_, index) => (
+      <Card key={index} className="overflow-hidden">
+        <div className="aspect-video bg-muted">
+          <Skeleton className="h-full w-full" />
+        </div>
+        <CardHeader className="p-4">
+          <Skeleton className="h-6 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardContent>
+        <CardFooter className="p-4 flex justify-between">
+          <Skeleton className="h-10 w-20" />
+          <Skeleton className="h-10 w-20" />
+        </CardFooter>
+      </Card>
+    ));
+  };
+
+  const renderGridView = () => {
+    if (loading || categoriesLoading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {renderSkeletons()}
+        </div>
       );
-      
-      toast({
-        title: updatedItem.available ? "Plato disponible" : "Plato no disponible",
-        description: `${updatedItem.name} ahora está ${updatedItem.available ? 'disponible' : 'no disponible'}`
-      });
     }
+
+    if (filteredItems.length === 0) {
+      return (
+        <div className="text-center py-10">
+          <Utensils className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No hay elementos</h3>
+          <p className="text-muted-foreground">
+            No se encontraron elementos que coincidan con los filtros aplicados.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredItems.map((item) => (
+          <Card key={item.id} className="overflow-hidden">
+            {item.image_url ? (
+              <div className="aspect-video relative overflow-hidden">
+                <img 
+                  src={item.image_url} 
+                  alt={item.name} 
+                  className="object-cover w-full h-full transition-transform hover:scale-105"
+                />
+                {item.popular && (
+                  <Badge className="absolute top-2 right-2 bg-yellow-500">Popular</Badge>
+                )}
+                {!item.available && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Badge variant="destructive" className="text-lg">No Disponible</Badge>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="aspect-video bg-muted flex items-center justify-center relative">
+                <Coffee className="h-10 w-10 text-muted-foreground" />
+                {item.popular && (
+                  <Badge className="absolute top-2 right-2 bg-yellow-500">Popular</Badge>
+                )}
+                {!item.available && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Badge variant="destructive" className="text-lg">No Disponible</Badge>
+                  </div>
+                )}
+              </div>
+            )}
+            <CardHeader className="p-4">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg">{item.name}</CardTitle>
+                <Badge variant="outline">{formatCurrency(item.price)}</Badge>
+              </div>
+              <Badge variant="secondary" className="mt-1">
+                {getCategoryName(item.category_id)}
+              </Badge>
+              {item.sku && (
+                <Badge variant="outline" className="mt-1 text-xs">
+                  SKU: {item.sku}
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+              {item.allergens && item.allergens.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs font-medium">Alérgenos:</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {item.allergens.map((allergen) => (
+                      <Badge key={allergen} variant="outline" className="text-xs">
+                        {allergen}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="p-4 flex justify-between">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleEditItem(item)}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => handleDeleteItem(item.id)}
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Eliminar
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    );
   };
-  
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    console.log('🖼️ Archivo seleccionado:', file.name, 'Tamaño:', file.size, 'bytes');
-    
-    if (file.size > 5 * 1024 * 1024) {
-      console.warn('🖼️ Archivo demasiado grande:', file.size, 'bytes');
-      sonnerToast.error("La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.");
-      return;
+
+  const renderTableView = () => {
+    if (loading || categoriesLoading) {
+      return (
+        <div className="rounded-md border">
+          <div className="p-4">
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        </div>
+      );
     }
-    
-    const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validFormats.includes(file.type)) {
-      console.warn('🖼️ Formato no válido:', file.type);
-      sonnerToast.error("Por favor, utilice imágenes en formato JPG, PNG, GIF o WebP.");
-      return;
+
+    if (filteredItems.length === 0) {
+      return (
+        <div className="text-center py-10">
+          <Utensils className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No hay elementos</h3>
+          <p className="text-muted-foreground">
+            No se encontraron elementos que coincidan con los filtros aplicados.
+          </p>
+        </div>
+      );
     }
-    
-    setImageFile(file);
-    
-    const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
-    
-    console.log('🖼️ Vista previa creada:', previewUrl);
-    
-    sonnerToast.success("Imagen seleccionada. Se subirá al guardar el plato.");
+
+    return (
+      <div className="rounded-md border">
+        <div className="relative w-full overflow-auto">
+          <table className="w-full caption-bottom text-sm">
+            <thead className="[&_tr]:border-b">
+              <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                <th className="h-12 px-4 text-left align-middle font-medium">Nombre</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">Categoría</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">Precio</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">SKU</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">Disponible</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">Popular</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="[&_tr:last-child]:border-0">
+              {filteredItems.map((item) => (
+                <tr key={item.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                  <td className="p-4 align-middle">{item.name}</td>
+                  <td className="p-4 align-middle">{getCategoryName(item.category_id)}</td>
+                  <td className="p-4 align-middle">{formatCurrency(item.price)}</td>
+                  <td className="p-4 align-middle">{item.sku || '-'}</td>
+                  <td className="p-4 align-middle">
+                    {item.available ? (
+                      <Badge variant="success" className="flex items-center gap-1 w-fit">
+                        <Check className="h-3 w-3" /> Sí
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                        <X className="h-3 w-3" /> No
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="p-4 align-middle">
+                    {item.popular ? (
+                      <Badge variant="success" className="flex items-center gap-1 w-fit">
+                        <Check className="h-3 w-3" /> Sí
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                        <X className="h-3 w-3" /> No
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="p-4 align-middle">
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditItem(item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Editar</span>
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleDeleteItem(item.id)}
+                      >
+                        <Trash className="h-4 w-4" />
+                        <span className="sr-only">Eliminar</span>
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
-  
-  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('Error al cargar imagen:', event.currentTarget.src);
-    
-    const img = event.currentTarget;
-    const container = img.parentElement;
-    
-    if (container) {
-      img.style.display = 'none';
-      
-      if (!container.querySelector('.image-fallback')) {
-        const fallbackDiv = document.createElement('div');
-        fallbackDiv.className = 'flex items-center justify-center h-44 bg-muted text-muted-foreground image-fallback';
-        
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'flex flex-col items-center gap-2';
-        iconSpan.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off">
-            <line x1="2" y1="2" x2="22" y2="22"></line>
-            <path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"></path>
-            <line x1="13.5" y1="6.5" x2="17.5" y2="10.5"></line>
-            <path d="M14.5 17.5 5 8c-.64.64-1 1.5-1 2.4v7.6a2 2 0 0 0 2 2h14a2 2 0 0 0 1.48-.63"></path>
-            <path d="M22 13.8V6a2 2 0 0 0-2-2h-7.8"></path>
-          </svg>
-          <span>Imagen no disponible</span>
-        `;
-        
-        fallbackDiv.appendChild(iconSpan);
-        container.appendChild(fallbackDiv);
-      }
-    }
-  };
-  
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gestión del Menú</h2>
-        
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Añadir Plato
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                Añadir Nuevo Plato
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nombre</Label>
-                <Input
-                  id="name"
-                  value={newItem.name || ''}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  placeholder="Nombre del plato"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="sku">SKU (Código único para integraciones)</Label>
-                <Input
-                  id="sku"
-                  value={newItem.sku || ''}
-                  onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
-                  placeholder="SKU o código de producto"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Un código único para identificar este producto en integraciones externas
-                </p>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={newItem.description || ''}
-                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                  placeholder="Descripción del plato"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="price">Precio</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={newItem.price || 0}
-                    onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Categoría</Label>
-                  <Select
-                    value={newItem.category_id || ''}
-                    onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
-                  >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="available">Disponibilidad</Label>
-                  <Select
-                    value={newItem.available ? "true" : "false"}
-                    onValueChange={(value) => setNewItem({ ...newItem, available: value === "true" })}
-                  >
-                    <SelectTrigger id="available">
-                      <SelectValue placeholder="Disponibilidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Disponible</SelectItem>
-                      <SelectItem value="false">No disponible</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="popular">Popular</Label>
-                  <Select
-                    value={newItem.popular ? "true" : "false"}
-                    onValueChange={(value) => setNewItem({ ...newItem, popular: value === "true" })}
-                  >
-                    <SelectTrigger id="popular">
-                      <SelectValue placeholder="¿Es popular?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Sí</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="image">Imagen</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full flex justify-start text-muted-foreground"
-                      onClick={() => document.getElementById('image')?.click()}
-                    >
-                      <ImagePlus className="h-4 w-4 mr-2" />
-                      {imageFile ? imageFile.name : "Seleccionar archivo"}
-                    </Button>
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="sr-only"
-                    />
-                  </div>
-                </div>
-                {imagePreview && (
-                  <div className="mt-2">
-                    <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
-                    <img 
-                      src={imagePreview} 
-                      alt="Vista previa" 
-                      className="h-32 object-contain rounded border border-border"
-                      onError={handleImageError}
-                    />
-                  </div>
-                )}
-                {(newItem.image_url || imageFile) && !imagePreview && (
-                  <p className="text-xs text-muted-foreground">
-                    {imageFile 
-                      ? `Imagen seleccionada: ${imageFile.name}` 
-                      : `Imagen actual: ${newItem.image_url?.split('/').pop()}`}
-                  </p>
-                )}
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="allergens">Alérgenos (separados por coma)</Label>
-                <Input
-                  id="allergens"
-                  value={newItem.allergens?.join(', ') || ''}
-                  onChange={(e) => setNewItem({ 
-                    ...newItem, 
-                    allergens: e.target.value.split(',').map(item => item.trim()).filter(Boolean) 
-                  })}
-                  placeholder="lácteos, gluten, frutos secos..."
-                />
-              </div>
-            </div>
-            
-            <DialogFooter className="flex justify-between sm:justify-end">
-              <div className="space-x-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isUploading}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleAddAndContinue} disabled={isUploading}>
-                  {isUploading ? 'Guardando...' : 'Guardar y Crear otro'}
-                </Button>
-                <Button onClick={handleAddItem} disabled={isUploading}>
-                  {isUploading ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      <div className="flex items-center space-x-2 pb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar platos..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="flex-1 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar platos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex gap-4">
+            <Select
+              value={categoryFilter}
+              onValueChange={setCategoryFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las categorías</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={availabilityFilter}
+              onValueChange={setAvailabilityFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Disponibilidad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="available">Disponibles</SelectItem>
+                <SelectItem value="unavailable">No disponibles</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <Select
-          value={selectedCategory || "all"}
-          onValueChange={(value) => setSelectedCategory(value === "all" ? null : value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Todas las categorías" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las categorías</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {isLoading ? (
-        <div className="text-center py-8">
-          <p>Cargando menú...</p>
-        </div>
-      ) : filteredItems.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.map((item) => (
-            <Card key={item.id} className={item.available ? "" : "opacity-60"}>
-              {item.image_url && (
-                <MenuItemImage 
-                  imageUrl={item.image_url}
-                  alt={item.name}
-                />
-              )}
-              
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg mr-2">{item.name}</CardTitle>
-                  {item.popular && (
-                    <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
-                      Popular
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-                {item.sku && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    SKU: {item.sku}
-                  </p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">${item.price.toFixed(2)}</p>
-                    <div className="flex items-center mt-1">
-                      <Tag className="h-3 w-3 mr-1 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {categories.find(c => c.id === item.category_id)?.name || 'Sin categoría'}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    {item.allergens && item.allergens.length > 0 && (
-                      <div className="flex items-center text-xs text-amber-600">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        <span>{item.allergens.join(', ')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between pt-2 border-t">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleToggleAvailability(item.id)}
-                >
-                  {item.available ? 'Deshabilitar' : 'Habilitar'}
-                </Button>
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => handleEditItem(item)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => handleDeleteItem(item.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-muted rounded-lg p-8 text-center">
-          <p className="text-muted-foreground mb-2">No se encontraron platos que coincidan con los criterios de búsqueda.</p>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory(null);
-            }}
-          >
-            Mostrar todos los platos
+        <div className="flex justify-end">
+          <Button onClick={handleAddItem}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Plato
           </Button>
         </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="grid">Vista Cuadrícula</TabsTrigger>
+            <TabsTrigger value="table">Vista Tabla</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="mt-6">
+        {activeTab === 'grid' ? renderGridView() : renderTableView()}
+      </div>
+
+      {showForm && (
+        <MenuItemForm
+          categories={categories}
+          item={editingItem}
+          onClose={handleFormClose}
+        />
       )}
-      
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Editar Plato: {editingItem?.name}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-name">Nombre</Label>
-              <Input
-                id="edit-name"
-                value={newItem.name || ''}
-                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                placeholder="Nombre del plato"
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-sku">SKU (Código único para integraciones)</Label>
-              <Input
-                id="edit-sku"
-                value={newItem.sku || ''}
-                onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
-                placeholder="SKU o código de producto"
-              />
-              <p className="text-xs text-muted-foreground">
-                Un código único para identificar este producto en integraciones externas
-              </p>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-description">Descripción</Label>
-              <Textarea
-                id="edit-description"
-                value={newItem.description || ''}
-                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                placeholder="Descripción del plato"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-price">Precio</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  value={newItem.price || 0}
-                  onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) })}
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Categoría</Label>
-                <Select
-                  value={newItem.category_id || ''}
-                  onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
-                >
-                  <SelectTrigger id="edit-category">
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-available">Disponibilidad</Label>
-                <Select
-                  value={newItem.available ? "true" : "false"}
-                  onValueChange={(value) => setNewItem({ ...newItem, available: value === "true" })}
-                >
-                  <SelectTrigger id="edit-available">
-                    <SelectValue placeholder="Disponibilidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Disponible</SelectItem>
-                    <SelectItem value="false">No disponible</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="edit-popular">Popular</Label>
-                <Select
-                  value={newItem.popular ? "true" : "false"}
-                  onValueChange={(value) => setNewItem({ ...newItem, popular: value === "true" })}
-                >
-                  <SelectTrigger id="edit-popular">
-                    <SelectValue placeholder="¿Es popular?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Sí</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label>Imagen Actual</Label>
-              {newItem.image_url ? (
-                <div className="relative">
-                  <div 
-                    className="cursor-pointer" 
-                    onClick={() => setViewingImage(newItem.image_url || null)}
-                  >
-                    <img 
-                      src={newItem.image_url} 
-                      alt={newItem.name || 'Imagen de producto'} 
-                      className="h-32 object-cover rounded border border-border"
-                      onError={handleImageError}
-                    />
-                  </div>
-                  <Button 
-                    variant="destructive" 
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={handleDeleteImage}
-                    disabled={isDeletingImage}
-                  >
-                    {isDeletingImage ? (
-                      <span className="flex items-center">
-                        <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                        Eliminando...
-                      </span>
-                    ) : (
-                      <X className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-32 bg-muted rounded border border-border">
-                  <div className="text-muted-foreground text-sm flex flex-col items-center">
-                    <ImageOff className="h-8 w-8 mb-2" />
-                    <span>Sin imagen</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-image">Nueva Imagen</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full flex justify-start text-muted-foreground"
-                    onClick={() => document.getElementById('edit-image')?.click()}
-                  >
-                    <ImagePlus className="h-4 w-4 mr-2" />
-                    {imageFile ? imageFile.name : "Seleccionar archivo"}
-                  </Button>
-                  <Input
-                    id="edit-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="sr-only"
-                  />
-                </div>
-              </div>
-              {imagePreview && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground mb-1">Vista previa:</p>
-                  <img 
-                    src={imagePreview} 
-                    alt="Vista previa" 
-                    className="h-32 object-contain rounded border border-border"
-                    onError={handleImageError}
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="edit-allergens">Alérgenos (separados por coma)</Label>
-              <Input
-                id="edit-allergens"
-                value={newItem.allergens?.join(', ') || ''}
-                onChange={(e) => setNewItem({ 
-                  ...newItem, 
-                  allergens: e.target.value.split(',').map(item => item.trim()).filter(Boolean) 
-                })}
-                placeholder="lácteos, gluten, frutos secos..."
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEdit}>
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              Vista Previa de Imagen
-            </DialogTitle>
-          </DialogHeader>
-          
-          {viewingImage && (
-            <div className="flex justify-center">
-              <img 
-                src={viewingImage} 
-                alt="Imagen ampliada" 
-                className="max-h-[70vh] object-contain"
-                onError={handleImageError}
-              />
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewingImage(null)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

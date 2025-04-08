@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
@@ -9,13 +8,37 @@ import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
 import { initializeStorage } from '@/services/storage/imageStorage';
 import { getLowStockItems } from '@/services/inventoryService';
+import { deleteMenuItem } from '@/services/menu/menuItemService';
+
+window.deleteMenuItemWithConfirmation = async (id: string) => {
+  if (!window.confirm("¿Está seguro de que desea eliminar este elemento?")) {
+    return false;
+  }
+  
+  const success = await deleteMenuItem(id, false);
+  
+  if (!success) {
+    if (window.confirm("Este plato está siendo usado en pedidos. ¿Desea eliminarlo de todas formas? Esto eliminará también las referencias en los pedidos.")) {
+      const forceSuccess = await deleteMenuItem(id, true);
+      if (forceSuccess) {
+        toast.success("Elemento eliminado con éxito");
+        window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+        return true;
+      }
+    }
+    return false;
+  } 
+  
+  toast.success("Elemento eliminado con éxito");
+  window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+  return true;
+};
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Inicialización de almacenamiento - simplificada para evitar re-renderizados
   useEffect(() => {
     const initStorage = async () => {
       try {

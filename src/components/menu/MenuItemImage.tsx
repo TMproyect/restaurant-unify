@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ImageOff, RefreshCw } from 'lucide-react';
 
@@ -16,43 +16,8 @@ const MenuItemImage = ({
 }: MenuItemImageProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [actualImageUrl, setActualImageUrl] = useState('');
-  const maxRetries = 2;
   
-  // Asegurarnos de que la URL sea limpia para evitar problemas de caché
-  useEffect(() => {
-    // Añadir parámetro para evitar caché
-    const cleanBaseUrl = imageUrl.split('?')[0];
-    const newUrl = `${cleanBaseUrl}?t=${Date.now()}`;
-    setActualImageUrl(newUrl);
-    
-    // Resetear estados cuando cambia la URL de la imagen
-    setIsLoading(true);
-    setHasError(false);
-    setRetryCount(0);
-    
-    console.log('🖼️ URL de imagen preparada:', newUrl);
-  }, [imageUrl]);
-  
-  const retryLoading = () => {
-    if (retryCount < maxRetries) {
-      console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, actualImageUrl);
-      
-      // Generar nueva URL con timestamp para forzar recarga sin caché
-      const baseUrl = actualImageUrl.split('?')[0];
-      const forcedUrl = `${baseUrl}?t=${Date.now()}`;
-      setActualImageUrl(forcedUrl);
-      
-      // Resetear estados
-      setIsLoading(true);
-      setHasError(false);
-      setRetryCount(prev => prev + 1);
-      
-      console.log('🖼️ Forzando recarga con URL:', forcedUrl);
-    }
-  };
-  
+  // Since we're using Base64, we don't need retries or cache busting anymore
   return (
     <div className="relative w-full">
       {isLoading && !hasError && (
@@ -67,42 +32,27 @@ const MenuItemImage = ({
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={retryLoading}
-              disabled={retryCount >= maxRetries}
+              disabled={true}
             >
-              {retryCount < maxRetries ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reintentar
-                </>
-              ) : (
-                <>
-                  <ImageOff className="h-4 w-4 mr-2" />
-                  Imagen no disponible
-                </>
-              )}
+              <ImageOff className="h-4 w-4 mr-2" />
+              Imagen no disponible
             </Button>
           </div>
         </div>
       ) : (
         <img 
-          src={actualImageUrl} 
+          src={imageUrl} 
           alt={alt} 
           className={className}
           style={{ display: isLoading ? 'none' : 'block' }}
           onLoad={() => {
-            console.log('🖼️ Imagen cargada correctamente:', actualImageUrl);
+            console.log('🖼️ Imagen cargada correctamente');
             setIsLoading(false);
           }}
           onError={(e) => {
-            console.error('🖼️ Error al cargar imagen:', actualImageUrl, e);
+            console.error('🖼️ Error al cargar imagen:', e);
             setIsLoading(false);
             setHasError(true);
-            
-            // Reintento automático sin demora la primera vez
-            if (retryCount === 0) {
-              retryLoading();
-            }
           }}
         />
       )}

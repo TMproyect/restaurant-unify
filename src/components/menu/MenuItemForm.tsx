@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -31,7 +30,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-// Define schema for menu item form
 const formSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
   description: z.string().optional(),
@@ -58,7 +56,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Initialize the form with default values or item values if editing
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -73,7 +70,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     },
   });
 
-  // Set image preview if item has an image
   useEffect(() => {
     if (item?.image_url) {
       setImagePreview(item.image_url);
@@ -84,24 +80,20 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Validate file type
     if (!file.type.match('image.*')) {
       toast.error('Solo se permiten archivos de imagen');
       return;
     }
     
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('La imagen no debe superar los 5MB');
       return;
     }
     
-    // Log the detected file type
     console.log('📦 Archivo seleccionado con tipo:', file.type);
     
     setImageFile(file);
     
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setImagePreview(e.target?.result as string);
@@ -127,39 +119,33 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     try {
       let imageUrl = item?.image_url;
       
-      // Upload image if a new one was selected
       if (imageFile) {
-        // Verificación extra del tipo de archivo antes de subir
-        console.log('📦 Verificando tipo de archivo antes de subir:', imageFile.type);
+        console.log('📦 Procesando archivo tipo:', imageFile.type);
         
-        // Comprobamos una vez más que sea una imagen válida
         if (!imageFile.type.match('image.*')) {
           toast.error('El archivo seleccionado no es una imagen válida');
           setIsLoading(false);
           return;
         }
         
-        const fileName = `menu_${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
-        const uploadResult = await uploadMenuItemImage(imageFile, fileName);
+        const uploadResult = await uploadMenuItemImage(imageFile);
         
         if (typeof uploadResult === 'string') {
           imageUrl = uploadResult;
-          console.log('📦 Imagen subida correctamente, URL:', imageUrl);
+          console.log('📦 Imagen procesada como Base64');
         } else if (uploadResult && uploadResult.error) {
-          toast.error(`Error al subir la imagen: ${uploadResult.error}`);
+          toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
           setIsLoading(false);
           return;
         } else if (uploadResult && uploadResult.url) {
           imageUrl = uploadResult.url;
-          console.log('📦 Imagen subida correctamente, URL:', imageUrl);
         } else {
-          toast.error('Error al subir la imagen');
+          toast.error('Error al procesar la imagen');
           setIsLoading(false);
           return;
         }
       }
       
-      // Prepare item data with required fields
       const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
         name: data.name,
         description: data.description || '',
@@ -174,13 +160,10 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       
       let success: boolean;
       
-      // Create or update item
       if (item) {
-        // Update existing item
         const updatedItem = await updateMenuItem(item.id, itemData);
         success = !!updatedItem;
       } else {
-        // Create new item
         const newItem = await createMenuItem(itemData);
         success = !!newItem;
       }

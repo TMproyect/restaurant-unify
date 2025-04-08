@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
-import { uploadMenuItemImage, deleteMenuItemImage } from '../storage/imageStorage';
 
 export interface MenuItem {
   id: string;
@@ -40,7 +39,10 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem | null> => {
   try {
-    console.log('🍽️ Creando nuevo ítem del menú:', JSON.stringify(item, null, 2));
+    console.log('🍽️ Creando nuevo ítem del menú:', { 
+      ...item, 
+      image_url: item.image_url ? `[Base64 Image: ${item.image_url.substring(0, 30)}...]` : undefined 
+    });
     
     if (item.sku) {
       console.log('🍽️ Verificando si el SKU ya existe:', item.sku);
@@ -63,7 +65,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
       console.log('🍽️ SKU disponible, continuando...');
     }
     
-    console.log('🍽️ Enviando datos a la base de datos:', item);
+    console.log('🍽️ Enviando datos a la base de datos (imagen incluida como Base64):', item);
     const { data, error } = await supabase
       .from('menu_items')
       .insert([item])
@@ -75,7 +77,10 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
       throw error;
     }
 
-    console.log('🍽️ Ítem creado exitosamente:', data);
+    console.log('🍽️ Ítem creado exitosamente:', { 
+      ...data, 
+      image_url: data.image_url ? '[Base64 Image Data]' : undefined 
+    });
     return mapSingleResponse<MenuItem>(data, 'Failed to map created menu item');
   } catch (error) {
     console.error('🍽️ Error en createMenuItem:', error);

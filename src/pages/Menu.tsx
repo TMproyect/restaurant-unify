@@ -7,31 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
-import { initializeStorage } from '@/services/storage/imageStorage';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  useEffect(() => {
-    const initStorage = async () => {
-      try {
-        const result = await initializeStorage();
-        if (result) {
-          console.log('📦 Almacenamiento de imágenes inicializado correctamente');
-        } else {
-          console.warn('📦 No se pudo inicializar el almacenamiento de imágenes correctamente');
-          toast.error("Hubo un problema con el almacenamiento. Las imágenes podrían no cargarse correctamente.");
-        }
-      } catch (error) {
-        console.error('Error al inicializar almacenamiento:', error);
-        toast.error("Error al inicializar el sistema de almacenamiento de imágenes");
-      }
-    };
-    
-    initStorage();
-  }, []);
+  // We don't need to initialize storage anymore since we're using Base64
   
   const loadCategories = async () => {
     try {

@@ -17,34 +17,41 @@ const MenuItemImage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [actualImageUrl, setActualImageUrl] = useState('');
   const maxRetries = 2;
   
-  // URL limpia para máxima compatibilidad - sin parámetros
-  const cleanImageUrl = imageUrl.split('?')[0];
-  
-  const retryLoading = () => {
-    if (retryCount < maxRetries) {
-      console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, cleanImageUrl);
-      setIsLoading(true);
-      setHasError(false);
-      setRetryCount(prev => prev + 1);
-      
-      // Forzar recarga con un nuevo timestamp para evitar caché
-      const imgElement = document.querySelector(`img[data-src="${cleanImageUrl}"]`) as HTMLImageElement;
-      if (imgElement) {
-        const forcedUrl = `${cleanImageUrl}?t=${Date.now()}`;
-        imgElement.src = forcedUrl;
-        console.log('🖼️ Forzando recarga con URL:', forcedUrl);
-      }
-    }
-  };
-  
+  // Asegurarnos de que la URL sea limpia para evitar problemas de caché
   useEffect(() => {
+    // Añadir parámetro para evitar caché
+    const cleanBaseUrl = imageUrl.split('?')[0];
+    const newUrl = `${cleanBaseUrl}?t=${Date.now()}`;
+    setActualImageUrl(newUrl);
+    
     // Resetear estados cuando cambia la URL de la imagen
     setIsLoading(true);
     setHasError(false);
     setRetryCount(0);
+    
+    console.log('🖼️ URL de imagen preparada:', newUrl);
   }, [imageUrl]);
+  
+  const retryLoading = () => {
+    if (retryCount < maxRetries) {
+      console.log(`🖼️ Reintentando cargar imagen (${retryCount + 1}/${maxRetries}):`, actualImageUrl);
+      
+      // Generar nueva URL con timestamp para forzar recarga sin caché
+      const baseUrl = actualImageUrl.split('?')[0];
+      const forcedUrl = `${baseUrl}?t=${Date.now()}`;
+      setActualImageUrl(forcedUrl);
+      
+      // Resetear estados
+      setIsLoading(true);
+      setHasError(false);
+      setRetryCount(prev => prev + 1);
+      
+      console.log('🖼️ Forzando recarga con URL:', forcedUrl);
+    }
+  };
   
   return (
     <div className="relative w-full">
@@ -79,17 +86,16 @@ const MenuItemImage = ({
         </div>
       ) : (
         <img 
-          src={cleanImageUrl} 
+          src={actualImageUrl} 
           alt={alt} 
           className={className}
-          data-src={cleanImageUrl}
           style={{ display: isLoading ? 'none' : 'block' }}
           onLoad={() => {
-            console.log('🖼️ Imagen cargada correctamente:', cleanImageUrl);
+            console.log('🖼️ Imagen cargada correctamente:', actualImageUrl);
             setIsLoading(false);
           }}
           onError={(e) => {
-            console.error('🖼️ Error al cargar imagen:', cleanImageUrl, e);
+            console.error('🖼️ Error al cargar imagen:', actualImageUrl, e);
             setIsLoading(false);
             setHasError(true);
             

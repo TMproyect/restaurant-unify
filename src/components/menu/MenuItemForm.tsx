@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { MenuItem, createMenuItem, updateMenuItem } from '@/services/menu/menuItemService';
@@ -96,7 +97,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     }
     
     // Log the detected file type
-    console.log('📦 File selected with type:', file.type);
+    console.log('📦 Archivo seleccionado con tipo:', file.type);
     
     setImageFile(file);
     
@@ -128,20 +129,29 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       
       // Upload image if a new one was selected
       if (imageFile) {
-        // Log image file type right before upload
-        console.log('📦 About to upload image with type:', imageFile.type);
+        // Verificación extra del tipo de archivo antes de subir
+        console.log('📦 Verificando tipo de archivo antes de subir:', imageFile.type);
+        
+        // Comprobamos una vez más que sea una imagen válida
+        if (!imageFile.type.match('image.*')) {
+          toast.error('El archivo seleccionado no es una imagen válida');
+          setIsLoading(false);
+          return;
+        }
         
         const fileName = `menu_${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
         const uploadResult = await uploadMenuItemImage(imageFile, fileName);
         
         if (typeof uploadResult === 'string') {
           imageUrl = uploadResult;
+          console.log('📦 Imagen subida correctamente, URL:', imageUrl);
         } else if (uploadResult && uploadResult.error) {
           toast.error(`Error al subir la imagen: ${uploadResult.error}`);
           setIsLoading(false);
           return;
         } else if (uploadResult && uploadResult.url) {
           imageUrl = uploadResult.url;
+          console.log('📦 Imagen subida correctamente, URL:', imageUrl);
         } else {
           toast.error('Error al subir la imagen');
           setIsLoading(false);
@@ -199,6 +209,9 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
           <DialogTitle>
             {item ? 'Editar Plato' : 'Añadir Nuevo Plato'}
           </DialogTitle>
+          <DialogDescription>
+            Complete el formulario para {item ? 'actualizar' : 'crear'} un plato del menú.
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>

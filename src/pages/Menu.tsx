@@ -17,9 +17,16 @@ const Menu: React.FC = () => {
   useEffect(() => {
     const initStorage = async () => {
       try {
-        await initializeStorage();
+        const result = await initializeStorage();
+        if (result) {
+          console.log('📦 Almacenamiento de imágenes inicializado correctamente');
+        } else {
+          console.warn('📦 No se pudo inicializar el almacenamiento de imágenes correctamente');
+          toast.error("Hubo un problema con el almacenamiento. Las imágenes podrían no cargarse correctamente.");
+        }
       } catch (error) {
         console.error('Error al inicializar almacenamiento:', error);
+        toast.error("Error al inicializar el sistema de almacenamiento de imágenes");
       }
     };
     
@@ -41,7 +48,7 @@ const Menu: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-    console.log('🔄 Menu loaded without inventory features');
+    console.log('🔄 Menu cargado correctamente');
   }, []);
 
   const handleCategoriesUpdated = () => {

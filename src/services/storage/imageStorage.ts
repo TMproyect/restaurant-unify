@@ -5,10 +5,6 @@ import { toast } from 'sonner';
 // Store the bucket name in a constant to avoid typos
 const BUCKET_NAME = 'menu_images';
 
-// Get Supabase URL and key from the same constants used to initialize the client
-const SUPABASE_URL = "https://imcxvnivqrckgjrimzck.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltY3h2bml2cXJja2dqcmltemNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5NjM4NjIsImV4cCI6MjA1ODUzOTg2Mn0.BGIWnSFMuz4AR0FuYeH8kRvRwoa72x6JMtdnTbOE6k0";
-
 /**
  * Verifies that the bucket exists without repeatedly trying to create it
  * This verification is only done when absolutely necessary
@@ -92,19 +88,19 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Uploading image: ${uniqueFileName}, size: ${file.size} bytes, type: ${file.type}`);
     
-    // Log the exact content type we're using from the file
-    console.log(`📦 File content type detected: ${file.type}`);
+    // IMPORTANTE: Esto es crítico - aseguramos el contentType correcto
+    // Registrar claramente el tipo que estamos usando
+    console.log(`📦 Usando tipo de contenido explícito: ${file.type}`);
     
-    // Simplify options - JUST pass contentType and set upsert to false
-    // This is the key change to fix the content type issue
+    // Simplificamos las opciones al mínimo necesario - SOLO contentType y upsert: false
     const uploadOptions = {
-      contentType: file.type, 
+      contentType: file.type,
       upsert: false
     };
     
-    console.log(`📦 Upload options being used:`, uploadOptions);
+    console.log(`📦 Opciones de carga utilizadas:`, uploadOptions);
     
-    // Perform the upload with simplified options
+    // Realizar la carga con las opciones simplificadas
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, uploadOptions);

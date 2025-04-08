@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -294,23 +295,64 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
         // Tercer intento con último recurso (políticas públicas)
         console.log('📦 Realizando tercer y último intento con políticas públicas...');
         
-        // Ejecutar la migración SQL directamente mediante una consulta personalizada
+        // Usar system_settings en lugar de storage_policies_fix
         try {
-          console.log('📦 Intentando ejecutar la reinicialización manual del bucket...');
+          console.log('📦 Intentando configurar storage a través de system_settings...');
           
-          // Usar PostgreSQL directamente en lugar de RPC
-          const { error: policyError } = await supabase.from('storage_policies_fix')
-            .insert([{ trigger_manual_fix: true }])
-            .select()
-            .single();
+          // Usar system_settings que está en los tipos de TypeScript
+          const { error: settingsError } = await supabase.from('system_settings')
+            .upsert([
+              { 
+                key: 'storage_bucket_init', 
+                value: JSON.stringify({
+                  bucket: 'menu_images',
+                  initialized: false,
+                  last_attempt: new Date().toISOString()
+                })
+              }
+            ]);
             
-          if (policyError) {
-            console.error('📦 Error al intentar solución alternativa:', policyError);
+          if (settingsError) {
+            console.error('📦 Error al intentar solución alternativa:', settingsError);
           } else {
-            console.log('📦 Solución alternativa aplicada');
+            console.log('📦 Solicitud de inicialización registrada');
+            
+            // Intentar crear o actualizar bucket manualmente
+            console.log('📦 Intentando crear bucket manualmente...');
+            try {
+              const { data: createBucketData, error: createBucketError } = await supabase.storage
+                .createBucket('menu_images', {
+                  public: true,
+                  fileSizeLimit: 20971520 // 20MB
+                });
+              
+              if (createBucketError) {
+                // Si ya existe, intentar actualizar
+                if (createBucketError.message?.includes('already exists')) {
+                  console.log('📦 El bucket ya existe, actualizando...');
+                  const { error: updateError } = await supabase.storage
+                    .updateBucket('menu_images', {
+                      public: true,
+                      fileSizeLimit: 20971520 // 20MB
+                    });
+                  
+                  if (updateError) {
+                    console.error('📦 Error al actualizar bucket:', updateError);
+                  } else {
+                    console.log('📦 Bucket actualizado exitosamente');
+                  }
+                } else {
+                  console.error('📦 Error al crear bucket:', createBucketError);
+                }
+              } else {
+                console.log('📦 Bucket creado exitosamente:', createBucketData);
+              }
+            } catch (storageError) {
+              console.error('📦 Error al manipular bucket:', storageError);
+            }
           }
         } catch (rpcError) {
-          console.error('📦 Error al intentar reinicializar políticas:', rpcError);
+          console.error('📦 Error al intentar alternativa de system_settings:', rpcError);
         }
         
         // Esperar que se apliquen los cambios
@@ -462,6 +504,24 @@ const initializeStorageBucket = async (forceRecreate: boolean = false): Promise<
       }
     } else {
       console.log('📦 El bucket ya existe, continuando...');
+    }
+    
+    // Registrar el estatus de inicialización en system_settings
+    try {
+      const { error: settingsError } = await supabase.from('system_settings')
+        .upsert([{ 
+          key: 'menu_images_bucket_status', 
+          value: JSON.stringify({
+            initialized: true,
+            updated_at: new Date().toISOString()
+          })
+        }]);
+      
+      if (settingsError) {
+        console.error('📦 Error al registrar estado del bucket:', settingsError);
+      }
+    } catch (settingsError) {
+      console.error('📦 Error al actualizar settings:', settingsError);
     }
     
     // Verificar políticas

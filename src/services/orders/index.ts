@@ -1,11 +1,15 @@
 
 console.log('🔄 [orders/index] Loading orders module');
 
+// Import and re-export everything from orderQueries
 export * from './orderQueries';
-// Explicitly exclude getOrderByExternalId from orderCreation to avoid duplicate exports
+
+// Explicitly export only createOrder from orderCreation to avoid duplicating getOrderByExternalId
 export { 
   createOrder
 } from './orderCreation';
+
+// Export everything else
 export * from './orderUpdates';
 export * from './orderSubscriptions';
 

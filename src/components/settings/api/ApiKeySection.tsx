@@ -151,8 +151,9 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
       const projectId = 'imcxvnivqrckgjrimzck';
       const testEndpoint = `https://${projectId}.supabase.co/functions/v1/ingresar-pedido`;
       
+      // Test payload más simple para reducir posibles errores
       const testPayload = {
-        nombre_cliente: "Cliente de Prueba",
+        nombre_cliente: "Cliente de Prueba API",
         numero_mesa: "1",
         items_pedido: [
           {
@@ -164,6 +165,10 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         total_pedido: 10.0
       };
 
+      console.log("Realizando prueba de la API key:", apiKey.substring(0, 4) + "****" + apiKey.substring(apiKey.length - 4));
+      console.log("Endpoint:", testEndpoint);
+      console.log("Payload:", JSON.stringify(testPayload));
+      
       const response = await fetch(testEndpoint, {
         method: 'POST',
         headers: {
@@ -173,7 +178,17 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         body: JSON.stringify(testPayload)
       });
 
-      const result = await response.json();
+      console.log("Status de la respuesta:", response.status);
+      
+      // Intentar obtener el cuerpo de la respuesta como JSON
+      let result;
+      try {
+        result = await response.json();
+        console.log("Respuesta completa:", result);
+      } catch (jsonError) {
+        console.error("Error al parsear la respuesta como JSON:", jsonError);
+        result = { error: "No se pudo leer la respuesta" };
+      }
       
       if (response.ok) {
         setTestStatus('success');
@@ -184,20 +199,25 @@ export const ApiKeySection = ({ apiKey, onApiKeyChange }: ApiKeySectionProps) =>
         });
       } else {
         setTestStatus('error');
-        setTestMessage(`Error: ${result.error || "Respuesta inválida"}`);
+        const errorDetail = result.error || "Respuesta inválida";
+        setTestMessage(`Error: ${errorDetail}`);
         toast({
           title: "Error",
-          description: result.error || "La prueba falló",
+          description: errorDetail,
           variant: "destructive"
         });
+        
+        if (result.details) {
+          console.error("Detalles del error:", result.details);
+        }
       }
     } catch (error) {
       console.error('Error testing API key:', error);
       setTestStatus('error');
-      setTestMessage("Error de conexión al probar la clave API");
+      setTestMessage(`Error de conexión: ${error instanceof Error ? error.message : "Error desconocido"}`);
       toast({
-        title: "Error",
-        description: "Error de conexión al probar la clave API",
+        title: "Error de conexión",
+        description: "No se pudo conectar con la función Edge de Supabase",
         variant: "destructive"
       });
     } finally {

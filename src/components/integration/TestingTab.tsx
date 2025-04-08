@@ -193,7 +193,7 @@ ${testPayload}`;
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Atención</AlertTitle>
               <AlertDescription>
-                Debe generar una API key en la sección "Configuración > Integraciones" antes de poder realizar pruebas.
+                Debe generar una API key en la sección "Configuración &gt; Integraciones" antes de poder realizar pruebas.
                 Las claves API se regeneran completamente, no se modifican.
               </AlertDescription>
             </Alert>

@@ -126,18 +126,32 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       // Upload image if a new one was selected
       if (imageFile) {
         const fileName = `menu_${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
-        const uploadResult = await uploadMenuItemImage(fileName, imageFile);
-        if (uploadResult.error) {
+        const uploadResult = await uploadMenuItemImage(imageFile, fileName);
+        if (typeof uploadResult === 'string') {
+          imageUrl = uploadResult;
+        } else if (uploadResult && uploadResult.error) {
           toast.error(`Error al subir la imagen: ${uploadResult.error}`);
           setIsLoading(false);
           return;
+        } else if (uploadResult && uploadResult.url) {
+          imageUrl = uploadResult.url;
+        } else {
+          toast.error('Error al subir la imagen');
+          setIsLoading(false);
+          return;
         }
-        imageUrl = uploadResult.url;
       }
       
-      // Prepare item data
-      const itemData = {
-        ...data,
+      // Prepare item data with required fields
+      const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
+        name: data.name,
+        description: data.description || '',
+        price: data.price,
+        category_id: data.category_id,
+        available: data.available,
+        popular: data.popular,
+        allergens: data.allergens || [],
+        sku: data.sku,
         image_url: imageUrl,
       };
       

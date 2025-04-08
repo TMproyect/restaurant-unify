@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -49,24 +48,35 @@ const verifyBucketExists = async (): Promise<boolean> => {
 };
 
 /**
- * Sube una imagen con manejo mejorado de errores - CORREGIDO PARA SOLUCIONAR EL PROBLEMA DE MULTIPART/FORM-DATA
+ * Interface for image upload result
  */
-export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
+export interface UploadResult {
+  url?: string;
+  error?: string;
+}
+
+/**
+ * Sube una imagen con manejo mejorado de errores
+ * @param file El archivo a subir
+ * @param fileName Nombre opcional del archivo
+ * @returns Una URL de string o un objeto con url/error
+ */
+export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | UploadResult> => {
   if (!file) {
     toast.error("No se seleccionó ningún archivo");
-    return null;
+    return { error: "No se seleccionó ningún archivo" };
   }
 
   // Validaciones básicas
   if (file.size > 5 * 1024 * 1024) {
     toast.error("La imagen no debe superar los 5MB");
-    return null;
+    return { error: "La imagen no debe superar los 5MB" };
   }
 
   const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   if (!validFormats.includes(file.type)) {
     toast.error("Formato de imagen no válido. Use JPG, PNG, GIF o WebP");
-    return null;
+    return { error: "Formato de imagen no válido" };
   }
 
   try {
@@ -77,8 +87,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
     
-    // SOLUCIÓN: Reducir al mínimo las opciones y garantizar que el contentType sea correcto
-    // El problema estaba en las opciones de subida que causaban que el objeto se sirviera como multipart/form-data
+    // Reducir al mínimo las opciones y garantizar que el contentType sea correcto
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, {
@@ -88,12 +97,12 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     if (error) {
       console.error('📦 Error al subir imagen:', error);
       toast.error("Error al subir imagen. Intente nuevamente");
-      return null;
+      return { error: error.message };
     }
     
     if (!data || !data.path) {
       toast.error("Error al procesar imagen subida");
-      return null;
+      return { error: "Error al procesar imagen subida" };
     }
     
     // Obtenemos la URL pública
@@ -103,7 +112,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     
     if (!publicUrlData || !publicUrlData.publicUrl) {
       toast.error("Error al generar URL pública para la imagen");
-      return null;
+      return { error: "Error al generar URL pública" };
     }
     
     const publicUrl = publicUrlData.publicUrl;
@@ -126,11 +135,12 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
       console.warn('📦 No se pudo verificar la URL:', e);
     }
     
+    // Retornar URL como string para compatibilidad con código existente
     return publicUrl;
   } catch (error) {
     console.error('📦 Error general en uploadMenuItemImage:', error);
     toast.error("Error inesperado al subir imagen");
-    return null;
+    return { error: "Error inesperado al subir imagen" };
   }
 };
 

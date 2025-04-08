@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { formatCurrency } from '@/utils/formatters';
+import { deleteMenuItemWithConfirmation } from '@/integrations/menuItemIntegration';
 
 interface MenuManagerProps {
   categories: MenuCategory[];
@@ -104,20 +105,9 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (window.confirm("¿Está seguro de que desea eliminar este elemento?")) {
-      const success = await deleteMenuItem(id, false);
-      if (!success) {
-        if (window.confirm("Este plato está siendo usado en pedidos. ¿Desea eliminarlo de todas formas? Esto eliminará también las referencias en los pedidos.")) {
-          const forceSuccess = await deleteMenuItem(id, true);
-          if (forceSuccess) {
-            toast.success("Elemento eliminado con éxito");
-            loadMenuItems();
-          }
-        }
-      } else {
-        toast.success("Elemento eliminado con éxito");
-        loadMenuItems();
-      }
+    const success = await deleteMenuItemWithConfirmation(id);
+    if (success) {
+      loadMenuItems();
     }
   };
 

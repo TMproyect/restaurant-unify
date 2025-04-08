@@ -128,6 +128,27 @@ export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Pr
 
 export const deleteMenuItem = async (id: string): Promise<boolean> => {
   try {
+    // Primero verificamos si el ítem está referenciado en order_items
+    const { data: orderItems, error: checkError } = await supabase
+      .from('order_items')
+      .select('id')
+      .eq('menu_item_id', filterValue(id))
+      .limit(1);
+    
+    if (checkError) {
+      console.error('Error checking order items references:', checkError);
+      toast.error('Error al verificar si el plato se puede eliminar');
+      return false;
+    }
+    
+    // Si el ítem está siendo usado en pedidos, no permitimos eliminarlo
+    if (orderItems && orderItems.length > 0) {
+      console.log('⚠️ No se puede eliminar el plato porque está referenciado en pedidos');
+      toast.error('No se puede eliminar este plato porque está siendo usado en pedidos. Considere marcarlo como no disponible en su lugar.');
+      return false;
+    }
+    
+    // Si no está referenciado, procedemos con la eliminación
     const { error } = await supabase
       .from('menu_items')
       .delete()

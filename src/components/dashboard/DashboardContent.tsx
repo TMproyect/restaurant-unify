@@ -16,6 +16,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ showOrders }) => {
   useEffect(() => {
     try {
       console.log('🔄 [DashboardContent] Component mounted successfully');
+      console.log('🔍 [DashboardContent] Inventory feature removed, dashboard now focused only on orders and sales');
     } catch (error) {
       console.error('❌ [DashboardContent] Error in component initialization:', error);
       toast.error('Error al cargar el contenido del dashboard');

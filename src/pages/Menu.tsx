@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
 import { initializeStorage } from '@/services/storage/imageStorage';
-import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
@@ -43,21 +42,8 @@ const Menu: React.FC = () => {
   useEffect(() => {
     loadCategories();
     
-    const showInventoryAlerts = async () => {
-      try {
-        const lowStockItems = await getLowStockItems();
-        
-        if (lowStockItems && lowStockItems.length > 0) {
-          lowStockItems.forEach(item => {
-            toast.error(`Alerta de inventario: ${item.name} - Quedan ${item.stock_quantity}${item.unit || ''} (Mínimo: ${item.min_stock_level}${item.unit || ''})`);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading inventory alerts:', error);
-      }
-    };
-
-    showInventoryAlerts();
+    // Removed inventory alerts since we no longer have the inventory feature
+    console.log('🔄 Menu loaded without inventory features');
   }, []);
 
   const handleCategoriesUpdated = () => {

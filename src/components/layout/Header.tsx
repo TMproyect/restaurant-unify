@@ -212,7 +212,7 @@ const Header = () => {
         
         <div className="relative" ref={messagesRef}>
           <button 
-            className="icon-button relative hidden sm:flex"
+            className="icon-button relative flex items-center justify-center"
             onClick={handleMessagesClick}
             aria-label="Messages"
           >

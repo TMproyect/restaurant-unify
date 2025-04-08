@@ -18,6 +18,12 @@ import Login from '@/pages/Login';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Inventory from '@/pages/Inventory';
 import Sales from '@/pages/Sales';
+import Notifications from '@/pages/Notifications';
+import Messages from '@/pages/Messages';
+import Reports from '@/pages/Reports';
+import Delivery from '@/pages/Delivery';
+import Staff from '@/pages/Staff';
+import RolesAndPermissionsPage from '@/pages/RolesAndPermissions';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -52,6 +58,12 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/sales" element={<Sales />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/delivery" element={<Delivery />} />
+              <Route path="/staff" element={<Staff />} />
+              <Route path="/roles-and-permissions" element={<RolesAndPermissionsPage />} />
             </Routes>
           </Router>
           <Toaster />

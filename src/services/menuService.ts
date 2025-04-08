@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -250,7 +249,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     console.log(`📦 Nombre de archivo generado: ${uniqueFileName}`);
     
     // Subir la imagen
-    const { data, error } = await supabase
+    let uploadResult = await supabase
       .storage
       .from('menu_images')
       .upload(uniqueFileName, file, {
@@ -258,15 +257,15 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
         upsert: true
       });
 
-    if (error) {
-      console.error('📦 Error al subir imagen:', error);
+    // Si hay un error, intentar recrear el bucket y volver a intentar
+    if (uploadResult.error) {
+      console.error('📦 Error al subir imagen:', uploadResult.error);
       
-      // Si hay un error, intentar recrear el bucket y volver a intentar
       await verifyStorageConnection(true);
       
       // Segundo intento después de verificar/crear el bucket
       console.log('📦 Segundo intento de subida después de verificar bucket');
-      const secondAttempt = await supabase
+      uploadResult = await supabase
         .storage
         .from('menu_images')
         .upload(uniqueFileName, file, {
@@ -274,25 +273,23 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
           upsert: true
         });
         
-      if (secondAttempt.error) {
-        console.error('📦 Error en segundo intento de subida:', secondAttempt.error);
-        throw secondAttempt.error;
+      if (uploadResult.error) {
+        console.error('📦 Error en segundo intento de subida:', uploadResult.error);
+        throw uploadResult.error;
       }
-      
-      data = secondAttempt.data;
     }
 
-    if (!data || !data.path) {
+    if (!uploadResult.data || !uploadResult.data.path) {
       throw new Error('No se recibió información del archivo subido');
     }
 
-    console.log('📦 Subida exitosa. Ruta:', data?.path);
+    console.log('📦 Subida exitosa. Ruta:', uploadResult.data.path);
     
     // Obtener la URL pública
     const { data: publicUrlData } = supabase
       .storage
       .from('menu_images')
-      .getPublicUrl(data.path);
+      .getPublicUrl(uploadResult.data.path);
     
     console.log('📦 URL pública:', publicUrlData.publicUrl);
 
@@ -375,9 +372,7 @@ export const verifyStorageConnection = async (forceCreate: boolean = false): Pro
         
         if (createBucketError) {
           console.error('📦 Error al crear bucket:', createBucketError);
-          console.log('📦 Código:', createBucketError.code);
           console.log('📦 Mensaje:', createBucketError.message);
-          console.log('📦 Detalles:', createBucketError.details);
           
           // Verificar si el error es porque el bucket ya existe
           if (createBucketError.message?.includes('already exists')) {
@@ -410,7 +405,7 @@ export const verifyStorageConnection = async (forceCreate: boolean = false): Pro
         console.error('📦 Excepción al crear bucket:', createError);
         return { 
           connected: false,
-          message: `Error al crear bucket: ${createError.message || createError}` 
+          message: `Error al crear bucket: ${(createError as Error).message || String(createError)}` 
         };
       }
     }
@@ -472,14 +467,14 @@ export const verifyStorageConnection = async (forceCreate: boolean = false): Pro
       console.error('📦 Error en pruebas de almacenamiento:', testError);
       return {
         connected: false,
-        message: `Error al probar el almacenamiento: ${testError.message || testError}`
+        message: `Error al probar el almacenamiento: ${(testError as Error).message || String(testError)}`
       };
     }
   } catch (error) {
     console.error('📦 Error general en verifyStorageConnection:', error);
     return { 
       connected: false, 
-      message: `Error inesperado: ${error.message || error}` 
+      message: `Error inesperado: ${(error as Error).message || String(error)}` 
     };
   }
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
@@ -36,12 +37,12 @@ const Menu: React.FC = () => {
 
   const initializeBucket = async () => {
     try {
-      const { error } = await supabase.rpc('reinitialize_menu_images_bucket');
-      if (error) throw error;
-      console.log('🛠️ Bucket reinicializado mediante RPC');
+      // Corrigiendo el nombre de la función RPC para que coincida con la definida en supabase/migrations
+      await supabase.functions.invoke('storage-reinitialize');
+      console.log('🛠️ Bucket reinicializado mediante función Edge');
       return true;
     } catch (error) {
-      console.error('🛠️ Error al reinicializar bucket mediante RPC:', error);
+      console.error('🛠️ Error al reinicializar bucket mediante función Edge:', error);
       
       try {
         await initializeStorage();

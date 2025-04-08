@@ -13,8 +13,6 @@ const Menu: React.FC = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // We don't need to initialize storage anymore since we're using Base64
-  
   const loadCategories = async () => {
     try {
       setLoading(true);

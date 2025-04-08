@@ -61,7 +61,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     defaultValues: {
       name: item?.name || '',
       description: item?.description || '',
-      price: item?.price || 0,
+      price: item?.price || undefined,
       category_id: item?.category_id || '',
       available: item?.available ?? true,
       popular: item?.popular ?? false,
@@ -237,16 +237,18 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
                 <FormField
                   control={form.control}
                   name="price"
-                  render={({ field }) => (
+                  render={({ field: { value, onChange, ...field } }) => (
                     <FormItem>
-                      <FormLabel>Precio</FormLabel>
+                      <FormLabel>Precio (COP)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
-                          step="0.01" 
+                          step="1000" 
                           min="0" 
-                          placeholder="0.00" 
-                          {...field} 
+                          placeholder="Precio en pesos" 
+                          value={value === undefined ? '' : value}
+                          onChange={onChange}
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />

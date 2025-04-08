@@ -1,10 +1,10 @@
 
 // Utility function for formatting currency
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
+  return new Intl.NumberFormat('es-CO', {
     style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2
+    currency: 'COP',
+    minimumFractionDigits: 0
   }).format(amount);
 }
 

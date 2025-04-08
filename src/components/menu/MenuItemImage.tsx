@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ImageOff, RefreshCw } from 'lucide-react';
+import { ImageOff } from 'lucide-react';
 
 interface MenuItemImageProps {
   imageUrl: string;
@@ -17,9 +17,8 @@ const MenuItemImage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   
-  // Since we're using Base64, we don't need retries or cache busting anymore
   return (
-    <div className="relative w-full">
+    <div className="relative w-full h-44 overflow-hidden">
       {isLoading && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="animate-pulse bg-gray-200 w-full h-full rounded-t-lg"></div>
@@ -44,7 +43,12 @@ const MenuItemImage = ({
           src={imageUrl} 
           alt={alt} 
           className={className}
-          style={{ display: isLoading ? 'none' : 'block' }}
+          style={{ 
+            display: isLoading ? 'none' : 'block',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
           onLoad={() => {
             console.log('🖼️ Imagen cargada correctamente');
             setIsLoading(false);

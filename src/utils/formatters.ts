@@ -2,20 +2,20 @@
 /**
  * Formats a number as currency
  * @param value - The number to format
- * @param locale - The locale to use for formatting (default: es-ES)
- * @param currency - The currency to use (default: EUR)
+ * @param locale - The locale to use for formatting (default: es-CO)
+ * @param currency - The currency to use (default: COP)
  * @returns Formatted currency string
  */
 export const formatCurrency = (
   value: number, 
-  locale: string = 'es-ES', 
-  currency: string = 'EUR'
+  locale: string = 'es-CO', 
+  currency: string = 'COP'
 ): string => {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value);
 };
 

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -269,9 +268,7 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     // Si hay error, intentar reinicializar el bucket y volver a intentar
     if (result.error) {
       console.error('📦 Error en primer intento de subida:', result.error);
-      console.log('📦 Código de error:', result.error.code || 'No disponible');
       console.log('📦 Mensaje de error:', result.error.message || 'No disponible');
-      console.log('📦 Detalles:', result.error.details || 'No disponible');
       
       // Forzar recreación del bucket
       console.log('📦 Forzando recreación del bucket...');
@@ -292,18 +289,28 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
         
       if (result.error) {
         console.error('📦 Error en segundo intento de subida:', result.error);
-        console.log('📦 Código de error:', result.error.code || 'No disponible');
         console.log('📦 Mensaje de error:', result.error.message || 'No disponible');
         
         // Tercer intento con último recurso (políticas públicas)
         console.log('📦 Realizando tercer y último intento con políticas públicas...');
         
-        // Ejecutar la migración SQL directamente mediante API
-        const { error: policyError } = await supabase.rpc('reinitialize_menu_images_bucket');
-        if (policyError) {
-          console.error('📦 Error al reinicializar políticas:', policyError);
-        } else {
-          console.log('📦 Políticas reinicializadas correctamente');
+        // Ejecutar la migración SQL directamente mediante una consulta personalizada
+        try {
+          console.log('📦 Intentando ejecutar la reinicialización manual del bucket...');
+          
+          // Usar PostgreSQL directamente en lugar de RPC
+          const { error: policyError } = await supabase.from('storage_policies_fix')
+            .insert([{ trigger_manual_fix: true }])
+            .select()
+            .single();
+            
+          if (policyError) {
+            console.error('📦 Error al intentar solución alternativa:', policyError);
+          } else {
+            console.log('📦 Solución alternativa aplicada');
+          }
+        } catch (rpcError) {
+          console.error('📦 Error al intentar reinicializar políticas:', rpcError);
         }
         
         // Esperar que se apliquen los cambios
@@ -444,7 +451,7 @@ const initializeStorageBucket = async (forceRecreate: boolean = false): Promise<
             if (createBucketError.message?.includes('already exists')) {
               console.log('📦 El bucket ya existe, continuando...');
             } else {
-              console.error('📦 Error detallado al crear bucket:', JSON.stringify(createBucketError, null, 2));
+              console.error('📦 Error al crear bucket:', createBucketError.message);
             }
           } else {
             console.log('📦 Bucket creado exitosamente:', createBucketData);
@@ -473,7 +480,7 @@ const initializeStorageBucket = async (forceRecreate: boolean = false): Promise<
         
       if (uploadError) {
         console.error('📦 Error en prueba de permisos:', uploadError);
-        console.log('📦 Error detallado:', JSON.stringify(uploadError, null, 2));
+        console.log('📦 Error detallado:', uploadError.message);
       } else {
         console.log('📦 Prueba de permisos exitosa, eliminando archivo de prueba...');
         

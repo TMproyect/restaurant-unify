@@ -47,7 +47,8 @@ import {
   updateMenuItem, 
   deleteMenuItem,
   uploadMenuItemImage,
-  deleteMenuItemImage
+  deleteMenuItemImage,
+  initializeStorage
 } from '@/services/menuService';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -67,11 +68,9 @@ interface ExtendedMenuItem extends MenuItem {
 interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
-  storageConnected?: boolean;
-  onRetryStorage?: () => void;
 }
 
-const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storageConnected, onRetryStorage }) => {
+const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [menuItems, setMenuItems] = useState<ExtendedMenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<ExtendedMenuItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,11 +93,18 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🍽️ Cargando ítems del menú...');
+        
+        // Inicializar el almacenamiento automáticamente
+        await initializeStorage();
+        
         const itemsData = await fetchMenuItems();
+        console.log('🍽️ Datos cargados:', itemsData.length, 'ítems');
         
         setMenuItems(itemsData as ExtendedMenuItem[]);
         setFilteredItems(itemsData as ExtendedMenuItem[]);
@@ -165,38 +171,73 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
       return;
     }
     
-    let imageUrl = newItem.image_url;
-    if (imageFile) {
-      const uploadedUrl = await uploadMenuItemImage(imageFile);
-      if (uploadedUrl) {
-        imageUrl = uploadedUrl;
+    setIsUploading(true);
+    
+    try {
+      let imageUrl = newItem.image_url;
+      if (imageFile) {
+        console.log('🖼️ Iniciando subida de imagen...');
+        // Inicializar el almacenamiento antes de subir
+        await initializeStorage();
+        
+        const uploadedUrl = await uploadMenuItemImage(imageFile);
+        if (uploadedUrl) {
+          console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
+          imageUrl = uploadedUrl;
+        } else {
+          console.error('🖼️ Error al subir la imagen - URL vacía');
+          toast({
+            title: "Advertencia",
+            description: "No se pudo subir la imagen, pero se guardará el producto sin imagen.",
+            variant: "destructive"
+          });
+        }
       }
-    }
-    
-    const itemToAdd = {
-      name: newItem.name,
-      description: newItem.description || '',
-      price: newItem.price || 0,
-      category_id: newItem.category_id,
-      available: newItem.available !== undefined ? newItem.available : true,
-      popular: newItem.popular || false,
-      allergens: newItem.allergens || [],
-      image_url: imageUrl,
-      sku: newItem.sku || null,
-    };
-    
-    const createdItem = await createMenuItem(itemToAdd);
-    
-    if (createdItem) {
-      setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
       
+      const itemToAdd = {
+        name: newItem.name,
+        description: newItem.description || '',
+        price: newItem.price || 0,
+        category_id: newItem.category_id,
+        available: newItem.available !== undefined ? newItem.available : true,
+        popular: newItem.popular || false,
+        allergens: newItem.allergens || [],
+        image_url: imageUrl,
+        sku: newItem.sku || null,
+      };
+      
+      console.log('🍽️ Guardando nuevo plato:', itemToAdd);
+      
+      const createdItem = await createMenuItem(itemToAdd);
+      
+      if (createdItem) {
+        console.log('🍽️ Plato creado exitosamente:', createdItem);
+        setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
+        
+        toast({
+          title: "Plato añadido",
+          description: `${createdItem.name} ha sido añadido al menú`
+        });
+        
+        setIsAddDialogOpen(false);
+        resetForm();
+      } else {
+        console.error('🍽️ Error al crear plato - respuesta vacía');
+        toast({
+          title: "Error",
+          description: "No se pudo crear el plato. Verifique los datos e intente nuevamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('🍽️ Error en handleAddItem:', error);
       toast({
-        title: "Plato añadido",
-        description: `${createdItem.name} ha sido añadido al menú`
+        title: "Error",
+        description: "Ocurrió un error al guardar el plato. Intente nuevamente.",
+        variant: "destructive"
       });
-      
-      setIsAddDialogOpen(false);
-      resetForm();
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -210,37 +251,72 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
       return;
     }
     
-    let imageUrl = newItem.image_url;
-    if (imageFile) {
-      const uploadedUrl = await uploadMenuItemImage(imageFile);
-      if (uploadedUrl) {
-        imageUrl = uploadedUrl;
+    setIsUploading(true);
+    
+    try {
+      let imageUrl = newItem.image_url;
+      if (imageFile) {
+        console.log('🖼️ Iniciando subida de imagen (continuar)...');
+        // Inicializar el almacenamiento antes de subir
+        await initializeStorage();
+        
+        const uploadedUrl = await uploadMenuItemImage(imageFile);
+        if (uploadedUrl) {
+          console.log('🖼️ Imagen subida exitosamente:', uploadedUrl);
+          imageUrl = uploadedUrl;
+        } else {
+          console.error('🖼️ Error al subir la imagen - URL vacía');
+          toast({
+            title: "Advertencia",
+            description: "No se pudo subir la imagen, pero se guardará el producto sin imagen.",
+            variant: "destructive"
+          });
+        }
       }
-    }
-    
-    const itemToAdd = {
-      name: newItem.name,
-      description: newItem.description || '',
-      price: newItem.price || 0,
-      category_id: newItem.category_id,
-      available: newItem.available !== undefined ? newItem.available : true,
-      popular: newItem.popular || false,
-      allergens: newItem.allergens || [],
-      image_url: imageUrl,
-      sku: newItem.sku || null,
-    };
-    
-    const createdItem = await createMenuItem(itemToAdd);
-    
-    if (createdItem) {
-      setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
       
-      resetForm();
+      const itemToAdd = {
+        name: newItem.name,
+        description: newItem.description || '',
+        price: newItem.price || 0,
+        category_id: newItem.category_id,
+        available: newItem.available !== undefined ? newItem.available : true,
+        popular: newItem.popular || false,
+        allergens: newItem.allergens || [],
+        image_url: imageUrl,
+        sku: newItem.sku || null,
+      };
       
+      console.log('🍽️ Guardando nuevo plato (continuar):', itemToAdd);
+      
+      const createdItem = await createMenuItem(itemToAdd);
+      
+      if (createdItem) {
+        console.log('🍽️ Plato creado exitosamente:', createdItem);
+        setMenuItems(prev => [...prev, createdItem as ExtendedMenuItem]);
+        
+        resetForm();
+        
+        toast({
+          title: "Plato añadido",
+          description: `${createdItem.name} ha sido añadido al menú. Puede continuar añadiendo más platos.`
+        });
+      } else {
+        console.error('🍽️ Error al crear plato - respuesta vacía');
+        toast({
+          title: "Error",
+          description: "No se pudo crear el plato. Verifique los datos e intente nuevamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('🍽️ Error en handleAddAndContinue:', error);
       toast({
-        title: "Plato añadido",
-        description: `${createdItem.name} ha sido añadido al menú`
+        title: "Error",
+        description: "Ocurrió un error al guardar el plato. Intente nuevamente.",
+        variant: "destructive"
       });
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -398,10 +474,37 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
     const file = e.target.files?.[0];
     if (!file) return;
     
+    console.log('🖼️ Archivo seleccionado:', file.name, 'Tamaño:', file.size, 'bytes');
+    
+    // Verificar tamaño de archivo (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      console.warn('🖼️ Archivo demasiado grande:', file.size, 'bytes');
+      toast({
+        title: "Archivo demasiado grande",
+        description: "La imagen no debe superar los 5MB. Por favor, reduzca su tamaño e intente nuevamente.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Verificar formato de archivo
+    const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validFormats.includes(file.type)) {
+      console.warn('🖼️ Formato no válido:', file.type);
+      toast({
+        title: "Formato no válido",
+        description: "Por favor, utilice imágenes en formato JPG, PNG, GIF o WebP.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setImageFile(file);
     
     const previewUrl = URL.createObjectURL(file);
     setImagePreview(previewUrl);
+    
+    console.log('🖼️ Vista previa creada:', previewUrl);
     
     toast({
       title: "Imagen seleccionada",
@@ -597,14 +700,14 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
             
             <DialogFooter className="flex justify-between sm:justify-end">
               <div className="space-x-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isUploading}>
                   Cancelar
                 </Button>
-                <Button onClick={handleAddAndContinue}>
-                  Guardar y Crear otro
+                <Button onClick={handleAddAndContinue} disabled={isUploading}>
+                  {isUploading ? 'Guardando...' : 'Guardar y Crear otro'}
                 </Button>
-                <Button onClick={handleAddItem}>
-                  Guardar
+                <Button onClick={handleAddItem} disabled={isUploading}>
+                  {isUploading ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             </DialogFooter>

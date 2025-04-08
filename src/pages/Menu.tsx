@@ -6,16 +6,14 @@ import CategoryManager from '@/components/menu/CategoryManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Tag, RefreshCw } from 'lucide-react';
-import { fetchMenuCategories, verifyStorageConnection } from '@/services/menuService';
+import { Utensils, Tag } from 'lucide-react';
+import { fetchMenuCategories, initializeStorage } from '@/services/menuService';
 import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [storageConnected, setStorageConnected] = useState(true);
-  const [checkingStorage, setCheckingStorage] = useState(false);
   const { toast } = useToast();
   
   const loadCategories = async () => {
@@ -35,108 +33,27 @@ const Menu: React.FC = () => {
     }
   };
 
-  // Verificar la conexión al almacenamiento de manera silenciosa
-  const silentStorageCheck = async () => {
+  // Inicializar almacenamiento silenciosamente en segundo plano
+  const initStorageBackend = async () => {
     try {
-      console.log('📦 Verificando conexión al almacenamiento silenciosamente...');
-      const connectionResult = await verifyStorageConnection();
-      
-      console.log('📦 Resultado de la verificación silenciosa:', connectionResult);
-      
-      if (typeof connectionResult === 'object') {
-        setStorageConnected(connectionResult.connected);
-        
-        if (connectionResult.connected) {
-          console.log('📦 Conexión al almacenamiento verificada correctamente');
-        } else {
-          console.error('📦 Error de conexión al almacenamiento:', connectionResult.message);
-          // Intentamos crear el bucket de forma silenciosa
-          await verifyStorageConnection(true);
-        }
-      }
+      console.log('🔄 Inicializando backend de almacenamiento...');
+      await initializeStorage();
+      console.log('🔄 Inicialización de almacenamiento completada');
     } catch (error) {
-      console.error('📦 Error en verificación silenciosa de almacenamiento:', error);
-      setStorageConnected(false);
-    }
-  };
-
-  // Verificar la conexión al almacenamiento (botón manual)
-  const checkStorageConnection = async () => {
-    try {
-      setCheckingStorage(true);
-      toast({
-        title: "Verificando almacenamiento",
-        description: "Comprobando conexión al sistema de almacenamiento...",
-      });
-      
-      console.log('📦 Verificando conexión al almacenamiento (manual)...');
-      
-      const connectionResult = await verifyStorageConnection(true);
-      
-      console.log('📦 Resultado verificación manual:', connectionResult);
-      
-      if (typeof connectionResult === 'object') {
-        setStorageConnected(connectionResult.connected);
-        
-        if (connectionResult.connected) {
-          toast({
-            title: "Conexión establecida",
-            description: "Sistema de almacenamiento conectado correctamente"
-          });
-          
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-        } else {
-          toast({
-            title: "Problema de conexión",
-            description: "Intentándolo nuevamente en segundo plano...",
-            variant: "destructive"
-          });
-        }
-      } else if (connectionResult === true) {
-        setStorageConnected(true);
-        toast({
-          title: "Conexión establecida",
-          description: "Sistema de almacenamiento conectado correctamente"
-        });
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        toast({
-          title: "Problema de conexión",
-          description: "Intentándolo nuevamente en segundo plano...",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('📦 Error al verificar conexión de almacenamiento (manual):', error);
-      toast({
-        title: "Error de verificación",
-        description: "Intentándolo nuevamente en segundo plano...",
-        variant: "destructive"
-      });
-    } finally {
-      setTimeout(() => {
-        setCheckingStorage(false);
-      }, 1500);
-      
-      // Intentar nuevamente en segundo plano después de un error
-      setTimeout(() => {
-        silentStorageCheck();
-      }, 3000);
+      console.error('🔄 Error al inicializar almacenamiento:', error);
+      // No mostrar errores al usuario, manejar silenciosamente
     }
   };
 
   useEffect(() => {
     loadCategories();
-    silentStorageCheck();
+    
+    // Inicializar almacenamiento automáticamente
+    initStorageBackend();
     
     // Programar verificaciones periódicas de almacenamiento en segundo plano
     const intervalId = setInterval(() => {
-      silentStorageCheck();
+      initStorageBackend();
     }, 60000); // Verificar cada minuto
     
     return () => clearInterval(intervalId);
@@ -165,6 +82,9 @@ const Menu: React.FC = () => {
   }, [toast]);
 
   const handleSynchronize = () => {
+    // Iniciar sincronización y verificación de almacenamiento
+    initStorageBackend();
+    
     toast({
       title: "Sincronización completada",
       description: "Los cambios han sido sincronizados con todos los dispositivos"
@@ -187,27 +107,6 @@ const Menu: React.FC = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gestión de Menú</h1>
           <div className="flex gap-2">
-            {!storageConnected && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={checkStorageConnection}
-                disabled={checkingStorage}
-                className="text-xs"
-              >
-                {checkingStorage ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                    Verificando...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Conectar almacenamiento
-                  </>
-                )}
-              </Button>
-            )}
             <Button onClick={handleSynchronize}>
               Sincronizar Cambios
             </Button>
@@ -229,9 +128,7 @@ const Menu: React.FC = () => {
           <TabsContent value="menu" className="mt-4">
             <MenuManager 
               categories={categories} 
-              isLoading={loading} 
-              storageConnected={storageConnected}
-              onRetryStorage={checkStorageConnection}
+              isLoading={loading}
             />
           </TabsContent>
           

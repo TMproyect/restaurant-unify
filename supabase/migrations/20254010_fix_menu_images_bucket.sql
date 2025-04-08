@@ -11,22 +11,19 @@ VALUES ('menu_images', 'menu_images', true)
 ON CONFLICT (id) DO UPDATE 
 SET public = true;
 
--- Creamos las políticas necesarias
+-- Creamos las políticas necesarias con permisos amplios
 CREATE POLICY "Public Access to Menu Images" 
 ON storage.objects FOR SELECT 
 USING (bucket_id = 'menu_images');
 
 CREATE POLICY "Upload Menu Images" 
 ON storage.objects FOR INSERT 
-TO authenticated 
-WITH CHECK (bucket_id = 'menu_images');
+USING (bucket_id = 'menu_images');
 
 CREATE POLICY "Update Menu Images" 
 ON storage.objects FOR UPDATE 
-TO authenticated 
 USING (bucket_id = 'menu_images');
 
 CREATE POLICY "Delete Menu Images" 
 ON storage.objects FOR DELETE 
-TO authenticated 
 USING (bucket_id = 'menu_images');

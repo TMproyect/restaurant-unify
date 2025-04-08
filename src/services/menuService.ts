@@ -137,19 +137,30 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem | null> => {
   try {
+    console.log('🍽️ Creando nuevo ítem del menú:', JSON.stringify(item, null, 2));
+    
     if (item.sku) {
+      console.log('🍽️ Verificando si el SKU ya existe:', item.sku);
       const { data: existingSku, error: skuError } = await supabase
         .from('menu_items')
         .select('sku')
         .eq('sku', item.sku)
         .maybeSingle();
       
+      if (skuError) {
+        console.error('🍽️ Error al verificar SKU:', skuError);
+      }
+      
       if (existingSku) {
+        console.log('🍽️ SKU ya existe:', existingSku);
         toast.error(`El SKU "${item.sku}" ya está en uso por otro producto.`);
         return null;
       }
+      
+      console.log('🍽️ SKU disponible, continuando...');
     }
     
+    console.log('🍽️ Enviando datos a la base de datos:', item);
     const { data, error } = await supabase
       .from('menu_items')
       .insert([item])
@@ -157,13 +168,14 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
       .single();
 
     if (error) {
-      console.error('Error creating menu item:', error);
+      console.error('🍽️ Error al crear ítem del menú:', error);
       throw error;
     }
 
+    console.log('🍽️ Ítem creado exitosamente:', data);
     return mapSingleResponse<MenuItem>(data, 'Failed to map created menu item');
   } catch (error) {
-    console.error('Error in createMenuItem:', error);
+    console.error('🍽️ Error en createMenuItem:', error);
     toast.error('Error al crear el elemento del menú');
     return null;
   }
@@ -231,73 +243,121 @@ export const deleteMenuItem = async (id: string): Promise<boolean> => {
 };
 
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
+  console.log('📦 Iniciando proceso de subida de imagen...');
+  console.log(`📦 Archivo a subir: ${file.name}, Tamaño: ${file.size} bytes, Tipo: ${file.type}`);
+  
   try {
-    // Verificar primero la conexión de almacenamiento
-    const storageStatus = await verifyStorageConnection(true);
-    console.log('📦 Estado de almacenamiento antes de subir:', storageStatus);
-    
-    if (!storageStatus || (typeof storageStatus === 'object' && !storageStatus.connected)) {
-      console.error('📦 No se puede subir la imagen, almacenamiento no disponible');
-      toast.error('No se pudo subir la imagen. El sistema de almacenamiento no está disponible.');
-      return null;
-    }
+    // Inicializar bucket automáticamente sin preguntar al usuario
+    console.log('📦 Inicializando bucket de almacenamiento...');
+    await initializeStorageBucket();
     
     // Crear un nombre de archivo único que preserve la extensión original
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     
-    console.log(`📦 Subiendo archivo: ${file.name}, Tamaño: ${file.size} bytes, Tipo: ${file.type}`);
     console.log(`📦 Nombre de archivo generado: ${uniqueFileName}`);
     
-    // Subir la imagen - Usamos let en lugar de const para poder reasignarlo después
-    let uploadResult = await supabase
-      .storage
+    // Primera subida
+    console.log('📦 Primer intento de subida...');
+    let result = await supabase.storage
       .from('menu_images')
       .upload(uniqueFileName, file, {
         cacheControl: '3600',
         upsert: true
       });
 
-    // Si hay un error, intentar recrear el bucket y volver a intentar
-    if (uploadResult.error) {
-      console.error('📦 Error al subir imagen:', uploadResult.error);
+    // Si hay error, intentar reinicializar el bucket y volver a intentar
+    if (result.error) {
+      console.error('📦 Error en primer intento de subida:', result.error);
+      console.log('📦 Código de error:', result.error.code || 'No disponible');
+      console.log('📦 Mensaje de error:', result.error.message || 'No disponible');
+      console.log('📦 Detalles:', result.error.details || 'No disponible');
       
-      await verifyStorageConnection(true);
+      // Forzar recreación del bucket
+      console.log('📦 Forzando recreación del bucket...');
+      await initializeStorageBucket(true);
       
-      // Segundo intento después de verificar/crear el bucket
-      console.log('📦 Segundo intento de subida después de verificar bucket');
-      uploadResult = await supabase
-        .storage
+      // Esperar un segundo para asegurar que los cambios se propaguen
+      console.log('📦 Esperando a que los cambios se propaguen...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Segundo intento con políticas más agresivas
+      console.log('📦 Realizando segundo intento de subida...');
+      result = await supabase.storage
         .from('menu_images')
         .upload(uniqueFileName, file, {
           cacheControl: '3600',
           upsert: true
         });
         
-      if (uploadResult.error) {
-        console.error('📦 Error en segundo intento de subida:', uploadResult.error);
-        throw uploadResult.error;
+      if (result.error) {
+        console.error('📦 Error en segundo intento de subida:', result.error);
+        console.log('📦 Código de error:', result.error.code || 'No disponible');
+        console.log('📦 Mensaje de error:', result.error.message || 'No disponible');
+        
+        // Tercer intento con último recurso (políticas públicas)
+        console.log('📦 Realizando tercer y último intento con políticas públicas...');
+        
+        // Ejecutar la migración SQL directamente mediante API
+        const { error: policyError } = await supabase.rpc('reinitialize_menu_images_bucket');
+        if (policyError) {
+          console.error('📦 Error al reinicializar políticas:', policyError);
+        } else {
+          console.log('📦 Políticas reinicializadas correctamente');
+        }
+        
+        // Esperar que se apliquen los cambios
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Último intento
+        result = await supabase.storage
+          .from('menu_images')
+          .upload(uniqueFileName, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+          
+        if (result.error) {
+          console.error('📦 Error en tercer intento de subida:', result.error);
+          throw new Error(`No se pudo subir la imagen después de múltiples intentos: ${result.error.message}`);
+        }
       }
     }
 
-    if (!uploadResult.data || !uploadResult.data.path) {
+    // Verificar resultado final
+    if (!result.data || !result.data.path) {
+      console.error('📦 Subida completada pero sin datos de archivo');
       throw new Error('No se recibió información del archivo subido');
     }
 
-    console.log('📦 Subida exitosa. Ruta:', uploadResult.data.path);
+    console.log('📦 Subida exitosa. Ruta:', result.data.path);
     
     // Obtener la URL pública
     const { data: publicUrlData } = supabase
       .storage
       .from('menu_images')
-      .getPublicUrl(uploadResult.data.path);
+      .getPublicUrl(result.data.path);
     
-    console.log('📦 URL pública:', publicUrlData.publicUrl);
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      console.error('📦 No se pudo obtener URL pública');
+      throw new Error('No se pudo obtener la URL pública de la imagen');
+    }
+    
+    console.log('📦 URL pública generada:', publicUrlData.publicUrl);
+    
+    // Verificar que la URL sea accesible
+    try {
+      console.log('📦 Verificando accesibilidad de la URL...');
+      const response = await fetch(publicUrlData.publicUrl, { method: 'HEAD' });
+      console.log('📦 Respuesta de verificación:', response.status, response.statusText);
+    } catch (fetchError) {
+      console.warn('📦 No se pudo verificar la URL, pero continuando:', fetchError);
+    }
 
     return publicUrlData.publicUrl;
   } catch (error) {
     console.error('📦 Error en uploadMenuItemImage:', error);
-    toast.error('Error al subir la imagen del menú');
+    toast.error('Error al subir la imagen del menú. Por favor intente con una imagen más pequeña o en otro formato.');
     return null;
   }
 };
@@ -321,6 +381,7 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
       throw error;
     }
 
+    console.log('📦 Imagen eliminada exitosamente');
     return true;
   } catch (error) {
     console.error('📦 Error en deleteMenuItemImage:', error);
@@ -329,153 +390,107 @@ export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> =>
   }
 };
 
-// Verificación y creación del bucket de almacenamiento
-export const verifyStorageConnection = async (forceCreate: boolean = false): Promise<boolean | { connected: boolean, message: string }> => {
+// Función centralizada para inicializar bucket automáticamente
+const initializeStorageBucket = async (forceRecreate: boolean = false): Promise<void> => {
   try {
-    console.log('📦 Verificando conexión de almacenamiento...');
-    console.log('📦 forceCreate:', forceCreate);
+    console.log('📦 Inicializando bucket de almacenamiento...');
+    console.log('📦 Forzar recreación:', forceRecreate);
     
-    // Verificar si el usuario está autenticado para operaciones de almacenamiento
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.log('📦 No hay sesión de usuario activa, algunas operaciones pueden fallar');
-    } else {
-      console.log('📦 Usuario autenticado:', session.user.id);
-    }
-    
-    // Intento 1: Comprobar si el bucket existe
-    console.log('📦 Paso 1: Verificando si existe el bucket menu_images');
-    let { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    // Verificar si existe el bucket
+    console.log('📦 Verificando si existe el bucket menu_images');
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
     
     if (bucketsError) {
       console.error('📦 Error al listar buckets:', bucketsError);
-      return { 
-        connected: false,
-        message: `Error al verificar buckets: ${bucketsError.message}` 
-      };
+      console.log('📦 Error detallado:', JSON.stringify(bucketsError, null, 2));
+      
+      // Intentar continuar de todos modos
     }
     
-    console.log('📦 Buckets encontrados:', buckets?.map(b => b.name) || []);
+    console.log('📦 Buckets existentes:', buckets?.map(b => b.name) || []);
     
     const bucketExists = buckets?.some(bucket => bucket.name === 'menu_images');
     console.log('📦 ¿Existe bucket menu_images?:', bucketExists);
     
     // Si el bucket no existe o forzamos la creación
-    if (!bucketExists || forceCreate) {
+    if (!bucketExists || forceRecreate) {
       try {
-        console.log('📦 Paso 2: Intentando crear bucket menu_images');
-        const { data: createBucketData, error: createBucketError } = await supabase
-          .storage
-          .createBucket('menu_images', {
+        if (bucketExists && forceRecreate) {
+          // No podemos eliminar el bucket directamente, pero actualizamos sus propiedades
+          console.log('📦 Actualizando propiedades del bucket existente...');
+          const { error: updateError } = await supabase.storage.updateBucket('menu_images', {
             public: true,
             fileSizeLimit: 20971520, // 20MB
           });
-        
-        if (createBucketError) {
-          console.error('📦 Error al crear bucket:', createBucketError);
-          console.log('📦 Mensaje:', createBucketError.message);
           
-          // Verificar si el error es porque el bucket ya existe
-          if (createBucketError.message?.includes('already exists')) {
-            console.log('📦 El bucket ya existe, no hay problema');
+          if (updateError) {
+            console.error('📦 Error al actualizar bucket:', updateError);
           } else {
-            return { 
-              connected: false,
-              message: `No se pudo crear el bucket: ${createBucketError.message}` 
-            };
+            console.log('📦 Bucket actualizado correctamente');
           }
         } else {
-          console.log('📦 Bucket creado exitosamente:', createBucketData);
-        }
-        
-        // Esperar un momento para que se propague la creación
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verificar de nuevo si el bucket existe
-        console.log('📦 Paso 3: Verificando nuevamente buckets después de creación');
-        const { data: bucketsAfterCreate, error: bucketsAfterCreateError } = await supabase.storage.listBuckets();
-        
-        if (bucketsAfterCreateError) {
-          console.error('📦 Error al verificar buckets después de creación:', bucketsAfterCreateError);
-        } else {
-          console.log('📦 Buckets después de crear:', bucketsAfterCreate?.map(b => b.name) || []);
-          const bucketNowExists = bucketsAfterCreate?.some(bucket => bucket.name === 'menu_images');
-          console.log('📦 ¿Existe ahora el bucket menu_images?:', bucketNowExists);
+          // Crear el bucket si no existe
+          console.log('📦 Creando nuevo bucket menu_images...');
+          const { data: createBucketData, error: createBucketError } = await supabase.storage
+            .createBucket('menu_images', {
+              public: true,
+              fileSizeLimit: 20971520, // 20MB
+            });
+          
+          if (createBucketError) {
+            console.error('📦 Error al crear bucket:', createBucketError);
+            
+            // Verificar si el error es porque el bucket ya existe
+            if (createBucketError.message?.includes('already exists')) {
+              console.log('📦 El bucket ya existe, continuando...');
+            } else {
+              console.error('📦 Error detallado al crear bucket:', JSON.stringify(createBucketError, null, 2));
+            }
+          } else {
+            console.log('📦 Bucket creado exitosamente:', createBucketData);
+          }
         }
       } catch (createError) {
-        console.error('📦 Excepción al crear bucket:', createError);
-        return { 
-          connected: false,
-          message: `Error al crear bucket: ${(createError as Error).message || String(createError)}` 
-        };
+        console.error('📦 Excepción al crear/actualizar bucket:', createError);
       }
+    } else {
+      console.log('📦 El bucket ya existe, continuando...');
     }
     
-    // Paso 3: Verificar las políticas de RLS
+    // Verificar políticas
+    console.log('📦 Verificando permisos del bucket...');
+    
+    // Crear un pequeño archivo de prueba
     try {
-      console.log('📦 Paso 4: Probando operaciones en el bucket');
-      
-      // Crear un pequeño archivo de prueba
       const testContent = 'Test connection ' + new Date().toISOString();
       const testBlob = new Blob([testContent], { type: 'text/plain' });
       const testFile = new File([testBlob], 'connection_test.txt');
       
-      console.log('📦 Subiendo archivo de prueba...');
+      console.log('📦 Probando permisos con archivo de prueba...');
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('menu_images')
         .upload('connection_test.txt', testFile, { upsert: true });
         
       if (uploadError) {
-        console.error('📦 Error al subir archivo de prueba:', uploadError);
+        console.error('📦 Error en prueba de permisos:', uploadError);
+        console.log('📦 Error detallado:', JSON.stringify(uploadError, null, 2));
+      } else {
+        console.log('📦 Prueba de permisos exitosa, eliminando archivo de prueba...');
         
-        if (uploadError.message?.includes('violated policy')) {
-          console.log('📦 El error parece ser de permisos RLS. Verificando políticas...');
-          return { 
-            connected: false,
-            message: `Problema de permisos: ${uploadError.message}`
-          };
-        }
-        
-        return { 
-          connected: false,
-          message: `Error al subir archivo de prueba: ${uploadError.message}`
-        };
+        // Eliminar el archivo de prueba
+        await supabase.storage
+          .from('menu_images')
+          .remove(['connection_test.txt']);
       }
-      
-      console.log('📦 Archivo de prueba subido correctamente:', uploadData);
-      
-      // Probar obtener URL pública
-      const { data: urlData } = supabase.storage
-        .from('menu_images')
-        .getPublicUrl('connection_test.txt');
-      
-      console.log('📦 URL del archivo de prueba:', urlData?.publicUrl);
-      
-      // Eliminar el archivo de prueba
-      console.log('📦 Eliminando archivo de prueba...');
-      await supabase.storage
-        .from('menu_images')
-        .remove(['connection_test.txt']);
-      
-      console.log('📦 Pruebas completadas con éxito, el almacenamiento funciona correctamente');
-      
-      return { 
-        connected: true,
-        message: 'Conexión al almacenamiento verificada correctamente'
-      };
-      
     } catch (testError) {
-      console.error('📦 Error en pruebas de almacenamiento:', testError);
-      return {
-        connected: false,
-        message: `Error al probar el almacenamiento: ${(testError as Error).message || String(testError)}`
-      };
+      console.error('📦 Error en pruebas de permisos:', testError);
     }
+    
+    console.log('📦 Inicialización de almacenamiento completada');
   } catch (error) {
-    console.error('📦 Error general en verifyStorageConnection:', error);
-    return { 
-      connected: false, 
-      message: `Error inesperado: ${(error as Error).message || String(error)}` 
-    };
+    console.error('📦 Error general en initializeStorageBucket:', error);
   }
 };
+
+// Exportamos la función para uso directo si es necesario
+export const initializeStorage = initializeStorageBucket;

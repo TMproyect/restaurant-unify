@@ -92,16 +92,19 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     console.log(`📦 Uploading image: ${uniqueFileName}, size: ${file.size} bytes, type: ${file.type}`);
     
-    // Ensure that contentType is explicitly defined and correct
-    const contentType = file.type;
-    console.log(`📦 Using explicit contentType: ${contentType}`);
+    // Log the exact content type we're using from the file
+    console.log(`📦 File content type detected: ${file.type}`);
     
-    // Improved configuration with forced contentType
+    // Simplify options - JUST pass contentType and set upsert to false
+    // This is the key change to fix the content type issue
     const uploadOptions = {
-      contentType: contentType, // Explicitly pass the contentType
+      contentType: file.type, 
       upsert: false
     };
     
+    console.log(`📦 Upload options being used:`, uploadOptions);
+    
+    // Perform the upload with simplified options
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(uniqueFileName, file, uploadOptions);
@@ -115,33 +118,6 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
     if (!data || !data.path) {
       toast.error("Error processing uploaded image");
       return { error: "Error processing uploaded image" };
-    }
-    
-    // Check the metadata of the newly uploaded object to confirm contentType
-    try {
-      // Direct HTTP request to check object metadata instead of using protected properties
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      
-      if (token) {
-        const metadataUrl = `${SUPABASE_URL}/storage/v1/object/info/${BUCKET_NAME}/${data.path}`;
-        const metadataResponse = await fetch(metadataUrl, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'apikey': SUPABASE_KEY,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (metadataResponse.ok) {
-          const objectData = await metadataResponse.json();
-          console.log('📦 Uploaded object metadata:', objectData);
-        } else {
-          console.log('📦 Error checking metadata:', await metadataResponse.text());
-        }
-      }
-    } catch (e) {
-      console.log('📦 Could not verify metadata:', e);
     }
     
     // Get the public URL
@@ -171,42 +147,10 @@ export const uploadMenuItemImage = async (file: File, fileName?: string): Promis
         console.warn('📦 Public URL is not correctly accessible');
       }
       
-      // Check if the content-type is correct
+      // Verify that content type matches what we expect
       const returnedContentType = response.headers.get('content-type');
       if (returnedContentType && !returnedContentType.startsWith('image/')) {
-        console.error(`📦 Incorrect Content-Type: ${returnedContentType}, expected: ${contentType}`);
-        
-        // Attempt direct correction through a direct HTTP call instead of RPC
-        try {
-          const session = await supabase.auth.getSession();
-          const token = session.data.session?.access_token;
-          
-          if (token) {
-            // Instead of using RPC, we'll use a direct HTTP call to update metadata
-            const fixMetadataUrl = `${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${data.path}`;
-            const fixResponse = await fetch(fixMetadataUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'apikey': SUPABASE_KEY,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                cacheControl: '3600',
-                contentType: contentType, // Explicitly set correct contentType
-                upsert: true
-              })
-            });
-            
-            if (fixResponse.ok) {
-              console.log('📦 Image metadata corrected successfully');
-            } else {
-              console.log('📦 Error correcting metadata:', await fixResponse.text());
-            }
-          }
-        } catch (e) {
-          console.log('📦 Could not correct metadata automatically:', e);
-        }
+        console.error(`📦 Content-Type mismatch: expected image/*, got ${returnedContentType}`);
       }
     } catch (e) {
       console.warn('📦 Could not verify URL:', e);

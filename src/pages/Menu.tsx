@@ -41,8 +41,6 @@ const Menu: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-    
-    // Previously we had inventory alerts here, but they've been removed completely
     console.log('🔄 Menu loaded without inventory features');
   }, []);
 

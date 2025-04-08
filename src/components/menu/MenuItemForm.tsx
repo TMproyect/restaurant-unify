@@ -95,6 +95,9 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       return;
     }
     
+    // Log the detected file type
+    console.log('📦 File selected with type:', file.type);
+    
     setImageFile(file);
     
     // Create preview
@@ -125,8 +128,12 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       
       // Upload image if a new one was selected
       if (imageFile) {
+        // Log image file type right before upload
+        console.log('📦 About to upload image with type:', imageFile.type);
+        
         const fileName = `menu_${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
         const uploadResult = await uploadMenuItemImage(imageFile, fileName);
+        
         if (typeof uploadResult === 'string') {
           imageUrl = uploadResult;
         } else if (uploadResult && uploadResult.error) {

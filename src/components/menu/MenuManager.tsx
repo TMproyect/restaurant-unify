@@ -8,11 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Pencil, Trash, Plus, Search, Tag, DollarSign, Check, X, Coffee, Utensils } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchMenuItems, MenuItem, deleteMenuItem } from '@/services/menu/menuItemService';
+import { fetchMenuItems, MenuItem } from '@/services/menu/menuItemService';
 import MenuItemForm from './MenuItemForm';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MenuCategory } from '@/services/menu/menuCategoryService';
+import { MenuCategory } from '@/services/menu/categoryService';
 import { formatCurrency } from '@/utils/formatters';
 
 interface MenuManagerProps {
@@ -48,7 +48,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
   useEffect(() => {
     loadMenuItems();
     
-    // Listen for updates from other components
     const handleMenuItemsUpdated = () => {
       loadMenuItems();
     };
@@ -72,7 +71,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
   ) => {
     let result = [...items];
     
-    // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
       result = result.filter(item => 
@@ -82,12 +80,10 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
       );
     }
     
-    // Apply category filter
     if (category && category !== 'all') {
       result = result.filter(item => item.category_id === category);
     }
     
-    // Apply availability filter
     if (availability === 'available') {
       result = result.filter(item => item.available);
     } else if (availability === 'unavailable') {
@@ -111,7 +107,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading: catego
     if (window.confirm("¿Está seguro de que desea eliminar este elemento?")) {
       const success = await deleteMenuItem(id, false);
       if (!success) {
-        // If failed, possibly due to order constraints, ask if they want to force delete
         if (window.confirm("Este plato está siendo usado en pedidos. ¿Desea eliminarlo de todas formas? Esto eliminará también las referencias en los pedidos.")) {
           const forceSuccess = await deleteMenuItem(id, true);
           if (forceSuccess) {

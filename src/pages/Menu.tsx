@@ -7,13 +7,35 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
-import { fetchMenuCategories } from '@/services/menu';
+import { fetchMenuCategories, initializeStorage } from '@/services/menu';
 import { getLowStockItems } from '@/services/inventoryService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [storageInitialized, setStorageInitialized] = useState(false);
+  
+  // Inicialización que solo se ejecuta una vez al cargar la página
+  useEffect(() => {
+    const initializeApp = async () => {
+      // Inicializar storage solo una vez y en paralelo con la carga de datos
+      if (!storageInitialized) {
+        try {
+          const success = await initializeStorage();
+          setStorageInitialized(true);
+          
+          if (!success) {
+            console.warn('❌ Inicialización de almacenamiento fallida');
+          }
+        } catch (error) {
+          console.error('Error al inicializar almacenamiento:', error);
+        }
+      }
+    };
+    
+    initializeApp();
+  }, [storageInitialized]);
   
   const loadCategories = async () => {
     try {
@@ -35,9 +57,11 @@ const Menu: React.FC = () => {
       try {
         const lowStockItems = await getLowStockItems();
         
-        lowStockItems.forEach(item => {
-          toast.error(`Alerta de inventario: ${item.name} - Quedan ${item.stock_quantity}${item.unit || ''} (Mínimo: ${item.min_stock_level}${item.unit || ''})`);
-        });
+        if (lowStockItems && lowStockItems.length > 0) {
+          lowStockItems.forEach(item => {
+            toast.error(`Alerta de inventario: ${item.name} - Quedan ${item.stock_quantity}${item.unit || ''} (Mínimo: ${item.min_stock_level}${item.unit || ''})`);
+          });
+        }
       } catch (error) {
         console.error('Error loading inventory alerts:', error);
       }

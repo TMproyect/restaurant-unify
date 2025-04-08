@@ -1,6 +1,6 @@
 
-// This file is just a re-export for backward compatibility
-// All functionality has been moved to separate modules
+// Este archivo es solo una re-exportación para mantener compatibilidad
+// Toda la funcionalidad se ha movido a módulos separados
 
 import { 
   fetchMenuCategories,
@@ -19,29 +19,31 @@ import {
 import {
   uploadMenuItemImage,
   deleteMenuItemImage,
-  initializeStorage
+  initializeStorage,
+  getImageUrlWithCacheBusting
 } from './storage/imageStorage';
 
-// Re-export all the interfaces and functions for backward compatibility
+// Re-exportar todos los tipos e interfaces para mantener compatibilidad
 export type { MenuCategory } from './menu/categoryService';
 export type { MenuItem } from './menu/menuItemService';
 
-// Re-export all functions
+// Re-exportar todas las funciones
 export {
-  // Category functions
+  // Funciones de categoría
   fetchMenuCategories,
   createMenuCategory,
   updateMenuCategory,
   deleteMenuCategory,
   
-  // Menu item functions
+  // Funciones de elementos del menú
   fetchMenuItems,
   createMenuItem,
   updateMenuItem,
   deleteMenuItem,
   
-  // Storage functions
+  // Funciones de almacenamiento
   uploadMenuItemImage,
   deleteMenuItemImage,
-  initializeStorage
+  initializeStorage,
+  getImageUrlWithCacheBusting
 };

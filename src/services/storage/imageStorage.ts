@@ -2,167 +2,203 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-/**
- * Simplified storage service that focuses on reliable image uploads
- * with minimal initialization overhead
- */
+// Almacenar nombre del bucket en una constante para evitar errores de tipeo
+const BUCKET_NAME = 'menu_images';
 
-// Check if bucket exists without trying to create it repeatedly
-const verifyBucketAccess = async (): Promise<boolean> => {
+/**
+ * Verifica que el bucket exista sin intentar crearlo repetidamente
+ * Esta verificación solo se hace cuando es absolutamente necesario
+ */
+const verifyBucketExists = async (): Promise<boolean> => {
   try {
-    console.log('📦 Verifying bucket access...');
-    const { data, error } = await supabase.storage.listBuckets();
+    // Primero intentamos listar archivos que es una operación menos intrusiva
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .list('', { limit: 1 });
+      
+    if (!error) {
+      return true; // Si podemos listar, el bucket existe y tenemos acceso
+    }
+
+    // Si hay un error, puede ser que el bucket no exista o no tengamos permisos
+    // Verificamos si existe consultando buckets disponibles
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(b => b.name === BUCKET_NAME) || false;
     
-    if (error) {
-      console.error('📦 Error listing buckets:', error);
+    if (bucketExists) {
+      // El bucket existe pero no podemos acceder, es problema de permisos
+      console.warn('📦 Bucket exists but cannot be accessed - permissions issue');
       return false;
     }
     
-    const bucketExists = data.some(bucket => bucket.name === 'menu_images');
-    console.log(`📦 Bucket exists: ${bucketExists}`);
-    
-    if (bucketExists) {
-      // Test read access by listing files
-      const { error: listError } = await supabase.storage
-        .from('menu_images')
-        .list('', { limit: 1 });
-      
-      if (listError) {
-        console.error('📦 Error listing files:', listError);
-        return false;
-      }
-      
-      return true;
-    }
-    
-    return false;
+    // El bucket probablemente no existe, vamos a intentar verificarlo a nivel de DB
+    // Esto evita intentar crear el bucket desde el cliente, que puede fallar con RLS
+    const { data } = await supabase.rpc('verify_menu_images_bucket');
+    return !!data;
   } catch (error) {
-    console.error('📦 Error verifying bucket access:', error);
+    console.error('📦 Error verifying bucket:', error);
     return false;
   }
 };
 
-// Upload an image, with improved error handling and retries
+/**
+ * Sube una imagen con manejo mejorado de errores y caché
+ */
 export const uploadMenuItemImage = async (file: File, fileName?: string): Promise<string | null> => {
+  if (!file) {
+    toast.error("No se seleccionó ningún archivo");
+    return null;
+  }
+
+  // Validaciones básicas
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error("La imagen no debe superar los 5MB");
+    return null;
+  }
+
+  const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!validFormats.includes(file.type)) {
+    toast.error("Formato de imagen no válido. Use JPG, PNG, GIF o WebP");
+    return null;
+  }
+
   try {
-    const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    console.log(`📦 Uploading image: ${uniqueFileName}, size: ${file.size} bytes`);
+    // Verificamos que el bucket exista, pero solo una vez
+    await verifyBucketExists();
     
-    // Verify access before upload
-    const hasAccess = await verifyBucketAccess();
-    if (!hasAccess) {
-      console.error('📦 No access to menu_images bucket');
-      toast.error("Error de almacenamiento. Contacte al administrador.");
+    // Generamos un nombre único para evitar conflictos
+    const uniqueFileName = fileName || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    console.log(`📦 Subiendo imagen: ${uniqueFileName}, tamaño: ${file.size} bytes`);
+    
+    // Subimos la imagen
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(uniqueFileName, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+    
+    if (error) {
+      console.error('📦 Error al subir imagen:', error);
+      toast.error("Error al subir imagen. Intente nuevamente");
       return null;
     }
     
-    // Upload with retry logic
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        console.log(`📦 Upload attempt ${attempt}/3...`);
-        
-        const { data, error } = await supabase.storage
-          .from('menu_images')
-          .upload(uniqueFileName, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
-        
-        if (error) {
-          console.error(`📦 Upload error (attempt ${attempt}/3):`, error);
-          
-          if (attempt < 3) {
-            console.log('📦 Waiting before retry...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            continue;
-          } else {
-            throw error;
-          }
-        }
-        
-        if (!data || !data.path) {
-          console.error('📦 Upload succeeded but no path returned');
-          if (attempt < 3) continue;
-          throw new Error('No path returned from upload');
-        }
-        
-        // Get public URL with full configuration
-        const { data: publicUrlData } = supabase.storage
-          .from('menu_images')
-          .getPublicUrl(data.path, {
-            download: false,
-            transform: {
-              quality: 80
-            }
-          });
-        
-        if (!publicUrlData || !publicUrlData.publicUrl) {
-          console.error('📦 Failed to get public URL');
-          throw new Error('Failed to get public URL');
-        }
-        
-        const publicUrl = publicUrlData.publicUrl;
-        console.log('📦 Successfully uploaded image:', publicUrl);
-        
-        // Verify URL is accessible
-        try {
-          const response = await fetch(publicUrl, { method: 'HEAD' });
-          console.log(`📦 URL verification response: ${response.status}`);
-          
-          if (!response.ok) {
-            console.warn(`📦 URL may not be publicly accessible (status: ${response.status})`);
-          }
-        } catch (verifyError) {
-          console.warn('📦 Could not verify URL access:', verifyError);
-        }
-        
-        return publicUrl;
-      } catch (uploadError) {
-        console.error(`📦 Error in upload attempt ${attempt}:`, uploadError);
-        if (attempt >= 3) throw uploadError;
-      }
+    if (!data || !data.path) {
+      toast.error("Error al procesar imagen subida");
+      return null;
     }
     
-    return null;
+    // Obtenemos la URL pública con transformaciones mínimas para mejor rendimiento
+    const { data: publicUrlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(data.path, {
+        transform: {
+          quality: 80,
+          width: 800
+        }
+      });
+    
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      toast.error("Error al generar URL pública para la imagen");
+      return null;
+    }
+    
+    // Añadimos un parámetro de tiempo para evitar caché del navegador
+    const publicUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    console.log('📦 URL pública generada:', publicUrl);
+    
+    // Verificamos que la URL sea accesible enviando una solicitud HEAD
+    try {
+      const response = await fetch(publicUrl, { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      });
+      
+      if (!response.ok) {
+        console.warn(`📦 URL pública no accesible, código: ${response.status}`);
+      }
+    } catch (e) {
+      console.warn('📦 No se pudo verificar accesibilidad de URL:', e);
+    }
+    
+    return publicUrl;
   } catch (error) {
-    console.error('📦 Upload failed after all attempts:', error);
-    toast.error("No se pudo subir la imagen. Por favor, intente con una imagen más pequeña.");
+    console.error('📦 Error general en uploadMenuItemImage:', error);
+    toast.error("Error inesperado al subir imagen");
     return null;
   }
 };
 
-// Delete an image
+/**
+ * Elimina una imagen con validación robusta
+ */
 export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> => {
+  if (!imageUrl) return false;
+  
   try {
-    // Extract the filename from the URL
-    const fileName = imageUrl.split('/').pop();
+    // Extraemos el nombre del archivo de la URL
+    const urlObj = new URL(imageUrl);
+    const pathParts = urlObj.pathname.split('/');
+    // El último segmento del path debería ser el nombre del archivo
+    const fileName = pathParts[pathParts.length - 1];
+    
     if (!fileName) {
-      console.error('📦 Invalid image URL:', imageUrl);
+      console.error('📦 Nombre de archivo no válido en URL:', imageUrl);
       return false;
     }
     
-    console.log('📦 Deleting image:', fileName);
+    console.log('📦 Eliminando imagen:', fileName);
     
     const { error } = await supabase.storage
-      .from('menu_images')
+      .from(BUCKET_NAME)
       .remove([fileName]);
     
     if (error) {
-      console.error('📦 Error deleting image:', error);
+      console.error('📦 Error al eliminar imagen:', error);
       toast.error('Error al eliminar la imagen');
       return false;
     }
     
-    console.log('📦 Image deleted successfully');
+    console.log('📦 Imagen eliminada correctamente');
     return true;
   } catch (error) {
-    console.error('📦 Error in deleteMenuItemImage:', error);
+    console.error('📦 Error en deleteMenuItemImage:', error);
     toast.error('Error al eliminar la imagen');
     return false;
   }
 };
 
-// Simple initialization that only tests bucket access
+/**
+ * Inicialización simple que solo verifica acceso al bucket
+ * Esta función solo debe llamarse en la carga inicial
+ */
 export const initializeStorage = async (): Promise<boolean> => {
-  return await verifyBucketAccess();
+  try {
+    // Verificar si el bucket existe y tenemos acceso
+    const hasAccess = await verifyBucketExists();
+    
+    if (!hasAccess) {
+      console.warn('📦 No se pudo verificar acceso al bucket menu_images');
+      toast.error("Error de almacenamiento. Esto puede afectar la carga de imágenes.");
+    }
+    
+    return hasAccess;
+  } catch (error) {
+    console.error('📦 Error en initializeStorage:', error);
+    return false;
+  }
+};
+
+// Función de utilidad para añadir parámetro anti-caché a las URLs de imágenes
+export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
+  if (!imageUrl) return '';
+  
+  // Si la URL ya tiene parámetros, añadimos el timestamp
+  if (imageUrl.includes('?')) {
+    return `${imageUrl}&t=${Date.now()}`;
+  }
+  
+  // Si no tiene parámetros, añadimos el timestamp como primer parámetro
+  return `${imageUrl}?t=${Date.now()}`;
 };

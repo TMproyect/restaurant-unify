@@ -1,16 +1,18 @@
 
-// This file re-exports the imageStorage functions for backwards compatibility
-// All functionality has been moved to src/services/storage/imageStorage.ts
+// Este archivo re-exporta las funciones de imageStorage para mantener compatibilidad
+// Toda la funcionalidad se ha movido a src/services/storage/imageStorage.ts
 
 import { 
   uploadMenuItemImage, 
   deleteMenuItemImage, 
-  initializeStorage 
+  initializeStorage,
+  getImageUrlWithCacheBusting
 } from '../storage/imageStorage';
 
-// Re-export for backward compatibility
+// Re-exportar para compatibilidad con código existente
 export { 
   uploadMenuItemImage, 
   deleteMenuItemImage, 
-  initializeStorage 
+  initializeStorage,
+  getImageUrlWithCacheBusting
 };

@@ -3,3 +3,6 @@ project_id = "imcxvnivqrckgjrimzck"
 
 [functions.create-user-with-profile]
 verify_jwt = true
+
+[functions.ingresar-pedido]
+verify_jwt = false

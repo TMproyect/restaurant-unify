@@ -53,6 +53,8 @@ function validatePayload(payload: any): string | null {
 async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   if (!apiKey) return false;
   
+  console.log("Validando API key:", apiKey.substring(0, 4) + "****");
+  
   // Obtener API key almacenada en system_settings
   const { data, error } = await supabase
     .from('system_settings')
@@ -65,7 +67,9 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
     return false;
   }
   
-  return apiKey === data.value;
+  const isValid = apiKey === data.value;
+  console.log("¿API key válida?:", isValid);
+  return isValid;
 }
 
 serve(async (req) => {
@@ -92,8 +96,11 @@ serve(async (req) => {
   // Obtener la API key del encabezado
   const apiKey = req.headers.get('x-api-key');
   if (!apiKey) {
-    console.log("API Key no proporcionada");
-    return new Response(JSON.stringify({ error: "API Key requerida" }), {
+    console.log("API Key no proporcionada en la cabecera 'x-api-key'");
+    return new Response(JSON.stringify({ 
+      error: "API Key requerida", 
+      details: "Debe proporcionar una clave API válida en la cabecera 'x-api-key'"
+    }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -107,8 +114,11 @@ serve(async (req) => {
   // Validar API Key
   const isValidApiKey = await validateApiKey(supabase, apiKey);
   if (!isValidApiKey) {
-    console.log("API Key inválida:", apiKey);
-    return new Response(JSON.stringify({ error: "API Key inválida" }), {
+    console.log("API Key inválida:", apiKey.substring(0, 4) + "****");
+    return new Response(JSON.stringify({ 
+      error: "API Key inválida",
+      details: "La clave API proporcionada no coincide con la clave registrada en el sistema"
+    }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -116,7 +126,20 @@ serve(async (req) => {
   
   try {
     // Procesar el cuerpo de la solicitud
-    const payload = await req.json();
+    let payload;
+    try {
+      payload = await req.json();
+      console.log("Payload recibido:", JSON.stringify(payload).substring(0, 200) + "...");
+    } catch (error) {
+      console.error("Error al parsear JSON:", error);
+      return new Response(JSON.stringify({ 
+        error: "JSON inválido", 
+        details: "El cuerpo de la solicitud no contiene un JSON válido"
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     // Validar estructura del payload
     const validationError = validatePayload(payload);

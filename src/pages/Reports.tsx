@@ -13,7 +13,7 @@ import {
   type HourlySalesData,
   type MonthlySalesData,
   type SavedReport
-} from '@/services/reportService';
+} from '@/services/reports';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line

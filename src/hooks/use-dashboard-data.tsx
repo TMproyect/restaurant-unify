@@ -9,6 +9,7 @@ import {
 import { ActivityMonitorItem, DashboardCardData } from '@/types/dashboard.types';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export function useDashboardData() {
   const [dashboardCards, setDashboardCards] = useState<DashboardCardData[]>([]);
@@ -17,6 +18,7 @@ export function useDashboardData() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast: uiToast } = useToast();
+  const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -79,25 +81,43 @@ export function useDashboardData() {
     
     switch (actionType) {
       case 'view':
-        toast.info(`Ver detalles de orden ${id}`);
-        // Implement actual navigation or modal
+        toast.success(`Viendo detalles de orden ${id}`);
+        navigate(`/orders/${id}`);
         break;
       case 'prioritize':
-        toast.success(`Orden ${id} priorizada en cocina`);
-        // Implement actual API call
+        toast.success(`¡Orden ${id} priorizada en cocina!`);
+        // Execute the actual prioritization functionality
+        fetch(`/api/orders/${id}/prioritize`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+          .then(response => {
+            if (!response.ok) throw new Error('Error al priorizar orden');
+            return response.json();
+          })
+          .then(() => {
+            refreshAllData(); // Refresh data after prioritization
+          })
+          .catch(error => {
+            console.error('Error al priorizar:', error);
+            toast.error(`Error al priorizar orden ${id}`);
+          });
         break;
       case 'review-cancel':
-        toast.info(`Revisando cancelación de orden ${id}`);
-        // Implement actual navigation or modal
+        toast.success(`Revisando cancelación de orden ${id}`);
+        navigate(`/orders/${id}?tab=cancellation`);
         break;
       case 'review-discount':
-        toast.info(`Revisando descuento de orden ${id}`);
-        // Implement actual navigation or modal
+        toast.success(`Revisando descuento de orden ${id}`);
+        navigate(`/orders/${id}?tab=discount`);
         break;
       default:
         console.warn('❌ [useDashboardData] Unknown action type:', actionType);
+        toast.error(`Acción desconocida: ${actionType}`);
     }
-  }, []);
+  }, [navigate, refreshAllData]);
 
   // Initial data loading and real-time subscription
   useEffect(() => {

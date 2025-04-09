@@ -1,7 +1,7 @@
 
-// Re-export dashboard service functions
+// Export all dashboard service functions
 export { getDashboardStats } from './dashboardStats';
 export { generateDashboardCards } from './dashboardCards';
 export { subscribeToDashboardUpdates } from './dashboardRealtime';
-export { getActivityMonitor } from './activityMonitor';
+export { getActivityMonitor, prioritizeOrder } from './activityMonitor';
 export { checkSystemStatus } from './systemStatus';

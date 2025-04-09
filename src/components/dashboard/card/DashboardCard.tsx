@@ -6,12 +6,12 @@ import { DashboardCardData } from '@/types/dashboard.types';
 import CardIcon from './CardIcon';
 import { getCardGradient } from './dashboardCardStyles';
 
-export const DashboardCard: React.FC<DashboardCardData> = ({ 
+const DashboardCard: React.FC<DashboardCardData> = ({ 
   title, 
   value, 
   icon, 
   change, 
-  details 
+  subvalue 
 }) => {
   const { bg, iconBg, textColor } = getCardGradient(icon);
   
@@ -41,9 +41,9 @@ export const DashboardCard: React.FC<DashboardCardData> = ({
           </p>
         )}
         
-        {details && (
+        {subvalue && (
           <p className="text-xs text-muted-foreground mt-1">
-            {details}
+            {subvalue}
           </p>
         )}
       </CardContent>

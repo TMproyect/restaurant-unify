@@ -35,7 +35,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
         <Button 
           variant="warning" 
           size="sm"
-          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full mt-1"
+          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full"
           onClick={(e) => handleClick(e, 'preparing')}
         >
           <ChefHat size={18} />
@@ -48,7 +48,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
         <Button 
           variant="success" 
           size="sm"
-          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full mt-1"
+          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full"
           onClick={(e) => handleClick(e, 'ready')}
         >
           <CheckCircle size={18} />
@@ -62,7 +62,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
           variant="outline" 
           size="sm"
           disabled
-          className="flex items-center gap-1 w-full mt-1 opacity-70"
+          className="flex items-center gap-1 w-full opacity-70"
         >
           <XCircle size={18} />
           <span>Cancelado</span>

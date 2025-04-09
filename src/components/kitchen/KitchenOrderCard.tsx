@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import ActionButton from './ActionButton';
@@ -99,7 +100,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
   return (
     <>
       <Card 
-        className={`hover:shadow-md transition-shadow ${getCardStyles()} ${urgentClass} cursor-pointer`}
+        className={`hover:shadow-md transition-shadow ${getCardStyles()} ${urgentClass} cursor-pointer flex flex-col h-full`}
         onClick={handleOpenDetails}
       >
         <CardHeader className="p-3 pb-2 space-y-1">
@@ -133,7 +134,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
           </div>
         </CardHeader>
         
-        <CardContent className="p-3 pt-0">
+        <CardContent className="p-3 pt-0 flex-grow flex flex-col">
           <ul className="space-y-1.5">
             {order.items.map((item, index) => (
               <OrderItemDisplay 
@@ -144,13 +145,16 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             ))}
           </ul>
           
+          {/* Action button now at the bottom with auto margin top */}
           {hasManagePermission && (
-            <ActionButton 
-              orderStatus={orderStatus}
-              hasManagePermission={hasManagePermission}
-              orderId={order.id}
-              updateOrderStatus={updateOrderStatus}
-            />
+            <div className="mt-auto pt-2">
+              <ActionButton 
+                orderStatus={orderStatus}
+                hasManagePermission={hasManagePermission}
+                orderId={order.id}
+                updateOrderStatus={updateOrderStatus}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

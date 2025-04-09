@@ -84,14 +84,14 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       
       return {
         id: order.id,
+        type: 'order', // Adding the missing 'type' property required by ActivityMonitorItem
         customer: order.customer_name,
         status: order.status,
         timestamp: order.created_at,
         total: order.total || 0,
         itemsCount: order.items_count || 0,
-        externalId: order.external_id,
-        isDelayed,
         timeElapsed: elapsedMinutes,
+        isDelayed,
         hasCancellation,
         hasDiscount,
         discountPercentage,

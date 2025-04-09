@@ -11,8 +11,14 @@ export const subscribeToDashboardUpdates = (callback: () => void) => {
     .on('postgres_changes', 
       { event: '*', schema: 'public', table: 'orders' }, 
       (payload) => {
-        console.log(`🔄 [DashboardService] Cambio detectado en órdenes: ${payload.eventType} - ID: ${payload.new?.id || payload.old?.id}`);
-        console.log(`🔄 [DashboardService] Nuevo estado: ${payload.new?.status}, Anterior: ${payload.old?.status}`);
+        // Safely access properties with optional chaining and nullish coalescing
+        const newId = payload.new?.id || '';
+        const oldId = payload.old?.id || '';
+        const newStatus = payload.new?.status || '';
+        const oldStatus = payload.old?.status || '';
+        
+        console.log(`🔄 [DashboardService] Cambio detectado en órdenes: ${payload.eventType} - ID: ${newId || oldId}`);
+        console.log(`🔄 [DashboardService] Nuevo estado: ${newStatus}, Anterior: ${oldStatus}`);
         callback();
       }
     )

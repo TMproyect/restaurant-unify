@@ -70,6 +70,6 @@ export interface ActivityMonitorItem {
   hasDiscount: boolean;
   discountPercentage?: number;
   itemsCount: number;
-  actions: ActivityMonitorAction[];
+  actions: string[]; // Changed from ActivityMonitorAction[] to string[] to match implementation
   appliedBy?: string;
 }

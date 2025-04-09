@@ -70,15 +70,6 @@ const CancellationReviewDialog: React.FC<CancellationReviewDialogProps> = ({
                   <h3 className="text-sm font-medium">Información del Cliente</h3>
                 </div>
                 <p className="text-sm">{order.customer}</p>
-                {order.customerPhone && (
-                  <p className="text-sm mt-1">Teléfono: {order.customerPhone}</p>
-                )}
-                {order.customerEmail && (
-                  <p className="text-sm mt-1">Email: {order.customerEmail}</p>
-                )}
-                {order.customerAddress && (
-                  <p className="text-sm mt-1">Dirección: {order.customerAddress}</p>
-                )}
                 <p className="text-xs text-muted-foreground mt-2">
                   No se puede contactar al cliente por esta plataforma
                 </p>

@@ -29,8 +29,12 @@ export const getActivityMonitor = async (limit = 20): Promise<ActivityMonitorIte
       const timeElapsedMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
       
       // Check for delays
-      const isDelayed = (order.status === 'pending' || order.status === 'preparing') && 
-                        timeElapsedMinutes > delayThresholdMinutes;
+      const isDelayed = (
+        order.status === 'pending' || 
+        order.status === 'preparing' || 
+        order.status === 'priority-pending' || 
+        order.status === 'priority-preparing'
+      ) && timeElapsedMinutes > delayThresholdMinutes;
       
       // Check for discounts
       const hasDiscount = order.discount && order.discount > 0;
@@ -47,11 +51,28 @@ export const getActivityMonitor = async (limit = 20): Promise<ActivityMonitorIte
       });
       
       // Add special actions for exceptions
-      if (isDelayed) {
+      if (isDelayed && (
+        order.status === 'pending' || 
+        order.status === 'preparing'
+      )) {
         actions.push({
           label: 'Priorizar',
           action: `prioritize:${order.id}`,
           type: 'warning'
+        });
+      }
+      
+      // Add cancel action for active orders
+      if (
+        order.status === 'pending' || 
+        order.status === 'preparing' ||
+        order.status === 'priority-pending' || 
+        order.status === 'priority-preparing'
+      ) {
+        actions.push({
+          label: 'Cancelar',
+          action: `cancel:${order.id}`,
+          type: 'danger'
         });
       }
       
@@ -84,7 +105,8 @@ export const getActivityMonitor = async (limit = 20): Promise<ActivityMonitorIte
         hasDiscount,
         discountPercentage: order.discount,
         itemsCount: order.items_count,
-        actions
+        actions,
+        appliedBy: 'Sistema' // In a real app, get this from the database
       };
     });
     
@@ -100,11 +122,7 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
   try {
     console.log(`🔍 [DashboardService] Priorizando orden ${orderId}`);
     
-    // Since there's no priority field in the orders table,
-    // we'll update the order status to indicate it's prioritized
-    // For example, we can update the status to "prioritized" or attach a note
-    // Here, we'll update the status to "prioritized" if it's in "pending" state
-    
+    // Get the current order status
     const { data: order, error: getError } = await supabase
       .from('orders')
       .select('status')

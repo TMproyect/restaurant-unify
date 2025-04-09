@@ -6,7 +6,8 @@ import {
   subscribeToDashboardUpdates,
   getActivityMonitor,
   prioritizeOrder,
-  checkSystemStatus
+  checkSystemStatus,
+  updateOrderStatus
 } from '@/services/dashboardService';
 import { ActivityMonitorItem, DashboardCardData } from '@/types/dashboard.types';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,8 @@ export function useDashboardData() {
   const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
   const [isCancellationReviewOpen, setIsCancellationReviewOpen] = useState(false);
   const [isDiscountReviewOpen, setIsDiscountReviewOpen] = useState(false);
+  const [isCancellationReasonOpen, setIsCancellationReasonOpen] = useState(false);
+  const [orderIdToCancel, setOrderIdToCancel] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -123,6 +126,12 @@ export function useDashboardData() {
         setIsDiscountReviewOpen(true);
         break;
         
+      case 'cancel':
+        // Open the cancellation reason dialog and store the order ID
+        setOrderIdToCancel(id);
+        setIsCancellationReasonOpen(true);
+        break;
+        
       default:
         console.warn('❌ [useDashboardData] Unknown action type:', actionType);
         toast.error(`Acción desconocida: ${actionType}`);
@@ -144,6 +153,33 @@ export function useDashboardData() {
     setIsDiscountReviewOpen(false);
     setSelectedOrder(null);
   }, []);
+
+  const handleCloseCancellationReason = useCallback(() => {
+    setIsCancellationReasonOpen(false);
+    setOrderIdToCancel(null);
+  }, []);
+
+  const handleSubmitCancellationReason = useCallback(async (reason: string) => {
+    if (!orderIdToCancel) return;
+    
+    try {
+      // Update order status with cancellation reason
+      const success = await updateOrderStatus(orderIdToCancel, 'cancelled', reason);
+      
+      if (success) {
+        toast.success(`Orden ${orderIdToCancel.substring(0, 6)} cancelada`);
+        refreshAllData();
+      } else {
+        toast.error(`Error al cancelar la orden ${orderIdToCancel.substring(0, 6)}`);
+      }
+    } catch (error) {
+      console.error('❌ [useDashboardData] Error cancelling order:', error);
+      toast.error('Error al cancelar la orden');
+    } finally {
+      setIsCancellationReasonOpen(false);
+      setOrderIdToCancel(null);
+    }
+  }, [orderIdToCancel, refreshAllData]);
 
   // Initial data loading and real-time subscription
   useEffect(() => {
@@ -187,8 +223,11 @@ export function useDashboardData() {
     isOrderDetailsOpen,
     isCancellationReviewOpen,
     isDiscountReviewOpen,
+    isCancellationReasonOpen,
     handleCloseOrderDetails,
     handleCloseCancellationReview,
-    handleCloseDiscountReview
+    handleCloseDiscountReview,
+    handleCloseCancellationReason,
+    handleSubmitCancellationReason
   };
 }

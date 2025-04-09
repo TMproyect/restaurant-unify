@@ -1,23 +1,5 @@
 
-export interface DashboardCardData {
-  title: string;
-  value: string;
-  icon: string;
-  change?: {
-    value: string;
-    isPositive: boolean;
-    description: string;
-  };
-  details?: string;
-  subvalue?: string;
-  lastUpdated?: string;
-  tooltip?: string;
-  items?: {
-    name: string;
-    value: string;
-    link?: string;
-  }[];
-}
+// Dashboard types for the dashboard service
 
 export interface DashboardStats {
   salesStats: {
@@ -39,31 +21,55 @@ export interface DashboardStats {
     changePercentage: number;
     lastUpdated: string;
   };
-  popularItems: {
+  popularItems: Array<{
     name: string;
     quantity: number;
     id: string;
-  }[];
+  }>;
+}
+
+export interface DashboardCardChange {
+  value: string;
+  isPositive: boolean;
+  description: string;
+}
+
+export interface DashboardCardItem {
+  name: string;
+  value: string;
+  link?: string;
+}
+
+export interface DashboardCardData {
+  title: string;
+  value: string;
+  icon: string;
+  subvalue?: string;
+  change?: DashboardCardChange;
+  items?: DashboardCardItem[];
+  tooltip?: string;
+  lastUpdated?: string;
+}
+
+export interface ActivityMonitorAction {
+  label: string;
+  action: string;
+  type: 'default' | 'warning' | 'danger' | 'success';
 }
 
 export interface ActivityMonitorItem {
   id: string;
-  type: 'order' | 'sale' | 'exception';
+  type: 'order' | 'reservation';
   status: string;
   customer: string;
   total: number;
   timestamp: string;
-  timeElapsed?: number; // In minutes
-  isDelayed?: boolean;
-  hasCancellation?: boolean;
-  hasDiscount?: boolean;
-  discountAmount?: number;
+  timeElapsed: number;
+  isDelayed: boolean;
+  hasCancellation: boolean;
+  hasDiscount: boolean;
   discountPercentage?: number;
-  appliedBy?: string;
   itemsCount: number;
-  actions: {
-    label: string;
-    action: string;
-    type?: 'default' | 'warning' | 'danger';
-  }[];
+  actions: ActivityMonitorAction[];
+  appliedBy?: string;
 }

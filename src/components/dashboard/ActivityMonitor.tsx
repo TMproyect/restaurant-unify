@@ -2,13 +2,14 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Clock, AlertCircle, DollarSign } from 'lucide-react';
+import { RefreshCw, Clock, AlertCircle, DollarSign, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ActivityMonitorProps } from './activity/types';
 import FilterDropdown from './activity/FilterDropdown';
 import ActivityTable from './activity/ActivityTable';
 import ActivityLoading from './activity/ActivityLoading';
 import ActivityEmptyState from './activity/ActivityEmptyState';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ 
   items, 
@@ -33,7 +34,9 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
       filtered = items.filter(item => 
         item.status === 'pending' || 
         item.status === 'preparing' || 
-        item.status === 'ready'
+        item.status === 'ready' ||
+        item.status === 'priority-pending' ||
+        item.status === 'priority-preparing'
       );
     } else if (activeTab === 'completed') {
       filtered = items.filter(item => 
@@ -45,7 +48,7 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
       filtered = items.filter(item => 
         item.isDelayed || 
         item.hasCancellation || 
-        item.hasDiscount
+        (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
       );
     }
     
@@ -88,7 +91,26 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
             <TabsTrigger value="all">Todos</TabsTrigger>
             <TabsTrigger value="active">Activos</TabsTrigger>
             <TabsTrigger value="completed">Completados</TabsTrigger>
-            <TabsTrigger value="exceptions">Excepciones</TabsTrigger>
+            <TabsTrigger value="exceptions" className="relative">
+              Excepciones
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="absolute right-1">
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-[250px] text-xs">
+                      Muestra órdenes que:
+                      <br />- Están retrasadas (más de 15 minutos)
+                      <br />- Han sido canceladas
+                      <br />- Tienen descuentos significativos (≥15%)
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TabsTrigger>
           </TabsList>
         </div>
         

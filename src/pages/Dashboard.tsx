@@ -12,6 +12,7 @@ import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
 import OrderDetailsDialog from '@/components/dashboard/activity/OrderDetailsDialog';
 import CancellationReviewDialog from '@/components/dashboard/activity/CancellationReviewDialog';
 import DiscountReviewDialog from '@/components/dashboard/activity/DiscountReviewDialog';
+import CancellationReasonDialog from '@/components/dashboard/activity/CancellationReasonDialog';
 
 export default function Dashboard() {
   const { error: initError, isReady } = useDashboardInit();
@@ -28,9 +29,12 @@ export default function Dashboard() {
     isOrderDetailsOpen,
     isCancellationReviewOpen,
     isDiscountReviewOpen,
+    isCancellationReasonOpen,
     handleCloseOrderDetails,
     handleCloseCancellationReview,
-    handleCloseDiscountReview
+    handleCloseDiscountReview,
+    handleCloseCancellationReason,
+    handleSubmitCancellationReason
   } = useDashboardData();
   
   console.log('🔄 [Dashboard] Rendering dashboard with ready state:', isReady);
@@ -153,6 +157,12 @@ export default function Dashboard() {
           order={selectedOrder}
           isOpen={isDiscountReviewOpen}
           onClose={handleCloseDiscountReview}
+        />
+
+        <CancellationReasonDialog
+          isOpen={isCancellationReasonOpen}
+          onClose={handleCloseCancellationReason}
+          onSubmit={handleSubmitCancellationReason}
         />
       </div>
     </Layout>

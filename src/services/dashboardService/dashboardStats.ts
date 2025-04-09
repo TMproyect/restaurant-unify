@@ -23,12 +23,18 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id, status')
-      .in('status', ['pending', 'preparing', 'ready']);
+      .in('status', ['pending', 'preparing', 'ready', 'priority-pending', 'priority-preparing']);
     
     if (ordersError) throw ordersError;
     
-    const pendingOrders = ordersData?.filter(order => order.status === 'pending').length || 0;
-    const preparingOrders = ordersData?.filter(order => order.status === 'preparing').length || 0;
+    const pendingOrders = ordersData?.filter(order => 
+      order.status === 'pending' || order.status === 'priority-pending'
+    ).length || 0;
+    
+    const preparingOrders = ordersData?.filter(order => 
+      order.status === 'preparing' || order.status === 'priority-preparing'
+    ).length || 0;
+    
     const readyOrders = ordersData?.filter(order => order.status === 'ready').length || 0;
     const activeOrders = pendingOrders + preparingOrders + readyOrders;
     
@@ -108,7 +114,12 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     // Convert to array and sort by quantity
     const popularItems = Array.from(itemCountMap.values())
       .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
+      .slice(0, 5) // Get top 5 items
+      .map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        id: item.id
+      }));
     
     const lastUpdated = new Date().toISOString();
     

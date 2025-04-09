@@ -116,3 +116,21 @@ export const getOrdersByTableId = async (tableId: string): Promise<Order[]> => {
     throw error;
   }
 };
+
+// Add the missing getKitchens function
+export const getKitchens = async (): Promise<{id: string, name: string}[]> => {
+  console.log('🔍 [orderQueries] Fetching kitchens');
+  
+  try {
+    // For now, we'll return a default set of kitchens
+    // In a real system, this would fetch from a kitchens table
+    return [
+      { id: 'main', name: 'Cocina Principal' },
+      { id: 'bar', name: 'Bar' },
+      { id: 'grill', name: 'Parrilla' }
+    ];
+  } catch (error) {
+    console.error('❌ [orderQueries] Exception fetching kitchens:', error);
+    throw error;
+  }
+};

@@ -63,6 +63,7 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
             items={items}
             filteredItems={filteredItems}
             onActionClick={onActionClick}
+            activeFilter={activeFilter}
           />
         </TabsContent>
       </Tabs>

@@ -11,13 +11,15 @@ interface ActivityContentProps {
   items: ActivityMonitorItem[];
   filteredItems: ActivityMonitorItem[];
   onActionClick?: (action: string) => void;
+  activeFilter?: string | null;
 }
 
 const ActivityContent: React.FC<ActivityContentProps> = ({
   isLoading,
   items,
   filteredItems,
-  onActionClick
+  onActionClick,
+  activeFilter = null
 }) => {
   console.log('🔄 [ActivityContent] Rendering:', { 
     isLoading, 
@@ -31,7 +33,7 @@ const ActivityContent: React.FC<ActivityContentProps> = ({
       {isLoading ? (
         <ActivityLoading />
       ) : !items || items.length === 0 ? (
-        <ActivityEmptyState />
+        <ActivityEmptyState filter={activeFilter} />
       ) : filteredItems.length === 0 ? (
         <div className="text-center py-6 text-muted-foreground">
           No hay órdenes que coincidan con el filtro seleccionado

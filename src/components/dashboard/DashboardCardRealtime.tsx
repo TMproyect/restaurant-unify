@@ -2,7 +2,8 @@
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Users, Package, ClipboardList } from 'lucide-react';
-import { DashboardCardData, getDashboardStats, subscribeToDashboardUpdates, generateDashboardCards } from '@/services/dashboardService';
+import { getDashboardStats, subscribeToDashboardUpdates, generateDashboardCards } from '@/services/dashboardService';
+import { DashboardCardData } from '@/types/dashboard.types';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 

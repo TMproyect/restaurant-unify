@@ -27,3 +27,13 @@ export interface ActivityTableProps {
   filteredItems: any[];
   onActionClick?: (action: string) => void;
 }
+
+export interface ActivityMonitorProps {
+  items: any[];
+  isLoading: boolean;
+  onActionClick?: (action: string) => void;
+}
+
+export interface EmptyStateProps {
+  filter: string | null;
+}

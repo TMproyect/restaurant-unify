@@ -25,7 +25,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     // Get active orders with status breakdown - CORRECT ACTIVE DEFINITION
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
-      .select('id, status, created_at');
+      .select('id, status, created_at, customer_name');
     
     if (ordersError) {
       console.error('❌ [DashboardService] Error en consulta de órdenes:', ordersError);
@@ -44,7 +44,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
     const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
     const readyStatuses = ['ready', 'listo', 'lista'];
-    const completedStatuses = ['completed', 'delivered', 'completado', 'entregado'];
+    const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
     const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
     
     // Count orders by status with consistent categorization
@@ -65,7 +65,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       - Cancelados: ${cancelledOrders}
       - TOTAL ACTIVOS: ${activeOrders}`);
     
-    // Get today's sales with accurate time filter and status filter (only completed/delivered)
+    // Get today's sales with accurate time filter and status filter (only completed/delivered/paid)
     const { data: todaySalesData, error: salesError } = await supabase
       .from('orders')
       .select('id, total, status, created_at, customer_name')
@@ -79,6 +79,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     }
     
     console.log(`📊 [DashboardService] Ventas de hoy: ${todaySalesData?.length || 0} órdenes`);
+    console.log('📊 [DashboardService] Datos de ventas:', todaySalesData);
     
     // Calculate sales totals
     const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
@@ -88,7 +89,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     // Get yesterday's sales for accurate comparison
     const { data: yesterdaySalesData, error: yesterdayError } = await supabase
       .from('orders')
-      .select('id, total, status')
+      .select('id, total, status, customer_name')
       .gte('created_at', yesterdayStart.toISOString())
       .lte('created_at', yesterdayEnd.toISOString())
       .in('status', completedStatuses);
@@ -134,14 +135,12 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       : 0;
     
     console.log(`📊 [DashboardService] Clientes únicos:
-      - Hoy: ${todayCustomerCount}
+      - Hoy: ${todayCustomerCount} (${Array.from(uniqueCustomers).join(', ')})
       - Ayer: ${yesterdayCustomerCount}
       - Cambio: ${customerChangePercentage.toFixed(2)}%`);
     
-    // Get popular items (last 7 days) - ESSENTIAL IMPLEMENTATION
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
+    // Get popular items (all time, not just 7 days) - MODIFIED TO ENSURE RESULTS
+    // We'll query order_items directly with no time limit first to ensure we get some data
     const { data: orderItemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -150,9 +149,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         menu_item_id,
         quantity,
         order_id,
-        orders!inner(status, created_at)
+        orders!inner(status)
       `)
-      .gte('orders.created_at', sevenDaysAgo.toISOString())
       .in('orders.status', completedStatuses);
     
     if (itemsError) {

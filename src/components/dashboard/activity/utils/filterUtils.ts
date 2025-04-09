@@ -8,7 +8,7 @@ const ACTIVE_STATUSES = [
 ];
 
 const COMPLETED_STATUSES = [
-  'delivered', 'completed', 'entregado', 'completado'
+  'delivered', 'completed', 'entregado', 'completado', 'paid'
 ];
 
 const CANCELLED_STATUSES = [
@@ -29,15 +29,15 @@ export const filterItems = (
   // Filter by tab with CORRECT business logic
   if (activeTab === 'active') {
     // Active tab should ONLY show orders that require action (pending, preparing)
-    // Explicitly exclude 'ready' status from active tab
-    filtered = filtered.filter(item => ACTIVE_STATUSES.includes(item.status));
+    // Explicitly exclude 'ready' and other statuses from active tab
+    filtered = filtered.filter(item => ACTIVE_STATUSES.includes(item.status.toLowerCase()));
   } else if (activeTab === 'completed') {
     // Completed tab should ONLY show successfully completed orders
     // Explicitly exclude 'cancelled' status from completed tab
-    filtered = filtered.filter(item => COMPLETED_STATUSES.includes(item.status));
+    filtered = filtered.filter(item => COMPLETED_STATUSES.includes(item.status.toLowerCase()));
   } else if (activeTab === 'cancelled') {
     // Add a new tab specifically for cancelled orders
-    filtered = filtered.filter(item => CANCELLED_STATUSES.includes(item.status));
+    filtered = filtered.filter(item => CANCELLED_STATUSES.includes(item.status.toLowerCase()));
   } else if (activeTab === 'exceptions') {
     // Exceptions tab shows orders with special conditions requiring attention
     filtered = filtered.filter(item => 
@@ -80,13 +80,13 @@ export const calculateItemsCount = (items: ActivityMonitorItem[] | undefined): R
     all: items.length,
     
     // Active: ONLY pending and preparing (items requiring action)
-    active: items.filter(item => ACTIVE_STATUSES.includes(item.status)).length,
+    active: items.filter(item => ACTIVE_STATUSES.includes(item.status.toLowerCase())).length,
     
     // Completed: ONLY successfully completed orders (not cancelled)
-    completed: items.filter(item => COMPLETED_STATUSES.includes(item.status)).length,
+    completed: items.filter(item => COMPLETED_STATUSES.includes(item.status.toLowerCase())).length,
     
     // Add cancelled count
-    cancelled: items.filter(item => CANCELLED_STATUSES.includes(item.status)).length,
+    cancelled: items.filter(item => CANCELLED_STATUSES.includes(item.status.toLowerCase())).length,
     
     // Exceptions: any order with delay, cancellation or high discount
     exceptions: items.filter(item => 

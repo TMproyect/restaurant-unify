@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { 
-  User, 
   ChefHat, 
   Truck,
-  Users 
+  Users,
+  Store 
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -19,21 +19,13 @@ export type RecipientOption = {
 interface RecipientSelectorProps {
   selectedRecipient: string;
   setSelectedRecipient: (id: string) => void;
-  hasCustomerData: boolean;
 }
 
 const RecipientSelector: React.FC<RecipientSelectorProps> = ({
   selectedRecipient,
-  setSelectedRecipient,
-  hasCustomerData
+  setSelectedRecipient
 }) => {
   const recipientOptions: RecipientOption[] = [
-    ...(hasCustomerData ? [{
-      id: 'customer',
-      name: 'Cliente',
-      icon: <User className="h-4 w-4 text-green-500" />,
-      description: 'Enviar mensaje al cliente'
-    }] : []),
     {
       id: 'kitchen',
       name: 'Cocina',
@@ -51,6 +43,18 @@ const RecipientSelector: React.FC<RecipientSelectorProps> = ({
       name: 'Delivery',
       icon: <Truck className="h-4 w-4 text-blue-500" />,
       description: 'Notificar al equipo de delivery'
+    },
+    {
+      id: 'store',
+      name: 'Tienda',
+      icon: <Store className="h-4 w-4 text-gray-500" />,
+      description: 'Enviar mensaje al personal de tienda'
+    },
+    {
+      id: 'all',
+      name: 'Todos',
+      icon: <Users className="h-4 w-4 text-gray-700" />,
+      description: 'Enviar mensaje a todas las áreas'
     }
   ];
 

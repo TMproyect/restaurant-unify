@@ -72,8 +72,8 @@ export function useMessages(props?: UseMessagesProps) {
       const areas = [
         { id: 'kitchen', name: 'Cocina', role: 'area' },
         { id: 'delivery', name: 'Delivery', role: 'area' },
-        { id: 'customer', name: 'Cliente', role: 'area' },
         { id: 'store', name: 'Tienda', role: 'area' },
+        { id: 'manager', name: 'Gerencia', role: 'area' },
         { id: 'all', name: 'Todos', role: 'area' }
       ];
       
@@ -96,6 +96,8 @@ export function useMessages(props?: UseMessagesProps) {
     }
     
     try {
+      console.log("Enviando mensaje a:", recipientId, "con metadatos:", metadata);
+      
       // Formato del contenido del mensaje con metadatos
       const messageContent = JSON.stringify({
         text: content,

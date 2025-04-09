@@ -27,12 +27,12 @@ import { toast } from 'sonner';
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useMessages } from '@/hooks/use-messages';
 
 interface OrderDetailsDialogProps {
   order: ActivityMonitorItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onSendMessage?: (orderId: string, message: string, recipient: string) => void;
 }
 
 type RecipientOption = {
@@ -45,12 +45,12 @@ type RecipientOption = {
 const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
   order,
   isOpen,
-  onClose,
-  onSendMessage
+  onClose
 }) => {
   const [isMessageSheetOpen, setIsMessageSheetOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [selectedRecipient, setSelectedRecipient] = useState<string>('kitchen');
+  const { sendMessage } = useMessages();
 
   if (!order) return null;
 
@@ -68,12 +68,6 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
       description: 'Enviar mensaje al equipo de delivery'
     },
     {
-      id: 'customer',
-      name: 'Cliente',
-      icon: <User className="h-4 w-4 text-green-500" />,
-      description: 'Enviar mensaje directamente al cliente'
-    },
-    {
       id: 'store',
       name: 'Tienda',
       icon: <Store className="h-4 w-4 text-purple-500" />,
@@ -87,15 +81,31 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
     }
   ];
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message.trim() && order) {
-      if (onSendMessage) {
-        onSendMessage(order.id, message, selectedRecipient);
-      } else {
-        toast.success(`Mensaje enviado a ${recipientOptions.find(r => r.id === selectedRecipient)?.name} para la orden ${order.id.substring(0, 6)}`);
+      try {
+        // Enviar mensaje usando el hook de mensajes que guarda en Supabase
+        const sentMessage = await sendMessage(
+          message,
+          selectedRecipient,
+          { 
+            orderId: order.id,
+            type: 'order-details'
+          }
+        );
+        
+        if (sentMessage) {
+          const recipientName = recipientOptions.find(r => r.id === selectedRecipient)?.name || 'destinatario';
+          toast.success(`Mensaje enviado a ${recipientName} para la orden ${order.id.substring(0, 6)}`);
+          setMessage('');
+          setIsMessageSheetOpen(false);
+        } else {
+          toast.error("Error al enviar el mensaje");
+        }
+      } catch (error) {
+        console.error("Error enviando mensaje:", error);
+        toast.error("Error al enviar el mensaje");
       }
-      setMessage('');
-      setIsMessageSheetOpen(false);
     } else {
       toast.error("Por favor ingrese un mensaje");
     }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,11 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, MessageSquare } from "lucide-react";
+import { AlertCircle, MessageSquare, User } from "lucide-react";
 import { ActivityMonitorItem } from '@/types/dashboard.types';
 import { toast } from 'sonner';
 import { CancellationReasonDisplay } from './index';
 import { MessageSheet } from './index';
+import { Card } from "@/components/ui/card";
 
 interface CancellationReviewDialogProps {
   order: ActivityMonitorItem | null;
@@ -61,6 +62,29 @@ const CancellationReviewDialog: React.FC<CancellationReviewDialogProps> = ({
               hasCustomerData={hasCustomerData}
             />
             
+            {/* Customer Information Card (if available) */}
+            {hasCustomerData && (
+              <Card className="p-4 bg-slate-50">
+                <div className="flex items-center space-x-2 mb-2">
+                  <User className="h-4 w-4 text-blue-500" />
+                  <h3 className="text-sm font-medium">Información del Cliente</h3>
+                </div>
+                <p className="text-sm">{order.customer}</p>
+                {order.customerPhone && (
+                  <p className="text-sm mt-1">Teléfono: {order.customerPhone}</p>
+                )}
+                {order.customerEmail && (
+                  <p className="text-sm mt-1">Email: {order.customerEmail}</p>
+                )}
+                {order.customerAddress && (
+                  <p className="text-sm mt-1">Dirección: {order.customerAddress}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-2">
+                  No se puede contactar al cliente por esta plataforma
+                </p>
+              </Card>
+            )}
+            
             {/* Actions */}
             <div className="flex flex-col gap-3 mt-4">
               <div className="flex justify-end gap-2">
@@ -70,7 +94,7 @@ const CancellationReviewDialog: React.FC<CancellationReviewDialogProps> = ({
                   onClick={() => setIsMessageSheetOpen(true)}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Contactar
+                  Contactar Equipo
                 </Button>
               </div>
               
@@ -100,7 +124,6 @@ const CancellationReviewDialog: React.FC<CancellationReviewDialogProps> = ({
         order={order}
         isOpen={isMessageSheetOpen}
         onOpenChange={setIsMessageSheetOpen}
-        hasCustomerData={hasCustomerData}
       />
     </>
   );

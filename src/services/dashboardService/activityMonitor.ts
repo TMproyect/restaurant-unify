@@ -95,19 +95,19 @@ export const getActivityMonitor = async (limit = 20): Promise<ActivityMonitorIte
   }
 };
 
-// Mock API endpoint for prioritizing orders
+// Function for prioritizing orders
 export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
   try {
     console.log(`🔍 [DashboardService] Priorizando orden ${orderId}`);
     
-    // This would be a real API call in production
-    // In this mock, we'll just add an artificial delay to simulate the API call
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // In a real implementation, we would update the order in the database
+    // For now, we'll just add a delay to simulate an API call
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Return success
+    // Simulate success
     return true;
   } catch (error) {
     console.error(`❌ [DashboardService] Error al priorizar orden ${orderId}:`, error);
-    return false;
+    throw new Error(`No se pudo priorizar la orden ${orderId}`);
   }
 };

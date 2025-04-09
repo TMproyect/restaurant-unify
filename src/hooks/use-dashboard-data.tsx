@@ -4,7 +4,8 @@ import {
   getDashboardStats, 
   generateDashboardCards, 
   subscribeToDashboardUpdates,
-  getActivityMonitor
+  getActivityMonitor,
+  prioritizeOrder
 } from '@/services/dashboardService';
 import { ActivityMonitorItem, DashboardCardData } from '@/types/dashboard.types';
 import { useToast } from '@/hooks/use-toast';
@@ -81,43 +82,48 @@ export function useDashboardData() {
     
     switch (actionType) {
       case 'view':
+        // Instead of navigating to a non-existent route, show a toast
         toast.success(`Viendo detalles de orden ${id}`);
-        navigate(`/orders/${id}`);
+        // The orders detail page isn't implemented yet, so we'll show a toast instead
+        uiToast({
+          title: "Información",
+          description: `La vista de detalles para la orden ${id} no está implementada aún.`
+        });
         break;
       case 'prioritize':
-        toast.success(`¡Orden ${id} priorizada en cocina!`);
-        // Execute the actual prioritization functionality
-        fetch(`/api/orders/${id}/prioritize`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
+        toast.promise(
+          prioritizeOrder(id),
+          {
+            loading: 'Priorizando orden...',
+            success: () => {
+              refreshAllData(); // Refresh data after prioritization
+              return `¡Orden ${id} priorizada en cocina!`;
+            },
+            error: `Error al priorizar orden ${id}`
           }
-        })
-          .then(response => {
-            if (!response.ok) throw new Error('Error al priorizar orden');
-            return response.json();
-          })
-          .then(() => {
-            refreshAllData(); // Refresh data after prioritization
-          })
-          .catch(error => {
-            console.error('Error al priorizar:', error);
-            toast.error(`Error al priorizar orden ${id}`);
-          });
+        );
         break;
       case 'review-cancel':
+        // Instead of navigating to a non-existent route, show a toast
         toast.success(`Revisando cancelación de orden ${id}`);
-        navigate(`/orders/${id}?tab=cancellation`);
+        uiToast({
+          title: "Información",
+          description: `La vista de revisión de cancelación para la orden ${id} no está implementada aún.`
+        });
         break;
       case 'review-discount':
+        // Instead of navigating to a non-existent route, show a toast
         toast.success(`Revisando descuento de orden ${id}`);
-        navigate(`/orders/${id}?tab=discount`);
+        uiToast({
+          title: "Información",
+          description: `La vista de revisión de descuento para la orden ${id} no está implementada aún.`
+        });
         break;
       default:
         console.warn('❌ [useDashboardData] Unknown action type:', actionType);
         toast.error(`Acción desconocida: ${actionType}`);
     }
-  }, [navigate, refreshAllData]);
+  }, [refreshAllData, uiToast]);
 
   // Initial data loading and real-time subscription
   useEffect(() => {

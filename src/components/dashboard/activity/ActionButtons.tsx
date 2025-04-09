@@ -6,7 +6,10 @@ import { ActionButtonsProps } from './types';
 const ActionButtons: React.FC<ActionButtonsProps> = ({ actions, onActionClick }) => {
   const handleActionClick = (e: React.MouseEvent, action: string) => {
     e.stopPropagation(); // Prevent event bubbling if this is inside a clickable container
-    onActionClick(action);
+    e.preventDefault(); // Prevent any default behavior
+    if (onActionClick) {
+      onActionClick(action);
+    }
   };
 
   return (

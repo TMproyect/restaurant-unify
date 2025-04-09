@@ -5,12 +5,12 @@ import {
   generateDashboardCards, 
   subscribeToDashboardUpdates,
   getActivityMonitor,
-  prioritizeOrder
+  prioritizeOrder,
+  checkSystemStatus
 } from '@/services/dashboardService';
 import { ActivityMonitorItem, DashboardCardData } from '@/types/dashboard.types';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 
 export function useDashboardData() {
   const [dashboardCards, setDashboardCards] = useState<DashboardCardData[]>([]);
@@ -19,7 +19,6 @@ export function useDashboardData() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast: uiToast } = useToast();
-  const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -75,50 +74,55 @@ export function useDashboardData() {
     fetchActivityData();
   }, [fetchDashboardData, fetchActivityData]);
 
-  const handleActionClick = useCallback((action: string) => {
+  const handleActionClick = useCallback(async (action: string) => {
     console.log('🔄 [useDashboardData] Action clicked:', action);
     
     const [actionType, id] = action.split(':');
     
     switch (actionType) {
       case 'view':
-        // Instead of navigating to a non-existent route, show a toast
+        // Show toast for view action
         toast.success(`Viendo detalles de orden ${id}`);
-        // The orders detail page isn't implemented yet, so we'll show a toast instead
         uiToast({
           title: "Información",
-          description: `La vista de detalles para la orden ${id} no está implementada aún.`
+          description: `Detalles de la orden ${id}`,
         });
         break;
+        
       case 'prioritize':
+        // Show toast with promise for prioritize action
         toast.promise(
           prioritizeOrder(id),
           {
             loading: 'Priorizando orden...',
             success: () => {
-              refreshAllData(); // Refresh data after prioritization
+              // Refresh data after prioritization
+              refreshAllData();
               return `¡Orden ${id} priorizada en cocina!`;
             },
             error: `Error al priorizar orden ${id}`
           }
         );
         break;
+        
       case 'review-cancel':
-        // Instead of navigating to a non-existent route, show a toast
+        // Show toast for review-cancel action
         toast.success(`Revisando cancelación de orden ${id}`);
         uiToast({
           title: "Información",
-          description: `La vista de revisión de cancelación para la orden ${id} no está implementada aún.`
+          description: `Revisando cancelación de la orden ${id}`,
         });
         break;
+        
       case 'review-discount':
-        // Instead of navigating to a non-existent route, show a toast
+        // Show toast for review-discount action
         toast.success(`Revisando descuento de orden ${id}`);
         uiToast({
           title: "Información",
-          description: `La vista de revisión de descuento para la orden ${id} no está implementada aún.`
+          description: `Revisando descuento de la orden ${id}`,
         });
         break;
+        
       default:
         console.warn('❌ [useDashboardData] Unknown action type:', actionType);
         toast.error(`Acción desconocida: ${actionType}`);
@@ -140,6 +144,19 @@ export function useDashboardData() {
       unsubscribe();
     };
   }, [refreshAllData]);
+
+  // Additional check for system status
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        await checkSystemStatus();
+      } catch (error) {
+        console.error('❌ [useDashboardData] System status check failed:', error);
+      }
+    };
+    
+    checkStatus();
+  }, []);
 
   return {
     dashboardCards,

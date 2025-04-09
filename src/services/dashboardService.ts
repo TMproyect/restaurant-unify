@@ -8,5 +8,6 @@ export {
   generateDashboardCards,
   subscribeToDashboardUpdates,
   getActivityMonitor,
+  prioritizeOrder,
   checkSystemStatus
 } from './dashboardService/index';

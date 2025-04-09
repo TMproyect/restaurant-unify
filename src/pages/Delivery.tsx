@@ -11,7 +11,7 @@ import {
   assignDeliveryDriver, 
   markDeliveryCompleted,
   type DeliveryOrder 
-} from '@/services/deliveryService';
+} from '@/services/delivery';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth/AuthContext';
 

@@ -19,6 +19,8 @@ export interface OrderDisplay {
   kitchenId: string;
   status: NormalizedOrderStatus;
   items: OrderItem[];
+  createdAt: string; // ISO string for timestamp calculations
+  orderSource: 'delivery' | 'qr_table' | 'pos' | null;
 }
 
 export interface KitchenOption {

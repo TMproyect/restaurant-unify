@@ -1,43 +1,52 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
+import { Card, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Code } from 'lucide-react';
 
 export const ApiFormatExample = () => {
-  return (
-    <div className="mt-6 pt-4 border-t">
-      <h3 className="text-sm font-medium mb-2">Formato de pedidos</h3>
-      <p className="text-sm text-muted-foreground mb-2">
-        Los pedidos enviados a la API deben tener el siguiente formato JSON:
-      </p>
-      <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-{`{
-  "nombre_cliente": "Nombre del Cliente", 
-  "numero_mesa": "4",                    // O "is_delivery": true para delivery
+  const exampleJson = `{
+  "nombre_cliente": "Juan Pérez",
+  "numero_mesa": "5",
   "items_pedido": [
     {
-      "sku_producto": "PIZZA-MARG-M",   // SKU del producto en el menú
+      "sku_producto": "HAM001",
       "cantidad": 2,
-      "precio_unitario": 12.50,
-      "notas_item": "Sin cebolla"       // Opcional
+      "precio_unitario": 8.50,
+      "notas_item": "Sin cebolla"
+    },
+    {
+      "sku_producto": "BEBCOC001",
+      "cantidad": 1,
+      "precio_unitario": 5.00
     }
   ],
-  "total_pedido": 25.00,
-  "estado_pedido_inicial": "pending"
-}`}
-      </pre>
-      <div className="mt-2 flex justify-end">
-        <Button variant="outline" size="sm" asChild>
-          <a 
-            href="https://supabase.com/dashboard/project/imcxvnivqrckgjrimzck/functions/ingresar-pedido/logs" 
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            Ver logs de la función
-            <ExternalLink className="ml-2 h-3 w-3" />
-          </a>
-        </Button>
-      </div>
-    </div>
+  "total_pedido": 22.00,
+  "notas_generales_pedido": "Cliente frecuente",
+  "id_externo": "order-123456",
+  "order_source": "delivery"
+}`;
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center space-x-2 mb-2">
+          <Code size={16} />
+          <CardTitle className="text-base">Formato JSON</CardTitle>
+        </div>
+        <CardDescription className="mb-4">
+          Ejemplo del formato JSON que debe enviarse en el cuerpo de la solicitud POST
+        </CardDescription>
+        <div className="bg-muted rounded-md p-4 overflow-x-auto">
+          <pre className="text-xs md:text-sm whitespace-pre-wrap">{exampleJson}</pre>
+        </div>
+        <div className="mt-4 text-sm text-muted-foreground">
+          <p><strong>Campos obligatorios:</strong> nombre_cliente, numero_mesa (o is_delivery=true), items_pedido, total_pedido</p>
+          <p><strong>Campos opcionales:</strong> notas_generales_pedido, id_externo, kitchen_id, estado_pedido_inicial, order_source</p>
+          <p className="mt-2">
+            <strong>order_source:</strong> Valores permitidos: "delivery", "qr_table", "pos" (indica la fuente del pedido)
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

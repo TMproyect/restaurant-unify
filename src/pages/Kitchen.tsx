@@ -1,16 +1,22 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useKitchenData, kitchenOptions } from '@/components/kitchen/hooks/useKitchenData';
 import KitchenHeader from '@/components/kitchen/KitchenHeader';
 import KitchenStatusTabs from '@/components/kitchen/KitchenStatusTabs';
 import KitchenOrdersGrid from '@/components/kitchen/KitchenOrdersGrid';
+import KitchenSettings from '@/components/kitchen/KitchenSettings';
 import AccessDenied from '@/components/kitchen/AccessDenied';
 import LoadingIndicator from '@/components/kitchen/LoadingIndicator';
 import { KitchenTabStatus } from '@/components/kitchen/types/kitchenTypes';
 
 const Kitchen = () => {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
   const {
     selectedKitchen,
     setSelectedKitchen,
@@ -18,13 +24,16 @@ const Kitchen = () => {
     setOrderStatus,
     orders,
     loading,
+    refreshKey,
     handleRefresh,
     hasViewPermission,
     hasManagePermission,
     getKitchenStats,
     getAverageTime,
     getKitchenName,
-    updateOrderStatusInKitchen
+    updateOrderStatusInKitchen,
+    urgencyThreshold,
+    setUrgencyThreshold
   } = useKitchenData();
 
   const stats = getKitchenStats();
@@ -41,15 +50,27 @@ const Kitchen = () => {
   return (
     <Layout>
       <div className="space-y-4">
-        <KitchenHeader
-          selectedKitchen={selectedKitchen}
-          setSelectedKitchen={setSelectedKitchen}
-          kitchenOptions={kitchenOptions}
-          stats={stats}
-          loading={loading}
-          handleRefresh={handleRefresh}
-          getAverageTime={getAverageTime}
-        />
+        <div className="flex justify-between items-center">
+          <KitchenHeader
+            selectedKitchen={selectedKitchen}
+            setSelectedKitchen={setSelectedKitchen}
+            kitchenOptions={kitchenOptions}
+            stats={stats}
+            loading={loading}
+            handleRefresh={handleRefresh}
+            getAverageTime={getAverageTime}
+          />
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings size={16} />
+            <span className="hidden md:inline">Configuración</span>
+          </Button>
+        </div>
 
         <KitchenStatusTabs
           defaultValue="pending"
@@ -70,6 +91,7 @@ const Kitchen = () => {
                   updateOrderStatus={updateOrderStatusInKitchen}
                   getKitchenName={getKitchenName}
                   selectedKitchen={selectedKitchen}
+                  urgencyThreshold={urgencyThreshold}
                 />
               </TabsContent>
 
@@ -81,6 +103,7 @@ const Kitchen = () => {
                   updateOrderStatus={updateOrderStatusInKitchen}
                   getKitchenName={getKitchenName}
                   selectedKitchen={selectedKitchen}
+                  urgencyThreshold={urgencyThreshold}
                 />
               </TabsContent>
 
@@ -92,12 +115,26 @@ const Kitchen = () => {
                   updateOrderStatus={updateOrderStatusInKitchen}
                   getKitchenName={getKitchenName}
                   selectedKitchen={selectedKitchen}
+                  urgencyThreshold={urgencyThreshold}
                 />
               </TabsContent>
             </>
           )}
         </KitchenStatusTabs>
       </div>
+      
+      {/* Kitchen Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configuración de Cocina</DialogTitle>
+          </DialogHeader>
+          <KitchenSettings 
+            initialThreshold={urgencyThreshold}
+            onThresholdChange={setUrgencyThreshold}
+          />
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

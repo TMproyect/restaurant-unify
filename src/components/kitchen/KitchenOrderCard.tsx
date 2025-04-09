@@ -1,11 +1,12 @@
-
 import React from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import ActionButton from './ActionButton';
 import OrderItemDisplay from './OrderItemDisplay';
+import OrderTimer from './OrderTimer';
+import OrderSourceBadge from './OrderSourceBadge';
 import { OrderItem } from './kitchenTypes';
 import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
-import { Clock, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 interface KitchenOrderCardProps {
   order: {
@@ -16,11 +17,14 @@ interface KitchenOrderCardProps {
     kitchenId: string;
     status: NormalizedOrderStatus;
     items: OrderItem[];
+    createdAt: string;
+    orderSource: 'delivery' | 'qr_table' | 'pos' | null;
   };
   kitchenName: string;
   orderStatus: NormalizedOrderStatus;
   hasManagePermission: boolean;
   updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  urgencyThreshold: number;
 }
 
 const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
@@ -28,10 +32,27 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
   kitchenName,
   orderStatus,
   hasManagePermission,
-  updateOrderStatus
+  updateOrderStatus,
+  urgencyThreshold
 }) => {
-  // Determinar la clase de borde basada en el estado
+  // Determine if the order is urgent based on timer calculations
+  const createdDate = new Date(order.createdAt);
+  const minutesPassed = Math.floor((new Date().getTime() - createdDate.getTime()) / (1000 * 60));
+  const isUrgent = minutesPassed >= urgencyThreshold;
+
+  // Determinar la clase de borde basada en el estado y urgencia
   const getCardStyles = () => {
+    // Urgent style takes precedence, but only for pending orders
+    if (orderStatus === 'pending' && isUrgent) {
+      return {
+        borderClass: 'border-l-4 border-l-red-500',
+        bgClass: 'bg-red-50',
+        textClass: 'text-red-800',
+        statusBadgeClass: 'bg-red-100 text-red-800'
+      };
+    }
+
+    // Otherwise, use status-based styling
     switch (orderStatus) {
       case 'pending':
         return {
@@ -66,8 +87,11 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
 
   const styles = getCardStyles();
 
+  // Add urgent animation class if needed
+  const urgentClass = isUrgent && orderStatus === 'pending' ? 'shadow-md animate-pulse' : '';
+
   return (
-    <Card className={`hover:shadow-md transition-shadow ${styles.borderClass} ${styles.bgClass}`}>
+    <Card className={`hover:shadow-md transition-shadow ${styles.borderClass} ${styles.bgClass} ${urgentClass}`}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg flex items-center">
@@ -79,10 +103,10 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
               {getStatusLabel(orderStatus)}
             </span>
           </CardTitle>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock size={14} className="mr-1" />
-            <span>{order.time}</span>
-          </div>
+          <OrderTimer 
+            createdAt={order.createdAt} 
+            urgencyThresholdMinutes={urgencyThreshold}
+          />
         </div>
         <div className="flex justify-between items-center mt-1">
           <p className="text-sm flex items-center">
@@ -90,7 +114,8 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             <span className="font-medium">Cliente:</span> 
             <span className="ml-1">{order.customerName}</span>
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <OrderSourceBadge source={order.orderSource} />
             <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
               {kitchenName}
             </p>

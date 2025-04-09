@@ -1,5 +1,6 @@
+
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
-// Versión 2.0 - Forzar redespliegue - 2025-04-09
+// Versión 3.0 - Añadido soporte para order_source - 2025-04-09
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -41,6 +42,11 @@ function validatePayload(payload: any): string | null {
     return "Campo 'total_pedido' debe ser un número válido";
   }
   
+  // Validar order_source si está presente
+  if (payload.order_source && !['delivery', 'qr_table', 'pos'].includes(payload.order_source)) {
+    return "El campo 'order_source' debe ser uno de: 'delivery', 'qr_table', 'pos'";
+  }
+  
   return null; // Sin errores
 }
 
@@ -52,7 +58,7 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   }
   
   console.log(`Intento de validación de API key: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
-  console.log("Verificación de API key forzando redespliegue - 2025-04-09");
+  console.log("Verificación de API key - Versión 3.0 con soporte para order_source");
   
   try {
     // Obtener API key almacenada en system_settings
@@ -104,8 +110,8 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
 }
 
 serve(async (req) => {
-  console.log("Función ingresar-pedido v2.1 recibió una solicitud:", req.method);
-  console.log("Redespliegue forzado activado - 2025-04-09");
+  console.log("Función ingresar-pedido v3.0 recibió una solicitud:", req.method);
+  console.log("Versión con soporte para order_source - 2025-04-09");
   
   // Imprimir todas las cabeceras recibidas para diagnóstico
   const headerEntries = Array.from(req.headers.entries());
@@ -238,6 +244,10 @@ serve(async (req) => {
       });
     }
     
+    // Registrar la fuente del pedido
+    const orderSource = payload.order_source || (payload.is_delivery ? 'delivery' : 'pos');
+    console.log(`Fuente del pedido (order_source): ${orderSource}`);
+    
     // Crear el pedido en la base de datos
     const orderData = {
       customer_name: payload.nombre_cliente,
@@ -248,7 +258,8 @@ serve(async (req) => {
       items_count: validatedItems.length,
       is_delivery: !!payload.is_delivery,
       kitchen_id: payload.kitchen_id || null,
-      external_id: payload.id_externo || null
+      external_id: payload.id_externo || null,
+      order_source: orderSource
     };
     
     console.log("Creando nuevo pedido con datos:", JSON.stringify(orderData));
@@ -333,7 +344,8 @@ serve(async (req) => {
       success: true,
       message: "Pedido creado correctamente",
       pos_order_id: order.id,
-      created_at: order.created_at
+      created_at: order.created_at,
+      order_source: orderSource
     }), {
       status: 201,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

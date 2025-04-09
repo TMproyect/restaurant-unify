@@ -41,7 +41,14 @@ export const useKitchenOrders = (
       );
       
       console.log(`✅ [Kitchen] Fetched ${data.length} orders`);
-      setOrders(data);
+      
+      // Store the raw createdAt date for time calculations
+      const ordersWithCreatedAt = data.map(order => ({
+        ...order,
+        createdAt: order.createdAt || order.time // Ensure we have a createdAt for calculations
+      }));
+      
+      setOrders(ordersWithCreatedAt);
     } catch (error) {
       console.error('❌ [Kitchen] Error in fetchOrders:', error);
     } finally {

@@ -5,6 +5,9 @@ import { OrderDisplay, KitchenOption } from '@/components/kitchen/kitchenTypes';
 // Type for kitchen tab status (subset of NormalizedOrderStatus)
 export type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
 
+// Order source type
+export type OrderSource = 'delivery' | 'qr_table' | 'pos' | null;
+
 // Types for kitchen hook state and functions
 export interface KitchenState {
   selectedKitchen: string;
@@ -14,6 +17,7 @@ export interface KitchenState {
   refreshKey: number;
   hasViewPermission: boolean;
   hasManagePermission: boolean;
+  urgencyThreshold: number; // Minutes before an order is considered urgent
 }
 
 export interface KitchenActions {
@@ -21,6 +25,7 @@ export interface KitchenActions {
   setOrderStatus: (status: KitchenTabStatus) => void;
   handleRefresh: () => void;
   updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  setUrgencyThreshold: (minutes: number) => void;
 }
 
 export interface KitchenUtils {

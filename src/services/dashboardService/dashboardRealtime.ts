@@ -18,6 +18,13 @@ const createDebouncedCallback = (callback, delay = 300) => {
   };
 };
 
+// Define a type for the record structure
+interface OrderRecord {
+  id?: string;
+  status?: string;
+  [key: string]: any;
+}
+
 // Subscribe to dashboard updates using Supabase realtime
 export const subscribeToDashboardUpdates = (callback) => {
   console.log('🔔 [DashboardService] Setting up enhanced realtime subscription');
@@ -31,14 +38,14 @@ export const subscribeToDashboardUpdates = (callback) => {
     .on('postgres_changes', 
       { event: '*', schema: 'public', table: 'orders' }, 
       (payload) => {
-        // Handle payload safely
-        const newRecord = payload.new || {};
-        const oldRecord = payload.old || {};
+        // Handle payload safely by casting to our interface
+        const newRecord = (payload.new || {}) as OrderRecord;
+        const oldRecord = (payload.old || {}) as OrderRecord;
         
         // Extract relevant details for logging
-        const recordId = typeof newRecord === 'object' ? newRecord.id || oldRecord?.id || '' : '';
-        const newStatus = typeof newRecord === 'object' ? newRecord.status || '' : '';
-        const oldStatus = typeof oldRecord === 'object' ? oldRecord.status || '' : '';
+        const recordId = newRecord.id || oldRecord?.id || '';
+        const newStatus = newRecord.status || '';
+        const oldStatus = oldRecord?.status || '';
         
         console.log(`🔄 [DashboardService] Order change detected: ${payload.eventType} - ID: ${recordId}`);
         if (newStatus !== oldStatus) {

@@ -1,15 +1,9 @@
 
 import React from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertCircle, ChefHat, Check } from 'lucide-react';
-
-interface OrderItem {
-  id: string;
-  name: string;
-  notes: string;
-  quantity: number;
-}
+import ActionButton from './ActionButton';
+import OrderItemDisplay from './OrderItemDisplay';
+import { OrderItem } from './kitchenTypes';
 
 interface KitchenOrderCardProps {
   order: {
@@ -48,37 +42,6 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     }
   };
 
-  // Botón de acción basado en el estado
-  const getActionButton = () => {
-    if (!hasManagePermission) return null;
-    
-    if (orderStatus === 'pending') {
-      return (
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-7"
-          onClick={() => updateOrderStatus(order.id, 'preparing')}
-        >
-          <ChefHat size={14} className="mr-1" /> Preparar
-        </Button>
-      );
-    } else if (orderStatus === 'preparing') {
-      return (
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-7"
-          onClick={() => updateOrderStatus(order.id, 'ready')}
-        >
-          <Check size={14} className="mr-1" /> Completado
-        </Button>
-      );
-    }
-    
-    return null;
-  };
-
   return (
     <Card className={`hover:shadow-md transition-shadow ${getBorderClass()}`}>
       <CardHeader className="pb-2">
@@ -92,31 +55,23 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
               {kitchenName}
             </p>
-            {getActionButton()}
+            <ActionButton 
+              orderStatus={orderStatus}
+              hasManagePermission={hasManagePermission}
+              orderId={order.id}
+              updateOrderStatus={updateOrderStatus}
+            />
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <ul className="space-y-2">
           {order.items.map((item, index) => (
-            <li key={index} className="p-3 rounded bg-secondary/30">
-              <div className="flex justify-between items-start mb-1">
-                <div>
-                  <p className="font-medium">{item.name} {item.quantity > 1 && `(x${item.quantity})`}</p>
-                  {item.notes && (
-                    <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
-                      <AlertCircle size={12} />
-                      <p>{item.notes}</p>
-                    </div>
-                  )}
-                </div>
-                {orderStatus === 'ready' && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
-                    Completado
-                  </span>
-                )}
-              </div>
-            </li>
+            <OrderItemDisplay 
+              key={index} 
+              item={item} 
+              orderStatus={orderStatus} 
+            />
           ))}
         </ul>
       </CardContent>

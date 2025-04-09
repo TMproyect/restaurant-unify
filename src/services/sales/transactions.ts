@@ -1,18 +1,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { TransactionData } from './types';
+import { format } from 'date-fns';
 
-// Get recent transactions
 export const getRecentTransactions = async (limit: number = 5): Promise<TransactionData[]> => {
   try {
     console.log(`Fetching last ${limit} transactions`);
     
-    // Get recent paid orders
-    const { data: orders, error } = await supabase
+    // Fetch recent completed/paid orders
+    const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('status', 'paid')
-      .order('updated_at', { ascending: false })
+      .in('status', ['completed', 'paid', 'delivered', 'completado', 'pagado', 'entregado'])
+      .order('created_at', { ascending: false })
       .limit(limit);
     
     if (error) {
@@ -20,14 +20,14 @@ export const getRecentTransactions = async (limit: number = 5): Promise<Transact
       return [];
     }
     
-    return orders.map(order => ({
+    // Transform to required format
+    return data.map(order => ({
       id: order.id,
-      time: new Date(order.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      items_count: order.items_count || 0,
+      customer_name: order.customer_name || 'Cliente',
       total: order.total || 0,
-      payment_method: 'Efectivo', // This would need to be stored in the database
-      server: 'Sistema', // This would need to be stored in the database
-      customer_name: order.customer_name
+      date: format(new Date(order.created_at), 'dd/MM/yyyy HH:mm'),
+      status: order.status,
+      items_count: order.items_count || 0
     }));
   } catch (error) {
     console.error('Error getting recent transactions:', error);

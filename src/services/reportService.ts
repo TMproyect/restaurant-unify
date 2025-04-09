@@ -48,7 +48,7 @@ export const getSalesByCategory = async (period: number = 30): Promise<CategoryS
       `)
       .gte('orders.updated_at', startDateStr)
       .lte('orders.updated_at', endDate)
-      .eq('orders.status', 'paid');
+      .in('orders.status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado']);
     
     if (error) {
       console.error('Error fetching order items for category data:', error);
@@ -126,7 +126,7 @@ export const getSalesByHour = async (period: number = 30): Promise<HourlySalesDa
     const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('status', 'paid')
+      .in('status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado'])
       .gte('updated_at', startDateStr)
       .lte('updated_at', endDate);
     
@@ -138,7 +138,6 @@ export const getSalesByHour = async (period: number = 30): Promise<HourlySalesDa
     // Initialize hourly data for all hours
     const hourlyData: Record<string, number> = {};
     for (let i = 0; i < 24; i++) {
-      const hour = i < 10 ? `0${i}` : `${i}`;
       const hourLabel = i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
       hourlyData[hourLabel] = 0;
     }
@@ -203,7 +202,7 @@ export const getSalesByMonth = async (months: number = 6): Promise<MonthlySalesD
       const { data, error } = await supabase
         .from('orders')
         .select('total')
-        .eq('status', 'paid')
+        .in('status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado'])
         .gte('updated_at', startDate)
         .lte('updated_at', endDate);
       
@@ -228,46 +227,13 @@ export const getSalesByMonth = async (months: number = 6): Promise<MonthlySalesD
   }
 };
 
-// Get saved reports (this would be implemented with a reports table in Supabase)
+// Get saved reports (this devuelve datos de ejemplo para la demostración)
 export const getSavedReports = async (): Promise<SavedReport[]> => {
-  // In a real application, this would fetch from a reports table
-  // For now, returning sample data
+  // This would normally fetch from a reports table in the database
   return [
     { id: 1, name: 'Ventas Mensuales 2023', date: '2023-12-01', type: 'Excel' },
     { id: 2, name: 'Análisis de Productos Q2', date: '2023-07-15', type: 'PDF' },
     { id: 3, name: 'Rendimiento de Personal', date: '2023-09-30', type: 'Excel' },
     { id: 4, name: 'Inventario Trimestral', date: '2023-10-01', type: 'PDF' },
   ];
-};
-
-// Export a report (this would generate and save a report in a real app)
-export const exportReport = async (
-  reportType: string, 
-  format: 'PDF' | 'Excel', 
-  dateRange: { start: string, end: string }
-): Promise<string> => {
-  console.log(`Exporting ${reportType} report in ${format} format for ${dateRange.start} to ${dateRange.end}`);
-  
-  // In a real application, this would generate the report and return a download URL
-  // For now, we'll just simulate this with a delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Return a mock URL
-  return `/mock-reports/${reportType}-${format.toLowerCase()}-${Date.now()}.${format.toLowerCase()}`;
-};
-
-// Update Reports.tsx to use the service
-export const updateReportsPage = async () => {
-  try {
-    const [categorySales, hourlySales, monthlySales] = await Promise.all([
-      getSalesByCategory(),
-      getSalesByHour(),
-      getSalesByMonth()
-    ]);
-    
-    return { categorySales, hourlySales, monthlySales };
-  } catch (error) {
-    console.error('Error updating reports page:', error);
-    return null;
-  }
 };

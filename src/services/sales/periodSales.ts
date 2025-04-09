@@ -26,11 +26,11 @@ export const getSalesByPeriod = async (period: 'daily' | 'weekly' | 'monthly', l
       const startDate = `${dateStr}T00:00:00`;
       const endDate = `${dateStr}T23:59:59`;
       
-      // Fetch orders for this date range
+      // Fetch orders for this date range - only include completed/paid orders
       const { data: orders, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('status', 'paid')
+        .in('status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado'])
         .gte('updated_at', startDate)
         .lte('updated_at', endDate);
       

@@ -12,7 +12,7 @@ export const getMostSoldProducts = async (limit: number = 5, periodDays: number 
     startDate.setDate(startDate.getDate() - periodDays);
     const startDateStr = startDate.toISOString();
     
-    // First get all order items in the period
+    // First get all order items from completed orders in the period
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -26,12 +26,15 @@ export const getMostSoldProducts = async (limit: number = 5, periodDays: number 
       `)
       .gte('orders.updated_at', startDateStr)
       .lte('orders.updated_at', endDate)
-      .eq('orders.status', 'paid');
+      .in('orders.status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado']);
     
     if (itemsError) {
       console.error('Error fetching order items:', itemsError);
       return [];
     }
+
+    // Log count of results for debugging
+    console.log(`Found ${orderItems?.length || 0} order items in the period`);
 
     // Aggregate by product
     const productMap = new Map<string, { name: string, quantity: number, total: number }>();

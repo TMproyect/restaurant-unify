@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, HelpCircle } from 'lucide-react';
 import { SalesSummary } from '@/services/salesService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SalesSummaryCardsProps {
   salesSummary: SalesSummary | null;
@@ -13,7 +14,19 @@ const SalesSummaryCards: React.FC<SalesSummaryCardsProps> = ({ salesSummary }) =
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-muted-foreground text-sm">Ventas del Día</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm flex items-center gap-1">
+            Ventas del Día
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle size={14} className="text-muted-foreground/70" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Total de ventas generadas hoy de órdenes completadas o pagadas</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center">
@@ -33,7 +46,19 @@ const SalesSummaryCards: React.FC<SalesSummaryCardsProps> = ({ salesSummary }) =
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-muted-foreground text-sm">Transacciones</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm flex items-center gap-1">
+            Transacciones
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle size={14} className="text-muted-foreground/70" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Número total de ventas completadas hoy</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center">
@@ -47,7 +72,19 @@ const SalesSummaryCards: React.FC<SalesSummaryCardsProps> = ({ salesSummary }) =
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-muted-foreground text-sm">Valor Promedio</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm flex items-center gap-1">
+            Valor Promedio
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle size={14} className="text-muted-foreground/70" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Valor promedio por venta del día</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center">
@@ -61,7 +98,19 @@ const SalesSummaryCards: React.FC<SalesSummaryCardsProps> = ({ salesSummary }) =
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-muted-foreground text-sm">Cancelaciones</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm flex items-center gap-1">
+            Cancelaciones
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle size={14} className="text-muted-foreground/70" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Número de órdenes canceladas hoy</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center">

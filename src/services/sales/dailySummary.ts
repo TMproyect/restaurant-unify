@@ -8,11 +8,11 @@ export const getDailySalesSummary = async (date?: string): Promise<SalesSummary>
     console.log('Fetching daily sales summary for date:', date || 'today');
     const targetDate = date || new Date().toISOString().split('T')[0];
     
-    // Fetch orders that are paid for the specified date
+    // Fetch orders that are paid or completed for the specified date
     const { data: todayOrders, error: todayError } = await supabase
       .from('orders')
       .select('*')
-      .eq('status', 'paid')
+      .in('status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado'])
       .gte('updated_at', `${targetDate}T00:00:00`)
       .lte('updated_at', `${targetDate}T23:59:59`);
 
@@ -35,7 +35,7 @@ export const getDailySalesSummary = async (date?: string): Promise<SalesSummary>
     const { count: cancellations, error: cancelError } = await supabase
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'cancelled')
+      .in('status', ['cancelled', 'cancelado'])
       .gte('updated_at', `${targetDate}T00:00:00`)
       .lte('updated_at', `${targetDate}T23:59:59`);
 
@@ -57,7 +57,7 @@ export const getDailySalesSummary = async (date?: string): Promise<SalesSummary>
     const { data: prevOrders, error: prevError } = await supabase
       .from('orders')
       .select('*')
-      .eq('status', 'paid')
+      .in('status', ['paid', 'completed', 'delivered', 'pagado', 'completado', 'entregado'])
       .gte('updated_at', `${prevDateStr}T00:00:00`)
       .lte('updated_at', `${prevDateStr}T23:59:59`);
     
@@ -69,6 +69,14 @@ export const getDailySalesSummary = async (date?: string): Promise<SalesSummary>
         growthRate = ((dailyTotal - prevTotal) / prevTotal) * 100;
       }
     }
+
+    console.log('Daily summary calculated:', {
+      dailyTotal,
+      transactionsCount,
+      averageSale,
+      cancellations,
+      growthRate
+    });
 
     return {
       daily_total: dailyTotal,

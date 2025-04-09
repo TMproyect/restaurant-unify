@@ -1,5 +1,5 @@
 
-// Types for sales related data
+// Re-export existing types and add new ones if needed
 
 export interface SalesSummary {
   daily_total: number;
@@ -24,10 +24,9 @@ export interface ProductSalesData {
 
 export interface TransactionData {
   id: string;
-  time: string;
-  items_count: number;
-  total: number;
-  payment_method: string;
-  server: string;
   customer_name: string;
+  total: number;
+  date: string;
+  status: string;
+  items_count: number;
 }

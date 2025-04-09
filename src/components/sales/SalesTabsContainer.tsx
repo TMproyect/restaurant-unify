@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SalesOverviewTab from './SalesOverviewTab';
 import ProductSalesTab from './ProductSalesTab';
@@ -17,8 +17,10 @@ const SalesTabsContainer: React.FC<SalesTabsContainerProps> = ({
   productSalesData, 
   recentTransactions 
 }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+
   return (
-    <Tabs defaultValue="overview">
+    <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="overview">Resumen</TabsTrigger>
         <TabsTrigger value="products">Por Producto</TabsTrigger>

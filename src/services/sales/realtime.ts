@@ -1,24 +1,29 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Subscribe to sales updates (when orders are paid)
-export const subscribeToSalesUpdates = (callback: (payload: any) => void) => {
+export const subscribeToSalesUpdates = (callback: () => void) => {
+  console.log('🔄 Subscribing to sales channel for realtime updates');
+  
+  // Create a channel for orders table changes
   const channel = supabase
-    .channel('sales-channel')
-    .on('postgres_changes', 
-        { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'orders',
-          filter: 'status=eq.paid'
-        }, 
-        payload => {
-          console.log('Sales update received:', payload.eventType);
-          callback(payload);
-        })
-    .subscribe();
+    .channel('sales-updates')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'orders'
+      },
+      (payload) => {
+        console.log('🔵 Received realtime update for orders:', payload);
+        callback();
+      }
+    )
+    .subscribe((status) => {
+      console.log(`Subscribed to sales channel: ${status}`);
+    });
 
-  console.log('Subscribed to sales channel');
+  // Return unsubscribe function
   return () => {
     console.log('Unsubscribing from sales channel');
     supabase.removeChannel(channel);

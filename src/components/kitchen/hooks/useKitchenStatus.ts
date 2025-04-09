@@ -1,9 +1,8 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { updateOrderStatusInKitchen as updateOrderStatus } from '@/services/kitchen/kitchenService';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
-import { KitchenTabStatus } from '../types/kitchenTypes';
+import { KitchenTabStatus } from '../types';
 
 export const useKitchenStatus = (hasManagePermission: boolean, onOrderUpdated: () => void) => {
   const [orderStatus, setOrderStatus] = useState<KitchenTabStatus>('pending');

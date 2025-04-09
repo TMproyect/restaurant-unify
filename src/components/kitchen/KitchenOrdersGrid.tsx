@@ -1,6 +1,7 @@
 
 import React from 'react';
 import KitchenOrderCard from './KitchenOrderCard';
+import { OrderDisplay } from './types';
 import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
 
 interface OrderItem {

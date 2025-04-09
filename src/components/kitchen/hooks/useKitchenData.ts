@@ -1,13 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { useKitchenOrders } from './useKitchenOrders';
 import { useKitchenStatus } from './useKitchenStatus';
 import { useKitchenUtils } from '../utils/kitchenUtils';
 import { useKitchenPermissions } from './useKitchenPermissions';
-import { KITCHEN_OPTIONS } from '../types/kitchenTypes';
+import { KITCHEN_OPTIONS, KitchenTabStatus, UseKitchenDataReturn } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
-import { KitchenTabStatus, UseKitchenDataReturn } from '../types/kitchenTypes';
 
 export { KITCHEN_OPTIONS as kitchenOptions };
 

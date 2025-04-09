@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { OrderItem } from './kitchenTypes';
+import { OrderItem } from './types';
 import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
 
 interface OrderDetailsProps {

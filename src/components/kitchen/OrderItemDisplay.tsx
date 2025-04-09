@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
-import { OrderItem } from './kitchenTypes';
+import { OrderItem } from './types';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 interface OrderItemDisplayProps {

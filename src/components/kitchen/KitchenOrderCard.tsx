@@ -7,7 +7,7 @@ import OrderTimer from './OrderTimer';
 import OrderSourceBadge from './OrderSourceBadge';
 import OrderDetails from './OrderDetails';
 import OrderStatusActions from './OrderStatusActions';
-import { OrderItem } from './kitchenTypes';
+import { OrderItem } from './types';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 import { Calendar } from 'lucide-react';
 import {

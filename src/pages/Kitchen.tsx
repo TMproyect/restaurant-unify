@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
@@ -12,7 +11,7 @@ import KitchenOrdersGrid from '@/components/kitchen/KitchenOrdersGrid';
 import KitchenSettings from '@/components/kitchen/KitchenSettings';
 import AccessDenied from '@/components/kitchen/AccessDenied';
 import LoadingIndicator from '@/components/kitchen/LoadingIndicator';
-import { KitchenTabStatus } from '@/components/kitchen/types/kitchenTypes';
+import { KitchenTabStatus } from '@/components/kitchen/types';
 
 const Kitchen = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);

@@ -1,5 +1,5 @@
 
-import { KitchenOption, KitchenStats, KITCHEN_OPTIONS } from '../types/kitchenTypes';
+import { KitchenOption, KitchenStats, KITCHEN_OPTIONS } from '../types';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 export const useKitchenUtils = (orders: any[], selectedKitchen: string) => {

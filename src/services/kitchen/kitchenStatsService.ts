@@ -1,5 +1,4 @@
-
-import { OrderDisplay, KitchenStats } from '@/components/kitchen/kitchenTypes';
+import { OrderDisplay, KitchenStats } from '@/components/kitchen/types';
 
 /**
  * Calcula estadísticas para la cocina seleccionada

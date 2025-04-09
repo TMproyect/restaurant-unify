@@ -5,10 +5,6 @@ import * as deliveryService from './delivery';
 
 // Re-export everything
 export const {
-  // Types
-  DeliveryAddress,
-  DeliveryOrder,
-  
   // Queries
   getDeliveryOrders,
   
@@ -21,4 +17,5 @@ export const {
   subscribeToDeliveryUpdates
 } = deliveryService;
 
-export type { DeliveryAddress, DeliveryOrder };
+// Export types
+export type { DeliveryAddress, DeliveryOrder } from './delivery/types';

@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderItem } from '../orders';
+import { Order, OrderItem } from '@/types/order.types';
 import { prepareInsertData, mapSingleResponse } from '@/utils/supabaseHelpers';
 import { createNotification } from '../notificationService';
 import { DeliveryOrder, DeliveryAddress } from './types';

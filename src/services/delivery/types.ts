@@ -1,5 +1,5 @@
 
-import { Order, OrderItem } from '../orders';
+import { Order, OrderItem } from '@/types/order.types';
 
 export interface DeliveryAddress {
   street: string;

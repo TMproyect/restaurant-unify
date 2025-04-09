@@ -9,5 +9,6 @@ export {
   subscribeToDashboardUpdates,
   getActivityMonitor,
   prioritizeOrder,
-  checkSystemStatus
+  checkSystemStatus,
+  updateOrderStatus
 } from './dashboardService/index';

@@ -1,3 +1,4 @@
+
 import { OrderDisplay, KitchenStats } from '@/components/kitchen/types';
 
 /**
@@ -11,12 +12,33 @@ export const calculateKitchenStats = (orders: OrderDisplay[]): KitchenStats => {
   const completedOrders = orders.filter(order => 
     order.status === 'ready' || order.status === 'delivered'
   );
+  const cancelledOrders = orders.filter(order => order.status === 'cancelled');
+  
+  // Calculate average preparation time
+  let totalTime = 0;
+  let completedCount = 0;
+  
+  completedOrders.forEach(order => {
+    if (order.createdAt) {
+      const created = new Date(order.createdAt).getTime();
+      const completedTimestamp = new Date().getTime(); // Assuming current time for completed orders
+      const elapsedMinutes = (completedTimestamp - created) / (1000 * 60);
+      
+      totalTime += elapsedMinutes;
+      completedCount++;
+    }
+  });
+  
+  const averageTime = completedCount > 0 ? totalTime / completedCount : 0;
   
   return { 
     pendingItems: pendingOrders.length, 
     preparingItems: preparingOrders.length, 
     completedItems: completedOrders.length,
-    totalItems: orders.length
+    cancelledItems: cancelledOrders.length,
+    totalItems: orders.length,
+    totalOrders: orders.length,
+    averageTime
   };
 };
 

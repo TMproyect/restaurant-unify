@@ -4,25 +4,6 @@ import KitchenOrderCard from './KitchenOrderCard';
 import { OrderDisplay } from './types';
 import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
 
-interface OrderItem {
-  id: string;
-  name: string;
-  notes: string;
-  quantity: number;
-}
-
-interface OrderDisplay {
-  id: string;
-  table: string;
-  customerName: string;
-  time: string;
-  kitchenId: string;
-  status: NormalizedOrderStatus;
-  items: OrderItem[];
-  createdAt: string;
-  orderSource: 'delivery' | 'qr_table' | 'pos' | null;
-}
-
 interface KitchenOrdersGridProps {
   orders: OrderDisplay[];
   orderStatus: NormalizedOrderStatus;

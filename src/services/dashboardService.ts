@@ -1,9 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardCardData, DashboardStats } from '@/types/dashboard.types';
+import { DashboardStats } from '@/types/dashboard.types';
 
 // Define the types for dashboard data
-export { DashboardCardData } from '@/types/dashboard.types';
+export type { DashboardCardData } from '@/types/dashboard.types';
 
 // Función para obtener estadísticas del dashboard de forma más detallada
 export const getDashboardStats = async (): Promise<DashboardStats> => {
@@ -144,7 +143,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 // Generate dashboard cards based on stats
-export const generateDashboardCards = (stats: DashboardStats): DashboardCardData[] => {
+export const generateDashboardCards = (stats: DashboardStats) => {
   return [
     {
       title: 'Ventas del Día',
@@ -163,7 +162,7 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCardData
       title: 'Pedidos Activos',
       value: `${stats.ordersStats.activeOrders}`,
       icon: 'clipboard-list',
-      subvalue: `${stats.ordersStats.pendingOrders} pendientes • ${stats.ordersStats.preparingOrders} en preparación • ${stats.ordersStats.readyOrders} listos`,
+      subvalue: `${stats.ordersStats.pendingOrders} pendientes • ${stats.ordersStats.inPreparationOrders} en preparación • ${stats.ordersStats.readyOrders} listos`,
       tooltip: 'Pedidos que no han sido entregados o completados',
       lastUpdated: `Actualizado: ${new Date(stats.ordersStats.lastUpdated).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
     },
@@ -293,7 +292,7 @@ export const getActivityMonitor = async (limit = 20) => {
       
       return {
         id: order.id,
-        type: 'order',
+        type: 'order' as const,
         status: order.status,
         customer: order.customer_name,
         total: order.total,

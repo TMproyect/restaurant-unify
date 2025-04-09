@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,6 +16,7 @@ import { ActivityMonitorItem } from '@/types/dashboard.types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface ActivityMonitorProps {
   items: ActivityMonitorItem[];
@@ -59,7 +59,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
   ];
   
   const filterItems = (items: ActivityMonitorItem[]) => {
-    // First filter by tab
     let filtered = items;
     if (activeTab === 'active') {
       filtered = items.filter(item => 
@@ -81,7 +80,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
       );
     }
     
-    // Then apply additional filters
     if (activeFilter === 'delayed') {
       filtered = filtered.filter(item => item.isDelayed);
     } else if (activeFilter === 'cancelled') {
@@ -169,7 +167,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
                   </TableHeader>
                   <TableBody>
                     {filteredItems.map(item => {
-                      // Determine if row should be highlighted
                       const rowClass = cn(
                         "transition-colors hover:bg-gray-50",
                         {
@@ -192,7 +189,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
                             <div className="flex flex-col gap-1">
                               {getStatusBadge(item.status)}
                               
-                              {/* Exception indicators */}
                               <div className="flex gap-1 mt-1">
                                 {item.isDelayed && (
                                   <TooltipProvider>

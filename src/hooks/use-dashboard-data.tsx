@@ -50,7 +50,7 @@ export function useDashboardData() {
       
       // Get activity monitor data
       const activity = await getActivityMonitor();
-      setActivityItems(activity);
+      setActivityItems(activity as ActivityMonitorItem[]);
       
       console.log('✅ [useDashboardData] Activity data loaded successfully');
     } catch (error) {

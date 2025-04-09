@@ -27,9 +27,9 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     case 'pending':
       return (
         <Button 
-          variant="success" 
+          variant="outline" 
           size="xs"
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 hover:text-amber-900"
           onClick={() => updateOrderStatus(orderId, 'preparing')}
         >
           <Utensils size={14} />
@@ -40,9 +40,9 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     case 'preparing':
       return (
         <Button 
-          variant="success" 
+          variant="outline" 
           size="xs"
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 bg-green-100 text-green-800 border-green-300 hover:bg-green-200 hover:text-green-900"
           onClick={() => updateOrderStatus(orderId, 'ready')}
         >
           <CheckCircle size={14} />

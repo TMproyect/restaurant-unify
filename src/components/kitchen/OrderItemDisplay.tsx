@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertCircle, Clock, CheckCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { OrderItem } from './kitchenTypes';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
@@ -14,7 +14,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({ item, orderStatus }
   const getContainerClass = () => {
     switch (orderStatus) {
       case 'pending':
-        return 'border-l-2 border-l-yellow-500 bg-yellow-50/50 p-2 rounded-md';
+        return 'border-l-2 border-l-gray-400 bg-gray-50/50 p-2 rounded-md';
       case 'preparing':
         return 'border-l-2 border-l-blue-500 bg-blue-50/50 p-2 rounded-md';
       case 'ready':
@@ -38,9 +38,9 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({ item, orderStatus }
           </div>
           
           {item.notes && (
-            <div className="flex items-center mt-1 gap-1 bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-300">
-              <AlertCircle size={14} className="text-amber-600 flex-shrink-0" />
-              <p className="text-xs font-medium">{item.notes}</p>
+            <div className="flex items-center mt-1 gap-1 bg-amber-200 text-amber-800 px-2 py-1 rounded border border-amber-400">
+              <AlertCircle size={14} className="text-amber-700 flex-shrink-0" />
+              <p className="text-xs font-bold">{item.notes}</p>
             </div>
           )}
         </div>

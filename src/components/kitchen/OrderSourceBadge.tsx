@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Truck, QrCode, CreditCard } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface OrderSourceBadgeProps {
   source: 'delivery' | 'qr_table' | 'pos' | null;
@@ -11,31 +12,45 @@ const OrderSourceBadge: React.FC<OrderSourceBadgeProps> = ({ source }) => {
   if (!source) return null;
   
   // Set specific styles and icon based on order source
-  let Icon, label, className;
+  let Icon, label, badgeVariant;
   
   switch (source) {
     case 'delivery':
       Icon = Truck;
       label = 'DELIVERY';
-      className = 'bg-blue-100 text-blue-800 border-blue-300';
+      badgeVariant = 'delivery';
       break;
     case 'qr_table':
       Icon = QrCode;
       label = 'QR MESA';
-      className = 'bg-purple-100 text-purple-800 border-purple-300';
+      badgeVariant = 'qr';
       break;
     case 'pos':
       Icon = CreditCard;
       label = 'POS';
-      className = 'bg-green-100 text-green-800 border-green-300';
+      badgeVariant = 'pos';
       break;
     default:
       return null;
   }
   
+  // Get appropriate styles based on the source
+  const getBadgeClasses = () => {
+    switch (source) {
+      case 'delivery':
+        return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
+      case 'qr_table':
+        return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
+      case 'pos':
+        return 'bg-green-100 text-green-800 border-green-300 font-semibold';
+      default:
+        return '';
+    }
+  };
+  
   return (
-    <div className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full border ${className}`}>
-      <Icon size={12} />
+    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md border ${getBadgeClasses()}`}>
+      <Icon size={12} className="flex-shrink-0" />
       <span>{label}</span>
     </div>
   );

@@ -52,9 +52,12 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
     if (orderStatus === 'pending') {
       const now = new Date().getTime();
       
-      // Calculate minutes passed for urgency detection
-      const minutesPassedA = Math.floor((now - createdAtA) / (1000 * 60)); 
-      const minutesPassedB = Math.floor((now - createdAtB) / (1000 * 60));
+      // Calculate seconds passed for urgency detection
+      const secondsPassedA = Math.floor((now - createdAtA) / 1000); 
+      const secondsPassedB = Math.floor((now - createdAtB) / 1000);
+      
+      const minutesPassedA = secondsPassedA / 60;
+      const minutesPassedB = secondsPassedB / 60;
       
       const isUrgentA = minutesPassedA >= urgencyThreshold;
       const isUrgentB = minutesPassedB >= urgencyThreshold;
@@ -71,6 +74,8 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
     return createdAtA - createdAtB;
   });
   
+  console.log(`[KitchenOrdersGrid] Displaying ${sortedOrders.length} orders with status: ${orderStatus}. Urgency threshold: ${urgencyThreshold} minutes`);
+  
   if (sortedOrders.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
@@ -82,17 +87,27 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {sortedOrders.map(order => (
-        <KitchenOrderCard
-          key={order.id}
-          order={order}
-          kitchenName={getKitchenName(order.kitchenId)}
-          orderStatus={orderStatus}
-          hasManagePermission={hasManagePermission}
-          updateOrderStatus={updateOrderStatus}
-          urgencyThreshold={urgencyThreshold}
-        />
-      ))}
+      {sortedOrders.map(order => {
+        // Calculate time elapsed for logging
+        const now = new Date();
+        const created = new Date(order.createdAt);
+        const secondsElapsed = Math.floor((now.getTime() - created.getTime()) / 1000);
+        const minutesElapsed = (secondsElapsed / 60).toFixed(1);
+        
+        console.log(`[Order ${order.id.substring(0, 4)}] Created: ${order.createdAt}, Elapsed: ${minutesElapsed} minutes, Source: ${order.orderSource}`);
+        
+        return (
+          <KitchenOrderCard
+            key={order.id}
+            order={order}
+            kitchenName={getKitchenName(order.kitchenId)}
+            orderStatus={orderStatus}
+            hasManagePermission={hasManagePermission}
+            updateOrderStatus={updateOrderStatus}
+            urgencyThreshold={urgencyThreshold}
+          />
+        );
+      })}
     </div>
   );
 };

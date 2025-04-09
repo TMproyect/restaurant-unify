@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { parseISO, differenceInMinutes, differenceInSeconds } from 'date-fns';
+import { parseISO, differenceInSeconds } from 'date-fns';
 import { Clock, Flame } from 'lucide-react';
 
 interface OrderTimerProps {
@@ -12,10 +12,10 @@ const OrderTimer: React.FC<OrderTimerProps> = ({
   createdAt, 
   urgencyThresholdMinutes 
 }) => {
-  const [elapsedTime, setElapsedTime] = useState('');
+  const [elapsedTime, setElapsedTime] = useState('00:00');
   const [isUrgent, setIsUrgent] = useState(false);
-  const [minutes, setMinutes] = useState(0);
-  const [seconds, setSeconds] = useState(0);
+  const [isWarning, setIsWarning] = useState(false);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
   
   useEffect(() => {
     const calculateTime = () => {
@@ -23,18 +23,23 @@ const OrderTimer: React.FC<OrderTimerProps> = ({
         const createdDate = parseISO(createdAt);
         const now = new Date();
         
-        // Calculate minutes and seconds for display
+        // Calculate total seconds elapsed
         const totalSeconds = differenceInSeconds(now, createdDate);
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
+        setSecondsElapsed(totalSeconds);
         
-        setMinutes(mins);
-        setSeconds(secs);
-        setElapsedTime(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+        // Format as MM:SS
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        setElapsedTime(
+          `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
         
-        // Check if urgent based on threshold
-        const minutesPassed = differenceInMinutes(now, createdDate);
-        setIsUrgent(minutesPassed >= urgencyThresholdMinutes);
+        // Check urgency levels based on threshold
+        const urgencyThresholdSeconds = urgencyThresholdMinutes * 60;
+        const warningThresholdSeconds = urgencyThresholdSeconds * 0.7;
+        
+        setIsUrgent(totalSeconds >= urgencyThresholdSeconds);
+        setIsWarning(totalSeconds >= warningThresholdSeconds && totalSeconds < urgencyThresholdSeconds);
         
       } catch (error) {
         console.error('Error calculating order time:', error);
@@ -60,8 +65,8 @@ const OrderTimer: React.FC<OrderTimerProps> = ({
       };
     }
     
-    // Warning state (more than 75% of threshold)
-    if (minutes >= urgencyThresholdMinutes * 0.75) {
+    // Warning state (more than 70% of threshold)
+    if (isWarning) {
       return {
         containerClass: 'flex items-center gap-1 text-yellow-600 font-medium',
         iconClass: 'text-yellow-600'

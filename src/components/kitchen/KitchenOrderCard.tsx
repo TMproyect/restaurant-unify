@@ -1,6 +1,6 @@
+
 import React from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import ActionButton from './ActionButton';
 import OrderItemDisplay from './OrderItemDisplay';
 import OrderTimer from './OrderTimer';
@@ -45,36 +45,40 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
 }) => {
   // Determine if the order is urgent based on timer calculations
   const createdDate = new Date(order.createdAt);
-  const minutesPassed = Math.floor((new Date().getTime() - createdDate.getTime()) / (1000 * 60));
-  const isUrgent = minutesPassed >= urgencyThreshold;
-  const isWarning = minutesPassed >= urgencyThreshold * 0.75 && minutesPassed < urgencyThreshold;
+  const now = new Date();
+  const secondsElapsed = Math.floor((now.getTime() - createdDate.getTime()) / 1000);
+  const minutesElapsed = secondsElapsed / 60;
+  
+  // Calculate urgency and warning thresholds
+  const isUrgent = minutesElapsed >= urgencyThreshold;
+  const isWarning = minutesElapsed >= (urgencyThreshold * 0.7) && minutesElapsed < urgencyThreshold;
 
   // Determine card styling based on status and urgency
   const getCardStyles = () => {
     // Urgent style takes precedence
     if (orderStatus === 'pending' && isUrgent) {
-      return 'border-l-4 border-l-red-500 bg-red-50';
+      return 'border-l-4 border-l-red-500 bg-red-50/80';
     }
     
     // Warning state
     if (orderStatus === 'pending' && isWarning) {
-      return 'border-l-4 border-l-yellow-500 bg-yellow-50';
+      return 'border-l-4 border-l-yellow-500 bg-yellow-50/80';
     }
 
     // Otherwise, use status-based styling
     switch (orderStatus) {
       case 'pending':
-        return 'border-l-4 border-l-amber-400 bg-white';
+        return 'border-l-4 border-l-gray-300 bg-white';
       case 'preparing':
-        return 'border-l-4 border-l-blue-500 bg-blue-50';
+        return 'border-l-4 border-l-blue-500 bg-blue-50/80';
       case 'ready':
-        return 'border-l-4 border-l-green-500 bg-green-50';
+        return 'border-l-4 border-l-green-500 bg-green-50/80';
       default:
         return 'border-l-4 border-l-gray-300 bg-white';
     }
   };
 
-  // Add urgent animation class if needed
+  // Add subtle shadow for urgent orders
   const urgentClass = isUrgent && orderStatus === 'pending' ? 'shadow-md' : '';
 
   return (
@@ -86,7 +90,6 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             <span className="text-sm font-normal">
               Mesa {order.table}
             </span>
-            <OrderSourceBadge source={order.orderSource} />
           </CardTitle>
           <OrderTimer 
             createdAt={order.createdAt} 
@@ -101,11 +104,14 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
           </p>
           
           <div className="flex items-center gap-2">
+            {/* Order Source Badge - Made more prominent */}
+            <OrderSourceBadge source={order.orderSource} />
+            
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="xs" className="h-6 w-6 p-0">
+                <button className="p-1 rounded-full hover:bg-gray-100 transition-colors">
                   <Info size={14} />
-                </Button>
+                </button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>

@@ -1,55 +1,21 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { subscribeToOrders } from '@/services/orders/orderSubscriptions';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { OrderDisplay, KITCHEN_OPTIONS } from './kitchenTypes';
+import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
 import { 
-  normalizeOrderStatus, 
-  getDBStatusesFromUIStatus, 
-  NormalizedOrderStatus
-} from '@/utils/orderStatusUtils';
-import { 
-  loadKitchenOrders, 
-  updateOrderStatusInKitchen,
-  getKitchenName,
-  getAveragePreparationTime
+  loadKitchenOrders 
 } from '@/services/kitchen/kitchenService';
-import {
-  calculateKitchenStats,
-  filterOrdersByStatus
-} from '@/services/kitchen/kitchenStatsService';
+import { OrderDisplay } from '@/components/kitchen/kitchenTypes';
+import { getDBStatusesFromUIStatus } from '@/utils/orderStatusUtils';
 
-export { KITCHEN_OPTIONS as kitchenOptions };
-
-// Define the tab status type (a subset of NormalizedOrderStatus)
-type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
-
-export const useKitchenData = () => {
-  const [selectedKitchen, setSelectedKitchen] = useState("all");  // Mostrar todas las cocinas por defecto
-  const [orderStatus, setOrderStatus] = useState<KitchenTabStatus>('pending');
+export const useKitchenOrders = (
+  selectedKitchen: string,
+  refreshKey: number,
+  hasViewPermission: boolean
+) => {
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const { user } = useAuth();
-  
-  // Verificar permisos del usuario
-  const hasViewPermission = user?.role === 'admin' || 
-                            user?.role === 'propietario' ||
-                            user?.role === 'gerente' ||
-                            user?.role === 'cocina' || 
-                            user?.role === 'kitchen';
-  
-  const hasManagePermission = user?.role === 'admin' || 
-                             user?.role === 'propietario' ||
-                             user?.role === 'gerente' ||
-                             user?.role === 'cocina' || 
-                             user?.role === 'kitchen';
-  
-  // Función para refrescar los datos
-  const handleRefresh = () => {
-    console.log('🔄 [Kitchen] Refreshing orders list');
-    setRefreshKey(prev => prev + 1);
-  };
 
   // Cargar órdenes desde Supabase
   const fetchOrders = async () => {
@@ -83,52 +49,7 @@ export const useKitchenData = () => {
     }
   };
 
-  // Actualizar el estado de una orden
-  const updateOrderStatusHandler = async (orderId: string, newStatus: NormalizedOrderStatus) => {
-    setLoading(true);
-    const success = await updateOrderStatusInKitchen(orderId, newStatus, hasManagePermission);
-    
-    // Si la actualización fue exitosa, recargar órdenes
-    if (success) {
-      // Actualizar localmente la orden modificada para mostrar cambio inmediato
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { ...order, status: newStatus } 
-            : order
-        )
-      );
-      
-      // Luego recargar todas las órdenes para asegurar sincronización
-      setTimeout(() => {
-        fetchOrders();
-      }, 500);
-    } else {
-      setLoading(false);
-    }
-  };
-
-  // Get statistics for the selected kitchen
-  const getKitchenStats = () => {
-    return calculateKitchenStats(orders);
-  };
-
-  // Calculate average preparation time
-  const getAverageTime = () => {
-    return getAveragePreparationTime(selectedKitchen);
-  };
-
-  // Get kitchen name from ID
-  const getKitchenNameHandler = (kitchenId: string) => {
-    return getKitchenName(kitchenId, KITCHEN_OPTIONS);
-  };
-
-  // Filtrar órdenes por estado
-  const getFilteredOrders = () => {
-    return filterOrdersByStatus(orders, orderStatus);
-  };
-
-  // Efecto para cargar órdenes
+  // Setup effect for fetching orders
   useEffect(() => {
     if (!hasViewPermission) {
       console.log('⛔ [Kitchen] Usuario sin permisos para ver la cocina');
@@ -191,21 +112,5 @@ export const useKitchenData = () => {
     }
   }, [selectedKitchen, refreshKey, hasViewPermission]);
 
-  return {
-    selectedKitchen,
-    setSelectedKitchen,
-    orderStatus,
-    setOrderStatus: (status: KitchenTabStatus) => {
-      setOrderStatus(status);
-    },
-    orders: getFilteredOrders(),
-    loading,
-    handleRefresh,
-    hasViewPermission,
-    hasManagePermission,
-    getKitchenStats,
-    getAverageTime,
-    getKitchenName: getKitchenNameHandler,
-    updateOrderStatusInKitchen: updateOrderStatusHandler
-  };
+  return { orders, loading, fetchOrders };
 };

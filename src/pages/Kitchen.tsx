@@ -2,16 +2,13 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
-import { useKitchenData, kitchenOptions } from '@/components/kitchen/useKitchenData';
+import { useKitchenData, kitchenOptions } from '@/components/kitchen/hooks/useKitchenData';
 import KitchenHeader from '@/components/kitchen/KitchenHeader';
 import KitchenStatusTabs from '@/components/kitchen/KitchenStatusTabs';
 import KitchenOrdersGrid from '@/components/kitchen/KitchenOrdersGrid';
 import AccessDenied from '@/components/kitchen/AccessDenied';
 import LoadingIndicator from '@/components/kitchen/LoadingIndicator';
-import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
-
-// Type definition to constrain tab status values
-type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
+import { KitchenTabStatus } from '@/components/kitchen/types/kitchenTypes';
 
 const Kitchen = () => {
   const {

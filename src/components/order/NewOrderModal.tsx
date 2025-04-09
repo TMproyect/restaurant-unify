@@ -99,17 +99,17 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
-        <DialogHeader className="px-6 py-4 border-b">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>
             {orderStep === 'details' ? 'Nueva Orden' : 'Tomar Pedido'}
           </DialogTitle>
         </DialogHeader>
         
         {orderStep === 'details' ? (
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 overflow-y-auto">
             <div>
-              <Label htmlFor="orderType">Tipo de Orden</Label>
+              <Label htmlFor="orderType" className="text-base font-medium">Tipo de Orden</Label>
               <RadioGroup
                 value={orderType}
                 onValueChange={(value) => setOrderType(value as 'table' | 'delivery')}
@@ -117,20 +117,20 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="table" id="table" />
-                  <Label htmlFor="table">Mesa</Label>
+                  <Label htmlFor="table" className="text-base">Mesa</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="delivery" id="delivery" />
-                  <Label htmlFor="delivery">Delivery</Label>
+                  <Label htmlFor="delivery" className="text-base">Delivery</Label>
                 </div>
               </RadioGroup>
             </div>
 
             {orderType === 'table' && (
               <div>
-                <Label htmlFor="table">Mesa</Label>
+                <Label htmlFor="table" className="text-base font-medium">Mesa</Label>
                 <Select value={selectedTable} onValueChange={setSelectedTable}>
-                  <SelectTrigger>
+                  <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Seleccionar mesa" />
                   </SelectTrigger>
                   <SelectContent>
@@ -151,30 +151,29 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
             )}
 
             <div>
-              <Label htmlFor="customerName">Nombre del Cliente</Label>
+              <Label htmlFor="customerName" className="text-base font-medium">Nombre del Cliente</Label>
               <Input
                 id="customerName"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Ingrese el nombre del cliente"
+                className="mt-1"
               />
             </div>
 
             <div className="flex justify-end pt-4">
-              <Button onClick={handleContinue}>
+              <Button onClick={handleContinue} size="lg">
                 Continuar
               </Button>
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden">
-            <div className="h-full overflow-auto">
-              <OrderTaking 
-                tableId={selectedTable}
-                customerName={customerName}
-                onOrderComplete={handleOrderComplete}
-              />
-            </div>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <OrderTaking 
+              tableId={selectedTable}
+              customerName={customerName}
+              onOrderComplete={handleOrderComplete}
+            />
           </div>
         )}
       </DialogContent>

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem } from '@/types/order.types';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -118,11 +119,18 @@ export const getKitchens = async (): Promise<{id: string, name: string}[]> => {
   console.log('🔍 [orderQueries] Fetching kitchens');
   
   try {
-    return [
+    // Fetch kitchen areas from database if they exist in a table, or use hardcoded values
+    // This implementation uses hardcoded values as per previous design
+    const kitchenAreas = [
       { id: 'main', name: 'Cocina Principal' },
-      { id: 'bar', name: 'Bar' },
-      { id: 'grill', name: 'Parrilla' }
+      { id: 'grill', name: 'Parrilla' },
+      { id: 'cold', name: 'Cocina Fría' },
+      { id: 'pastry', name: 'Pastelería' },
+      { id: 'bar', name: 'Bar' }
     ];
+    
+    console.log(`✅ [orderQueries] Returned ${kitchenAreas.length} kitchen areas`);
+    return kitchenAreas;
   } catch (error) {
     console.error('❌ [orderQueries] Exception fetching kitchens:', error);
     throw error;

@@ -11,12 +11,22 @@ import { useDeliveryData } from '@/hooks/use-delivery-data';
 const Delivery = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
-  const { deliveries, isLoading, handleAssignDriver, handleMarkDelivered } = useDeliveryData();
+  const { 
+    deliveries, 
+    isLoading, 
+    loadDeliveryOrders, 
+    handleAssignDriver, 
+    handleMarkDelivered 
+  } = useDeliveryData();
+
+  const handleDeliveryCreated = () => {
+    loadDeliveryOrders();
+  };
 
   return (
     <Layout>
       <div className="space-y-4">
-        <DeliveryHeader />
+        <DeliveryHeader onDeliveryCreated={handleDeliveryCreated} />
         <DeliveryStats deliveries={deliveries} />
         <DeliverySearch searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 

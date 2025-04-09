@@ -3,7 +3,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Define allowed status values for tabs
-type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
+type KitchenTabStatus = 'pending' | 'preparing' | 'ready' | 'cancelled';
 
 interface KitchenStatusTabsProps {
   defaultValue: KitchenTabStatus;
@@ -11,6 +11,7 @@ interface KitchenStatusTabsProps {
   pendingCount: number;
   preparingCount: number;
   completedCount: number;
+  cancelledCount: number;
   children: React.ReactNode;
 }
 
@@ -20,6 +21,7 @@ const KitchenStatusTabs: React.FC<KitchenStatusTabsProps> = ({
   pendingCount,
   preparingCount,
   completedCount,
+  cancelledCount,
   children
 }) => {
   return (
@@ -28,7 +30,7 @@ const KitchenStatusTabs: React.FC<KitchenStatusTabsProps> = ({
       className="w-full"
       onValueChange={(value) => onValueChange(value as KitchenTabStatus)}
     >
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="pending" className="relative">
           Pendientes
           {pendingCount > 0 && (
@@ -50,6 +52,14 @@ const KitchenStatusTabs: React.FC<KitchenStatusTabsProps> = ({
           {completedCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
               {completedCount}
+            </span>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="cancelled" className="relative">
+          Cancelados
+          {cancelledCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {cancelledCount}
             </span>
           )}
         </TabsTrigger>

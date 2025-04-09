@@ -1,51 +1,49 @@
 
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
-import { OrderDisplay, KitchenOption } from '@/components/kitchen/kitchenTypes';
 
-// Type for kitchen tab status (subset of NormalizedOrderStatus)
-export type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
+// Kitchen Option type
+export type KitchenOption = {
+  id: string;
+  name: string;
+};
 
-// Order source type
-export type OrderSource = 'delivery' | 'qr_table' | 'pos' | null;
+// Constant kitchen options
+export const KITCHEN_OPTIONS: KitchenOption[] = [
+  { id: 'all', name: 'Todas las Cocinas' },
+  { id: 'main', name: 'Cocina Principal' },
+  { id: 'bar', name: 'Bar' },
+  { id: 'grill', name: 'Parrilla' }
+];
 
-// Types for kitchen hook state and functions
-export interface KitchenState {
+// Kitchen tab status
+export type KitchenTabStatus = 'pending' | 'preparing' | 'ready' | 'cancelled';
+
+// Kitchen stats type
+export interface KitchenStats {
+  pendingItems: number;
+  preparingItems: number;
+  completedItems: number;
+  cancelledItems: number;
+  totalOrders: number;
+  averageTime: number;
+}
+
+// Return type for useKitchenData hook
+export interface UseKitchenDataReturn {
   selectedKitchen: string;
+  setSelectedKitchen: (kitchen: string) => void;
   orderStatus: KitchenTabStatus;
-  orders: OrderDisplay[];
+  setOrderStatus: (status: KitchenTabStatus) => void;
+  orders: any[];
   loading: boolean;
   refreshKey: number;
+  handleRefresh: () => void;
   hasViewPermission: boolean;
   hasManagePermission: boolean;
-  urgencyThreshold: number; // Minutes before an order is considered urgent
-}
-
-export interface KitchenActions {
-  setSelectedKitchen: (kitchen: string) => void;
-  setOrderStatus: (status: KitchenTabStatus) => void;
-  handleRefresh: () => void;
-  updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
-  setUrgencyThreshold: (minutes: number) => void;
-}
-
-export interface KitchenUtils {
-  getKitchenStats: () => {
-    pendingItems: number;
-    preparingItems: number;
-    completedItems: number;
-    totalItems: number;
-  };
-  getAverageTime: () => number;
+  getKitchenStats: () => KitchenStats;
+  getAverageTime: () => string;
   getKitchenName: (kitchenId: string) => string;
+  updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  urgencyThreshold: number;
+  setUrgencyThreshold: (threshold: number) => void;
 }
-
-export interface UseKitchenDataReturn extends KitchenState, KitchenActions, KitchenUtils {}
-
-export const KITCHEN_OPTIONS: KitchenOption[] = [
-  { id: "all", name: "Todas las Cocinas" },
-  { id: "main", name: "Cocina Principal" },
-  { id: "grill", name: "Parrilla" },
-  { id: "cold", name: "Cocina Fría" },
-  { id: "pastry", name: "Pastelería" },
-  { id: "bar", name: "Bar" }
-];

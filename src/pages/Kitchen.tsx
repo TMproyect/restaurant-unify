@@ -78,6 +78,7 @@ const Kitchen = () => {
           pendingCount={stats.pendingItems}
           preparingCount={stats.preparingItems}
           completedCount={stats.completedItems}
+          cancelledCount={stats.cancelledItems}
         >
           {loading ? (
             <LoadingIndicator />
@@ -111,6 +112,18 @@ const Kitchen = () => {
                 <KitchenOrdersGrid
                   orders={orders}
                   orderStatus="ready"
+                  hasManagePermission={hasManagePermission}
+                  updateOrderStatus={updateOrderStatusInKitchen}
+                  getKitchenName={getKitchenName}
+                  selectedKitchen={selectedKitchen}
+                  urgencyThreshold={urgencyThreshold}
+                />
+              </TabsContent>
+              
+              <TabsContent value="cancelled" className="mt-4">
+                <KitchenOrdersGrid
+                  orders={orders}
+                  orderStatus="cancelled"
                   hasManagePermission={hasManagePermission}
                   updateOrderStatus={updateOrderStatusInKitchen}
                   getKitchenName={getKitchenName}

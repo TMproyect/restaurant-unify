@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Utensils, CheckCircle } from 'lucide-react';
+import { ChefHat, CheckCircle, XCircle } from 'lucide-react';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 interface ActionButtonProps {
@@ -22,17 +22,23 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     return null;
   }
 
+  // Handler to prevent event propagation when clicking action buttons
+  const handleClick = (e: React.MouseEvent, newStatus: NormalizedOrderStatus) => {
+    e.stopPropagation(); // Prevent the card click event from triggering
+    updateOrderStatus(orderId, newStatus);
+  };
+
   // Determine which action button to show based on current status
   switch (orderStatus) {
     case 'pending':
       return (
         <Button 
-          variant="outline" 
-          size="xs"
-          className="flex items-center gap-1 bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 hover:text-amber-900"
-          onClick={() => updateOrderStatus(orderId, 'preparing')}
+          variant="warning" 
+          size="sm"
+          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full mt-1"
+          onClick={(e) => handleClick(e, 'preparing')}
         >
-          <Utensils size={14} />
+          <ChefHat size={18} />
           <span>Preparar</span>
         </Button>
       );
@@ -40,13 +46,26 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     case 'preparing':
       return (
         <Button 
-          variant="outline" 
-          size="xs"
-          className="flex items-center gap-1 bg-green-100 text-green-800 border-green-300 hover:bg-green-200 hover:text-green-900"
-          onClick={() => updateOrderStatus(orderId, 'ready')}
+          variant="success" 
+          size="sm"
+          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full mt-1"
+          onClick={(e) => handleClick(e, 'ready')}
         >
-          <CheckCircle size={14} />
+          <CheckCircle size={18} />
           <span>¡Listo!</span>
+        </Button>
+      );
+    
+    case 'cancelled':
+      return (
+        <Button 
+          variant="outline" 
+          size="sm"
+          disabled
+          className="flex items-center gap-1 w-full mt-1 opacity-70"
+        >
+          <XCircle size={18} />
+          <span>Cancelado</span>
         </Button>
       );
     

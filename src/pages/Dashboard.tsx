@@ -10,7 +10,7 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 import EnhancedDashboardCard from '@/components/dashboard/EnhancedDashboardCard';
 import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
 import OrderDetailsDialog from '@/components/dashboard/activity/OrderDetailsDialog';
-import CancellationReviewDialog from '@/components/dashboard/activity/CancellationReviewDialog';
+import { CancellationReviewDialog } from '@/components/dashboard/activity';
 import DiscountReviewDialog from '@/components/dashboard/activity/DiscountReviewDialog';
 import CancellationReasonDialog from '@/components/dashboard/activity/CancellationReasonDialog';
 

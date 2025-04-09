@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { formatRelativeTime } from '@/utils/dateUtils';
+import { formatRelativeTime, formatTime } from '../../../utils/dateUtils';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/formatters';
 import { ActivityMonitorItem } from '@/types/dashboard.types';
@@ -48,10 +48,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                   {formatRelativeTime(item.timeElapsed)}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {new Date(item.timestamp).toLocaleTimeString('es-ES', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  {formatTime(new Date(item.timestamp))}
                 </div>
               </td>
               <td className="py-2 px-3 text-right">

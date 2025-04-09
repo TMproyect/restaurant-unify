@@ -27,7 +27,6 @@ export const loadKitchenOrders = async (
         kitchen_id,
         created_at,
         updated_at,
-        order_source,
         order_items(id, name, notes, quantity)
       `)
       .in('status', statusFilter)
@@ -67,7 +66,7 @@ export const loadKitchenOrders = async (
         kitchenId: order.kitchen_id || 'main',
         items: order.order_items || [],
         createdAt: order.created_at,
-        orderSource: order.order_source
+        orderSource: null // Since we can't query order_source yet, default to null
       };
     });
     

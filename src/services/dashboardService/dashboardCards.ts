@@ -38,14 +38,16 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCardData
       isPositive: stats.salesStats.changePercentage >= 0,
       description: 'desde ayer'
     },
+    tooltip: 'Total de ventas del día en órdenes completadas o entregadas.',
     lastUpdated: stats.salesStats.lastUpdated
   };
 
-  // Orders Card
+  // Orders Card - CORRECTED DEFINITION
   const ordersCard: DashboardCardData = {
     title: 'Pedidos Activos',
     value: String(stats.ordersStats.activeOrders),
     icon: 'Utensils',
+    tooltip: 'Órdenes pendientes o en preparación que requieren atención inmediata. No incluye órdenes listas para entregar.',
     items: [
       {
         name: `${stats.ordersStats.pendingOrders} pendientes`,
@@ -58,7 +60,7 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCardData
         link: '/orders?filter=preparing'
       },
       {
-        name: `${stats.ordersStats.readyOrders} listos`,
+        name: `${stats.ordersStats.readyOrders} listos para entregar`,
         value: '',
         link: '/orders?filter=ready'
       }
@@ -71,6 +73,7 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCardData
     title: 'Clientes Hoy',
     value: String(stats.customersStats.todayCount),
     icon: 'Users',
+    tooltip: 'Número de clientes únicos atendidos hoy (basado en nombre de cliente).',
     change: {
       value: formatChangePercentage(stats.customersStats.changePercentage),
       isPositive: stats.customersStats.changePercentage >= 0,
@@ -79,16 +82,21 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCardData
     lastUpdated: stats.customersStats.lastUpdated
   };
 
-  // Popular Items Card
+  // Popular Items Card - MANDATORY IMPLEMENTATION
+  const popularItemsItems = stats.popularItems.length > 0 
+    ? stats.popularItems.map(item => ({
+        name: item.name,
+        value: `${item.quantity} uds`,
+        link: `/menu/item/${item.id}`
+      }))
+    : [{ name: 'No hay datos suficientes', value: '', link: '' }];
+  
   const popularItemsCard: DashboardCardData = {
     title: 'Platos Populares',
     value: 'Últimos 7 días',
     icon: 'BarChart',
-    items: stats.popularItems.map(item => ({
-      name: item.name,
-      value: `${item.quantity} uds`,
-      link: `/menu/item/${item.id}`
-    })),
+    tooltip: 'Los platos más vendidos durante los últimos 7 días, basado en órdenes completadas.',
+    items: popularItemsItems,
     lastUpdated: stats.salesStats.lastUpdated
   };
 

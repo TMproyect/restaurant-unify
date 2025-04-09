@@ -7,83 +7,138 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   try {
     console.log('📊 [DashboardService] Obteniendo estadísticas detalladas del dashboard');
     
-    // Get today's date boundaries
-    const today = new Date();
-    const todayStart = new Date(today);
+    // Get today's date boundaries for accurate calculations
+    const now = new Date();
+    const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     
-    const yesterday = new Date(today);
+    const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStart = new Date(yesterday);
     yesterdayStart.setHours(0, 0, 0, 0);
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
     
-    // Get active orders with status breakdown
+    console.log(`📊 [DashboardService] Período de cálculo: Hoy=${todayStart.toISOString()} a ${now.toISOString()}`);
+    console.log(`📊 [DashboardService] Período de comparación: Ayer=${yesterdayStart.toISOString()} a ${yesterdayEnd.toISOString()}`);
+    
+    // Get active orders with status breakdown - CORRECT ACTIVE DEFINITION
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
-      .select('id, status')
-      .in('status', ['pending', 'preparing', 'ready', 'priority-pending', 'priority-preparing']);
+      .select('id, status, created_at');
     
-    if (ordersError) throw ordersError;
+    if (ordersError) {
+      console.error('❌ [DashboardService] Error en consulta de órdenes:', ordersError);
+      throw ordersError;
+    }
     
-    const pendingOrders = ordersData?.filter(order => 
-      order.status === 'pending' || order.status === 'priority-pending'
-    ).length || 0;
+    // Log the query results for debugging
+    console.log(`📊 [DashboardService] Órdenes totales recuperadas: ${ordersData?.length || 0}`);
     
-    const preparingOrders = ordersData?.filter(order => 
-      order.status === 'preparing' || order.status === 'priority-preparing'
-    ).length || 0;
+    if (!ordersData || ordersData.length === 0) {
+      console.log('⚠️ [DashboardService] No se encontraron órdenes en la base de datos');
+      return getDefaultDashboardStats();
+    }
     
-    const readyOrders = ordersData?.filter(order => order.status === 'ready').length || 0;
-    const activeOrders = pendingOrders + preparingOrders + readyOrders;
+    // Define status groups for consistent categorization
+    const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
+    const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
+    const readyStatuses = ['ready', 'listo', 'lista'];
+    const completedStatuses = ['completed', 'delivered', 'completado', 'entregado'];
+    const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
     
-    // Get today's sales with transaction count
+    // Count orders by status with consistent categorization
+    const pendingOrders = ordersData.filter(order => pendingStatuses.includes(order.status)).length;
+    const preparingOrders = ordersData.filter(order => preparingStatuses.includes(order.status)).length;
+    const readyOrders = ordersData.filter(order => readyStatuses.includes(order.status)).length;
+    const completedOrders = ordersData.filter(order => completedStatuses.includes(order.status)).length;
+    const cancelledOrders = ordersData.filter(order => cancelledStatuses.includes(order.status)).length;
+    
+    // CORRECT: Active orders are ONLY pending and preparing (not ready)
+    const activeOrders = pendingOrders + preparingOrders;
+    
+    console.log(`📊 [DashboardService] Pedidos por estado:
+      - Pendientes: ${pendingOrders}
+      - En preparación: ${preparingOrders}
+      - Listos: ${readyOrders}
+      - Completados: ${completedOrders}
+      - Cancelados: ${cancelledOrders}
+      - TOTAL ACTIVOS: ${activeOrders}`);
+    
+    // Get today's sales with accurate time filter and status filter (only completed/delivered)
     const { data: todaySalesData, error: salesError } = await supabase
       .from('orders')
-      .select('id, total, status')
+      .select('id, total, status, created_at, customer_name')
       .gte('created_at', todayStart.toISOString())
-      .eq('status', 'completed');
+      .lte('created_at', now.toISOString())
+      .in('status', completedStatuses);
     
-    if (salesError) throw salesError;
+    if (salesError) {
+      console.error('❌ [DashboardService] Error en consulta de ventas:', salesError);
+      throw salesError;
+    }
     
+    console.log(`📊 [DashboardService] Ventas de hoy: ${todaySalesData?.length || 0} órdenes`);
+    
+    // Calculate sales totals
     const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
     const transactionCount = todaySalesData?.length || 0;
     const averageTicket = transactionCount > 0 ? dailyTotal / transactionCount : 0;
     
-    // Get yesterday's sales for comparison
+    // Get yesterday's sales for accurate comparison
     const { data: yesterdaySalesData, error: yesterdayError } = await supabase
       .from('orders')
-      .select('id, total')
+      .select('id, total, status')
       .gte('created_at', yesterdayStart.toISOString())
       .lte('created_at', yesterdayEnd.toISOString())
-      .eq('status', 'completed');
+      .in('status', completedStatuses);
     
-    if (yesterdayError) throw yesterdayError;
+    if (yesterdayError) {
+      console.error('❌ [DashboardService] Error en consulta de ventas de ayer:', yesterdayError);
+      throw yesterdayError;
+    }
     
+    // Calculate yesterday totals for comparison
     const yesterdayTotal = yesterdaySalesData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
     const changePercentage = yesterdayTotal > 0 
       ? ((dailyTotal - yesterdayTotal) / yesterdayTotal) * 100 
       : 0;
     
-    // Get unique customers today
-    const { data: customersData, error: customersError } = await supabase
-      .from('orders')
-      .select('customer_name')
-      .gte('created_at', todayStart.toISOString())
-      .eq('status', 'completed');
+    console.log(`📊 [DashboardService] Comparación ventas:
+      - Hoy: ${dailyTotal.toFixed(2)}
+      - Ayer: ${yesterdayTotal.toFixed(2)}
+      - Cambio: ${changePercentage.toFixed(2)}%`);
     
-    if (customersError) throw customersError;
-    
-    // Count unique customers
+    // Get unique customers today with accurate time filter
+    // Count unique customer names only from completed/delivered orders
     const uniqueCustomers = new Set();
-    customersData?.forEach(order => {
+    todaySalesData?.forEach(order => {
       if (order.customer_name) {
         uniqueCustomers.add(order.customer_name.toLowerCase());
       }
     });
     
-    // Get popular items (last 7 days)
+    const todayCustomerCount = uniqueCustomers.size;
+    
+    // Get unique customers yesterday for comparison
+    const yesterdayUniqueCustomers = new Set();
+    yesterdaySalesData?.forEach(order => {
+      if (order.customer_name) {
+        yesterdayUniqueCustomers.add(order.customer_name.toLowerCase());
+      }
+    });
+    
+    const yesterdayCustomerCount = yesterdayUniqueCustomers.size;
+    const customerChangePercentage = yesterdayCustomerCount > 0
+      ? ((todayCustomerCount - yesterdayCustomerCount) / yesterdayCustomerCount) * 100
+      : 0;
+    
+    console.log(`📊 [DashboardService] Clientes únicos:
+      - Hoy: ${todayCustomerCount}
+      - Ayer: ${yesterdayCustomerCount}
+      - Cambio: ${customerChangePercentage.toFixed(2)}%`);
+    
+    // Get popular items (last 7 days) - ESSENTIAL IMPLEMENTATION
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
@@ -98,11 +153,16 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         orders!inner(status, created_at)
       `)
       .gte('orders.created_at', sevenDaysAgo.toISOString())
-      .eq('orders.status', 'completed');
+      .in('orders.status', completedStatuses);
     
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      console.error('❌ [DashboardService] Error en consulta de items populares:', itemsError);
+      throw itemsError;
+    }
     
-    // Calculate item popularity
+    console.log(`📊 [DashboardService] Items de órdenes recuperados: ${orderItemsData?.length || 0}`);
+    
+    // Calculate item popularity with detailed logging
     const itemCountMap = new Map();
     orderItemsData?.forEach(item => {
       const itemId = item.menu_item_id || item.name;
@@ -120,6 +180,9 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         quantity: item.quantity,
         id: item.id
       }));
+    
+    console.log(`📊 [DashboardService] Top 5 platos populares calculados:`, 
+      popularItems.map(i => `${i.name}: ${i.quantity}`).join(', '));
     
     const lastUpdated = new Date().toISOString();
     
@@ -139,14 +202,40 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         lastUpdated
       },
       customersStats: {
-        todayCount: uniqueCustomers.size,
-        changePercentage: 0, // Would need previous day data for comparison
+        todayCount: todayCustomerCount,
+        changePercentage: customerChangePercentage,
         lastUpdated
       },
       popularItems
     };
   } catch (error) {
     console.error('❌ [DashboardService] Error al obtener estadísticas:', error);
-    throw error;
+    return getDefaultDashboardStats();
   }
 };
+
+// Helper function to return default stats object when data can't be loaded
+function getDefaultDashboardStats(): DashboardStats {
+  return {
+    salesStats: {
+      dailyTotal: 0,
+      transactionCount: 0,
+      averageTicket: 0,
+      changePercentage: 0,
+      lastUpdated: new Date().toISOString()
+    },
+    ordersStats: {
+      activeOrders: 0,
+      pendingOrders: 0,
+      inPreparationOrders: 0,
+      readyOrders: 0,
+      lastUpdated: new Date().toISOString()
+    },
+    customersStats: {
+      todayCount: 0,
+      changePercentage: 0,
+      lastUpdated: new Date().toISOString()
+    },
+    popularItems: []
+  };
+}

@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -44,27 +44,25 @@ function App() {
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/menu" element={<Menu />} />
-              <Route path="/tables" element={<Tables />} />
-              <Route path="/settings/*" element={<Settings />} />
-              <Route path="/cashier" element={<Cashier />} />
-              <Route path="/kitchen" element={<Kitchen />} />
-              <Route path="/integrations" element={<Integrations />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/sales" element={<Sales />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/delivery" element={<Delivery />} />
-              <Route path="/staff" element={<Staff />} />
-              <Route path="/roles-and-permissions" element={<RolesAndPermissionsPage />} />
-            </Routes>
-          </Router>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/tables" element={<Tables />} />
+            <Route path="/settings/*" element={<Settings />} />
+            <Route path="/cashier" element={<Cashier />} />
+            <Route path="/kitchen" element={<Kitchen />} />
+            <Route path="/integrations" element={<Integrations />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/delivery" element={<Delivery />} />
+            <Route path="/staff" element={<Staff />} />
+            <Route path="/roles-and-permissions" element={<RolesAndPermissionsPage />} />
+          </Routes>
           <Toaster />
           <SonnerToaster position="top-right" />
         </AuthProvider>

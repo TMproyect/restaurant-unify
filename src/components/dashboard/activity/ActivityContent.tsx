@@ -19,9 +19,15 @@ const ActivityContent: React.FC<ActivityContentProps> = ({
   filteredItems,
   onActionClick
 }) => {
-  // Use min-height to prevent layout shifts during loading
+  console.log('🔄 [ActivityContent] Rendering:', { 
+    isLoading, 
+    itemsCount: items?.length || 0, 
+    filteredCount: filteredItems?.length || 0 
+  });
+  
+  // Force min-height to prevent layout shifts during loading
   return (
-    <CardContent className="min-h-[300px]">
+    <CardContent className="min-h-[400px]">
       {isLoading ? (
         <ActivityLoading />
       ) : !items || items.length === 0 ? (

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getActivityMonitor,
   prioritizeOrder,
@@ -32,21 +32,26 @@ export function useActivity() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const isUpdatingRef = useRef(false);
   const { toast: uiToast } = useToast();
 
   const fetchActivityData = useCallback(async () => {
+    // Prevent concurrent updates
+    if (isUpdatingRef.current) {
+      console.log('🔄 [useActivity] Update already in progress, skipping...');
+      return;
+    }
+    
     try {
-      console.log('🔄 [useActivity] Fetching activity data... Timestamp:', new Date().toISOString());
+      console.log('🔄 [useActivity] Fetching activity data...');
+      isUpdatingRef.current = true;
       setIsLoadingActivity(true);
       setError(null);
       
       // Get activity monitor data
       const activity = await getActivityMonitor();
       
-      console.log(`✅ [useActivity] Activity data loaded successfully: ${activity.length} items`);
-      if (activity.length > 0) {
-        console.log('✅ [useActivity] Sample activity item:', activity[0]);
-      }
+      console.log(`✅ [useActivity] Activity data loaded: ${activity.length} items`);
       
       setActivityItems(activity);
       setLastRefresh(new Date());
@@ -54,7 +59,7 @@ export function useActivity() {
       console.error('❌ [useActivity] Error loading activity data:', error);
       setError('No se pudieron cargar los datos de actividad');
       
-      // No mostrar toast si ya hay un error previo (evitar spam)
+      // Only show toast for first error (prevent spam)
       if (!error) {
         uiToast({
           title: "Error",
@@ -64,38 +69,29 @@ export function useActivity() {
       }
     } finally {
       setIsLoadingActivity(false);
+      isUpdatingRef.current = false;
     }
   }, [uiToast]);
 
-  // Set up real-time subscription
+  // Set up data fetching and realtime updates
   useEffect(() => {
-    // Fetch initial data
+    // Initial data fetch
     fetchActivityData();
     
-    // Configurar intervalo de respaldo para garantizar actualizaciones periódicas
-    // (aunque las actualizaciones en tiempo real deberían ser la fuente principal)
+    // Set up backup interval with a reasonable frequency
     const refreshInterval = setInterval(() => {
-      console.log('🔄 [useActivity] Verificando actualizaciones periódicas');
+      const secondsSinceLastRefresh = (new Date().getTime() - lastRefresh.getTime()) / 1000;
       
-      // Calcular tiempo desde la última actualización
-      const now = new Date();
-      const secondsSinceLastRefresh = (now.getTime() - lastRefresh.getTime()) / 1000;
-      
-      // Solo actualizar si han pasado más de 30 segundos desde la última actualización
-      if (secondsSinceLastRefresh > 30) {
-        console.log(`🔄 [useActivity] Han pasado ${secondsSinceLastRefresh.toFixed(0)} segundos desde la última actualización, refrescando datos...`);
+      if (secondsSinceLastRefresh > 120) { // Only refresh after 2 minutes of inactivity
+        console.log(`🔄 [useActivity] Performing periodic refresh after ${secondsSinceLastRefresh.toFixed(0)}s`);
         fetchActivityData();
-      } else {
-        console.log(`🔄 [useActivity] Actualización reciente (hace ${secondsSinceLastRefresh.toFixed(0)}s), omitiendo actualización periódica`);
       }
-    }, 30000); // Verificar cada 30 segundos
+    }, 120000); // Check every 2 minutes
     
-    // Set up real-time updates con una función de callback mejorada
+    // Set up realtime updates with the same debounced callback mechanism
     const unsubscribe = subscribeToDashboardUpdates(() => {
-      console.log('🔄 [useActivity] Realtime update triggered, refreshing data...');
-      fetchActivityData().catch(err => {
-        console.error('❌ [useActivity] Error during realtime-triggered update:', err);
-      });
+      console.log('🔄 [useActivity] Realtime update triggered');
+      fetchActivityData();
     });
     
     return () => {
@@ -109,7 +105,6 @@ export function useActivity() {
     activityItems,
     isLoadingActivity,
     error,
-    lastRefresh,
     fetchActivityData
   };
 }

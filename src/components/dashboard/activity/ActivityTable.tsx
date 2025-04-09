@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { formatRelativeTime, formatTime } from '../../../utils/dateUtils';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/formatters';
 import { ActivityMonitorItem } from '@/types/dashboard.types';
@@ -89,6 +88,29 @@ function getKitchenName(kitchenId: string): string {
     default:
       return kitchenId;
   }
+}
+
+// Format relative time for display
+function formatRelativeTime(milliseconds: number): string {
+  if (!milliseconds) return 'Ahora';
+  
+  const seconds = Math.floor(milliseconds / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
+// Format time in 12-hour format
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('es', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: true 
+  });
 }
 
 export default ActivityTable;

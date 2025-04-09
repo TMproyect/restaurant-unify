@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useStats } from './dashboard/use-stats';
 import { useActivity } from './dashboard/use-activity';
 import { useDialogs } from './dashboard/use-dialogs';
@@ -40,23 +40,32 @@ export function useDashboardData() {
     setIsCancellationReasonOpen
   } = useDialogs();
   
+  // Use ref to track if update is in progress
+  const isUpdatingRef = useRef(false);
+  
   // Combine errors
   const error = statsError || activityError;
   
-  // Refresh all data
+  // Throttled refresh function to prevent excessive updates
   const refreshAllData = useCallback(() => {
-    console.log('🔄 [useDashboardData] Actualizando todos los datos del dashboard');
-    fetchDashboardData();
-    fetchActivityData();
-  }, [fetchDashboardData, fetchActivityData]);
-  
-  // Efecto para sincronizar métricas cuando cambia la actividad
-  useEffect(() => {
-    if (activityItems.length > 0) {
-      console.log('🔄 [useDashboardData] Actualizando métricas debido a cambios en actividad');
-      fetchDashboardData();
+    if (isUpdatingRef.current) {
+      console.log('🔄 [useDashboardData] Update already in progress, skipping...');
+      return;
     }
-  }, [activityItems, fetchDashboardData]);
+    
+    console.log('🔄 [useDashboardData] Refreshing all dashboard data');
+    isUpdatingRef.current = true;
+    
+    // Use setTimeout to stagger updates and reduce UI thrashing
+    setTimeout(() => {
+      fetchDashboardData();
+      
+      setTimeout(() => {
+        fetchActivityData();
+        isUpdatingRef.current = false;
+      }, 100);
+    }, 0);
+  }, [fetchDashboardData, fetchActivityData]);
   
   // Handle action clicks from the activity monitor
   const handleActionClick = useCallback(async (action: string) => {

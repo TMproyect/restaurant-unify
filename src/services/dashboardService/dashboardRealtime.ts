@@ -1,9 +1,29 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// Use a debounce mechanism to prevent rapid successive updates
+const createDebouncedCallback = (callback, delay = 300) => {
+  let timeoutId = null;
+  
+  return () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    
+    timeoutId = setTimeout(() => {
+      console.log('🔄 [DashboardService] Executing debounced update callback');
+      callback();
+      timeoutId = null;
+    }, delay);
+  };
+};
+
 // Subscribe to dashboard updates using Supabase realtime
-export const subscribeToDashboardUpdates = (callback: () => void) => {
-  console.log('🔔 [DashboardService] Configurando suscripción en tiempo real mejorada');
+export const subscribeToDashboardUpdates = (callback) => {
+  console.log('🔔 [DashboardService] Setting up enhanced realtime subscription');
+  
+  // Create a debounced version of the callback to prevent rapid updates
+  const debouncedCallback = createDebouncedCallback(callback);
   
   // Subscribe to orders table changes with a more robust channel
   const channel = supabase
@@ -11,60 +31,50 @@ export const subscribeToDashboardUpdates = (callback: () => void) => {
     .on('postgres_changes', 
       { event: '*', schema: 'public', table: 'orders' }, 
       (payload) => {
-        // Handle payload safely - these are potentially undefined values
-        const newData = payload.new || {};
-        const oldData = payload.old || {};
+        // Handle payload safely
+        const newRecord = payload.new || {};
+        const oldRecord = payload.old || {};
         
-        // Use safer property access with type assertions
-        const newId = typeof newData === 'object' && newData !== null ? 
-          (newData as Record<string, any>)['id'] || '' : '';
-        const oldId = typeof oldData === 'object' && oldData !== null ? 
-          (oldData as Record<string, any>)['id'] || '' : '';
-        const newStatus = typeof newData === 'object' && newData !== null ? 
-          (newData as Record<string, any>)['status'] || '' : '';
-        const oldStatus = typeof oldData === 'object' && oldData !== null ? 
-          (oldData as Record<string, any>)['status'] || '' : '';
+        // Extract relevant details for logging
+        const recordId = typeof newRecord === 'object' ? newRecord.id || oldRecord?.id || '' : '';
+        const newStatus = typeof newRecord === 'object' ? newRecord.status || '' : '';
+        const oldStatus = typeof oldRecord === 'object' ? oldRecord.status || '' : '';
         
-        console.log(`🔄 [DashboardService] Cambio detectado en órdenes: ${payload.eventType} - ID: ${newId || oldId}`);
-        console.log(`🔄 [DashboardService] Nuevo estado: ${newStatus}, Anterior: ${oldStatus}`);
+        console.log(`🔄 [DashboardService] Order change detected: ${payload.eventType} - ID: ${recordId}`);
+        if (newStatus !== oldStatus) {
+          console.log(`🔄 [DashboardService] Status changed: ${oldStatus} → ${newStatus}`);
+        }
         
-        // Ejecuta el callback para actualizar datos
-        callback();
+        // Use debounced callback to prevent UI flickering on rapid updates
+        debouncedCallback();
       }
     )
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'order_items' },
-      (payload) => {
-        console.log(`🔄 [DashboardService] Cambio detectado en items de órdenes: ${payload.eventType}`);
-        callback();
+      () => {
+        console.log(`🔄 [DashboardService] Order items change detected`);
+        debouncedCallback();
       }
     )
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'kitchen_orders' },
-      (payload) => {
-        console.log(`🔄 [DashboardService] Cambio detectado en cocina: ${payload.eventType}`);
-        callback();
+      () => {
+        console.log(`🔄 [DashboardService] Kitchen orders change detected`);
+        debouncedCallback();
       }
     )
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'sales' },
-      (payload) => {
-        console.log(`🔄 [DashboardService] Cambio detectado en ventas: ${payload.eventType}`);
-        callback();
+      () => {
+        console.log(`🔄 [DashboardService] Sales change detected`);
+        debouncedCallback();
       }
     )
-    .subscribe((status) => {
-      console.log(`🔔 [DashboardService] Estado de la suscripción: ${status}`);
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ [DashboardService] Suscripción en tiempo real activada correctamente');
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('❌ [DashboardService] Error en la suscripción en tiempo real');
-      }
-    });
+    .subscribe();
   
   // Return unsubscribe function
   return () => {
-    console.log('🔕 [DashboardService] Cancelando suscripción del dashboard');
+    console.log('🔕 [DashboardService] Canceling dashboard subscription');
     supabase.removeChannel(channel);
   };
 };

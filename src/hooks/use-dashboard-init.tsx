@@ -8,35 +8,28 @@ export function useDashboardInit() {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('🔄 [useDashboardInit] useEffect running for initialization');
+    console.log('🔄 [useDashboardInit] Initializing dashboard...');
     
     try {
-      console.log("✅ [useDashboardInit] Starting initialization...");
-      
-      // Check if all required services are available
-      console.log("🔍 [useDashboardInit] Checking required services...");
-      
-      // Add a timeout to detect if initialization is taking too long
+      // Set a reasonable timeout to detect initialization issues
       const timeoutId = setTimeout(() => {
         console.error("❌ [useDashboardInit] Initialization timeout reached");
-        setError("La inicialización está tomando demasiado tiempo. Puede haber un problema con la conexión o con los servicios requeridos.");
-      }, 10000); // 10-second timeout
+        setError("La inicialización está tomando demasiado tiempo. Puede haber un problema con la conexión.");
+      }, 15000); // 15-second timeout
       
-      // Normal initialization timer
+      // Normal initialization timer - set a short delay to allow React to render initial UI
       const timer = setTimeout(() => {
         console.log("✅ [useDashboardInit] Initialization completed successfully");
         clearTimeout(timeoutId); // Clear the timeout if initialization completes
         setIsReady(true);
-      }, 500);
+      }, 200);
       
       return () => {
-        console.log("🔄 [useDashboardInit] Cleaning up initialization timers");
         clearTimeout(timer);
         clearTimeout(timeoutId);
       };
     } catch (err) {
       console.error("❌ [useDashboardInit] Error initializing dashboard:", err);
-      console.error("❌ [useDashboardInit] Error stack:", err instanceof Error ? err.stack : 'No stack trace');
       setError("Error al cargar el dashboard. Por favor, recargue la página.");
       
       toast({

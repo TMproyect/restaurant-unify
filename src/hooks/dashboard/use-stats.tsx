@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getDashboardStats, 
   generateDashboardCards, 
@@ -13,30 +13,35 @@ export function useStats() {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const isUpdatingRef = useRef(false);
   const { toast } = useToast();
 
   const fetchDashboardData = useCallback(async () => {
+    // Prevent concurrent updates
+    if (isUpdatingRef.current) {
+      console.log('🔄 [useStats] Update already in progress, skipping...');
+      return;
+    }
+    
     try {
-      console.log('🔄 [useStats] Fetching dashboard stats... Timestamp:', new Date().toISOString());
+      console.log('🔄 [useStats] Fetching dashboard stats...');
+      isUpdatingRef.current = true;
       setIsLoadingStats(true);
       setError(null);
       
       // Fetch dashboard stats
       const stats: DashboardStats = await getDashboardStats();
       
-      console.log('✅ [useStats] Dashboard stats loaded:', stats);
-      
       // Generate dashboard cards from stats
       const cards = generateDashboardCards(stats);
       
       setDashboardCards(cards);
       setLastRefresh(new Date());
-      console.log('✅ [useStats] Dashboard stats loaded successfully');
     } catch (error) {
       console.error('❌ [useStats] Error loading dashboard stats:', error);
       setError('No se pudieron cargar las estadísticas del dashboard');
       
-      // No mostrar toast si ya hay un error previo (evitar spam)
+      // Only show toast for first error (prevent spam)
       if (!error) {
         toast({
           title: "Error",
@@ -46,37 +51,30 @@ export function useStats() {
       }
     } finally {
       setIsLoadingStats(false);
+      isUpdatingRef.current = false;
     }
   }, [toast]);
 
-  // Configure real-time updates for stats
+  // Set up data fetching and realtime updates
   useEffect(() => {
-    // Fetch initial data
+    // Initial data fetch
     fetchDashboardData();
     
-    // Configurar intervalo de respaldo para garantizar actualizaciones periódicas
+    // Set up backup interval to ensure data stays current
+    // But with a longer interval to avoid excessive updates
     const refreshInterval = setInterval(() => {
-      console.log('🔄 [useStats] Verificando actualizaciones periódicas de estadísticas');
+      const secondsSinceLastRefresh = (new Date().getTime() - lastRefresh.getTime()) / 1000;
       
-      // Calcular tiempo desde la última actualización
-      const now = new Date();
-      const secondsSinceLastRefresh = (now.getTime() - lastRefresh.getTime()) / 1000;
-      
-      // Solo actualizar si han pasado más de 60 segundos desde la última actualización
-      if (secondsSinceLastRefresh > 60) {
-        console.log(`🔄 [useStats] Han pasado ${secondsSinceLastRefresh.toFixed(0)} segundos desde la última actualización de estadísticas, refrescando...`);
+      if (secondsSinceLastRefresh > 120) { // Only refresh after 2 minutes of inactivity
+        console.log(`🔄 [useStats] Performing periodic refresh after ${secondsSinceLastRefresh.toFixed(0)}s`);
         fetchDashboardData();
-      } else {
-        console.log(`🔄 [useStats] Actualización reciente de estadísticas (hace ${secondsSinceLastRefresh.toFixed(0)}s), omitiendo actualización periódica`);
       }
-    }, 60000); // Verificar cada minuto
+    }, 120000); // Check every 2 minutes
     
-    // Set up real-time updates
+    // Set up realtime updates
     const unsubscribe = subscribeToDashboardUpdates(() => {
-      console.log('🔄 [useStats] Realtime update triggered, refreshing dashboard stats...');
-      fetchDashboardData().catch(err => {
-        console.error('❌ [useStats] Error during realtime-triggered stats update:', err);
-      });
+      console.log('🔄 [useStats] Realtime update triggered');
+      fetchDashboardData();
     });
     
     return () => {

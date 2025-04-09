@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useDashboardInit } from '@/hooks/use-dashboard-init';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
@@ -15,6 +15,8 @@ import CancellationReasonDialog from '@/components/dashboard/activity/Cancellati
 import { toast } from 'sonner';
 
 export default function Dashboard() {
+  // Track if component is mounted to prevent state updates after unmount
+  const [isMounted, setIsMounted] = useState(false);
   const { error: initError, isReady } = useDashboardInit();
   const { 
     dashboardCards, 
@@ -37,25 +39,42 @@ export default function Dashboard() {
     handleSubmitCancellationReason
   } = useDashboardData();
   
-  console.log('🔄 [Dashboard] Rendering dashboard with ready state:', isReady);
-
-  // Efecto para manejar errores de conexión
+  // Set mounted state
   useEffect(() => {
-    if (dataError) {
-      console.error('❌ [Dashboard] Error al cargar datos:', dataError);
-      toast.error('Error al cargar datos del dashboard. Intentando reconectar...');
-      
-      // Intentar reconectar después de 5 segundos
-      const reconnectTimer = setTimeout(() => {
-        console.log('🔄 [Dashboard] Intentando reconectar...');
-        refreshAllData();
-      }, 5000);
-      
-      return () => clearTimeout(reconnectTimer);
+    console.log('🔄 [Dashboard] Component mounted');
+    setIsMounted(true);
+    return () => {
+      console.log('🔄 [Dashboard] Component unmounting');
+      setIsMounted(false);
+    };
+  }, []);
+
+  // Safe refresh function that checks if component is still mounted
+  const safeRefresh = useCallback(() => {
+    if (isMounted) {
+      refreshAllData();
     }
-  }, [dataError, refreshAllData]);
+  }, [isMounted, refreshAllData]);
+
+  // Handle connection errors with reconnection attempts
+  useEffect(() => {
+    if (!dataError || !isMounted) return;
+    
+    console.error('❌ [Dashboard] Data loading error:', dataError);
+    toast.error('Error al cargar datos del dashboard. Intentando reconectar...');
+    
+    // Attempt to reconnect after a delay
+    const reconnectTimer = setTimeout(() => {
+      if (isMounted) {
+        console.log('🔄 [Dashboard] Attempting reconnection...');
+        safeRefresh();
+      }
+    }, 10000); // 10-second delay before retry
+    
+    return () => clearTimeout(reconnectTimer);
+  }, [dataError, isMounted, safeRefresh]);
   
-  // Si no está inicializado, esperar
+  // If not initialized, show loading state
   if (!isReady && !initError) {
     return (
       <Layout>
@@ -76,8 +95,9 @@ export default function Dashboard() {
     );
   }
   
+  // Handle initialization error
   if (initError) {
-    console.error('❌ [Dashboard] Error inicializando el dashboard:', initError);
+    console.error('❌ [Dashboard] Dashboard initialization error:', initError);
     return (
       <Layout>
         <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
@@ -99,7 +119,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header sin botón de actualización */}
+        {/* Header without refresh button */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
         </div>
@@ -139,11 +159,10 @@ export default function Dashboard() {
           )}
         </div>
         
-        {/* Activity Monitor */}
+        {/* Activity Monitor (without refresh button) */}
         <ActivityMonitor
           items={activityItems}
           isLoading={isLoadingActivity}
-          onRefresh={refreshAllData}
           onActionClick={handleActionClick}
         />
         

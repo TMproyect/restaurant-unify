@@ -54,11 +54,14 @@ export function useActivity() {
       console.error('❌ [useActivity] Error loading activity data:', error);
       setError('No se pudieron cargar los datos de actividad');
       
-      uiToast({
-        title: "Error",
-        description: "No se pudieron cargar los datos de actividad",
-        variant: "destructive"
-      });
+      // No mostrar toast si ya hay un error previo (evitar spam)
+      if (!error) {
+        uiToast({
+          title: "Error",
+          description: "No se pudieron cargar los datos de actividad",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoadingActivity(false);
     }
@@ -69,16 +72,30 @@ export function useActivity() {
     // Fetch initial data
     fetchActivityData();
     
-    // Set up a periodic refresh every 30 seconds as fallback
+    // Configurar intervalo de respaldo para garantizar actualizaciones periódicas
+    // (aunque las actualizaciones en tiempo real deberían ser la fuente principal)
     const refreshInterval = setInterval(() => {
-      console.log('🔄 [useActivity] Auto-refresh activity data');
-      fetchActivityData();
-    }, 30000); // 30 seconds
+      console.log('🔄 [useActivity] Verificando actualizaciones periódicas');
+      
+      // Calcular tiempo desde la última actualización
+      const now = new Date();
+      const secondsSinceLastRefresh = (now.getTime() - lastRefresh.getTime()) / 1000;
+      
+      // Solo actualizar si han pasado más de 30 segundos desde la última actualización
+      if (secondsSinceLastRefresh > 30) {
+        console.log(`🔄 [useActivity] Han pasado ${secondsSinceLastRefresh.toFixed(0)} segundos desde la última actualización, refrescando datos...`);
+        fetchActivityData();
+      } else {
+        console.log(`🔄 [useActivity] Actualización reciente (hace ${secondsSinceLastRefresh.toFixed(0)}s), omitiendo actualización periódica`);
+      }
+    }, 30000); // Verificar cada 30 segundos
     
-    // Set up real-time updates
+    // Set up real-time updates con una función de callback mejorada
     const unsubscribe = subscribeToDashboardUpdates(() => {
       console.log('🔄 [useActivity] Realtime update triggered, refreshing data...');
-      fetchActivityData();
+      fetchActivityData().catch(err => {
+        console.error('❌ [useActivity] Error during realtime-triggered update:', err);
+      });
     });
     
     return () => {
@@ -86,7 +103,7 @@ export function useActivity() {
       clearInterval(refreshInterval);
       unsubscribe();
     };
-  }, [fetchActivityData]);
+  }, [fetchActivityData, lastRefresh]);
 
   return {
     activityItems,

@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, Clock, AlertCircle, DollarSign, Info } from 'lucide-react';
+import { Clock, AlertCircle, DollarSign, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ActivityMonitorProps } from './activity/types';
 import FilterDropdown from './activity/FilterDropdown';
@@ -125,13 +124,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
   
   const filteredItems = filterItems(items);
   
-  const handleRefresh = () => {
-    console.log('🔄 [ActivityMonitor] Refresh clicked');
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
-  
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -143,10 +135,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
               setActiveFilter={setActiveFilter}
               filters={filters}
             />
-            
-            <Button variant="ghost" size="sm" className="h-8" onClick={handleRefresh}>
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
           </div>
         </div>
       </CardHeader>

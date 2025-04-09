@@ -1,18 +1,18 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useDashboardInit } from '@/hooks/use-dashboard-init';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import EnhancedDashboardCard from '@/components/dashboard/EnhancedDashboardCard';
 import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
 import OrderDetailsDialog from '@/components/dashboard/activity/OrderDetailsDialog';
 import { CancellationReviewDialog } from '@/components/dashboard/activity';
 import DiscountReviewDialog from '@/components/dashboard/activity/DiscountReviewDialog';
 import CancellationReasonDialog from '@/components/dashboard/activity/CancellationReasonDialog';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const { error: initError, isReady } = useDashboardInit();
@@ -38,6 +38,22 @@ export default function Dashboard() {
   } = useDashboardData();
   
   console.log('🔄 [Dashboard] Rendering dashboard with ready state:', isReady);
+
+  // Efecto para manejar errores de conexión
+  useEffect(() => {
+    if (dataError) {
+      console.error('❌ [Dashboard] Error al cargar datos:', dataError);
+      toast.error('Error al cargar datos del dashboard. Intentando reconectar...');
+      
+      // Intentar reconectar después de 5 segundos
+      const reconnectTimer = setTimeout(() => {
+        console.log('🔄 [Dashboard] Intentando reconectar...');
+        refreshAllData();
+      }, 5000);
+      
+      return () => clearTimeout(reconnectTimer);
+    }
+  }, [dataError, refreshAllData]);
   
   // Si no está inicializado, esperar
   if (!isReady && !initError) {
@@ -83,18 +99,9 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header with refresh button */}
+        {/* Header sin botón de actualización */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={refreshAllData}
-            disabled={isLoadingStats}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingStats ? 'animate-spin' : ''}`} />
-            Actualizar Datos
-          </Button>
         </div>
         
         {/* Error display if any */}

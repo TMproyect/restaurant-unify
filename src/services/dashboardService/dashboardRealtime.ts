@@ -27,6 +27,8 @@ export const subscribeToDashboardUpdates = (callback: () => void) => {
         
         console.log(`🔄 [DashboardService] Cambio detectado en órdenes: ${payload.eventType} - ID: ${newId || oldId}`);
         console.log(`🔄 [DashboardService] Nuevo estado: ${newStatus}, Anterior: ${oldStatus}`);
+        
+        // Ejecuta el callback para actualizar datos
         callback();
       }
     )
@@ -37,8 +39,27 @@ export const subscribeToDashboardUpdates = (callback: () => void) => {
         callback();
       }
     )
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'kitchen_orders' },
+      (payload) => {
+        console.log(`🔄 [DashboardService] Cambio detectado en cocina: ${payload.eventType}`);
+        callback();
+      }
+    )
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'sales' },
+      (payload) => {
+        console.log(`🔄 [DashboardService] Cambio detectado en ventas: ${payload.eventType}`);
+        callback();
+      }
+    )
     .subscribe((status) => {
       console.log(`🔔 [DashboardService] Estado de la suscripción: ${status}`);
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ [DashboardService] Suscripción en tiempo real activada correctamente');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('❌ [DashboardService] Error en la suscripción en tiempo real');
+      }
     });
   
   // Return unsubscribe function

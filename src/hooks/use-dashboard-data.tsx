@@ -1,8 +1,9 @@
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useStats } from './dashboard/use-stats';
 import { useActivity } from './dashboard/use-activity';
 import { useDialogs } from './dashboard/use-dialogs';
+import { toast } from 'sonner';
 
 export function useDashboardData() {
   const { 
@@ -44,9 +45,18 @@ export function useDashboardData() {
   
   // Refresh all data
   const refreshAllData = useCallback(() => {
+    console.log('🔄 [useDashboardData] Actualizando todos los datos del dashboard');
     fetchDashboardData();
     fetchActivityData();
   }, [fetchDashboardData, fetchActivityData]);
+  
+  // Efecto para sincronizar métricas cuando cambia la actividad
+  useEffect(() => {
+    if (activityItems.length > 0) {
+      console.log('🔄 [useDashboardData] Actualizando métricas debido a cambios en actividad');
+      fetchDashboardData();
+    }
+  }, [activityItems, fetchDashboardData]);
   
   // Handle action clicks from the activity monitor
   const handleActionClick = useCallback(async (action: string) => {
@@ -91,9 +101,7 @@ export function useDashboardData() {
         
       default:
         console.warn('❌ [useDashboardData] Unknown action type:', actionType);
-        import('sonner').then(module => {
-          module.toast.error(`Acción desconocida: ${actionType}`);
-        });
+        toast.error(`Acción desconocida: ${actionType}`);
     }
   }, [
     activityItems, 

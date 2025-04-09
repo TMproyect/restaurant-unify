@@ -61,7 +61,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
               </td>
               <td className="py-2 px-3 text-center">
                 <ActionButtons 
-                  actions={item.actions} 
+                  actions={item.actions.filter(action => !action.startsWith('review-discount'))} 
                   onActionClick={onActionClick} 
                 />
               </td>

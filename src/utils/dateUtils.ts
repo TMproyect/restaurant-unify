@@ -24,16 +24,17 @@ export function formatRelativeTime(minutes: number): string {
 }
 
 /**
- * Format a date to a localized time string
+ * Format a date to a localized time string in 12-hour format
  * @param date The date to format
- * @returns A formatted time string
+ * @returns A formatted time string with AM/PM
  */
 export function formatTime(date: Date | string): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   
   return dateObj.toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit'
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   });
 }
 

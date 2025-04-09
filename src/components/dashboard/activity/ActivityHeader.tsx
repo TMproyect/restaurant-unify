@@ -22,8 +22,8 @@ const ActivityHeader: React.FC<ActivityHeaderProps> = ({
       <CardTitle className="text-xl font-semibold">Monitor de Actividad</CardTitle>
       <div className="flex items-center gap-2">
         <FilterDropdown 
-          activeFilter={activeFilter}
-          setActiveFilter={setActiveFilter}
+          activeFilter={activeFilter} 
+          setActiveFilter={setActiveFilter} 
           filters={filters}
         />
       </div>

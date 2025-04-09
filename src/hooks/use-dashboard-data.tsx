@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useStats } from './dashboard/use-stats';
 import { useActivity } from './dashboard/use-activity';
 import { useDialogs } from './dashboard/use-dialogs';
@@ -40,9 +40,6 @@ export function useDashboardData() {
     setIsCancellationReasonOpen
   } = useDialogs();
   
-  // Use ref to track if update is in progress
-  const isUpdatingRef = useRef(false);
-  
   // Add detailed logging to track component lifecycle
   useEffect(() => {
     console.log('🔄 [useDashboardData] Hook initialized');
@@ -56,31 +53,25 @@ export function useDashboardData() {
   // Combine errors
   const error = statsError || activityError;
   
-  // Throttled refresh function to prevent excessive updates
+  // Simplified refresh function without refs or complex locking
   const refreshAllData = useCallback(() => {
-    console.log('🔄 [useDashboardData] refreshAllData called');
+    console.log('🔄 [useDashboardData] refreshAllData called - refreshing all dashboard data');
     
-    if (isUpdatingRef.current) {
-      console.log('🔄 [useDashboardData] Update already in progress, skipping...');
-      return;
+    try {
+      // Use Promise.all but with proper error handling
+      Promise.all([
+        fetchDashboardData().catch(err => {
+          console.error('❌ [useDashboardData] Error refreshing dashboard stats:', err);
+        }),
+        fetchActivityData().catch(err => {
+          console.error('❌ [useDashboardData] Error refreshing activity data:', err);
+        })
+      ]).catch(err => {
+        console.error('❌ [useDashboardData] Error in Promise.all:', err);
+      });
+    } catch (err) {
+      console.error('❌ [useDashboardData] Unexpected error in refreshAllData:', err);
     }
-    
-    console.log('🔄 [useDashboardData] Refreshing all dashboard data');
-    isUpdatingRef.current = true;
-    
-    // Use Promise to handle both fetch operations with proper error handling
-    Promise.all([
-      fetchDashboardData().catch(err => {
-        console.error('❌ [useDashboardData] Error refreshing dashboard stats:', err);
-      }),
-      fetchActivityData().catch(err => {
-        console.error('❌ [useDashboardData] Error refreshing activity data:', err);
-      })
-    ])
-    .finally(() => {
-      isUpdatingRef.current = false;
-      console.log('🔄 [useDashboardData] Refresh completed, update lock released');
-    });
   }, [fetchDashboardData, fetchActivityData]);
   
   // Handle action clicks from the activity monitor

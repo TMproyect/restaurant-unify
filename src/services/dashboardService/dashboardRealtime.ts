@@ -1,23 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Use a debounce mechanism to prevent rapid successive updates
-const createDebouncedCallback = (callback, delay = 300) => {
-  let timeoutId = null;
-  
-  return () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    
-    timeoutId = setTimeout(() => {
-      console.log('🔄 [DashboardService] Executing debounced update callback');
-      callback();
-      timeoutId = null;
-    }, delay);
-  };
-};
-
 // Define a type for the record structure
 interface OrderRecord {
   id?: string;
@@ -27,10 +10,7 @@ interface OrderRecord {
 
 // Subscribe to dashboard updates using Supabase realtime
 export const subscribeToDashboardUpdates = (callback) => {
-  console.log('🔔 [DashboardService] Setting up enhanced realtime subscription');
-  
-  // Create a debounced version of the callback to prevent rapid updates
-  const debouncedCallback = createDebouncedCallback(callback);
+  console.log('🔔 [DashboardService] Setting up realtime subscription');
   
   try {
     // Subscribe to orders table changes with a more robust channel
@@ -53,29 +33,29 @@ export const subscribeToDashboardUpdates = (callback) => {
             console.log(`🔄 [DashboardService] Status changed: ${oldStatus} → ${newStatus}`);
           }
           
-          // Use debounced callback to prevent UI flickering on rapid updates
-          debouncedCallback();
+          // Call callback directly without debouncing for now
+          callback();
         }
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'order_items' },
         () => {
           console.log(`🔄 [DashboardService] Order items change detected`);
-          debouncedCallback();
+          callback();
         }
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'kitchen_orders' },
         () => {
           console.log(`🔄 [DashboardService] Kitchen orders change detected`);
-          debouncedCallback();
+          callback();
         }
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'sales' },
         () => {
           console.log(`🔄 [DashboardService] Sales change detected`);
-          debouncedCallback();
+          callback();
         }
       )
       .subscribe((status) => {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   getActivityMonitor,
   prioritizeOrder,
@@ -31,23 +31,12 @@ export function useActivity() {
   const [activityItems, setActivityItems] = useState<ActivityMonitorItem[]>([]);
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const isUpdatingRef = useRef(false);
-  const hasLoadedRef = useRef(false);
   const { toast: uiToast } = useToast();
 
   const fetchActivityData = useCallback(async () => {
-    console.log('🔄 [useActivity] Fetching activity data...');
-    
-    // If this is not the initial load, use the updating ref
-    if (hasLoadedRef.current && isUpdatingRef.current) {
-      console.log('🔄 [useActivity] Update already in progress, skipping...');
-      return;
-    }
+    console.log('🔄 [useActivity] Fetching activity data... START');
     
     try {
-      // Set updating flag
-      isUpdatingRef.current = true;
       setIsLoadingActivity(true);
       setError(null);
       
@@ -58,29 +47,23 @@ export function useActivity() {
       console.log(`✅ [useActivity] Activity data loaded: ${activity.length} items`);
       
       setActivityItems(activity);
-      setLastRefresh(new Date());
-      hasLoadedRef.current = true;
     } catch (error) {
       console.error('❌ [useActivity] Error loading activity data:', error);
       setError('No se pudieron cargar los datos de actividad');
       
-      // Only show toast for first error (prevent spam)
-      if (!error) {
-        uiToast({
-          title: "Error",
-          description: "No se pudieron cargar los datos de actividad",
-          variant: "destructive"
-        });
-      }
+      uiToast({
+        title: "Error",
+        description: "No se pudieron cargar los datos de actividad",
+        variant: "destructive"
+      });
     } finally {
-      // Always update these states even if there was an error
+      // Always update loading state even if there was an error
+      console.log('🔄 [useActivity] Ending fetch operation, setting loading to false');
       setIsLoadingActivity(false);
-      isUpdatingRef.current = false;
-      console.log('🔄 [useActivity] Loading state set to false, fetch completed');
     }
   }, [uiToast]);
 
-  // Set up data fetching and realtime updates
+  // Set up data fetching and realtime updates with simplified dependency array
   useEffect(() => {
     console.log('🔄 [useActivity] Setting up initial data fetch and subscriptions');
     
@@ -92,35 +75,26 @@ export function useActivity() {
     
     // Set up backup interval with a reasonable frequency
     const refreshInterval = setInterval(() => {
-      const secondsSinceLastRefresh = (new Date().getTime() - lastRefresh.getTime()) / 1000;
-      
-      if (secondsSinceLastRefresh > 120) { // Only refresh after 2 minutes of inactivity
-        console.log(`🔄 [useActivity] Performing periodic refresh after ${secondsSinceLastRefresh.toFixed(0)}s`);
-        fetchActivityData().catch(err => {
-          console.error('❌ [useActivity] Error in interval refresh:', err);
-        });
-      }
-    }, 120000); // Check every 2 minutes
-    
-    // Set up realtime updates with the same debounced callback mechanism
-    let unsubscribe = () => {};
-    try {
-      unsubscribe = subscribeToDashboardUpdates(() => {
-        console.log('🔄 [useActivity] Realtime update triggered');
-        fetchActivityData().catch(err => {
-          console.error('❌ [useActivity] Error in realtime update:', err);
-        });
+      console.log('🔄 [useActivity] Performing periodic refresh');
+      fetchActivityData().catch(err => {
+        console.error('❌ [useActivity] Error in interval refresh:', err);
       });
-    } catch (error) {
-      console.error('❌ [useActivity] Error setting up realtime subscription:', error);
-    }
+    }, 120000); // Every 2 minutes
+    
+    // Set up realtime updates with simplified callback
+    const unsubscribe = subscribeToDashboardUpdates(() => {
+      console.log('🔄 [useActivity] Realtime update triggered');
+      fetchActivityData().catch(err => {
+        console.error('❌ [useActivity] Error in realtime update:', err);
+      });
+    });
     
     return () => {
       console.log('🔄 [useActivity] Cleaning up activity subscription');
       clearInterval(refreshInterval);
       unsubscribe();
     };
-  }, [fetchActivityData, lastRefresh]);
+  }, []); // Empty dependency array so it only runs once on mount
 
   return {
     activityItems,

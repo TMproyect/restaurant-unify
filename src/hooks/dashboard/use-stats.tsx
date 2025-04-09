@@ -12,17 +12,22 @@ export function useStats() {
   const [dashboardCards, setDashboardCards] = useState<DashboardCardData[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const { toast } = useToast();
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      console.log('🔄 [useStats] Fetching dashboard data...');
+      console.log('🔄 [useStats] Fetching dashboard data... Timestamp:', new Date().toISOString());
       setIsLoadingStats(true);
+      setError(null);
       
       // Get dashboard stats and generate cards
       const stats = await getDashboardStats();
+      console.log('✅ [useStats] Dashboard stats loaded:', stats);
+      
       const cards = generateDashboardCards(stats);
       setDashboardCards(cards);
+      setLastRefresh(new Date());
       
       console.log('✅ [useStats] Dashboard stats loaded successfully');
     } catch (error) {
@@ -55,12 +60,23 @@ export function useStats() {
   // Initial data loading
   useEffect(() => {
     fetchDashboardData();
+    
+    // Set up a periodic refresh every 60 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 [useStats] Auto-refresh dashboard data');
+      fetchDashboardData();
+    }, 60000); // 60 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [fetchDashboardData]);
 
   return {
     dashboardCards,
     isLoadingStats,
     error,
+    lastRefresh,
     fetchDashboardData
   };
 }

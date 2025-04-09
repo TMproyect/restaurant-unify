@@ -2,127 +2,121 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ActivityMonitorItem } from '@/types/dashboard.types';
 
-// Get order activity with exception monitoring
-export const getActivityMonitor = async (limit = 20): Promise<ActivityMonitorItem[]> => {
+/**
+ * Función para obtener los datos del monitor de actividad
+ * Incluye todos los pedidos con estados relevantes y sus acciones correspondientes
+ */
+export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
   try {
-    console.log('🔍 [DashboardService] Obteniendo monitor de actividad con detección de excepciones');
+    console.log('📊 [DashboardService] Obteniendo datos del monitor de actividad');
     
-    // Get recent orders
+    // Obtener todas las órdenes con la información necesaria
+    // No limitar a 5 órdenes como parece que estaba sucediendo antes
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .select(`
+        id,
+        status,
+        customer_name,
+        created_at,
+        updated_at,
+        total,
+        discount,
+        items_count,
+        external_id
+      `)
+      .order('created_at', { ascending: false });
     
-    if (ordersError) throw ordersError;
+    if (ordersError) {
+      console.error('❌ [DashboardService] Error al obtener órdenes para el monitor:', ordersError);
+      throw ordersError;
+    }
     
-    // Set thresholds for exceptions
-    const delayThresholdMinutes = 15; // Orders pending/preparing for more than X minutes
-    const highDiscountThreshold = 15; // Discount percentage considered high
+    console.log(`📊 [DashboardService] Órdenes recuperadas para el monitor: ${orders?.length || 0}`);
     
-    // Process orders to detect exceptions
-    const now = new Date();
+    if (!orders || orders.length === 0) {
+      return [];
+    }
     
-    const activityItems = orders?.map(order => {
-      // Calculate time elapsed
+    // Convertir a formato del monitor de actividad
+    const activityItems: ActivityMonitorItem[] = orders.map(order => {
+      // Calcular tiempo transcurrido en minutos
       const createdAt = new Date(order.created_at);
-      const timeElapsedMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+      const now = new Date();
+      const elapsedMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
       
-      // Check for delays
+      // Determinar si hay retraso (más de 15 minutos para órdenes pendientes o en preparación)
       const isDelayed = (
-        order.status === 'pending' || 
-        order.status === 'preparing' || 
-        order.status === 'priority-pending' || 
-        order.status === 'priority-preparing'
-      ) && timeElapsedMinutes > delayThresholdMinutes;
+        (order.status === 'pending' || 
+         order.status === 'preparing' || 
+         order.status === 'pendiente' || 
+         order.status === 'preparando' || 
+         order.status === 'en preparación') && 
+        elapsedMinutes > 15
+      );
       
-      // Check for discounts
+      // Determinar si la orden está cancelada
+      const hasCancellation = order.status === 'cancelled' || order.status === 'cancelado';
+      
+      // Determinar si hay descuento
       const hasDiscount = order.discount && order.discount > 0;
-      const isHighDiscount = hasDiscount && order.discount >= highDiscountThreshold;
+      const discountPercentage = hasDiscount ? 
+        Math.round((order.discount / (order.total + order.discount)) * 100) : 0;
       
-      // Determine actions based on status and exceptions
+      // Definir las acciones disponibles según el estado
       const actions = [];
       
-      // All orders have view details action
-      actions.push({
-        label: 'Ver Detalles',
-        action: `view:${order.id}`,
-        type: 'default'
-      });
+      // Agregar acción de visualizar para todas las órdenes
+      actions.push(`view:${order.id}`);
       
-      // Add special actions for exceptions
-      if (isDelayed && (
-        order.status === 'pending' || 
-        order.status === 'preparing'
-      )) {
-        actions.push({
-          label: 'Priorizar',
-          action: `prioritize:${order.id}`,
-          type: 'warning'
-        });
+      // Agregar acciones específicas según el estado
+      if (order.status === 'pending' || order.status === 'pendiente') {
+        actions.push(`prioritize:${order.id}`);
       }
       
-      // Add cancel action for active orders
-      if (
-        order.status === 'pending' || 
-        order.status === 'preparing' ||
-        order.status === 'priority-pending' || 
-        order.status === 'priority-preparing'
-      ) {
-        actions.push({
-          label: 'Cancelar',
-          action: `cancel:${order.id}`,
-          type: 'danger'
-        });
+      if (order.status !== 'cancelled' && order.status !== 'cancelado') {
+        actions.push(`review-cancel:${order.id}`);
       }
       
-      if (order.status === 'cancelled') {
-        actions.push({
-          label: 'Revisar Cancelación',
-          action: `review-cancel:${order.id}`,
-          type: 'danger'
-        });
-      }
-      
-      if (isHighDiscount) {
-        actions.push({
-          label: 'Ver Descuento',
-          action: `review-discount:${order.id}`,
-          type: 'warning'
-        });
+      if (!hasDiscount) {
+        actions.push(`review-discount:${order.id}`);
       }
       
       return {
         id: order.id,
-        type: 'order' as const,
-        status: order.status,
         customer: order.customer_name,
-        total: order.total,
+        status: order.status,
         timestamp: order.created_at,
-        timeElapsed: timeElapsedMinutes,
+        total: order.total || 0,
+        itemsCount: order.items_count || 0,
+        externalId: order.external_id,
         isDelayed,
-        hasCancellation: order.status === 'cancelled',
+        timeElapsed: elapsedMinutes,
+        hasCancellation,
         hasDiscount,
-        discountPercentage: order.discount,
-        itemsCount: order.items_count,
-        actions,
-        appliedBy: 'Sistema' // In a real app, get this from the database
+        discountPercentage,
+        actions
       };
     });
     
-    return activityItems || [];
+    console.log(`✅ [DashboardService] Items de actividad generados: ${activityItems.length}`);
+    return activityItems;
   } catch (error) {
     console.error('❌ [DashboardService] Error al obtener monitor de actividad:', error);
-    return [];
+    throw error;
   }
 };
 
-// Function for prioritizing orders
+/**
+ * Prioriza una orden en la cocina
+ * @param orderId ID de la orden a priorizar
+ * @returns true si se realizó correctamente, false en caso contrario
+ */
 export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
   try {
-    console.log(`🔍 [DashboardService] Priorizando orden ${orderId}`);
+    console.log(`🔄 [DashboardService] Priorizando orden ${orderId}`);
     
-    // Get the current order status
+    // Obtener estado actual de la orden
     const { data: order, error: getError } = await supabase
       .from('orders')
       .select('status')
@@ -130,43 +124,46 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
       .single();
     
     if (getError) {
-      console.error(`❌ [DashboardService] Error al obtener orden ${orderId}:`, getError);
-      await new Promise(resolve => setTimeout(resolve, 800)); // Add delay for demo purposes
-      return true; // Return success for demo
+      console.error('❌ [DashboardService] Error al obtener orden para priorizar:', getError);
+      throw getError;
     }
     
-    // Only prioritize pending or preparing orders
-    if (order && (order.status === 'pending' || order.status === 'preparing')) {
-      // Update the status to indicate priority
-      // Here we're using a status prefix "priority-" to indicate it's prioritized
-      const newStatus = `priority-${order.status}`;
-      
-      const { data, error } = await supabase
+    if (!order) {
+      console.error(`❌ [DashboardService] Orden ${orderId} no encontrada`);
+      return false;
+    }
+    
+    // Determinar nuevo estado priorizado
+    let newStatus = order.status;
+    if (order.status === 'pending' || order.status === 'pendiente') {
+      newStatus = 'priority-pending';
+    } else if (order.status === 'preparing' || order.status === 'preparando' || order.status === 'en preparación') {
+      newStatus = 'priority-preparing';
+    }
+    
+    // Actualizar estado solo si cambió
+    if (newStatus !== order.status) {
+      const { error: updateError } = await supabase
         .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId)
-        .select('id')
-        .single();
-      
-      if (error) {
-        console.error(`❌ [DashboardService] Error al priorizar orden ${orderId}:`, error);
-        await new Promise(resolve => setTimeout(resolve, 800)); // Add delay for demo purposes
-        return true; // Return success for demo
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+        
+      if (updateError) {
+        console.error('❌ [DashboardService] Error al priorizar orden:', updateError);
+        throw updateError;
       }
       
-      return !!data;
+      console.log(`✅ [DashboardService] Orden ${orderId} priorizada correctamente a "${newStatus}"`);
+      return true;
     }
     
-    // If the order can't be prioritized (e.g., already delivered),
-    // we'll still return success for the demo
-    console.log(`ℹ️ [DashboardService] Orden ${orderId} no puede ser priorizada (estado: ${order?.status})`);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    console.log(`ℹ️ [DashboardService] La orden ${orderId} ya estaba en un estado que no se puede priorizar`);
     return true;
   } catch (error) {
-    console.error(`❌ [DashboardService] Error al priorizar orden ${orderId}:`, error);
-    // In a production app, we would throw the error here
-    // But for demo purposes, we'll delay and return a success
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return true;
+    console.error('❌ [DashboardService] Error al priorizar orden:', error);
+    return false;
   }
 };

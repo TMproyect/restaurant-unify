@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 
 // Exported function to handle prioritize action
 export async function prioritizeOrderAction(id: string, refreshCallback: () => void) {
+  console.log(`🔄 [prioritizeOrderAction] Priorizando orden ${id}`);
+  
   toast.promise(
     prioritizeOrder(id),
     {
@@ -29,18 +31,25 @@ export function useActivity() {
   const [activityItems, setActivityItems] = useState<ActivityMonitorItem[]>([]);
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const { toast: uiToast } = useToast();
 
   const fetchActivityData = useCallback(async () => {
     try {
-      console.log('🔄 [useActivity] Fetching activity data...');
+      console.log('🔄 [useActivity] Fetching activity data... Timestamp:', new Date().toISOString());
       setIsLoadingActivity(true);
+      setError(null);
       
       // Get activity monitor data
       const activity = await getActivityMonitor();
-      setActivityItems(activity as ActivityMonitorItem[]);
       
-      console.log('✅ [useActivity] Activity data loaded successfully');
+      console.log(`✅ [useActivity] Activity data loaded successfully: ${activity.length} items`);
+      if (activity.length > 0) {
+        console.log('✅ [useActivity] Sample activity item:', activity[0]);
+      }
+      
+      setActivityItems(activity as ActivityMonitorItem[]);
+      setLastRefresh(new Date());
     } catch (error) {
       console.error('❌ [useActivity] Error loading activity data:', error);
       setError('No se pudieron cargar los datos de actividad');
@@ -60,6 +69,12 @@ export function useActivity() {
     // Fetch initial data
     fetchActivityData();
     
+    // Set up a periodic refresh every 30 seconds as fallback
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 [useActivity] Auto-refresh activity data');
+      fetchActivityData();
+    }, 30000); // 30 seconds
+    
     // Set up real-time updates
     const unsubscribe = subscribeToDashboardUpdates(() => {
       console.log('🔄 [useActivity] Realtime update triggered, refreshing data...');
@@ -68,6 +83,7 @@ export function useActivity() {
     
     return () => {
       console.log('🔄 [useActivity] Cleaning up activity subscription');
+      clearInterval(refreshInterval);
       unsubscribe();
     };
   }, [fetchActivityData]);
@@ -76,6 +92,7 @@ export function useActivity() {
     activityItems,
     isLoadingActivity,
     error,
+    lastRefresh,
     fetchActivityData
   };
 }

@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Order } from '@/types/order.types';
 import { toast } from 'sonner';
+import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
 
 /**
  * Updates the status of an order
@@ -35,29 +36,6 @@ export const updateOrderStatus = async (orderId: string, newStatus: string): Pro
     console.error(`❌ [orderUpdates] Exception updating order ${orderId} status:`, error);
     return false;
   }
-};
-
-/**
- * Normalizes order status to ensure consistency across the application
- */
-const normalizeOrderStatus = (status: string): string => {
-  // Convertir todo a minúsculas para facilitar la comparación
-  const normalizedStatus = status.toLowerCase();
-  
-  if (normalizedStatus.includes('pend')) {
-    return 'pending';
-  } else if (normalizedStatus.includes('prepar')) {
-    return 'preparing';
-  } else if (normalizedStatus.includes('list')) {
-    return 'ready';
-  } else if (normalizedStatus.includes('entrega')) {
-    return 'delivered';
-  } else if (normalizedStatus.includes('cancel')) {
-    return 'cancelled';
-  }
-  
-  // Si no coincide con ninguno de los anteriores, devolver el original
-  return status;
 };
 
 /**

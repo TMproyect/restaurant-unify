@@ -1,63 +1,22 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { 
-  getOrderWithItems, 
-  updateOrderStatus, 
-  subscribeToFilteredOrders,
-  Order 
-} from '@/services/orderService';
-import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
+import { subscribeToFilteredOrders } from '@/services/orders/orderSubscriptions';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { getKitchens } from '@/services/orders/orderQueries';
+import { OrderDisplay, KITCHEN_OPTIONS } from './kitchenTypes';
+import { getDBStatusesFromUIStatus } from '@/utils/orderStatusUtils';
+import { 
+  loadKitchenOrders, 
+  updateOrderStatusInKitchen,
+  getKitchenName,
+  getAveragePreparationTime
+} from '@/services/kitchen/kitchenService';
+import {
+  calculateKitchenStats,
+  filterOrdersByStatus
+} from '@/services/kitchen/kitchenStatsService';
 
-interface OrderItem {
-  id: string;
-  name: string;
-  notes: string;
-  quantity: number;
-}
-
-export interface OrderDisplay {
-  id: string;
-  table: string;
-  customerName: string;
-  time: string;
-  kitchenId: string;
-  status: string;
-  items: OrderItem[];
-}
-
-// Kitchen options constants
-export const kitchenOptions = [
-  { id: "main", name: "Cocina Principal" },
-  { id: "grill", name: "Parrilla" },
-  { id: "cold", name: "Cocina Fría" },
-  { id: "pastry", name: "Pastelería" },
-  { id: "bar", name: "Bar" }
-];
-
-// Función para normalizar estados de órdenes
-const normalizeOrderStatus = (status: string): string => {
-  // Convertir todo a minúsculas para facilitar la comparación
-  const normalizedStatus = status.toLowerCase();
-  
-  if (normalizedStatus.includes('pend')) {
-    return 'pending';
-  } else if (normalizedStatus.includes('prepar')) {
-    return 'preparing';
-  } else if (normalizedStatus.includes('list')) {
-    return 'ready';
-  } else if (normalizedStatus.includes('entrega')) {
-    return 'delivered';
-  } else if (normalizedStatus.includes('cancel')) {
-    return 'cancelled';
-  }
-  
-  // Si no coincide con ninguno de los anteriores, devolver el original
-  return status;
-};
+export { KITCHEN_OPTIONS as kitchenOptions };
 
 export const useKitchenData = () => {
   const [selectedKitchen, setSelectedKitchen] = useState("main");
@@ -87,183 +46,59 @@ export const useKitchenData = () => {
   };
 
   // Cargar órdenes desde Supabase
-  const loadOrders = async () => {
-    if (!hasViewPermission) return;
-    
+  const fetchOrders = async () => {
     try {
       setLoading(true);
-      console.log(`🔍 [Kitchen] Loading orders for kitchen ${selectedKitchen} with status filter ${orderStatus}`);
       
-      // Construir la consulta base - CORREGIDA para evitar el error de status en order_items
-      let query = supabase
-        .from('orders')
-        .select(`
-          id,
-          table_number,
-          customer_name,
-          status,
-          is_delivery,
-          kitchen_id,
-          created_at,
-          updated_at,
-          order_items (
-            id,
-            name,
-            quantity,
-            notes
-          )
-        `);
+      // Obtener los estados de la base de datos correspondientes al estado de la UI
+      const dbStatuses = getDBStatusesFromUIStatus(orderStatus);
       
-      // Filtrar por cocina seleccionada si no es "all"
-      if (selectedKitchen !== "all") {
-        query = query.eq('kitchen_id', filterValue(selectedKitchen));
-      }
+      // Cargar órdenes
+      const data = await loadKitchenOrders(
+        selectedKitchen,
+        dbStatuses,
+        hasViewPermission
+      );
       
-      // Convertir los estados de la UI a valores que pueden estar en la base de datos
-      let dbStatuses: string[] = [];
-      if (orderStatus === 'pending') {
-        dbStatuses = ['pending', 'Pendiente', 'pendiente'];
-      } else if (orderStatus === 'preparing') {
-        dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación'];
-      } else if (orderStatus === 'ready') {
-        dbStatuses = ['ready', 'Listo', 'listo', 'delivered', 'Entregada', 'entregada'];
-      }
-      
-      // Agregar filtro de estado si hay estados definidos
-      if (dbStatuses.length > 0) {
-        query = query.in('status', dbStatuses);
-      }
-      
-      // Ejecutar la consulta
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('❌ [Kitchen] Error loading orders:', error);
-        throw error;
-      }
-      
-      console.log(`✅ [Kitchen] Received ${data?.length || 0} orders from Supabase`);
-      
-      if (!data) {
-        setOrders([]);
-        return;
-      }
-      
-      // Map and ensure we have data with proper type
-      type ExtendedOrder = Order & { order_items: any[] };
-      const typedData = mapArrayResponse<ExtendedOrder>(data, 'Failed to map orders for kitchen');
-      
-      // Formatear las órdenes para el componente
-      const formattedOrders: OrderDisplay[] = typedData.map(order => ({
-        id: order.id || '',
-        table: order.is_delivery ? 'Delivery' : String(order.table_number),
-        customerName: order.customer_name,
-        time: new Date(order.created_at || '').toLocaleTimeString('es-ES', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }),
-        kitchenId: order.kitchen_id || '',
-        status: normalizeOrderStatus(order.status),
-        items: (order.order_items || []).map((item: any) => ({
-          name: item.name,
-          notes: item.notes || '',
-          id: item.id,
-          quantity: item.quantity
-        }))
-      }));
-      
-      console.log('✅ [Kitchen] Formatted orders:', formattedOrders);
-      setOrders(formattedOrders);
+      setOrders(data);
     } catch (error) {
-      console.error('❌ [Kitchen] Error loading orders:', error);
-      toast.error('Error al cargar los pedidos para cocina');
+      console.error('❌ [Kitchen] Error in fetchOrders:', error);
     } finally {
       setLoading(false);
     }
   };
 
   // Actualizar el estado de una orden
-  const updateOrderStatusInKitchen = async (orderId: string, newStatus: string) => {
-    if (!hasManagePermission) {
-      toast.error("No tienes permisos para actualizar el estado de órdenes");
-      return;
-    }
+  const updateOrderStatusHandler = async (orderId: string, newStatus: string) => {
+    setLoading(true);
+    const success = await updateOrderStatusInKitchen(orderId, newStatus, hasManagePermission);
     
-    try {
-      console.log(`🔄 [Kitchen] Updating order ${orderId} status to ${newStatus}`);
-      setLoading(true);
-      const success = await updateOrderStatus(orderId, newStatus);
-      
-      if (success) {
-        toast.success(`Estado de la orden actualizado a "${
-          newStatus === 'pending' ? 'Pendiente' :
-          newStatus === 'preparing' ? 'En preparación' :
-          newStatus === 'ready' ? 'Lista' :
-          newStatus === 'delivered' ? 'Entregada' :
-          newStatus === 'cancelled' ? 'Cancelada' : newStatus
-        }"`);
-        
-        // Recargar órdenes para reflejar el cambio
-        loadOrders();
-      } else {
-        console.error('❌ [Kitchen] Failed to update order status');
-        toast.error("No se pudo actualizar el estado de la orden");
-      }
-    } catch (error) {
-      console.error('❌ [Kitchen] Error updating order status:', error);
-      toast.error("Ocurrió un error al actualizar el estado");
-    } finally {
+    // Si la actualización fue exitosa, recargar órdenes
+    if (success) {
+      fetchOrders();
+    } else {
       setLoading(false);
     }
   };
 
   // Get statistics for the selected kitchen
   const getKitchenStats = () => {
-    const pendingOrders = orders.filter(order => order.status === 'pending');
-    const preparingOrders = orders.filter(order => order.status === 'preparing');
-    const completedOrders = orders.filter(order => 
-      order.status === 'ready' || order.status === 'delivered'
-    );
-    
-    return { 
-      pendingItems: pendingOrders.length, 
-      preparingItems: preparingOrders.length, 
-      completedItems: completedOrders.length,
-      totalItems: orders.length
-    };
+    return calculateKitchenStats(orders);
   };
 
-  // Calculate average preparation time (mock data for demo)
+  // Calculate average preparation time
   const getAverageTime = () => {
-    // En una app real, esto se calcularía de datos reales
-    const times: Record<string, number> = {
-      'main': 15,
-      'grill': 18,
-      'cold': 10,
-      'pastry': 20
-    };
-    
-    return times[selectedKitchen] || 15;
+    return getAveragePreparationTime(selectedKitchen);
   };
 
   // Get kitchen name from ID
-  const getKitchenName = (kitchenId: string) => {
-    const kitchen = kitchenOptions.find(k => k.id === kitchenId);
-    return kitchen ? kitchen.name : 'Desconocida';
+  const getKitchenNameHandler = (kitchenId: string) => {
+    return getKitchenName(kitchenId, KITCHEN_OPTIONS);
   };
 
   // Filtrar órdenes por estado
   const getFilteredOrders = () => {
-    return orders.filter(order => {
-      if (orderStatus === 'pending') {
-        return order.status === 'pending';
-      } else if (orderStatus === 'preparing') {
-        return order.status === 'preparing';
-      } else if (orderStatus === 'ready') {
-        return order.status === 'ready' || order.status === 'delivered';
-      }
-      return false;
-    });
+    return filterOrdersByStatus(orders, orderStatus);
   };
 
   // Efecto para cargar órdenes
@@ -274,7 +109,7 @@ export const useKitchenData = () => {
     }
     
     console.log('🔄 [Kitchen] Loading orders for kitchen:', selectedKitchen);
-    loadOrders();
+    fetchOrders();
     
     // Suscribirse a cambios en órdenes
     try {
@@ -300,7 +135,7 @@ export const useKitchenData = () => {
           }
           
           // Recargar órdenes para obtener datos actualizados
-          loadOrders();
+          fetchOrders();
         } else {
           console.log('ℹ️ [Kitchen] Order is not for this kitchen or status filter');
         }
@@ -328,7 +163,7 @@ export const useKitchenData = () => {
     hasManagePermission,
     getKitchenStats,
     getAverageTime,
-    getKitchenName,
-    updateOrderStatusInKitchen
+    getKitchenName: getKitchenNameHandler,
+    updateOrderStatusInKitchen: updateOrderStatusHandler
   };
 };

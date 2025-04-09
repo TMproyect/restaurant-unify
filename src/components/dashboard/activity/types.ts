@@ -29,3 +29,13 @@ export interface ActivityTableProps {
   filteredItems: ActivityMonitorItem[];
   onActionClick?: (action: string) => void;
 }
+
+// Add the missing interfaces
+export interface EmptyStateProps {
+  message?: string;
+}
+
+export interface StatusBadgeProps {
+  status: string;
+  isDelayed?: boolean;
+}

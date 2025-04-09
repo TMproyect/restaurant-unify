@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem } from '@/types/order.types';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
@@ -28,7 +27,6 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
   console.log(`🔍 [orderQueries] Fetching order ${orderId} with items`);
   
   try {
-    // Fetch the order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select('*')
@@ -44,7 +42,6 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
       throw new Error(orderError.message);
     }
     
-    // Fetch the order items
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('*')
@@ -117,13 +114,10 @@ export const getOrdersByTableId = async (tableId: string): Promise<Order[]> => {
   }
 };
 
-// Add the missing getKitchens function
 export const getKitchens = async (): Promise<{id: string, name: string}[]> => {
   console.log('🔍 [orderQueries] Fetching kitchens');
   
   try {
-    // For now, we'll return a default set of kitchens
-    // In a real system, this would fetch from a kitchens table
     return [
       { id: 'main', name: 'Cocina Principal' },
       { id: 'bar', name: 'Bar' },

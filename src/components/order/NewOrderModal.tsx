@@ -99,7 +99,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle>
             {orderStep === 'details' ? 'Nueva Orden' : 'Tomar Pedido'}
@@ -167,12 +167,14 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ open, onClose, onSuccess 
             </div>
           </div>
         ) : (
-          <div className="p-6">
-            <OrderTaking 
-              tableId={selectedTable}
-              customerName={customerName}
-              onOrderComplete={handleOrderComplete}
-            />
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full overflow-auto">
+              <OrderTaking 
+                tableId={selectedTable}
+                customerName={customerName}
+                onOrderComplete={handleOrderComplete}
+              />
+            </div>
           </div>
         )}
       </DialogContent>

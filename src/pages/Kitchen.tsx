@@ -42,7 +42,6 @@ interface OrderDisplay {
   items: {
     name: string;
     notes: string;
-    status: string;
     id: string;
     quantity: number;
   }[];
@@ -139,7 +138,7 @@ const Kitchen = () => {
       setLoading(true);
       console.log(`🔍 [Kitchen] Loading orders for kitchen ${selectedKitchen} with status filter ${orderStatus}`);
       
-      // Construir la consulta base
+      // Construir la consulta base - CORREGIDA para evitar el error de status en order_items
       let query = supabase
         .from('orders')
         .select(`
@@ -155,8 +154,7 @@ const Kitchen = () => {
             id,
             name,
             quantity,
-            notes,
-            status
+            notes
           )
         `)
         .eq('kitchen_id', filterValue(selectedKitchen));
@@ -203,7 +201,6 @@ const Kitchen = () => {
         items: (order.order_items || []).map((item: any) => ({
           name: item.name,
           notes: item.notes || '',
-          status: item.status || 'pending',
           id: item.id,
           quantity: item.quantity
         }))
@@ -228,6 +225,7 @@ const Kitchen = () => {
     
     try {
       console.log(`🔄 [Kitchen] Updating order ${orderId} status to ${newStatus}`);
+      setLoading(true);
       const success = await updateOrderStatus(orderId, newStatus);
       
       if (success) {
@@ -248,6 +246,8 @@ const Kitchen = () => {
     } catch (error) {
       console.error('❌ [Kitchen] Error updating order status:', error);
       toast.error("Ocurrió un error al actualizar el estado");
+    } finally {
+      setLoading(false);
     }
   };
 

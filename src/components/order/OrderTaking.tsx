@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { filterValue, filterBooleanValue, mapArrayResponse } from '@/utils/supabaseHelpers';
 import { CartItem } from './CartItem';
 import { Utensils, Search, Tag, Percent, Info, ChefHat, AlertCircle, DollarSign } from 'lucide-react';
-import { Minus, Plus, Trash2 } from 'lucide-react'; // Added missing imports
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { getKitchens, createOrder } from '@/services/orderService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -115,7 +114,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
       console.log('Fetching menu items...');
       let query = supabase.from('menu_items').select('*');
       
-      // Only show available items - using our custom filterBooleanValue helper
       query = query.eq('available', filterBooleanValue(true));
       
       const { data, error } = await query;
@@ -155,7 +153,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
     } catch (error) {
       console.error('Error fetching menu categories:', error);
       toast.error('Error al cargar las categorías del menú');
-      // Fallback to default categories if there's an error
       setCategories([
         { id: 'all', name: 'Todos' },
         { id: 'entradas', name: 'Entradas' },
@@ -211,7 +208,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
       setIsSubmitting(true);
       console.log('Preparing order data');
       
-      // Calculate final total based on discount
       let finalTotal = subtotal + taxAmount + serviceAmount;
       if (discountType === 'percentage') {
         finalTotal -= discountAmount;
@@ -219,7 +215,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
         finalTotal -= discount;
       }
 
-      // Create order data
       const orderData = {
         table_number: tableInfo?.number || 0,
         customer_name: localCustomerName,
@@ -233,7 +228,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
       
       console.log('Order data prepared:', orderData);
       
-      // Create order items
       const orderItems = cartItems.map(item => ({
         menu_item_id: item.menuItemId,
         name: item.name,
@@ -247,7 +241,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
         items: orderItems
       });
       
-      // Call createOrder from orderService
       const result = await createOrder(orderData, orderItems);
       
       if (result) {
@@ -280,28 +273,22 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   };
 
   const toggleDiscountType = () => {
-    // Convert the current discount value when switching types
     if (discountType === 'percentage') {
-      // Convert percentage to amount
       const amountValue = (discount / 100) * subtotal;
       setDiscountType('amount');
       setDiscount(amountValue);
     } else {
-      // Convert amount to percentage
       const percentageValue = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
       setDiscountType('percentage');
       setDiscount(percentageValue);
     }
   };
 
-  // Filter menu items based on category and search term
   const filteredMenuItems = menuItems.filter(item => {
-    // Filter by search term
     const matchesSearch = !searchTerm || 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Filter by category
     const matchesCategory = selectedCategory === 'all' || 
       (item.category_id && item.category_id === selectedCategory);
     
@@ -310,16 +297,14 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
     return matchesSearch && matchesCategory;
   });
 
-  // Calculate totals
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = 0.18; // 18%
-  const serviceRate = 0.10; // 10%
+  const taxRate = 0.18;
+  const serviceRate = 0.10;
   const taxAmount = subtotal * taxRate;
   const serviceAmount = subtotal * serviceRate;
   const discountAmount = discountType === 'percentage' ? subtotal * (discount / 100) : discount;
   const total = subtotal + taxAmount + serviceAmount - discountAmount;
 
-  // Add a custom selector for the "all" category for better filtering
   const allCategoryId = 'all';
   const categoriesWithAll = [
     { id: allCategoryId, name: 'Todos' },
@@ -327,11 +312,9 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   ];
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
-      {/* Left side - Menu items */}
+    <div className="flex h-full flex-col md:flex-row overflow-hidden">
       <div className="w-full md:w-2/3 p-4 border-r overflow-auto">
         <div className="mb-4 space-y-4">
-          {/* Table and customer info */}
           <div className="flex flex-col sm:flex-row gap-3 items-center">
             <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-sm font-medium flex items-center">
               <Info className="mr-2 h-4 w-4" />
@@ -349,7 +332,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
             </div>
           </div>
           
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
@@ -362,7 +344,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
           </div>
         </div>
         
-        {/* Categories and Menu Items */}
         <Tabs defaultValue="all" value={selectedCategory} onValueChange={handleCategoryChange}>
           <div className="relative">
             <ScrollArea className="w-full whitespace-nowrap pb-2">
@@ -466,7 +447,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
         </Tabs>
       </div>
       
-      {/* Right side - Cart */}
       <div className="w-full md:w-1/3 p-4 overflow-auto">
         <Card className="h-full">
           <CardHeader className="p-4 pb-2">
@@ -486,20 +466,19 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
           <CardContent className="p-0">
             {cartItems.length > 0 ? (
               <div>
-                {/* Cart items */}
                 <div className="divide-y divide-border max-h-[250px] overflow-y-auto">
                   {cartItems.map((item) => (
                     <div key={item.id} className="p-3 hover:bg-muted/50">
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium">{item.name}</h4>
+                        <div className="flex-1 pr-2">
+                          <h4 className="font-medium break-words">{item.name}</h4>
                           {item.notes && (
-                            <p className="text-xs text-muted-foreground mt-1 italic">
+                            <p className="text-xs text-muted-foreground mt-1 italic break-words">
                               Nota: {item.notes}
                             </p>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-right whitespace-nowrap">
                           <div className="font-medium">${item.price.toFixed(2)}</div>
                         </div>
                       </div>
@@ -552,7 +531,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   ))}
                 </div>
                 
-                {/* Discount section - Simplified */}
                 <div className="p-3 border-t border-border">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -584,7 +562,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   </div>
                 </div>
                 
-                {/* Kitchen selection */}
                 <div className="p-3 border-t border-border">
                   <div className="flex items-center gap-2 mb-2">
                     <ChefHat className="h-4 w-4 text-muted-foreground" />
@@ -607,7 +584,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   </Select>
                 </div>
                 
-                {/* Totals */}
                 <div className="p-3 border-t border-border space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
@@ -639,7 +615,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
                   </div>
                 </div>
                 
-                {/* Actions */}
                 <div className="p-3 border-t border-border space-y-2">
                   <Button 
                     className="w-full" 
@@ -685,7 +660,6 @@ const OrderTaking: React.FC<OrderTakingProps> = ({
   );
 };
 
-// Helper icons for empty states
 const SearchIcon = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 

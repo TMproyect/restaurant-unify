@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { subscribeToFilteredOrders } from '@/services/orders/orderSubscriptions';
+import { subscribeToOrders } from '@/services/orders/orderSubscriptions';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { OrderDisplay, KITCHEN_OPTIONS, UI_TO_DB_STATUS_MAP } from './kitchenTypes';
-import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
+import { OrderDisplay, KITCHEN_OPTIONS } from './kitchenTypes';
+import { normalizeOrderStatus, getDBStatusesFromUIStatus } from '@/utils/orderStatusUtils';
 import { 
   loadKitchenOrders, 
   updateOrderStatusInKitchen,
@@ -19,7 +19,7 @@ import {
 export { KITCHEN_OPTIONS as kitchenOptions };
 
 export const useKitchenData = () => {
-  const [selectedKitchen, setSelectedKitchen] = useState("main");
+  const [selectedKitchen, setSelectedKitchen] = useState("all");  // Cambiado a "all" para mostrar todas las cocinas por defecto
   const [orderStatus, setOrderStatus] = useState<'pending' | 'preparing' | 'ready'>('pending');
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +51,7 @@ export const useKitchenData = () => {
       setLoading(true);
       
       // Obtener los estados de la base de datos correspondientes al estado de la UI
-      const dbStatuses = UI_TO_DB_STATUS_MAP[orderStatus] || [];
+      const dbStatuses = getDBStatusesFromUIStatus(orderStatus);
       
       console.log(`🔍 [Kitchen] Fetching orders with statuses: ${dbStatuses.join(', ')}`);
       
@@ -119,10 +119,7 @@ export const useKitchenData = () => {
       console.log('🔄 [Kitchen] Setting up realtime subscription...');
       
       // Crear una suscripción para todos los eventos
-      const unsubscribe = subscribeToFilteredOrders(null, handleRealtimeUpdate);
-      
-      // Función para manejar las actualizaciones en tiempo real
-      function handleRealtimeUpdate(payload: any) {
+      const unsubscribe = subscribeToOrders((payload) => {
         console.log('✅ [Kitchen] Realtime order update received:', payload);
         
         // Verificar si la orden es para esta cocina
@@ -147,7 +144,7 @@ export const useKitchenData = () => {
         } else {
           console.log('ℹ️ [Kitchen] Order is not for this kitchen:', orderKitchenId);
         }
-      }
+      });
       
       return () => {
         console.log('🔄 [Kitchen] Cleaning up realtime subscription');

@@ -13,22 +13,76 @@ export const normalizeOrderStatus = (status: string): string => {
   if (!status) return 'pending';
   
   // Convertir todo a minúsculas para facilitar la comparación
-  const normalizedStatus = status.toLowerCase();
+  const normalizedStatus = status.toLowerCase().trim();
   
-  if (normalizedStatus.includes('pend')) {
+  // Mapeo más preciso de estados a categorías estándar
+  if (normalizedStatus === 'pending' || 
+      normalizedStatus === 'pendiente' || 
+      normalizedStatus.includes('pend') || 
+      normalizedStatus.includes('nueva')) {
     return 'pending';
-  } else if (normalizedStatus.includes('prepar')) {
+  } else if (normalizedStatus === 'preparing' || 
+             normalizedStatus === 'preparando' || 
+             normalizedStatus.includes('prepar') || 
+             normalizedStatus.includes('en prep') || 
+             normalizedStatus.includes('cocinando')) {
     return 'preparing';
-  } else if (normalizedStatus.includes('list') || normalizedStatus.includes('ready')) {
+  } else if (normalizedStatus === 'ready' || 
+             normalizedStatus === 'listo' || 
+             normalizedStatus === 'lista' || 
+             normalizedStatus.includes('list') || 
+             normalizedStatus.includes('ready')) {
     return 'ready';
-  } else if (normalizedStatus.includes('entrega') || normalizedStatus.includes('deliver')) {
+  } else if (normalizedStatus === 'delivered' || 
+             normalizedStatus === 'entregado' || 
+             normalizedStatus === 'entregada' || 
+             normalizedStatus.includes('entrega') || 
+             normalizedStatus.includes('deliver')) {
     return 'delivered';
-  } else if (normalizedStatus.includes('cancel')) {
+  } else if (normalizedStatus === 'cancelled' || 
+             normalizedStatus === 'cancelado' || 
+             normalizedStatus === 'cancelada' || 
+             normalizedStatus.includes('cancel')) {
     return 'cancelled';
   }
   
-  // Si no coincide con ninguno de los anteriores, devolver el original
-  return status;
+  console.log(`⚠️ [orderStatusUtils] Estado no reconocido: "${status}", usando valor original`);
+  // Si no coincide con ninguno de los anteriores, devolver 'pending' como valor predeterminado seguro
+  return 'pending';
+};
+
+/**
+ * Constantes para mapeo de estados UI a DB
+ */
+export const UI_STATUS_MAP = {
+  pending: 'pending',
+  preparing: 'preparing',
+  ready: 'ready',
+  delivered: 'delivered',
+  cancelled: 'cancelled'
+};
+
+/**
+ * Constantes para mapeo de estados DB a UI
+ */
+export const DB_TO_UI_STATUS_MAP: Record<string, string> = {
+  'pending': 'pending',
+  'pendiente': 'pending',
+  'nueva': 'pending',
+  'nuevo': 'pending',
+  'preparing': 'preparing',
+  'preparando': 'preparing',
+  'en preparación': 'preparing',
+  'cocinando': 'preparing',
+  'ready': 'ready',
+  'listo': 'ready',
+  'lista': 'ready',
+  'delivered': 'delivered',
+  'entregado': 'delivered',
+  'entregada': 'delivered',
+  'cancelled': 'cancelled',
+  'cancelado': 'cancelled',
+  'cancelada': 'cancelled'
 };
 
 /**
@@ -36,16 +90,38 @@ export const normalizeOrderStatus = (status: string): string => {
  * @param uiStatus Estado de la interfaz de usuario
  * @returns Array de posibles estados en la base de datos
  */
-export const getDBStatusesFromUIStatus = (uiStatus: 'pending' | 'preparing' | 'ready'): string[] => {
+export const getDBStatusesFromUIStatus = (uiStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled'): string[] => {
   let dbStatuses: string[] = [];
   
   if (uiStatus === 'pending') {
-    dbStatuses = ['pending', 'Pendiente', 'pendiente'];
+    dbStatuses = ['pending', 'Pendiente', 'pendiente', 'nueva', 'nuevo', 'Nueva'];
   } else if (uiStatus === 'preparing') {
-    dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación'];
+    dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación', 'cocinando', 'Cocinando'];
   } else if (uiStatus === 'ready') {
-    dbStatuses = ['ready', 'Listo', 'listo', 'delivered', 'Entregada', 'entregada'];
+    dbStatuses = ['ready', 'Listo', 'listo', 'Lista', 'lista'];
+  } else if (uiStatus === 'delivered') {
+    dbStatuses = ['delivered', 'Entregada', 'entregada', 'Entregado', 'entregado'];
+  } else if (uiStatus === 'cancelled') {
+    dbStatuses = ['cancelled', 'Cancelada', 'cancelada', 'Cancelado', 'cancelado'];
   }
   
   return dbStatuses;
+};
+
+/**
+ * Verifica si un estado DB pertenece a un estado UI específico
+ * @param dbStatus Estado en la base de datos
+ * @param uiStatus Estado en la interfaz
+ * @returns true si el estado DB corresponde al estado UI
+ */
+export const isDbStatusMatchingUiStatus = (dbStatus: string, uiStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled'): boolean => {
+  if (!dbStatus) return false;
+  
+  const normalizedDbStatus = dbStatus.toLowerCase().trim();
+  const dbStatuses = getDBStatusesFromUIStatus(uiStatus);
+  
+  return dbStatuses.some(status => 
+    status.toLowerCase().trim() === normalizedDbStatus || 
+    normalizedDbStatus.includes(status.toLowerCase().trim())
+  );
 };

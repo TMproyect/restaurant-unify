@@ -1,9 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse } from '@/utils/supabaseHelpers';
 import { filterValue } from '@/utils/supabaseHelpers';
 import { Order } from '@/types/order.types';
 import { OrderDisplay } from '@/components/kitchen/kitchenTypes';
-import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
+import { normalizeOrderStatus, getDBStatusesFromUIStatus, isDbStatusMatchingUiStatus } from '@/utils/orderStatusUtils';
 import { toast } from 'sonner';
 import { updateOrderStatus } from '@/services/orders/orderUpdates';
 
@@ -62,7 +63,8 @@ export const loadKitchenOrders = async (
       throw error;
     }
     
-    console.log(`✅ [Kitchen] Received ${data?.length || 0} orders from Supabase`);
+    console.log(`✅ [Kitchen] Received ${data?.length || 0} orders from Supabase with statuses:`, 
+      data?.map(d => d.status));
     
     if (!data) {
       return [];

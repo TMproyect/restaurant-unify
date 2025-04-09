@@ -32,13 +32,6 @@ export interface KitchenStats {
   totalItems: number;
 }
 
-// Mapeo de estados UI a estados DB
-export const UI_TO_DB_STATUS_MAP = {
-  pending: ['pending', 'Pendiente', 'pendiente'],
-  preparing: ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación'],
-  ready: ['ready', 'Listo', 'listo', 'delivered', 'Entregada', 'entregada']
-};
-
 // Opciones de cocina constantes
 export const KITCHEN_OPTIONS: KitchenOption[] = [
   { id: "main", name: "Cocina Principal" },

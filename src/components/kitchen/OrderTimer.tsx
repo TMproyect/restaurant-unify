@@ -2,16 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { parseISO, differenceInSeconds } from 'date-fns';
 import { Clock, Flame } from 'lucide-react';
+import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 interface OrderTimerProps {
   createdAt: string;
   urgencyThresholdMinutes: number;
+  orderStatus?: NormalizedOrderStatus;
 }
 
 const OrderTimer: React.FC<OrderTimerProps> = ({ 
   createdAt, 
-  urgencyThresholdMinutes 
+  urgencyThresholdMinutes,
+  orderStatus
 }) => {
+  // No mostrar el temporizador si el estado es "ready" (completado)
+  if (orderStatus === 'ready') {
+    return null;
+  }
+
   const [elapsedTime, setElapsedTime] = useState('00:00');
   const [isUrgent, setIsUrgent] = useState(false);
   const [isWarning, setIsWarning] = useState(false);

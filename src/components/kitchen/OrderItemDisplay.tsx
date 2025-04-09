@@ -10,67 +10,40 @@ interface OrderItemDisplayProps {
 }
 
 const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({ item, orderStatus }) => {
-  // Determinar los estilos y el icono según el estado
-  const getStyles = () => {
+  // Set status-specific styles
+  const getContainerClass = () => {
     switch (orderStatus) {
       case 'pending':
-        return {
-          container: 'p-3 rounded bg-yellow-50 border border-yellow-200',
-          icon: <Clock size={14} className="text-yellow-500" />,
-          status: 'Pendiente'
-        };
+        return 'border-l-2 border-l-yellow-500 bg-yellow-50/50 p-2 rounded-md';
       case 'preparing':
-        return {
-          container: 'p-3 rounded bg-blue-50 border border-blue-200',
-          icon: <Clock size={14} className="text-blue-500 animate-pulse" />,
-          status: 'Preparando'
-        };
+        return 'border-l-2 border-l-blue-500 bg-blue-50/50 p-2 rounded-md';
       case 'ready':
-        return {
-          container: 'p-3 rounded bg-green-50 border border-green-200',
-          icon: <CheckCircle size={14} className="text-green-600" />,
-          status: 'Listo'
-        };
+        return 'border-l-2 border-l-green-500 bg-green-50/50 p-2 rounded-md';
       default:
-        return {
-          container: 'p-3 rounded bg-gray-50 border border-gray-200',
-          icon: <Clock size={14} className="text-gray-500" />,
-          status: 'Procesando'
-        };
+        return 'border-l-2 border-l-gray-300 bg-gray-50/50 p-2 rounded-md';
     }
   };
 
-  const styles = getStyles();
-
   return (
-    <li className={styles.container}>
-      <div className="flex justify-between items-start mb-1">
+    <li className={getContainerClass()}>
+      <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center">
-            {styles.icon}
-            <p className="font-medium ml-1">
-              {item.name} {item.quantity > 1 && (
-                <span className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded-full text-xs ml-1">
-                  x{item.quantity}
-                </span>
-              )}
-            </p>
+          <div className="flex items-center gap-1">
+            <span className="font-medium">{item.name}</span>
+            {item.quantity > 1 && (
+              <span className="bg-secondary text-secondary-foreground text-xs px-1.5 py-0.5 rounded-full">
+                x{item.quantity}
+              </span>
+            )}
           </div>
+          
           {item.notes && (
-            <div className="flex items-center gap-1 text-xs text-amber-600 mt-1 bg-amber-50 px-2 py-1 rounded-full">
-              <AlertCircle size={12} />
-              <p>{item.notes}</p>
+            <div className="flex items-center mt-1 gap-1 bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-300">
+              <AlertCircle size={14} className="text-amber-600 flex-shrink-0" />
+              <p className="text-xs font-medium">{item.notes}</p>
             </div>
           )}
         </div>
-        <span className={`text-xs px-2 py-1 rounded-full ${
-          orderStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-          orderStatus === 'preparing' ? 'bg-blue-100 text-blue-800' :
-          orderStatus === 'ready' ? 'bg-green-100 text-green-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {styles.status}
-        </span>
       </div>
     </li>
   );

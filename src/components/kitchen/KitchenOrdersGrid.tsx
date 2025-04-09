@@ -41,13 +41,10 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
   selectedKitchen,
   urgencyThreshold
 }) => {
-  // Filtrar órdenes por estado actual para asegurar que solo mostramos las órdenes
-  // que corresponden a la pestaña actual
+  // Filter orders by current status tab
   const filteredOrders = orders.filter(order => order.status === orderStatus);
   
-  // Para órdenes pendientes, implementamos ordenamiento especial:
-  // 1. Órdenes urgentes primero (si han pasado más de urgencyThreshold minutos)
-  // 2. Órdenes FIFO (primero en llegar, primero en salir) con las más antiguas arriba
+  // Sort orders based on priority and FIFO
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     const createdAtA = new Date(a.createdAt).getTime();
     const createdAtB = new Date(b.createdAt).getTime();
@@ -55,31 +52,28 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
     if (orderStatus === 'pending') {
       const now = new Date().getTime();
       
-      // Calcular minutos transcurridos para cada orden
+      // Calculate minutes passed for urgency detection
       const minutesPassedA = Math.floor((now - createdAtA) / (1000 * 60)); 
       const minutesPassedB = Math.floor((now - createdAtB) / (1000 * 60));
       
-      // Si ambas son urgentes o ninguna es urgente, ordena por FIFO
       const isUrgentA = minutesPassedA >= urgencyThreshold;
       const isUrgentB = minutesPassedB >= urgencyThreshold;
       
+      // Prioritize urgent orders
       if (isUrgentA && !isUrgentB) {
-        return -1; // A (urgente) va primero
+        return -1; // A (urgent) goes first
       } else if (!isUrgentA && isUrgentB) {
-        return 1; // B (urgente) va primero
+        return 1; // B (urgent) goes first
       }
     }
     
-    // FIFO: la orden más antigua primero (compare timestamps)
+    // FIFO: oldest first
     return createdAtA - createdAtB;
   });
   
-  // Logging para debug
-  console.log(`🔄 [KitchenOrdersGrid] Mostrando ${sortedOrders.length} órdenes ${orderStatus}`);
-  
   if (sortedOrders.length === 0) {
     return (
-      <div className="col-span-2 text-center py-10 text-muted-foreground">
+      <div className="text-center py-10 text-muted-foreground">
         No hay órdenes <strong>{getStatusLabel(orderStatus).toLowerCase()}</strong> para{' '}
         <strong>{getKitchenName(selectedKitchen)}</strong>
       </div>
@@ -87,7 +81,7 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {sortedOrders.map(order => (
         <KitchenOrderCard
           key={order.id}

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChefHat, Check, Clock, Ban } from 'lucide-react';
+import { Utensils, CheckCircle } from 'lucide-react';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 interface ActionButtonProps {
@@ -17,70 +17,42 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   orderId,
   updateOrderStatus
 }) => {
-  if (!hasManagePermission) return null;
-  
-  // First, handle action buttons for different states
-  if (orderStatus === 'pending') {
-    return (
-      <div className="flex gap-2">
+  // Only show button if user has permission
+  if (!hasManagePermission) {
+    return null;
+  }
+
+  // Determine which action button to show based on current status
+  switch (orderStatus) {
+    case 'pending':
+      return (
         <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-8 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700 hover:text-yellow-800"
+          variant="success" 
+          size="xs"
+          className="flex items-center gap-1"
           onClick={() => updateOrderStatus(orderId, 'preparing')}
         >
-          <ChefHat size={16} className="mr-1" /> Preparar
+          <Utensils size={14} />
+          <span>Preparar</span>
         </Button>
+      );
+    
+    case 'preparing':
+      return (
         <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-8 bg-red-50 hover:bg-red-100 border-red-300 text-red-700 hover:text-red-800"
-          onClick={() => updateOrderStatus(orderId, 'cancelled')}
-        >
-          <Ban size={16} className="mr-1" /> Cancelar
-        </Button>
-      </div>
-    );
-  } 
-  
-  if (orderStatus === 'preparing') {
-    return (
-      <div className="flex gap-2">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-8 bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 hover:text-blue-800"
+          variant="success" 
+          size="xs"
+          className="flex items-center gap-1"
           onClick={() => updateOrderStatus(orderId, 'ready')}
         >
-          <Check size={16} className="mr-1" /> Completar
+          <CheckCircle size={14} />
+          <span>¡Listo!</span>
         </Button>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-8 bg-red-50 hover:bg-red-100 border-red-300 text-red-700 hover:text-red-800"
-          onClick={() => updateOrderStatus(orderId, 'cancelled')}
-        >
-          <Ban size={16} className="mr-1" /> Cancelar
-        </Button>
-      </div>
-    );
-  } 
-  
-  if (orderStatus === 'ready') {
-    return (
-      <Button 
-        size="sm" 
-        variant="outline" 
-        className="h-8 bg-gray-50 hover:bg-gray-100 border-gray-300 text-gray-700 hover:text-gray-800"
-        onClick={() => updateOrderStatus(orderId, 'delivered')}
-      >
-        <Clock size={16} className="mr-1" /> Entregar
-      </Button>
-    );
+      );
+    
+    default:
+      return null;
   }
-  
-  // No actions available for delivered or cancelled orders
-  return null;
 };
 
 export default ActionButton;

@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { formatDistanceToNow, parseISO, differenceInMinutes, differenceInSeconds } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { parseISO, differenceInMinutes, differenceInSeconds } from 'date-fns';
 import { Clock, Flame } from 'lucide-react';
 
 interface OrderTimerProps {
@@ -46,8 +45,8 @@ const OrderTimer: React.FC<OrderTimerProps> = ({
     // Calculate immediately
     calculateTime();
     
-    // Update every 30 seconds
-    const interval = setInterval(calculateTime, 30000);
+    // Update every second for a smoother timer
+    const interval = setInterval(calculateTime, 1000);
     
     return () => clearInterval(interval);
   }, [createdAt, urgencyThresholdMinutes]);
@@ -85,7 +84,7 @@ const OrderTimer: React.FC<OrderTimerProps> = ({
       ) : (
         <Clock size={16} className={styles.iconClass} />
       )}
-      <span>{elapsedTime}</span>
+      <span className="font-mono">{elapsedTime}</span>
     </div>
   );
 };

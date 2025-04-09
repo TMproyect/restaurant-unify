@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse } from '@/utils/supabaseHelpers';
 import { filterValue } from '@/utils/supabaseHelpers';
@@ -11,7 +10,7 @@ import { updateOrderStatus } from '@/services/orders/orderUpdates';
 /**
  * Carga órdenes desde Supabase para el módulo de cocina
  * @param selectedKitchen Cocina seleccionada
- * @param orderStatus Estado de la orden
+ * @param dbStatuses Estados de la orden en la base de datos
  * @param hasViewPermission Si el usuario tiene permisos de visualización
  * @returns Promesa con las órdenes formateadas
  */
@@ -51,7 +50,7 @@ export const loadKitchenOrders = async (
     }
     
     // Agregar filtro de estado si hay estados definidos
-    if (dbStatuses.length > 0) {
+    if (dbStatuses && dbStatuses.length > 0) {
       query = query.in('status', dbStatuses);
     }
     
@@ -76,19 +75,19 @@ export const loadKitchenOrders = async (
     // Formatear las órdenes para el componente
     const formattedOrders: OrderDisplay[] = typedData.map(order => ({
       id: order.id || '',
-      table: order.is_delivery ? 'Delivery' : String(order.table_number),
-      customerName: order.customer_name,
+      table: order.is_delivery ? 'Delivery' : String(order.table_number || ''),
+      customerName: order.customer_name || 'Cliente',
       time: new Date(order.created_at || '').toLocaleTimeString('es-ES', { 
         hour: '2-digit', 
         minute: '2-digit' 
       }),
-      kitchenId: order.kitchen_id || '',
-      status: normalizeOrderStatus(order.status),
+      kitchenId: order.kitchen_id || 'main',
+      status: normalizeOrderStatus(order.status || 'pending'),
       items: (order.order_items || []).map((item: any) => ({
-        name: item.name,
+        name: item.name || 'Sin nombre',
         notes: item.notes || '',
-        id: item.id,
-        quantity: item.quantity
+        id: item.id || '',
+        quantity: item.quantity || 1
       }))
     }));
     

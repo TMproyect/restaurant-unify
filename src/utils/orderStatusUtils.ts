@@ -9,6 +9,9 @@
  * @returns Estado normalizado
  */
 export const normalizeOrderStatus = (status: string): string => {
+  // Verificar si el estado es nulo o indefinido
+  if (!status) return 'pending';
+  
   // Convertir todo a minúsculas para facilitar la comparación
   const normalizedStatus = status.toLowerCase();
   
@@ -16,9 +19,9 @@ export const normalizeOrderStatus = (status: string): string => {
     return 'pending';
   } else if (normalizedStatus.includes('prepar')) {
     return 'preparing';
-  } else if (normalizedStatus.includes('list')) {
+  } else if (normalizedStatus.includes('list') || normalizedStatus.includes('ready')) {
     return 'ready';
-  } else if (normalizedStatus.includes('entrega')) {
+  } else if (normalizedStatus.includes('entrega') || normalizedStatus.includes('deliver')) {
     return 'delivered';
   } else if (normalizedStatus.includes('cancel')) {
     return 'cancelled';

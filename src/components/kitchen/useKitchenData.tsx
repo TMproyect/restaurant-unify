@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { subscribeToFilteredOrders } from '@/services/orders/orderSubscriptions';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { OrderDisplay, KITCHEN_OPTIONS } from './kitchenTypes';
-import { getDBStatusesFromUIStatus } from '@/utils/orderStatusUtils';
+import { OrderDisplay, KITCHEN_OPTIONS, UI_TO_DB_STATUS_MAP } from './kitchenTypes';
+import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
 import { 
   loadKitchenOrders, 
   updateOrderStatusInKitchen,
@@ -51,7 +51,9 @@ export const useKitchenData = () => {
       setLoading(true);
       
       // Obtener los estados de la base de datos correspondientes al estado de la UI
-      const dbStatuses = getDBStatusesFromUIStatus(orderStatus);
+      const dbStatuses = UI_TO_DB_STATUS_MAP[orderStatus] || [];
+      
+      console.log(`🔍 [Kitchen] Fetching orders with statuses: ${dbStatuses.join(', ')}`);
       
       // Cargar órdenes
       const data = await loadKitchenOrders(
@@ -60,6 +62,7 @@ export const useKitchenData = () => {
         hasViewPermission
       );
       
+      console.log(`✅ [Kitchen] Fetched ${data.length} orders`);
       setOrders(data);
     } catch (error) {
       console.error('❌ [Kitchen] Error in fetchOrders:', error);
@@ -115,16 +118,21 @@ export const useKitchenData = () => {
     try {
       console.log('🔄 [Kitchen] Setting up realtime subscription...');
       
-      // Usar suscripción filtrada si hay un filtro activo para la cocina
-      const unsubscribe = subscribeToFilteredOrders(orderStatus, handleRealtimeUpdate);
+      // Crear una suscripción para todos los eventos
+      const unsubscribe = subscribeToFilteredOrders(null, handleRealtimeUpdate);
       
       // Función para manejar las actualizaciones en tiempo real
       function handleRealtimeUpdate(payload: any) {
         console.log('✅ [Kitchen] Realtime order update received:', payload);
         
         // Verificar si la orden es para esta cocina
-        const order = payload.new;
-        if (order && (selectedKitchen === "all" || order.kitchen_id === selectedKitchen)) {
+        const order = payload.new || payload.old;
+        if (!order) return;
+        
+        const orderKitchenId = order.kitchen_id || 'main';
+        const isForThisKitchen = selectedKitchen === "all" || orderKitchenId === selectedKitchen;
+        
+        if (isForThisKitchen) {
           console.log('✅ [Kitchen] Order is for this kitchen:', selectedKitchen);
           
           // Notificación cuando se crea una nueva orden
@@ -137,7 +145,7 @@ export const useKitchenData = () => {
           // Recargar órdenes para obtener datos actualizados
           fetchOrders();
         } else {
-          console.log('ℹ️ [Kitchen] Order is not for this kitchen or status filter');
+          console.log('ℹ️ [Kitchen] Order is not for this kitchen:', orderKitchenId);
         }
       }
       

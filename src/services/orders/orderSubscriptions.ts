@@ -111,7 +111,7 @@ export const subscribeToFilteredOrders = (
         })
         .subscribe();
     } else {
-      // Subscribe to all orders
+      // Subscribe to all orders (no filter)
       channel = supabase
         .channel('all-orders')
         .on('postgres_changes', {

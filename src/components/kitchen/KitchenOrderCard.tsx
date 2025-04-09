@@ -4,9 +4,11 @@ import ActionButton from './ActionButton';
 import OrderItemDisplay from './OrderItemDisplay';
 import OrderTimer from './OrderTimer';
 import OrderSourceBadge from './OrderSourceBadge';
+import OrderDetails from './OrderDetails';
+import OrderStatusActions from './OrderStatusActions';
 import { OrderItem } from './kitchenTypes';
-import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
-import { Calendar, Info } from 'lucide-react';
+import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
+import { Calendar } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -88,6 +90,12 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     setIsDialogOpen(true);
   };
 
+  // Handle dialog close and action 
+  const handleAction = async (newStatus: NormalizedOrderStatus) => {
+    await updateOrderStatus(order.id, newStatus);
+    setIsDialogOpen(false);
+  };
+
   return (
     <>
       <Card 
@@ -116,7 +124,6 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             </p>
             
             <div className="flex items-center gap-2">
-              {/* Order Source Badge - Made more prominent */}
               <OrderSourceBadge source={order.orderSource} />
               
               <p className="text-xs px-1 py-0.5 bg-secondary/50 rounded-md">
@@ -137,7 +144,6 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             ))}
           </ul>
           
-          {/* Action button moved here to be more prominent */}
           {hasManagePermission && (
             <ActionButton 
               orderStatus={orderStatus}
@@ -154,106 +160,18 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
           <DialogHeader>
             <DialogTitle>Detalles del Pedido #{order.id.substring(0, 6)}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <p className="text-gray-500">Cliente</p>
-                <p className="font-medium">{order.customerName}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Mesa</p>
-                <p className="font-medium">{order.table}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Hora de pedido</p>
-                <p className="font-medium">{new Date(order.createdAt).toLocaleTimeString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Cocina</p>
-                <p className="font-medium">{kitchenName}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Estado</p>
-                <p className="font-medium">{getStatusLabel(orderStatus)}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Fuente</p>
-                <p className="font-medium">
-                  {order.orderSource === 'delivery' ? 'Delivery' : 
-                   order.orderSource === 'qr_table' ? 'QR Mesa' : 
-                   order.orderSource === 'pos' ? 'POS' : 'Desconocido'}
-                </p>
-              </div>
-            </div>
-            
-            <div>
-              <p className="text-gray-500 mb-2">Productos</p>
-              <ul className="space-y-2">
-                {order.items.map((item, index) => (
-                  <li key={index} className="p-2 border rounded-md">
-                    <div className="flex justify-between font-medium">
-                      <span>{item.name}</span>
-                      {item.quantity > 1 && (
-                        <span className="bg-secondary px-1.5 rounded-full text-xs">
-                          x{item.quantity}
-                        </span>
-                      )}
-                    </div>
-                    {item.notes && (
-                      <div className="mt-1 p-1 bg-amber-100 text-amber-800 rounded text-xs border border-amber-200">
-                        <p className="font-medium">{item.notes}</p>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            {/* Add action buttons to the dialog for easy access */}
-            {hasManagePermission && orderStatus !== 'ready' && orderStatus !== 'cancelled' && (
-              <div className="flex gap-2 justify-end mt-4 pt-2 border-t">
-                {orderStatus === 'pending' && (
-                  <Button 
-                    variant="warning" 
-                    onClick={() => {
-                      updateOrderStatus(order.id, 'preparing');
-                      setIsDialogOpen(false);
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    <ChefHat size={18} />
-                    <span>Iniciar Preparación</span>
-                  </Button>
-                )}
-                
-                {orderStatus === 'preparing' && (
-                  <Button 
-                    variant="success" 
-                    onClick={() => {
-                      updateOrderStatus(order.id, 'ready');
-                      setIsDialogOpen(false);
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    <CheckCircle size={18} />
-                    <span>Marcar como Listo</span>
-                  </Button>
-                )}
-                
-                <Button 
-                  variant="destructive" 
-                  onClick={() => {
-                    updateOrderStatus(order.id, 'cancelled');
-                    setIsDialogOpen(false);
-                  }}
-                  className="flex items-center gap-1"
-                >
-                  <XCircle size={18} />
-                  <span>Cancelar Pedido</span>
-                </Button>
-              </div>
-            )}
-          </div>
+          <OrderDetails 
+            order={order}
+            kitchenName={kitchenName}
+            orderStatus={orderStatus}
+          />
+          
+          {hasManagePermission && orderStatus !== 'ready' && orderStatus !== 'cancelled' && (
+            <OrderStatusActions 
+              orderStatus={orderStatus}
+              onAction={handleAction}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

@@ -24,6 +24,7 @@ export interface KitchenStats {
   preparingItems: number;
   completedItems: number;
   cancelledItems: number;
+  totalItems: number;  // Added this field for consistency
   totalOrders: number;
   averageTime: number;
 }

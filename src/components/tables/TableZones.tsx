@@ -8,7 +8,7 @@ import { MoreHorizontal, PencilIcon, Trash2Icon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TableZone } from '@/types/tables';
-import { addTableZone, updateTableZone, deleteTableZone } from '@/services/tableService';
+import { addTableZone, updateTableZone, deleteTableZone } from '@/services/tables';
 import { ZoneForm } from './ZoneForm';
 
 interface TableZonesProps {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -22,7 +21,7 @@ import { TableForm } from './TableForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { TableZone, RestaurantTable } from '@/types/tables';
-import { addRestaurantTable, updateRestaurantTable, deleteRestaurantTable } from '@/services/tableService';
+import { addRestaurantTable, updateRestaurantTable, deleteRestaurantTable } from '@/services/tables';
 
 interface TablesListProps {
   tables: RestaurantTable[];

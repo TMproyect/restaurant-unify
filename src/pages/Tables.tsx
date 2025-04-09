@@ -12,7 +12,7 @@ import {
   getTableZones, 
   subscribeToTableChanges, 
   subscribeToZoneChanges 
-} from '@/services/tableService';
+} from '@/services/tables';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import OrderPrintController from '@/components/OrderPrintController';

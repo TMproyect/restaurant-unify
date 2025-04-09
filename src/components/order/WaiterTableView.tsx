@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TableMap } from '@/components/tables/TableMap';
 import { RestaurantTable, TableZone } from '@/types/tables';
-import { getRestaurantTables, getTableZones, subscribeToTableChanges } from '@/services/tableService';
+import { getRestaurantTables, getTableZones, subscribeToTableChanges } from '@/services/tables';
 import { getOrders, Order } from '@/services/orderService';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';

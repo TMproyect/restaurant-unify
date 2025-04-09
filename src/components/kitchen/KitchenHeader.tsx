@@ -17,7 +17,7 @@ interface KitchenHeaderProps {
   };
   loading: boolean;
   handleRefresh: () => void;
-  getAverageTime: () => string;
+  getAverageTime: () => string; // Ensure this is correctly typed as string
 }
 
 const KitchenHeader: React.FC<KitchenHeaderProps> = ({

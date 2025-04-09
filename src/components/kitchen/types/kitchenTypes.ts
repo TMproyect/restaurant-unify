@@ -24,7 +24,7 @@ export interface KitchenStats {
   preparingItems: number;
   completedItems: number;
   cancelledItems: number;
-  totalItems: number;  // Added this field for consistency
+  totalItems: number;  // This is required by consumers
   totalOrders: number;
   averageTime: number;
 }
@@ -42,7 +42,7 @@ export interface UseKitchenDataReturn {
   hasViewPermission: boolean;
   hasManagePermission: boolean;
   getKitchenStats: () => KitchenStats;
-  getAverageTime: () => string;
+  getAverageTime: () => string;  // Note: This returns a string (formatted time), not a number
   getKitchenName: (kitchenId: string) => string;
   updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
   urgencyThreshold: number;

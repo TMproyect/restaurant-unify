@@ -52,7 +52,10 @@ const ActionButton: React.FC<ActionButtonProps> = ({
         <Clock size={16} className="mr-1" /> Entregar
       </Button>
     );
-  } else if (orderStatus === 'pending' || orderStatus === 'preparing') {
+  }
+  
+  // Add a separate button for cancellation option that appears for pending and preparing states
+  if (orderStatus === 'pending' || orderStatus === 'preparing') {
     return (
       <Button 
         size="sm" 

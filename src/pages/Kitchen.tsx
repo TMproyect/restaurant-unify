@@ -10,6 +10,9 @@ import AccessDenied from '@/components/kitchen/AccessDenied';
 import LoadingIndicator from '@/components/kitchen/LoadingIndicator';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
+// Type definition to constrain tab status values
+type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
+
 const Kitchen = () => {
   const {
     selectedKitchen,
@@ -53,7 +56,7 @@ const Kitchen = () => {
 
         <KitchenStatusTabs
           defaultValue="pending"
-          onValueChange={(value) => setOrderStatus(value as NormalizedOrderStatus)}
+          onValueChange={(value: KitchenTabStatus) => setOrderStatus(value as NormalizedOrderStatus)}
           pendingCount={stats.pendingItems}
           preparingCount={stats.preparingItems}
           completedCount={stats.completedItems}

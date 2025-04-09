@@ -193,7 +193,16 @@ export const useKitchenData = () => {
     selectedKitchen,
     setSelectedKitchen,
     orderStatus,
-    setOrderStatus,
+    setOrderStatus: (status: NormalizedOrderStatus) => {
+      // Verify if the status is allowed for tabs before setting it
+      if (status === 'pending' || status === 'preparing' || status === 'ready') {
+        setOrderStatus(status);
+      } else {
+        console.warn(`Invalid order status for kitchen tabs: ${status}`);
+        // Default to 'pending' if an invalid status is passed
+        setOrderStatus('pending');
+      }
+    },
     orders: getFilteredOrders(),
     loading,
     handleRefresh,

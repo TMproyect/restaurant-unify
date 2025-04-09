@@ -2,9 +2,12 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+// Define allowed status values for tabs
+type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
+
 interface KitchenStatusTabsProps {
-  defaultValue: string;
-  onValueChange: (value: 'pending' | 'preparing' | 'ready') => void;
+  defaultValue: KitchenTabStatus;
+  onValueChange: (value: KitchenTabStatus) => void;
   pendingCount: number;
   preparingCount: number;
   completedCount: number;
@@ -23,7 +26,7 @@ const KitchenStatusTabs: React.FC<KitchenStatusTabsProps> = ({
     <Tabs 
       defaultValue={defaultValue} 
       className="w-full"
-      onValueChange={(value) => onValueChange(value as 'pending' | 'preparing' | 'ready')}
+      onValueChange={(value) => onValueChange(value as KitchenTabStatus)}
     >
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="pending" className="relative">

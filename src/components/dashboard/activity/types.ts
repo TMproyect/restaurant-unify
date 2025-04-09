@@ -1,9 +1,35 @@
 
 import { ActivityMonitorItem } from '@/types/dashboard.types';
 
+export interface ActivityTableProps {
+  filteredItems: ActivityMonitorItem[];
+  onActionClick?: (action: string) => void;
+}
+
+export interface StatusBadgeProps {
+  status: string;
+  isDelayed?: boolean;
+}
+
 export interface ActionButtonsProps {
   actions: string[];
   onActionClick?: (action: string) => void;
+}
+
+export interface FilterDropdownProps {
+  activeFilter: string | null;
+  setActiveFilter: (filter: string | null) => void;
+  filters: FilterType[];
+}
+
+export interface FilterType {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
+export interface EmptyStateProps {
+  message?: string;
 }
 
 export interface ActivityMonitorProps {
@@ -11,31 +37,4 @@ export interface ActivityMonitorProps {
   isLoading: boolean;
   onRefresh?: () => void;
   onActionClick?: (action: string) => void;
-}
-
-export interface FilterProps {
-  id: string;
-  label: string;
-  icon?: React.ReactNode;
-}
-
-export interface FilterDropdownProps {
-  activeFilter: string | null;
-  setActiveFilter: (filter: string | null) => void;
-  filters: FilterProps[];
-}
-
-export interface ActivityTableProps {
-  filteredItems: ActivityMonitorItem[];
-  onActionClick?: (action: string) => void;
-}
-
-// Add the missing interfaces
-export interface EmptyStateProps {
-  message?: string;
-}
-
-export interface StatusBadgeProps {
-  status: string;
-  isDelayed?: boolean;
 }

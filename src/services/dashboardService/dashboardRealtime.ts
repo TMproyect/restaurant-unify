@@ -15,11 +15,15 @@ export const subscribeToDashboardUpdates = (callback: () => void) => {
         const newData = payload.new || {};
         const oldData = payload.old || {};
         
-        // Safely access properties
-        const newId = typeof newData === 'object' ? (newData.id || '') : '';
-        const oldId = typeof oldData === 'object' ? (oldData.id || '') : '';
-        const newStatus = typeof newData === 'object' ? (newData.status || '') : '';
-        const oldStatus = typeof oldData === 'object' ? (oldData.status || '') : '';
+        // Use safer property access with type assertions
+        const newId = typeof newData === 'object' && newData !== null ? 
+          (newData as Record<string, any>)['id'] || '' : '';
+        const oldId = typeof oldData === 'object' && oldData !== null ? 
+          (oldData as Record<string, any>)['id'] || '' : '';
+        const newStatus = typeof newData === 'object' && newData !== null ? 
+          (newData as Record<string, any>)['status'] || '' : '';
+        const oldStatus = typeof oldData === 'object' && oldData !== null ? 
+          (oldData as Record<string, any>)['status'] || '' : '';
         
         console.log(`🔄 [DashboardService] Cambio detectado en órdenes: ${payload.eventType} - ID: ${newId || oldId}`);
         console.log(`🔄 [DashboardService] Nuevo estado: ${newStatus}, Anterior: ${oldStatus}`);

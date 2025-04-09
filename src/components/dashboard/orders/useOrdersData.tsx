@@ -23,7 +23,7 @@ export function useOrdersData({
 }: UseOrdersDataProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
 
   const loadOrders = useCallback(async () => {
     console.log('🔍 [useOrdersData] Starting to load orders...');
@@ -42,7 +42,7 @@ export function useOrdersData({
     } catch (error) {
       console.error('❌ [useOrdersData] Error loading orders:', error);
       console.error('❌ [useOrdersData] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      toast({
+      uiToast({
         title: "Error",
         description: "No se pudieron cargar las órdenes",
         variant: "destructive"
@@ -51,7 +51,7 @@ export function useOrdersData({
       console.log('✅ [useOrdersData] Setting loading state to false');
       setLoading(false);
     }
-  }, [filter, toast]);
+  }, [filter, uiToast]);
 
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
     try {
@@ -61,7 +61,7 @@ export function useOrdersData({
       
       if (success) {
         console.log(`✅ [useOrdersData] Successfully updated order status`);
-        toast({
+        uiToast({
           title: "Estado actualizado",
           description: `La orden ha sido actualizada a "${
             newStatus === 'pending' ? 'Pendiente' :
@@ -73,7 +73,7 @@ export function useOrdersData({
         });
       } else {
         console.error(`❌ [useOrdersData] Failed to update order status`);
-        toast({
+        uiToast({
           title: "Error",
           description: "No se pudo actualizar el estado de la orden",
           variant: "destructive"
@@ -87,7 +87,7 @@ export function useOrdersData({
       }
     } catch (error) {
       console.error('❌ [useOrdersData] Error updating order status:', error);
-      toast({
+      uiToast({
         title: "Error",
         description: "Ocurrió un error al actualizar el estado",
         variant: "destructive"
@@ -119,10 +119,7 @@ export function useOrdersData({
         // Notificación cuando se crea una nueva orden
         if (payload.eventType === 'INSERT') {
           const newOrder = payload.new;
-          toast({
-            title: "Nueva orden recibida",
-            description: `Cliente: ${newOrder.customer_name} - Mesa: ${newOrder.table_number || 'Delivery'}`,
-          });
+          toast.success(`Nueva orden recibida: ${newOrder.customer_name} - Mesa: ${newOrder.table_number || 'Delivery'}`);
         }
       }
       

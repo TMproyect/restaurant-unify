@@ -42,17 +42,13 @@ const Orders = () => {
             console.log('Order details loaded:', order);
             console.log('Order items:', items);
             
-            toast({
-              title: "Orden cargada",
-              description: `Cliente: ${order.customer_name} - Mesa: ${order.table_number || 'Delivery'}`,
-              action: (
-                <Button variant="default" size="sm" onClick={() => {
+            toast.success(`Orden cargada: Cliente: ${order.customer_name} - Mesa: ${order.table_number || 'Delivery'}`, {
+              action: {
+                label: "Ver",
+                onClick: () => {
                   window.location.href = `/orders?id=${order.id}`;
-                }}>
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Ver
-                </Button>
-              )
+                }
+              }
             });
           } else {
             console.log('Order not found');

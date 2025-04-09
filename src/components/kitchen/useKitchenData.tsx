@@ -35,7 +35,29 @@ export const kitchenOptions = [
   { id: "grill", name: "Parrilla" },
   { id: "cold", name: "Cocina Fría" },
   { id: "pastry", name: "Pastelería" },
+  { id: "bar", name: "Bar" }
 ];
+
+// Función para normalizar estados de órdenes
+const normalizeOrderStatus = (status: string): string => {
+  // Convertir todo a minúsculas para facilitar la comparación
+  const normalizedStatus = status.toLowerCase();
+  
+  if (normalizedStatus.includes('pend')) {
+    return 'pending';
+  } else if (normalizedStatus.includes('prepar')) {
+    return 'preparing';
+  } else if (normalizedStatus.includes('list')) {
+    return 'ready';
+  } else if (normalizedStatus.includes('entrega')) {
+    return 'delivered';
+  } else if (normalizedStatus.includes('cancel')) {
+    return 'cancelled';
+  }
+  
+  // Si no coincide con ninguno de los anteriores, devolver el original
+  return status;
+};
 
 export const useKitchenData = () => {
   const [selectedKitchen, setSelectedKitchen] = useState("main");
@@ -90,16 +112,26 @@ export const useKitchenData = () => {
             quantity,
             notes
           )
-        `)
-        .eq('kitchen_id', filterValue(selectedKitchen));
+        `);
       
-      // Agregar filtro de estado si no es 'all'
+      // Filtrar por cocina seleccionada si no es "all"
+      if (selectedKitchen !== "all") {
+        query = query.eq('kitchen_id', filterValue(selectedKitchen));
+      }
+      
+      // Convertir los estados de la UI a valores que pueden estar en la base de datos
+      let dbStatuses: string[] = [];
       if (orderStatus === 'pending') {
-        query = query.eq('status', 'pending');
+        dbStatuses = ['pending', 'Pendiente', 'pendiente'];
       } else if (orderStatus === 'preparing') {
-        query = query.eq('status', 'preparing');
+        dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación'];
       } else if (orderStatus === 'ready') {
-        query = query.in('status', ['ready', 'delivered']);
+        dbStatuses = ['ready', 'Listo', 'listo', 'delivered', 'Entregada', 'entregada'];
+      }
+      
+      // Agregar filtro de estado si hay estados definidos
+      if (dbStatuses.length > 0) {
+        query = query.in('status', dbStatuses);
       }
       
       // Ejecutar la consulta
@@ -131,7 +163,7 @@ export const useKitchenData = () => {
           minute: '2-digit' 
         }),
         kitchenId: order.kitchen_id || '',
-        status: order.status,
+        status: normalizeOrderStatus(order.status),
         items: (order.order_items || []).map((item: any) => ({
           name: item.name,
           notes: item.notes || '',
@@ -257,7 +289,7 @@ export const useKitchenData = () => {
         
         // Verificar si la orden es para esta cocina
         const order = payload.new;
-        if (order && order.kitchen_id === selectedKitchen) {
+        if (order && (selectedKitchen === "all" || order.kitchen_id === selectedKitchen)) {
           console.log('✅ [Kitchen] Order is for this kitchen:', selectedKitchen);
           
           // Notificación cuando se crea una nueva orden

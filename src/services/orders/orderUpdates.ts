@@ -1,150 +1,100 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { filterValue } from '@/utils/supabaseHelpers';
-import { createNotification } from '../notificationService';
+import { Order } from '@/types/order.types';
+import { toast } from 'sonner';
 
-// Update order status
-export const updateOrderStatus = async (orderId: string, status: string): Promise<boolean> => {
+/**
+ * Updates the status of an order
+ * @param orderId ID of the order to update
+ * @param newStatus New status value
+ * @returns boolean indicating success
+ */
+export const updateOrderStatus = async (orderId: string, newStatus: string): Promise<boolean> => {
+  console.log(`🔄 [orderUpdates] Updating order ${orderId} status to ${newStatus}`);
+  
   try {
-    console.log(`Updating order ${orderId} status to: ${status}`);
-    const now = new Date().toISOString();
-    const { error } = await supabase
+    // Normalizar el estado para asegurar consistencia
+    const normalizedStatus = normalizeOrderStatus(newStatus);
+    
+    const { data, error } = await supabase
       .from('orders')
       .update({ 
-        status: status,
-        updated_at: now
+        status: normalizedStatus,
+        updated_at: new Date().toISOString()
       })
-      .eq('id', filterValue(orderId));
-
-    if (error) {
-      console.error('Error updating order status:', error);
-      return false;
-    }
-
-    console.log('Order status updated successfully');
+      .eq('id', orderId);
     
-    // Create notification for status update
-    try {
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single();
-        
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      
-      if (userId && orderData) {
-        const statusMessages = {
-          preparing: "El pedido ha comenzado a prepararse",
-          ready: "El pedido está listo para servir",
-          delivered: "El pedido ha sido entregado",
-          cancelled: "El pedido ha sido cancelado",
-          paid: "El pedido ha sido pagado"
-        };
-        
-        const message = statusMessages[status as keyof typeof statusMessages] || `El estado del pedido cambió a ${status}`;
-        
-        await createNotification({
-          title: "Actualización de pedido",
-          description: `Mesa ${orderData.table_number}: ${message}`,
-          type: "order",
-          user_id: userId,
-          link: `/orders?id=${orderId}`,
-          action_text: "Ver detalles"
-        });
-        console.log('Order status notification created');
-      }
-    } catch (notifError) {
-      console.error('Failed to create notification for status update:', notifError);
+    if (error) {
+      console.error('❌ [orderUpdates] Error updating order status:', error);
+      throw new Error(error.message);
     }
-
+    
+    console.log(`✅ [orderUpdates] Successfully updated order ${orderId} status to ${normalizedStatus}`);
     return true;
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error(`❌ [orderUpdates] Exception updating order ${orderId} status:`, error);
     return false;
   }
 };
 
-// Process payment for an order
-export const processOrderPayment = async (
-  orderId: string, 
-  paymentDetails: { 
-    method: string, 
-    amount: number,
-    tip?: number,
-    discount?: number,
-    status?: string 
+/**
+ * Normalizes order status to ensure consistency across the application
+ */
+const normalizeOrderStatus = (status: string): string => {
+  // Convertir todo a minúsculas para facilitar la comparación
+  const normalizedStatus = status.toLowerCase();
+  
+  if (normalizedStatus.includes('pend')) {
+    return 'pending';
+  } else if (normalizedStatus.includes('prepar')) {
+    return 'preparing';
+  } else if (normalizedStatus.includes('list')) {
+    return 'ready';
+  } else if (normalizedStatus.includes('entrega')) {
+    return 'delivered';
+  } else if (normalizedStatus.includes('cancel')) {
+    return 'cancelled';
   }
-): Promise<boolean> => {
+  
+  // Si no coincide con ninguno de los anteriores, devolver el original
+  return status;
+};
+
+/**
+ * Updates multiple fields of an order
+ * @param orderId ID of the order to update
+ * @param updates Object containing the fields to update
+ * @returns boolean indicating success
+ */
+export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<boolean> => {
+  console.log(`🔄 [orderUpdates] Updating order ${orderId} with:`, updates);
+  
   try {
-    console.log(`Processing payment for order ${orderId}:`, paymentDetails);
-    const now = new Date().toISOString();
+    // Si se está actualizando el estado, normalizarlo
+    if (updates.status) {
+      updates.status = normalizeOrderStatus(updates.status);
+    }
     
-    // In a real-world application, you would:
-    // 1. Create a payment record in a payments table
-    // 2. Update the order status to 'paid'
-    // 3. Integrate with payment processor if needed
-    
-    // For now, we'll just update the order status
-    const status = paymentDetails.status || 'paid';
-    
-    // Define update object explicitly with correct types
-    const updateData: {
-      status: string,
-      updated_at: string,
-      discount?: number
-    } = { 
-      status,
-      updated_at: now
+    // Asegurar que siempre se actualice el campo updated_at
+    const updatesWithTimestamp = {
+      ...updates,
+      updated_at: new Date().toISOString()
     };
     
-    // Add discount if provided
-    if (paymentDetails.discount !== undefined) {
-      updateData.discount = paymentDetails.discount;
-    }
-    
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('orders')
-      .update(updateData)
-      .eq('id', filterValue(orderId));
-
-    if (error) {
-      console.error('Error processing order payment:', error);
-      return false;
-    }
-
-    console.log('Order payment processed successfully');
+      .update(updatesWithTimestamp)
+      .eq('id', orderId);
     
-    // Create notification for payment
-    try {
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single();
-        
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      
-      if (userId && orderData) {
-        await createNotification({
-          title: "Pago recibido",
-          description: `Mesa ${orderData.table_number}: Pago de $${paymentDetails.amount.toFixed(2)} procesado`,
-          type: "payment",
-          user_id: userId,
-          link: `/orders?id=${orderId}`,
-          action_text: "Ver detalles"
-        });
-        console.log('Payment notification created');
-      }
-    } catch (notifError) {
-      console.error('Failed to create notification for payment:', notifError);
+    if (error) {
+      console.error('❌ [orderUpdates] Error updating order:', error);
+      throw new Error(error.message);
     }
-
+    
+    console.log(`✅ [orderUpdates] Successfully updated order ${orderId}`);
     return true;
   } catch (error) {
-    console.error('Error processing order payment:', error);
+    console.error(`❌ [orderUpdates] Exception updating order ${orderId}:`, error);
     return false;
   }
 };

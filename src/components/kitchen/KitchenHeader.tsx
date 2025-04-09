@@ -1,25 +1,14 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Clock, RefreshCw, ChefHat } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RotateCw, Clock } from 'lucide-react';
 
 interface KitchenHeaderProps {
   selectedKitchen: string;
-  setSelectedKitchen: (value: string) => void;
-  kitchenOptions: { id: string; name: string }[];
+  setSelectedKitchen: (kitchen: string) => void;
+  kitchenOptions: { id: string; name: string; }[];
   stats: { 
     pendingItems: number; 
     preparingItems: number; 
@@ -41,63 +30,84 @@ const KitchenHeader: React.FC<KitchenHeaderProps> = ({
   getAverageTime
 }) => {
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <h1 className="text-2xl font-bold">Cocina</h1>
+    <header>
+      <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Select value={selectedKitchen} onValueChange={setSelectedKitchen}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Seleccionar cocina" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las Cocinas</SelectItem>
+              {kitchenOptions.map(option => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex items-center gap-2 ml-auto">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-1"
+          >
+            <RotateCw className="h-4 w-4" />
+            <span>Actualizar</span>
+          </Button>
+          
+          <div className="bg-muted px-3 py-1 rounded-md flex items-center gap-1">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">Tiempo prom: {getAverageTime()} min</span>
+          </div>
+        </div>
+      </div>
       
-      <div className="w-full md:w-72">
-        <Select value={selectedKitchen} onValueChange={setSelectedKitchen}>
-          <SelectTrigger>
-            <SelectValue placeholder="Seleccionar área de cocina" />
-          </SelectTrigger>
-          <SelectContent>
-            {kitchenOptions.map(kitchen => (
-              <SelectItem key={kitchen.id} value={kitchen.id}>
-                {kitchen.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard 
+          title="Pendientes" 
+          value={stats.pendingItems}
+          className="border-l-4 border-l-yellow-500" 
+        />
+        <StatCard 
+          title="En preparación" 
+          value={stats.preparingItems}
+          className="border-l-4 border-l-blue-500" 
+        />
+        <StatCard 
+          title="Completados" 
+          value={stats.completedItems}
+          className="border-l-4 border-l-green-500" 
+        />
+        <StatCard 
+          title="Total" 
+          value={stats.totalItems}
+          className="border-l-4 border-l-gray-500" 
+        />
       </div>
-
-      <div className="flex gap-2">
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={handleRefresh}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
-        <Button variant="outline" className="gap-2">
-          <Clock size={16} />
-          Tiempo prom: {getAverageTime()} min
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="default" className="gap-2">
-              <ChefHat size={16} />
-              Estadísticas
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <DropdownMenuItem className="flex justify-between">
-              Pendientes <span className="font-bold ml-2">{stats.pendingItems}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex justify-between">
-              En preparación <span className="font-bold ml-2">{stats.preparingItems}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex justify-between">
-              Completados <span className="font-bold ml-2">{stats.completedItems}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex justify-between border-t border-border mt-1 pt-1">
-              Total <span className="font-bold ml-2">{stats.totalItems}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+    </header>
   );
 };
+
+const StatCard = ({ 
+  title, 
+  value, 
+  className = "" 
+}: { 
+  title: string; 
+  value: number;
+  className?: string;
+}) => (
+  <Card className={`${className}`}>
+    <CardContent className="p-4">
+      <div className="text-sm text-muted-foreground">{title}</div>
+      <div className="text-3xl font-semibold">{value}</div>
+    </CardContent>
+  </Card>
+);
 
 export default KitchenHeader;

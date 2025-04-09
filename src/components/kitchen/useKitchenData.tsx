@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { subscribeToOrders } from '@/services/orders/orderSubscriptions';
@@ -22,9 +21,12 @@ import {
 
 export { KITCHEN_OPTIONS as kitchenOptions };
 
+// Define the tab status type (a subset of NormalizedOrderStatus)
+type KitchenTabStatus = 'pending' | 'preparing' | 'ready';
+
 export const useKitchenData = () => {
   const [selectedKitchen, setSelectedKitchen] = useState("all");  // Mostrar todas las cocinas por defecto
-  const [orderStatus, setOrderStatus] = useState<NormalizedOrderStatus>('pending');
+  const [orderStatus, setOrderStatus] = useState<KitchenTabStatus>('pending');
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -193,15 +195,8 @@ export const useKitchenData = () => {
     selectedKitchen,
     setSelectedKitchen,
     orderStatus,
-    setOrderStatus: (status: NormalizedOrderStatus) => {
-      // Verify if the status is allowed for tabs before setting it
-      if (status === 'pending' || status === 'preparing' || status === 'ready') {
-        setOrderStatus(status);
-      } else {
-        console.warn(`Invalid order status for kitchen tabs: ${status}`);
-        // Default to 'pending' if an invalid status is passed
-        setOrderStatus('pending');
-      }
+    setOrderStatus: (status: KitchenTabStatus) => {
+      setOrderStatus(status);
     },
     orders: getFilteredOrders(),
     loading,

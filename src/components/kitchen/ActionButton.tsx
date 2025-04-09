@@ -19,29 +19,54 @@ const ActionButton: React.FC<ActionButtonProps> = ({
 }) => {
   if (!hasManagePermission) return null;
   
+  // First, handle action buttons for different states
   if (orderStatus === 'pending') {
     return (
-      <Button 
-        size="sm" 
-        variant="outline" 
-        className="h-8 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700 hover:text-yellow-800"
-        onClick={() => updateOrderStatus(orderId, 'preparing')}
-      >
-        <ChefHat size={16} className="mr-1" /> Preparar
-      </Button>
+      <div className="flex gap-2">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700 hover:text-yellow-800"
+          onClick={() => updateOrderStatus(orderId, 'preparing')}
+        >
+          <ChefHat size={16} className="mr-1" /> Preparar
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-red-50 hover:bg-red-100 border-red-300 text-red-700 hover:text-red-800"
+          onClick={() => updateOrderStatus(orderId, 'cancelled')}
+        >
+          <Ban size={16} className="mr-1" /> Cancelar
+        </Button>
+      </div>
     );
-  } else if (orderStatus === 'preparing') {
+  } 
+  
+  if (orderStatus === 'preparing') {
     return (
-      <Button 
-        size="sm" 
-        variant="outline" 
-        className="h-8 bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 hover:text-blue-800"
-        onClick={() => updateOrderStatus(orderId, 'ready')}
-      >
-        <Check size={16} className="mr-1" /> Completar
-      </Button>
+      <div className="flex gap-2">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 hover:text-blue-800"
+          onClick={() => updateOrderStatus(orderId, 'ready')}
+        >
+          <Check size={16} className="mr-1" /> Completar
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-red-50 hover:bg-red-100 border-red-300 text-red-700 hover:text-red-800"
+          onClick={() => updateOrderStatus(orderId, 'cancelled')}
+        >
+          <Ban size={16} className="mr-1" /> Cancelar
+        </Button>
+      </div>
     );
-  } else if (orderStatus === 'ready') {
+  } 
+  
+  if (orderStatus === 'ready') {
     return (
       <Button 
         size="sm" 
@@ -54,20 +79,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     );
   }
   
-  // Add a separate button for cancellation option that appears for pending and preparing states
-  if (orderStatus === 'pending' || orderStatus === 'preparing') {
-    return (
-      <Button 
-        size="sm" 
-        variant="outline" 
-        className="h-8 bg-red-50 hover:bg-red-100 border-red-300 text-red-700 hover:text-red-800 ml-2"
-        onClick={() => updateOrderStatus(orderId, 'cancelled')}
-      >
-        <Ban size={16} className="mr-1" /> Cancelar
-      </Button>
-    );
-  }
-  
+  // No actions available for delivered or cancelled orders
   return null;
 };
 

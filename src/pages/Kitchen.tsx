@@ -56,7 +56,7 @@ const Kitchen = () => {
 
         <KitchenStatusTabs
           defaultValue="pending"
-          onValueChange={(value: KitchenTabStatus) => setOrderStatus(value as NormalizedOrderStatus)}
+          onValueChange={(value: KitchenTabStatus) => setOrderStatus(value)}
           pendingCount={stats.pendingItems}
           preparingCount={stats.preparingItems}
           completedCount={stats.completedItems}

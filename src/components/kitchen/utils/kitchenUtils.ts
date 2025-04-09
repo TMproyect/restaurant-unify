@@ -56,6 +56,7 @@ export const useKitchenUtils = (orders: any[], selectedKitchen: string) => {
       preparingItems,
       completedItems,
       cancelledItems,
+      totalItems: kitchenOrders.length, // Added totalItems field
       totalOrders: kitchenOrders.length,
       averageTime
     };

@@ -20,6 +20,12 @@ export function useDashboardData() {
   const [error, setError] = useState<string | null>(null);
   const { toast: uiToast } = useToast();
 
+  // Dialog state
+  const [selectedOrder, setSelectedOrder] = useState<ActivityMonitorItem | null>(null);
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
+  const [isCancellationReviewOpen, setIsCancellationReviewOpen] = useState(false);
+  const [isDiscountReviewOpen, setIsDiscountReviewOpen] = useState(false);
+
   const fetchDashboardData = useCallback(async () => {
     try {
       console.log('🔄 [useDashboardData] Fetching dashboard data...');
@@ -79,14 +85,14 @@ export function useDashboardData() {
     
     const [actionType, id] = action.split(':');
     
+    // Find the order in the activity items
+    const order = activityItems.find(item => item.id === id) || null;
+    
     switch (actionType) {
       case 'view':
-        // Show toast for view action
-        toast.success(`Viendo detalles de orden ${id}`);
-        uiToast({
-          title: "Información",
-          description: `Detalles de la orden ${id}`,
-        });
+        // Set the selected order and open the details dialog
+        setSelectedOrder(order);
+        setIsOrderDetailsOpen(true);
         break;
         
       case 'prioritize':
@@ -98,36 +104,46 @@ export function useDashboardData() {
             success: () => {
               // Refresh data after prioritization
               refreshAllData();
-              return `¡Orden ${id} priorizada en cocina!`;
+              return `¡Orden ${id.substring(0, 6)} priorizada en cocina!`;
             },
-            error: `Error al priorizar orden ${id}`
+            error: `Error al priorizar orden ${id.substring(0, 6)}`
           }
         );
         break;
         
       case 'review-cancel':
-        // Show toast for review-cancel action
-        toast.success(`Revisando cancelación de orden ${id}`);
-        uiToast({
-          title: "Información",
-          description: `Revisando cancelación de la orden ${id}`,
-        });
+        // Set the selected order and open the cancellation review dialog
+        setSelectedOrder(order);
+        setIsCancellationReviewOpen(true);
         break;
         
       case 'review-discount':
-        // Show toast for review-discount action
-        toast.success(`Revisando descuento de orden ${id}`);
-        uiToast({
-          title: "Información",
-          description: `Revisando descuento de la orden ${id}`,
-        });
+        // Set the selected order and open the discount review dialog
+        setSelectedOrder(order);
+        setIsDiscountReviewOpen(true);
         break;
         
       default:
         console.warn('❌ [useDashboardData] Unknown action type:', actionType);
         toast.error(`Acción desconocida: ${actionType}`);
     }
-  }, [refreshAllData, uiToast]);
+  }, [activityItems, refreshAllData]);
+
+  // Close dialog handlers
+  const handleCloseOrderDetails = useCallback(() => {
+    setIsOrderDetailsOpen(false);
+    setSelectedOrder(null);
+  }, []);
+
+  const handleCloseCancellationReview = useCallback(() => {
+    setIsCancellationReviewOpen(false);
+    setSelectedOrder(null);
+  }, []);
+
+  const handleCloseDiscountReview = useCallback(() => {
+    setIsDiscountReviewOpen(false);
+    setSelectedOrder(null);
+  }, []);
 
   // Initial data loading and real-time subscription
   useEffect(() => {
@@ -165,6 +181,14 @@ export function useDashboardData() {
     isLoadingActivity,
     error,
     refreshAllData,
-    handleActionClick
+    handleActionClick,
+    // Dialog state and handlers
+    selectedOrder,
+    isOrderDetailsOpen,
+    isCancellationReviewOpen,
+    isDiscountReviewOpen,
+    handleCloseOrderDetails,
+    handleCloseCancellationReview,
+    handleCloseDiscountReview
   };
 }

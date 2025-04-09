@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import EnhancedDashboardCard from '@/components/dashboard/EnhancedDashboardCard';
 import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
+import OrderDetailsDialog from '@/components/dashboard/activity/OrderDetailsDialog';
+import CancellationReviewDialog from '@/components/dashboard/activity/CancellationReviewDialog';
+import DiscountReviewDialog from '@/components/dashboard/activity/DiscountReviewDialog';
 
 export default function Dashboard() {
   const { error: initError, isReady } = useDashboardInit();
@@ -19,7 +22,15 @@ export default function Dashboard() {
     isLoadingActivity,
     error: dataError, 
     refreshAllData,
-    handleActionClick
+    handleActionClick,
+    // Dialog state and handlers
+    selectedOrder,
+    isOrderDetailsOpen,
+    isCancellationReviewOpen,
+    isDiscountReviewOpen,
+    handleCloseOrderDetails,
+    handleCloseCancellationReview,
+    handleCloseDiscountReview
   } = useDashboardData();
   
   console.log('🔄 [Dashboard] Rendering dashboard with ready state:', isReady);
@@ -123,6 +134,25 @@ export default function Dashboard() {
           isLoading={isLoadingActivity}
           onRefresh={refreshAllData}
           onActionClick={handleActionClick}
+        />
+        
+        {/* Dialogs */}
+        <OrderDetailsDialog 
+          order={selectedOrder}
+          isOpen={isOrderDetailsOpen}
+          onClose={handleCloseOrderDetails}
+        />
+        
+        <CancellationReviewDialog
+          order={selectedOrder}
+          isOpen={isCancellationReviewOpen}
+          onClose={handleCloseCancellationReview}
+        />
+        
+        <DiscountReviewDialog
+          order={selectedOrder}
+          isOpen={isDiscountReviewOpen}
+          onClose={handleCloseDiscountReview}
         />
       </div>
     </Layout>

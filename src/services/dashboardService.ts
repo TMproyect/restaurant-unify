@@ -1,8 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardStats } from '@/types/dashboard.types';
-
-// Define the types for dashboard data
-export type { DashboardCardData } from '@/types/dashboard.types';
+import { DashboardStats, DashboardCardData } from '@/types/dashboard.types';
 
 // Función para obtener estadísticas del dashboard de forma más detallada
 export const getDashboardStats = async (): Promise<DashboardStats> => {
@@ -125,7 +122,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       ordersStats: {
         activeOrders,
         pendingOrders,
-        preparingOrders,
+        inPreparationOrders: preparingOrders,
         readyOrders,
         lastUpdated
       },
@@ -143,7 +140,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 // Generate dashboard cards based on stats
-export const generateDashboardCards = (stats: DashboardStats) => {
+export const generateDashboardCards = (stats: DashboardStats): DashboardCardData[] => {
   return [
     {
       title: 'Ventas del Día',

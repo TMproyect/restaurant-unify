@@ -4,7 +4,11 @@ import { toast } from 'sonner';
 import { subscribeToOrders } from '@/services/orders/orderSubscriptions';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { OrderDisplay, KITCHEN_OPTIONS } from './kitchenTypes';
-import { normalizeOrderStatus, getDBStatusesFromUIStatus } from '@/utils/orderStatusUtils';
+import { 
+  normalizeOrderStatus, 
+  getDBStatusesFromUIStatus, 
+  NormalizedOrderStatus
+} from '@/utils/orderStatusUtils';
 import { 
   loadKitchenOrders, 
   updateOrderStatusInKitchen,
@@ -19,8 +23,8 @@ import {
 export { KITCHEN_OPTIONS as kitchenOptions };
 
 export const useKitchenData = () => {
-  const [selectedKitchen, setSelectedKitchen] = useState("all");  // Cambiado a "all" para mostrar todas las cocinas por defecto
-  const [orderStatus, setOrderStatus] = useState<'pending' | 'preparing' | 'ready'>('pending');
+  const [selectedKitchen, setSelectedKitchen] = useState("all");  // Mostrar todas las cocinas por defecto
+  const [orderStatus, setOrderStatus] = useState<NormalizedOrderStatus>('pending');
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -50,15 +54,21 @@ export const useKitchenData = () => {
     try {
       setLoading(true);
       
-      // Obtener los estados de la base de datos correspondientes al estado de la UI
-      const dbStatuses = getDBStatusesFromUIStatus(orderStatus);
+      // Obtener estados de DB para todos los estados UI que queremos mostrar
+      // Para asegurar que traemos todos los pedidos relevantes
+      const pendingDbStatuses = getDBStatusesFromUIStatus('pending');
+      const preparingDbStatuses = getDBStatusesFromUIStatus('preparing');
+      const readyDbStatuses = getDBStatusesFromUIStatus('ready');
       
-      console.log(`🔍 [Kitchen] Fetching orders with statuses: ${dbStatuses.join(', ')}`);
+      // Unimos todos los estados que nos interesan
+      const allStatuses = [...pendingDbStatuses, ...preparingDbStatuses, ...readyDbStatuses];
+      
+      console.log(`🔍 [Kitchen] Fetching orders with all kitchen statuses: ${allStatuses.join(', ')}`);
       
       // Cargar órdenes
       const data = await loadKitchenOrders(
         selectedKitchen,
-        dbStatuses,
+        allStatuses,
         hasViewPermission
       );
       
@@ -72,13 +82,25 @@ export const useKitchenData = () => {
   };
 
   // Actualizar el estado de una orden
-  const updateOrderStatusHandler = async (orderId: string, newStatus: string) => {
+  const updateOrderStatusHandler = async (orderId: string, newStatus: NormalizedOrderStatus) => {
     setLoading(true);
     const success = await updateOrderStatusInKitchen(orderId, newStatus, hasManagePermission);
     
     // Si la actualización fue exitosa, recargar órdenes
     if (success) {
-      fetchOrders();
+      // Actualizar localmente la orden modificada para mostrar cambio inmediato
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: newStatus } 
+            : order
+        )
+      );
+      
+      // Luego recargar todas las órdenes para asegurar sincronización
+      setTimeout(() => {
+        fetchOrders();
+      }, 500);
     } else {
       setLoading(false);
     }
@@ -129,6 +151,9 @@ export const useKitchenData = () => {
         const orderKitchenId = order.kitchen_id || 'main';
         const isForThisKitchen = selectedKitchen === "all" || orderKitchenId === selectedKitchen;
         
+        // Normalizar el status para detectar si debemos actualizarlo en la interfaz
+        const normalizedStatus = normalizeOrderStatus(order.status || 'pending');
+        
         if (isForThisKitchen) {
           console.log('✅ [Kitchen] Order is for this kitchen:', selectedKitchen);
           
@@ -136,6 +161,14 @@ export const useKitchenData = () => {
           if (payload.eventType === 'INSERT') {
             toast.success(`Nueva orden recibida: ${order.customer_name} - Mesa: ${order.table_number || 'Delivery'}`, {
               duration: 5000,
+            });
+          }
+          
+          // Notificación cuando se actualiza una orden (solo para actualizaciones de estado)
+          if (payload.eventType === 'UPDATE' && payload.old && payload.old.status !== order.status) {
+            const oldStatus = normalizeOrderStatus(payload.old.status);
+            toast.info(`Orden #${order.id.substring(0, 4)} actualizada: ${oldStatus} → ${normalizedStatus}`, {
+              duration: 3000,
             });
           }
           
@@ -154,7 +187,7 @@ export const useKitchenData = () => {
       console.error('❌ [Kitchen] Error setting up realtime subscription:', error);
       toast.error("Error al conectar con actualizaciones en tiempo real");
     }
-  }, [selectedKitchen, orderStatus, refreshKey, hasViewPermission]);
+  }, [selectedKitchen, refreshKey, hasViewPermission]);
 
   return {
     selectedKitchen,

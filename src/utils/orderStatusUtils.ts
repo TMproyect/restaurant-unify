@@ -4,11 +4,16 @@
  */
 
 /**
+ * Tipos de estado de orden normalizados
+ */
+export type NormalizedOrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+
+/**
  * Normaliza el estado de la orden para asegurar consistencia en toda la aplicación
  * @param status Estado a normalizar
  * @returns Estado normalizado
  */
-export const normalizeOrderStatus = (status: string): string => {
+export const normalizeOrderStatus = (status: string): NormalizedOrderStatus => {
   // Verificar si el estado es nulo o indefinido
   if (!status) return 'pending';
   
@@ -19,7 +24,8 @@ export const normalizeOrderStatus = (status: string): string => {
   if (normalizedStatus === 'pending' || 
       normalizedStatus === 'pendiente' || 
       normalizedStatus.includes('pend') || 
-      normalizedStatus.includes('nueva')) {
+      normalizedStatus.includes('nueva') ||
+      normalizedStatus.includes('nuevo')) {
     return 'pending';
   } else if (normalizedStatus === 'preparing' || 
              normalizedStatus === 'preparando' || 
@@ -31,7 +37,8 @@ export const normalizeOrderStatus = (status: string): string => {
              normalizedStatus === 'listo' || 
              normalizedStatus === 'lista' || 
              normalizedStatus.includes('list') || 
-             normalizedStatus.includes('ready')) {
+             normalizedStatus.includes('ready') ||
+             normalizedStatus.includes('complet')) {
     return 'ready';
   } else if (normalizedStatus === 'delivered' || 
              normalizedStatus === 'entregado' || 
@@ -52,20 +59,34 @@ export const normalizeOrderStatus = (status: string): string => {
 };
 
 /**
+ * Obtiene etiqueta de estado en español para mostrar al usuario
+ */
+export const getStatusLabel = (status: NormalizedOrderStatus): string => {
+  switch (status) {
+    case 'pending': return 'Pendiente';
+    case 'preparing': return 'En preparación';
+    case 'ready': return 'Listo';
+    case 'delivered': return 'Entregado';
+    case 'cancelled': return 'Cancelado';
+    default: return 'Pendiente';
+  }
+};
+
+/**
  * Constantes para mapeo de estados UI a DB
  */
-export const UI_STATUS_MAP = {
-  pending: 'pending',
-  preparing: 'preparing',
-  ready: 'ready',
-  delivered: 'delivered',
-  cancelled: 'cancelled'
+export const UI_STATUS_MAP: Record<NormalizedOrderStatus, string> = {
+  pending: 'pendiente',
+  preparing: 'preparando',
+  ready: 'listo',
+  delivered: 'entregado',
+  cancelled: 'cancelado'
 };
 
 /**
  * Constantes para mapeo de estados DB a UI
  */
-export const DB_TO_UI_STATUS_MAP: Record<string, string> = {
+export const DB_TO_UI_STATUS_MAP: Record<string, NormalizedOrderStatus> = {
   'pending': 'pending',
   'pendiente': 'pending',
   'nueva': 'pending',
@@ -90,7 +111,7 @@ export const DB_TO_UI_STATUS_MAP: Record<string, string> = {
  * @param uiStatus Estado de la interfaz de usuario
  * @returns Array de posibles estados en la base de datos
  */
-export const getDBStatusesFromUIStatus = (uiStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled'): string[] => {
+export const getDBStatusesFromUIStatus = (uiStatus: NormalizedOrderStatus): string[] => {
   let dbStatuses: string[] = [];
   
   if (uiStatus === 'pending') {
@@ -98,7 +119,7 @@ export const getDBStatusesFromUIStatus = (uiStatus: 'pending' | 'preparing' | 'r
   } else if (uiStatus === 'preparing') {
     dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación', 'cocinando', 'Cocinando'];
   } else if (uiStatus === 'ready') {
-    dbStatuses = ['ready', 'Listo', 'listo', 'Lista', 'lista'];
+    dbStatuses = ['ready', 'Listo', 'listo', 'Lista', 'lista', 'completado', 'Completado'];
   } else if (uiStatus === 'delivered') {
     dbStatuses = ['delivered', 'Entregada', 'entregada', 'Entregado', 'entregado'];
   } else if (uiStatus === 'cancelled') {
@@ -114,7 +135,7 @@ export const getDBStatusesFromUIStatus = (uiStatus: 'pending' | 'preparing' | 'r
  * @param uiStatus Estado en la interfaz
  * @returns true si el estado DB corresponde al estado UI
  */
-export const isDbStatusMatchingUiStatus = (dbStatus: string, uiStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled'): boolean => {
+export const isDbStatusMatchingUiStatus = (dbStatus: string, uiStatus: NormalizedOrderStatus): boolean => {
   if (!dbStatus) return false;
   
   const normalizedDbStatus = dbStatus.toLowerCase().trim();

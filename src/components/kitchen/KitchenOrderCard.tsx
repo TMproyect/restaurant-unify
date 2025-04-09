@@ -4,6 +4,8 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import ActionButton from './ActionButton';
 import OrderItemDisplay from './OrderItemDisplay';
 import { OrderItem } from './kitchenTypes';
+import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
+import { Clock, Calendar } from 'lucide-react';
 
 interface KitchenOrderCardProps {
   order: {
@@ -12,13 +14,13 @@ interface KitchenOrderCardProps {
     customerName: string;
     time: string;
     kitchenId: string;
-    status: string;
+    status: NormalizedOrderStatus;
     items: OrderItem[];
   };
   kitchenName: string;
-  orderStatus: 'pending' | 'preparing' | 'ready';
+  orderStatus: NormalizedOrderStatus;
   hasManagePermission: boolean;
-  updateOrderStatus: (orderId: string, newStatus: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
 }
 
 const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
@@ -29,28 +31,65 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
   updateOrderStatus
 }) => {
   // Determinar la clase de borde basada en el estado
-  const getBorderClass = () => {
+  const getCardStyles = () => {
     switch (orderStatus) {
       case 'pending':
-        return 'border-l-4 border-l-yellow-500';
+        return {
+          borderClass: 'border-l-4 border-l-yellow-500',
+          bgClass: 'bg-yellow-50',
+          textClass: 'text-yellow-800',
+          statusBadgeClass: 'bg-yellow-100 text-yellow-800'
+        };
       case 'preparing':
-        return 'border-l-4 border-l-blue-500';
+        return {
+          borderClass: 'border-l-4 border-l-blue-500',
+          bgClass: 'bg-blue-50',
+          textClass: 'text-blue-800',
+          statusBadgeClass: 'bg-blue-100 text-blue-800'
+        };
       case 'ready':
-        return 'border-l-4 border-l-green-500';
+        return {
+          borderClass: 'border-l-4 border-l-green-500',
+          bgClass: 'bg-green-50',
+          textClass: 'text-green-800',
+          statusBadgeClass: 'bg-green-100 text-green-800'
+        };
       default:
-        return '';
+        return {
+          borderClass: '',
+          bgClass: '',
+          textClass: '',
+          statusBadgeClass: 'bg-gray-100 text-gray-800'
+        };
     }
   };
 
+  const styles = getCardStyles();
+
   return (
-    <Card className={`hover:shadow-md transition-shadow ${getBorderClass()}`}>
+    <Card className={`hover:shadow-md transition-shadow ${styles.borderClass} ${styles.bgClass}`}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
-          <CardTitle>Orden #{order.id.substring(0, 4)} - {order.table}</CardTitle>
-          <span className="text-sm text-muted-foreground">{order.time}</span>
+          <CardTitle className="text-lg flex items-center">
+            <span className="font-bold mr-2">#{order.id.substring(0, 4)}</span>
+            <span className="text-base font-normal">
+              Mesa {order.table}
+            </span>
+            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${styles.statusBadgeClass}`}>
+              {getStatusLabel(orderStatus)}
+            </span>
+          </CardTitle>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Clock size={14} className="mr-1" />
+            <span>{order.time}</span>
+          </div>
         </div>
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">Cliente: {order.customerName}</p>
+        <div className="flex justify-between items-center mt-1">
+          <p className="text-sm flex items-center">
+            <Calendar size={14} className="mr-1" />
+            <span className="font-medium">Cliente:</span> 
+            <span className="ml-1">{order.customerName}</span>
+          </p>
           <div className="flex gap-2">
             <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
               {kitchenName}

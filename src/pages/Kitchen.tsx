@@ -8,6 +8,7 @@ import KitchenStatusTabs from '@/components/kitchen/KitchenStatusTabs';
 import KitchenOrdersGrid from '@/components/kitchen/KitchenOrdersGrid';
 import AccessDenied from '@/components/kitchen/AccessDenied';
 import LoadingIndicator from '@/components/kitchen/LoadingIndicator';
+import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 const Kitchen = () => {
   const {
@@ -52,7 +53,7 @@ const Kitchen = () => {
 
         <KitchenStatusTabs
           defaultValue="pending"
-          onValueChange={setOrderStatus}
+          onValueChange={(value) => setOrderStatus(value as NormalizedOrderStatus)}
           pendingCount={stats.pendingItems}
           preparingCount={stats.preparingItems}
           completedCount={stats.completedItems}

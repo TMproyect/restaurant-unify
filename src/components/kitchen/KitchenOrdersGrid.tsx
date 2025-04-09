@@ -1,6 +1,7 @@
 
 import React from 'react';
 import KitchenOrderCard from './KitchenOrderCard';
+import { NormalizedOrderStatus, getStatusLabel } from '@/utils/orderStatusUtils';
 
 interface OrderItem {
   id: string;
@@ -15,15 +16,15 @@ interface OrderDisplay {
   customerName: string;
   time: string;
   kitchenId: string;
-  status: string;
+  status: NormalizedOrderStatus;
   items: OrderItem[];
 }
 
 interface KitchenOrdersGridProps {
   orders: OrderDisplay[];
-  orderStatus: 'pending' | 'preparing' | 'ready';
+  orderStatus: NormalizedOrderStatus;
   hasManagePermission: boolean;
-  updateOrderStatus: (orderId: string, newStatus: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
   getKitchenName: (kitchenId: string) => string;
   selectedKitchen: string;
 }
@@ -36,21 +37,22 @@ const KitchenOrdersGrid: React.FC<KitchenOrdersGridProps> = ({
   getKitchenName,
   selectedKitchen
 }) => {
-  if (orders.length === 0) {
+  // Filtrar órdenes por estado actual para asegurar que solo mostramos las órdenes
+  // que corresponden a la pestaña actual
+  const filteredOrders = orders.filter(order => order.status === orderStatus);
+  
+  if (filteredOrders.length === 0) {
     return (
       <div className="col-span-2 text-center py-10 text-muted-foreground">
-        No hay órdenes {
-          orderStatus === 'pending' ? 'pendientes' : 
-          orderStatus === 'preparing' ? 'en preparación' : 
-          'completadas'
-        } para {getKitchenName(selectedKitchen)}
+        No hay órdenes <strong>{getStatusLabel(orderStatus).toLowerCase()}</strong> para{' '}
+        <strong>{getKitchenName(selectedKitchen)}</strong>
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {orders.map(order => (
+      {filteredOrders.map(order => (
         <KitchenOrderCard
           key={order.id}
           order={order}

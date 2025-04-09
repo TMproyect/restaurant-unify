@@ -2,6 +2,7 @@
 /**
  * Tipos específicos para el módulo de cocina
  */
+import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 export interface OrderItem {
   id: string;
@@ -16,7 +17,7 @@ export interface OrderDisplay {
   customerName: string;
   time: string;
   kitchenId: string;
-  status: string;
+  status: NormalizedOrderStatus;
   items: OrderItem[];
 }
 
@@ -34,6 +35,7 @@ export interface KitchenStats {
 
 // Opciones de cocina constantes
 export const KITCHEN_OPTIONS: KitchenOption[] = [
+  { id: "all", name: "Todas las Cocinas" },
   { id: "main", name: "Cocina Principal" },
   { id: "grill", name: "Parrilla" },
   { id: "cold", name: "Cocina Fría" },

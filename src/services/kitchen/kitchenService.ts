@@ -4,7 +4,14 @@ import { mapArrayResponse } from '@/utils/supabaseHelpers';
 import { filterValue } from '@/utils/supabaseHelpers';
 import { Order } from '@/types/order.types';
 import { OrderDisplay } from '@/components/kitchen/kitchenTypes';
-import { normalizeOrderStatus, getDBStatusesFromUIStatus, isDbStatusMatchingUiStatus } from '@/utils/orderStatusUtils';
+import { 
+  normalizeOrderStatus, 
+  getDBStatusesFromUIStatus, 
+  isDbStatusMatchingUiStatus,
+  NormalizedOrderStatus,
+  UI_STATUS_MAP,
+  getStatusLabel
+} from '@/utils/orderStatusUtils';
 import { toast } from 'sonner';
 import { updateOrderStatus } from '@/services/orders/orderUpdates';
 
@@ -111,7 +118,7 @@ export const loadKitchenOrders = async (
  */
 export const updateOrderStatusInKitchen = async (
   orderId: string, 
-  newStatus: string,
+  newStatus: NormalizedOrderStatus,
   hasManagePermission: boolean
 ): Promise<boolean> => {
   if (!hasManagePermission) {
@@ -120,17 +127,14 @@ export const updateOrderStatusInKitchen = async (
   }
   
   try {
-    console.log(`🔄 [Kitchen] Updating order ${orderId} status to ${newStatus}`);
-    const success = await updateOrderStatus(orderId, newStatus);
+    // Convertir a estado de base de datos
+    const dbStatus = UI_STATUS_MAP[newStatus];
+    console.log(`🔄 [Kitchen] Updating order ${orderId} status to ${newStatus} (DB: ${dbStatus})`);
+    
+    const success = await updateOrderStatus(orderId, dbStatus);
     
     if (success) {
-      toast.success(`Estado de la orden actualizado a "${
-        newStatus === 'pending' ? 'Pendiente' :
-        newStatus === 'preparing' ? 'En preparación' :
-        newStatus === 'ready' ? 'Lista' :
-        newStatus === 'delivered' ? 'Entregada' :
-        newStatus === 'cancelled' ? 'Cancelada' : newStatus
-      }"`);
+      toast.success(`Estado de la orden actualizado a "${getStatusLabel(newStatus)}"`);
       return true;
     } else {
       console.error('❌ [Kitchen] Failed to update order status');
@@ -166,6 +170,7 @@ export const getKitchenName = (
 export const getAveragePreparationTime = (selectedKitchen: string): number => {
   // En una app real, esto se calcularía de datos reales
   const times: Record<string, number> = {
+    'all': 15,
     'main': 15,
     'grill': 18,
     'cold': 10,

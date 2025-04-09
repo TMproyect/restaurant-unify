@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
 import { Order, OrderItem } from '@/types/order.types';
@@ -95,40 +94,29 @@ export const getOrderWithItems = async (orderId: string): Promise<{ order: Order
 // Get order by external ID
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
   try {
-    console.log(`Buscando orden con ID externo: ${externalId}`);
+    console.log(`🔍 [getOrderByExternalId] Buscando orden con ID externo: ${externalId}`);
     
     // Get the order by external_id
     const { data, error } = await supabase
-      .rpc('get_order_by_external_id', { 
-        p_external_id: externalId 
-      });
+      .from('orders')
+      .select('*')
+      .eq('external_id', externalId)
+      .maybeSingle();
     
     if (error) {
-      console.error('Error obteniendo orden por ID externo (RPC):', error);
-      // Fallback: try direct query
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('external_id', externalId)
-        .maybeSingle();
-      
-      if (fallbackError) {
-        console.error('Error en fallback para obtener orden por ID externo:', fallbackError);
-        return null;
-      }
-      
-      return fallbackData as Order;
-    }
-    
-    if (!data || data.length === 0) {
-      console.log('No se encontró orden con ID externo:', externalId);
+      console.error('❌ [getOrderByExternalId] Error obteniendo orden por ID externo:', error);
       return null;
     }
     
-    console.log('Orden encontrada por ID externo:', data[0]);
-    return data[0] as Order;
+    if (!data) {
+      console.log('🔍 [getOrderByExternalId] No se encontró orden con ID externo:', externalId);
+      return null;
+    }
+    
+    console.log('✅ [getOrderByExternalId] Orden encontrada por ID externo:', data);
+    return data as Order;
   } catch (error) {
-    console.error('Error inesperado al obtener orden por ID externo:', error);
+    console.error('❌ [getOrderByExternalId] Error inesperado al obtener orden por ID externo:', error);
     return null;
   }
 };

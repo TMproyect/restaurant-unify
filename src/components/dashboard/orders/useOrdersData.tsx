@@ -1,9 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Order } from '@/types/order.types';
-import { getOrders, subscribeToOrders, updateOrderStatus } from '@/services/orderService';
+import { getOrders, subscribeToOrders, subscribeToFilteredOrders, updateOrderStatus } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
 import { safeArray } from '@/utils/safetyUtils';
+import { toast } from 'sonner';
 
 type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
 
@@ -31,7 +32,11 @@ export function useOrdersData({
       console.log(`🔍 [useOrdersData] Calling getOrders with filter: ${filter}`);
       const data = await getOrders();
       console.log(`✅ [useOrdersData] Received orders data, length:`, data?.length || 0);
-      console.log(`✅ [useOrdersData] Sample order:`, data?.[0] || 'No orders');
+      if (data && data.length > 0) {
+        console.log(`✅ [useOrdersData] Sample order:`, data[0]);
+      } else {
+        console.log(`✅ [useOrdersData] No orders found`);
+      }
       
       setOrders(safeArray(data));
     } catch (error) {
@@ -92,16 +97,34 @@ export function useOrdersData({
     }
   };
 
+  // Efecto para carga inicial y suscripción a tiempo real
   useEffect(() => {
     console.log('🔄 [useOrdersData] useEffect triggered, loading orders...');
     loadOrders();
     
     try {
       console.log('🔄 [useOrdersData] Setting up realtime subscription...');
-      const unsubscribe = subscribeToOrders((payload) => {
+      
+      // Usar suscripción filtrada si hay un filtro activo que no sea 'all'
+      const unsubscribe = filter !== 'all' 
+        ? subscribeToFilteredOrders(filter, handleRealtimeUpdate)
+        : subscribeToOrders(handleRealtimeUpdate);
+      
+      // Función para manejar las actualizaciones en tiempo real
+      function handleRealtimeUpdate(payload: any) {
         console.log('✅ [useOrdersData] Realtime order update received:', payload);
+        // Recargar órdenes para obtener datos actualizados
         loadOrders();
-      });
+        
+        // Notificación cuando se crea una nueva orden
+        if (payload.eventType === 'INSERT') {
+          const newOrder = payload.new;
+          toast({
+            title: "Nueva orden recibida",
+            description: `Cliente: ${newOrder.customer_name} - Mesa: ${newOrder.table_number || 'Delivery'}`,
+          });
+        }
+      }
       
       return () => {
         console.log('🔄 [useOrdersData] Cleaning up realtime subscription');
@@ -109,6 +132,7 @@ export function useOrdersData({
       };
     } catch (error) {
       console.error('❌ [useOrdersData] Error setting up realtime subscription:', error);
+      toast.error("Error al conectar con actualizaciones en tiempo real");
     }
   }, [filter, loadOrders]);
 
@@ -126,7 +150,8 @@ export function useOrdersData({
         const orderIdMatch = order.id?.toLowerCase().includes(searchLower);
         const tableMatch = order.table_number?.toString().includes(searchLower);
         const customerMatch = order.customer_name.toLowerCase().includes(searchLower);
-        const match = orderIdMatch || tableMatch || customerMatch;
+        const externalIdMatch = order.external_id?.toLowerCase().includes(searchLower);
+        const match = orderIdMatch || tableMatch || customerMatch || externalIdMatch;
         
         console.log(`🔍 [useOrdersData] Order ${order.id} search match: ${match}`);
         return match;

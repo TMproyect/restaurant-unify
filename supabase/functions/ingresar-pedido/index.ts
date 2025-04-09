@@ -1,5 +1,5 @@
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
-// Versión 2.0 - Forzar redespliegue - 2025-04-08
+// Versión 2.0 - Forzar redespliegue - 2025-04-09
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -52,7 +52,7 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   }
   
   console.log(`Intento de validación de API key: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
-  console.log("Verificación de API key forzando redespliegue - 2025-04-08");
+  console.log("Verificación de API key forzando redespliegue - 2025-04-09");
   
   try {
     // Obtener API key almacenada en system_settings
@@ -104,8 +104,8 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
 }
 
 serve(async (req) => {
-  console.log("Función ingresar-pedido v2.0 recibió una solicitud:", req.method);
-  console.log("Redespliegue forzado activado - 2025-04-08");
+  console.log("Función ingresar-pedido v2.1 recibió una solicitud:", req.method);
+  console.log("Redespliegue forzado activado - 2025-04-09");
   
   // Imprimir todas las cabeceras recibidas para diagnóstico
   const headerEntries = Array.from(req.headers.entries());
@@ -303,18 +303,26 @@ serve(async (req) => {
     
     // Crear notificación para el nuevo pedido
     try {
-      await supabase
-        .from('notifications')
-        .insert({
-          title: "Nuevo pedido externo",
-          description: `${payload.nombre_cliente} - ${validatedItems.length} ítems`,
-          type: "order",
-          user_id: null, // Se notificará a todos los usuarios
-          link: `/orders?id=${order.id}`,
-          action_text: "Ver pedido"
-        });
+      const notificationData = {
+        title: "Nuevo pedido externo",
+        description: `${payload.nombre_cliente} - Mesa ${payload.numero_mesa || 'Delivery'} - ${validatedItems.length} ítems`,
+        type: "order",
+        user_id: null, // Se notificará a todos los usuarios
+        link: `/orders?id=${order.id}`,
+        action_text: "Ver pedido"
+      };
       
-      console.log("Notificación creada exitosamente para el nuevo pedido");
+      console.log("Creando notificación con datos:", JSON.stringify(notificationData));
+      
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notificationData);
+      
+      if (notifError) {
+        console.error("Error al crear notificación:", notifError);
+      } else {
+        console.log("Notificación creada exitosamente para el nuevo pedido");
+      }
     } catch (notifError) {
       console.error("Error al crear notificación:", notifError);
       // No interrumpimos el flujo por un error en la notificación

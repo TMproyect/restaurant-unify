@@ -5,14 +5,13 @@ import { toast } from 'sonner';
 import { AuthUser, UserRole, AuthContextType } from './types';
 import { 
   fetchUserProfile, 
+  fetchAllProfiles,
   signupUser, 
   createUserProfile, 
-  createUserByAdmin, 
   updateUserRoleById, 
   logoutUser,
-  fetchAllProfiles,
   createUserWithEdgeFunction
-} from './authHelpers';
+} from './helpers';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -47,7 +46,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log("AuthProvider initialized, setting up auth state listener");
     logAuthState("Initial state");
     
-    // Verificar configuración del cliente Supabase
     const authOptions = (supabase as any).auth?.persistSession !== undefined 
       ? {
           persistSession: (supabase as any).auth.persistSession,
@@ -58,7 +56,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     console.log("Configuración del cliente Supabase:", authOptions);
     
-    // Verificar si el localStorage está funcionando
     try {
       localStorage.setItem('auth_test', 'test');
       const testValue = localStorage.getItem('auth_test');
@@ -148,7 +145,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Establecer un timeout para asegurarse de que no se queda en estado de carga
     const sessionCheckTimeout = setTimeout(() => {
       if (isMounted && isLoading) {
         console.log("Session check timeout reached, forcing loading state to false");
@@ -157,7 +153,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }, 3000);
 
-    // Verificar sesión inicial
     supabase.auth.getSession().then(async ({ data: { session: currentSession }, error }) => {
       console.log('Initial session check:', currentSession?.user?.id);
       console.log('Initial session error:', error);
@@ -247,8 +242,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logAuthState("Before login attempt");
     
     try {
-      // Verificar el estado actual de autenticación antes del inicio de sesión
-      console.log("login: Verificando sesión actual antes del login");
       const currentSession = await supabase.auth.getSession();
       console.log("login: Estado actual de la sesión:", {
         hasSession: !!currentSession.data.session,
@@ -256,7 +249,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         error: currentSession.error
       });
       
-      // Si hay una sesión activa, intentar cerrarla primero para evitar conflictos
       if (currentSession.data.session) {
         console.log("login: Sesión existente detectada, cerrando sesión primero");
         await supabase.auth.signOut();
@@ -341,7 +333,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Signup started with role:", role);
       
-      // Verificar si ya existe una sesión activa
       const currentSession = await supabase.auth.getSession();
       if (currentSession.data.session) {
         console.log("signup: Sesión existente detectada, cerrando sesión primero");
@@ -485,30 +476,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       console.log("Logout started...");
       
-      // Verificar sesión actual
       const currentSession = await supabase.auth.getSession();
       console.log("logout: Estado de sesión antes de logout:", {
         hasSession: !!currentSession.data.session,
         userId: currentSession.data.session?.user?.id
       });
       
-      // Cerrar sesión
       console.log("logout: Llamando a logoutUser (supabase.auth.signOut)");
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error('logout: Error during signOut:', error);
+        console.error('logout: Error durante signOut:', error);
         throw error;
       }
       
-      // Verificar que la sesión se cerró correctamente
       const afterLogoutSession = await supabase.auth.getSession();
       console.log("logout: Estado de sesión después de logout:", {
         hasSession: !!afterLogoutSession.data.session,
         userId: afterLogoutSession.data.session?.user?.id
       });
       
-      // Limpiar estado local
       setUser(null);
       setSession(null);
       console.log("logout: Estado local limpiado");
@@ -528,7 +515,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log("Fetching all users from context...");
       
-      // Verificar si el usuario es administrador
       if (user?.role !== 'admin' && user?.role !== 'gerente') {
         console.warn("fetchAllUsers: Usuario no es admin/gerente, puede no tener acceso:", user?.role);
       }

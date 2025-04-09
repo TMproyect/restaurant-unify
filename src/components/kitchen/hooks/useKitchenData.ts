@@ -56,6 +56,7 @@ export const useKitchenData = (): UseKitchenDataReturn => {
     },
     orders: getFilteredOrders(orderStatus),
     loading,
+    refreshKey,
     handleRefresh,
     hasViewPermission,
     hasManagePermission,

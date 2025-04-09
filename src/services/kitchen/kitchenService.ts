@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { KitchenOption } from '@/components/kitchen/kitchenTypes';
 import { OrderDisplay } from '@/components/kitchen/kitchenTypes';

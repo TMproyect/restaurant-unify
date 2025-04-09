@@ -1,15 +1,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Get popular menu items for dashboard
 export const getPopularItems = async (days = 7, limit = 5) => {
   try {
     console.log(`📊 [DashboardService] Obteniendo items populares de los últimos ${days} días`);
     
-    // Set date range
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - days);
     
+    // Include completed and delivered orders for better accuracy
     const { data: orderItemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -21,11 +20,11 @@ export const getPopularItems = async (days = 7, limit = 5) => {
         orders!inner(status, created_at)
       `)
       .gte('orders.created_at', sevenDaysAgo.toISOString())
-      .eq('orders.status', 'completed');
+      .in('orders.status', ['completed', 'delivered']);
     
     if (itemsError) throw itemsError;
     
-    // Calculate item popularity
+    // Calculate item popularity with improved aggregation
     const itemCountMap = new Map();
     orderItemsData?.forEach(item => {
       const itemId = item.menu_item_id || item.name;
@@ -37,13 +36,14 @@ export const getPopularItems = async (days = 7, limit = 5) => {
     // Convert to array and sort by quantity
     const popularItems = Array.from(itemCountMap.values())
       .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, limit) // Get top items
+      .slice(0, limit)
       .map(item => ({
         name: item.name,
         quantity: item.quantity,
         id: item.id
       }));
     
+    console.log('✅ [DashboardService] Popular items loaded:', popularItems.length);
     return popularItems;
   } catch (error) {
     console.error('❌ [DashboardService] Error al obtener items populares:', error);

@@ -1,16 +1,19 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Get order statistics for dashboard
 export const getOrdersStats = async () => {
   try {
     console.log('📊 [DashboardService] Obteniendo estadísticas de órdenes');
     
-    // Get active orders with status breakdown
+    // Get orders with better status breakdown - include completed orders
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id, status')
-      .in('status', ['pending', 'preparing', 'ready', 'priority-pending', 'priority-preparing']);
+      .in('status', [
+        'pending', 'preparing', 'ready', 
+        'priority-pending', 'priority-preparing',
+        'completed', 'delivered'
+      ]);
     
     if (ordersError) throw ordersError;
     
@@ -22,7 +25,14 @@ export const getOrdersStats = async () => {
       order.status === 'preparing' || order.status === 'priority-preparing'
     ).length || 0;
     
-    const readyOrders = ordersData?.filter(order => order.status === 'ready').length || 0;
+    const readyOrders = ordersData?.filter(order => 
+      order.status === 'ready'
+    ).length || 0;
+    
+    const completedOrders = ordersData?.filter(order => 
+      order.status === 'completed' || order.status === 'delivered'
+    ).length || 0;
+    
     const activeOrders = pendingOrders + preparingOrders + readyOrders;
     
     return {
@@ -30,6 +40,7 @@ export const getOrdersStats = async () => {
       pendingOrders,
       inPreparationOrders: preparingOrders,
       readyOrders,
+      completedOrders,
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {

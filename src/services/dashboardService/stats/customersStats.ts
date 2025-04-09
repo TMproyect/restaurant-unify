@@ -1,36 +1,51 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Get customer statistics for dashboard
 export const getCustomersStats = async () => {
   try {
     console.log('📊 [DashboardService] Obteniendo estadísticas de clientes');
     
-    // Get today's date boundaries
+    // Get today's boundaries
     const today = new Date();
     const todayStart = new Date(today);
     todayStart.setHours(0, 0, 0, 0);
     
-    // Get unique customers today
-    const { data: customersData, error: customersError } = await supabase
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStart = new Date(yesterday);
+    yesterdayStart.setHours(0, 0, 0, 0);
+    
+    // Get today's unique customers from completed and delivered orders
+    const { data: todayCustomers, error: todayError } = await supabase
       .from('orders')
       .select('customer_name')
       .gte('created_at', todayStart.toISOString())
-      .eq('status', 'completed');
+      .in('status', ['completed', 'delivered']);
     
-    if (customersError) throw customersError;
+    if (todayError) throw todayError;
     
-    // Count unique customers
-    const uniqueCustomers = new Set();
-    customersData?.forEach(order => {
-      if (order.customer_name) {
-        uniqueCustomers.add(order.customer_name.toLowerCase());
-      }
-    });
+    // Get yesterday's customers for comparison
+    const { data: yesterdayCustomers, error: yesterdayError } = await supabase
+      .from('orders')
+      .select('customer_name')
+      .gte('created_at', yesterdayStart.toISOString())
+      .lt('created_at', todayStart.toISOString())
+      .in('status', ['completed', 'delivered']);
+    
+    if (yesterdayError) throw yesterdayError;
+    
+    // Calculate unique customers
+    const todayCount = new Set(todayCustomers?.map(o => o.customer_name.toLowerCase())).size;
+    const yesterdayCount = new Set(yesterdayCustomers?.map(o => o.customer_name.toLowerCase())).size;
+    
+    // Calculate change percentage
+    const changePercentage = yesterdayCount > 0 
+      ? ((todayCount - yesterdayCount) / yesterdayCount) * 100 
+      : 0;
     
     return {
-      todayCount: uniqueCustomers.size,
-      changePercentage: 0, // Would need previous day data for comparison
+      todayCount,
+      changePercentage,
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {

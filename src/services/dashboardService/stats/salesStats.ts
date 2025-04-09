@@ -1,12 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Get sales statistics for dashboard
 export const getSalesStats = async () => {
   try {
     console.log('📊 [DashboardService] Obteniendo estadísticas de ventas');
     
-    // Get today's date boundaries
     const today = new Date();
     const todayStart = new Date(today);
     todayStart.setHours(0, 0, 0, 0);
@@ -18,12 +16,12 @@ export const getSalesStats = async () => {
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
     
-    // Get today's sales with transaction count
+    // Get today's sales from completed and delivered orders
     const { data: todaySalesData, error: salesError } = await supabase
       .from('orders')
       .select('id, total, status')
       .gte('created_at', todayStart.toISOString())
-      .eq('status', 'completed');
+      .in('status', ['completed', 'delivered']);
     
     if (salesError) throw salesError;
     
@@ -37,7 +35,7 @@ export const getSalesStats = async () => {
       .select('id, total')
       .gte('created_at', yesterdayStart.toISOString())
       .lte('created_at', yesterdayEnd.toISOString())
-      .eq('status', 'completed');
+      .in('status', ['completed', 'delivered']);
     
     if (yesterdayError) throw yesterdayError;
     
@@ -45,6 +43,13 @@ export const getSalesStats = async () => {
     const changePercentage = yesterdayTotal > 0 
       ? ((dailyTotal - yesterdayTotal) / yesterdayTotal) * 100 
       : 0;
+    
+    console.log('✅ [DashboardService] Sales stats calculated:', {
+      dailyTotal,
+      transactionCount,
+      averageTicket,
+      changePercentage
+    });
     
     return {
       dailyTotal,

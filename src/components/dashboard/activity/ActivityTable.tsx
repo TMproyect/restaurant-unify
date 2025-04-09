@@ -1,128 +1,160 @@
 
 import React from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatRelativeTime } from '@/utils/dateUtils';
 import { Badge } from '@/components/ui/badge';
-import { Clock, DollarSign } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import StatusBadge from './StatusBadge';
+import { formatCurrency } from '@/utils/formatters';
+import { ActivityMonitorItem } from '@/types/dashboard.types';
 import ActionButtons from './ActionButtons';
-import { ActivityTableProps } from './types';
+
+interface ActivityTableProps {
+  filteredItems: ActivityMonitorItem[];
+  onActionClick?: (action: string) => void;
+}
 
 const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionClick }) => {
   return (
     <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Orden</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead>Hora</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredItems.map(item => {
-            const rowClass = cn(
-              "transition-colors hover:bg-gray-50",
-              {
-                "bg-red-50": item.hasCancellation,
-                "bg-yellow-50": item.isDelayed && !item.hasCancellation,
-                "bg-blue-50": item.hasDiscount && !item.isDelayed && !item.hasCancellation
-              }
-            );
-            
-            return (
-              <TableRow key={item.id} className={rowClass}>
-                <TableCell>
-                  <div className="font-medium">#{item.id.substring(0, 6)}</div>
-                  <div className="text-xs text-gray-500">
-                    {item.itemsCount} items
+      <table className="w-full">
+        <thead>
+          <tr className="text-xs text-muted-foreground font-medium border-b">
+            <th className="text-left py-2 px-3">Orden</th>
+            <th className="text-left py-2 px-3">Cliente</th>
+            <th className="text-left py-2 px-3">Estado</th>
+            <th className="text-left py-2 px-3">Área</th>
+            <th className="text-center py-2 px-3">Hora</th>
+            <th className="text-right py-2 px-3">Total</th>
+            <th className="text-center py-2 px-3">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredItems.map((item) => (
+            <tr key={item.id} className="border-b hover:bg-muted/30">
+              <td className="py-2 px-3">
+                <div className="font-medium text-sm">#{item.id.substring(0, 6)}</div>
+                <div className="text-xs text-muted-foreground">{item.itemsCount} item(s)</div>
+              </td>
+              <td className="py-2 px-3 text-sm">{item.customer}</td>
+              <td className="py-2 px-3">
+                <StatusBadge status={item.status} isDelayed={item.isDelayed} />
+              </td>
+              <td className="py-2 px-3 text-sm">
+                {item.kitchenId ? (
+                  <Badge variant="outline" className="bg-secondary/40 text-secondary-foreground">
+                    {getKitchenName(item.kitchenId)}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground text-xs">Sin asignar</span>
+                )}
+              </td>
+              <td className="py-2 px-3 text-center">
+                <div className="text-xs">
+                  {formatRelativeTime(item.timeElapsed)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(item.timestamp).toLocaleTimeString('es-ES', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </div>
+              </td>
+              <td className="py-2 px-3 text-right">
+                <div className="font-medium text-sm">{formatCurrency(item.total)}</div>
+                {item.hasDiscount && item.discountPercentage !== undefined && (
+                  <div className="text-xs text-green-600">
+                    Desc: {item.discountPercentage}%
                   </div>
-                </TableCell>
-                <TableCell>{item.customer}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <StatusBadge status={item.status} />
-                    
-                    <div className="flex gap-1 mt-1">
-                      {item.isDelayed && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Badge variant="outline" className="bg-yellow-50 border-yellow-200 px-1.5 py-0">
-                                <Clock className="h-3 w-3 text-yellow-700 mr-1" />
-                                <span className="text-[10px] text-yellow-700">
-                                  {item.timeElapsed}m
-                                </span>
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Retrasado por {item.timeElapsed} minutos</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                      
-                      {item.hasDiscount && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Badge variant="outline" className="bg-blue-50 border-blue-200 px-1.5 py-0">
-                                <DollarSign className="h-3 w-3 text-blue-700 mr-1" />
-                                <span className="text-[10px] text-blue-700">
-                                  {item.discountPercentage}%
-                                </span>
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">Descuento de {item.discountPercentage}%</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="whitespace-nowrap">
-                    {new Date(item.timestamp).toLocaleTimeString('es-ES', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(item.timestamp).toLocaleDateString('es-ES', {
-                      day: '2-digit',
-                      month: '2-digit'
-                    })}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="font-medium">${item.total.toFixed(2)}</div>
-                </TableCell>
-                <TableCell>
-                  <ActionButtons 
-                    actions={item.actions} 
-                    onActionClick={onActionClick} 
-                  />
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                )}
+              </td>
+              <td className="py-2 px-3 text-center">
+                <ActionButtons 
+                  actions={item.actions} 
+                  onActionClick={onActionClick} 
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
+
+// Helper to display the kitchen name based on kitchen ID
+function getKitchenName(kitchenId: string): string {
+  switch (kitchenId) {
+    case 'main':
+      return 'Principal';
+    case 'bar':
+      return 'Bar';
+    case 'grill':
+      return 'Parrilla';
+    case 'cold':
+      return 'Cocina Fría';
+    case 'pastry':
+      return 'Pastelería';
+    default:
+      return kitchenId;
+  }
+}
+
+// Status badge component
+function StatusBadge({ status, isDelayed }: { status: string; isDelayed: boolean }) {
+  let color = 'bg-gray-100 text-gray-800';
+  let label = status;
+  
+  switch (status) {
+    case 'pending':
+    case 'pendiente':
+      color = isDelayed 
+        ? 'bg-amber-100 text-amber-800 border-amber-300'
+        : 'bg-blue-100 text-blue-800 border-blue-300';
+      label = isDelayed ? 'Retrasado' : 'Pendiente';
+      break;
+    case 'priority-pending':
+      color = 'bg-amber-100 text-amber-800 border-amber-300';
+      label = 'Prioritario';
+      break;
+    case 'preparing':
+    case 'preparando':
+    case 'en preparación':
+      color = 'bg-purple-100 text-purple-800 border-purple-300';
+      label = 'Preparando';
+      break;
+    case 'priority-preparing':
+      color = 'bg-orange-100 text-orange-800 border-orange-300';
+      label = 'Prep. Prio.';
+      break;
+    case 'ready':
+    case 'listo':
+    case 'lista':
+      color = 'bg-green-100 text-green-800 border-green-300';
+      label = 'Listo';
+      break;
+    case 'delivered':
+    case 'entregado':
+    case 'entregada':
+      color = 'bg-teal-100 text-teal-800 border-teal-300';
+      label = 'Entregado';
+      break;
+    case 'completed':
+    case 'completado':
+    case 'completada':
+      color = 'bg-green-100 text-green-800 border-green-300';
+      label = 'Completado';
+      break;
+    case 'cancelled':
+    case 'cancelado':
+    case 'cancelada':
+      color = 'bg-red-100 text-red-800 border-red-300';
+      label = 'Cancelado';
+      break;
+  }
+  
+  return (
+    <Badge variant="outline" className={`${color}`}>
+      {label}
+    </Badge>
+  );
+}
 
 export default ActivityTable;

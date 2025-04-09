@@ -29,7 +29,8 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
   const filters = [
     { id: 'delayed', label: 'Órdenes con Retraso', icon: <Clock className="h-4 w-4 mr-2" /> },
     { id: 'cancelled', label: 'Cancelaciones', icon: <AlertCircle className="h-4 w-4 mr-2" /> },
-    { id: 'discounts', label: 'Con Descuentos', icon: <DollarSign className="h-4 w-4 mr-2" /> }
+    { id: 'discounts', label: 'Con Descuentos', icon: <DollarSign className="h-4 w-4 mr-2" /> },
+    { id: 'kitchen', label: 'Cocina', icon: <Info className="h-4 w-4 mr-2" /> }
   ];
   
   // Actualizar conteos cada vez que cambian los items
@@ -112,6 +113,8 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
       filtered = filtered.filter(item => item.hasCancellation);
     } else if (activeFilter === 'discounts') {
       filtered = filtered.filter(item => item.hasDiscount);
+    } else if (activeFilter === 'kitchen') {
+      filtered = filtered.filter(item => item.kitchenId && item.kitchenId !== '');
     }
     
     // Log para verificar la cantidad de items filtrados

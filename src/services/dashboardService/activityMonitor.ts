@@ -11,7 +11,6 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
     console.log('📊 [DashboardService] Obteniendo datos del monitor de actividad');
     
     // Obtener todas las órdenes con la información necesaria
-    // No limitar a 5 órdenes como parece que estaba sucediendo antes
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -23,7 +22,8 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
         total,
         discount,
         items_count,
-        external_id
+        external_id,
+        kitchen_id
       `)
       .order('created_at', { ascending: false });
     
@@ -84,7 +84,7 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       
       return {
         id: order.id,
-        type: 'order', // Adding the missing 'type' property required by ActivityMonitorItem
+        type: 'order', // Explicitly set the type as required by ActivityMonitorItem
         customer: order.customer_name,
         status: order.status,
         timestamp: order.created_at,
@@ -95,7 +95,9 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
         hasCancellation,
         hasDiscount,
         discountPercentage,
-        actions
+        actions,
+        // Include kitchen_id for better kitchen integration
+        kitchenId: order.kitchen_id || ''
       };
     });
     
@@ -119,7 +121,7 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
     // Obtener estado actual de la orden
     const { data: order, error: getError } = await supabase
       .from('orders')
-      .select('status')
+      .select('status, kitchen_id')
       .eq('id', orderId)
       .single();
     

@@ -70,6 +70,14 @@ export interface ActivityMonitorItem {
   hasDiscount: boolean;
   discountPercentage?: number;
   itemsCount: number;
-  actions: string[]; // Changed from ActivityMonitorAction[] to string[] to match implementation
+  actions: string[]; // Actions are stored as strings with the format "actionType:id"
+  kitchenId?: string;  // Add kitchen ID for connecting with kitchen area
   appliedBy?: string;
+}
+
+export interface ActivityMonitorProps {
+  items: ActivityMonitorItem[];
+  isLoading: boolean;
+  onRefresh?: () => void;
+  onActionClick?: (action: string) => void;
 }

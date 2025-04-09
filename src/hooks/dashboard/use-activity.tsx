@@ -48,7 +48,7 @@ export function useActivity() {
         console.log('✅ [useActivity] Sample activity item:', activity[0]);
       }
       
-      setActivityItems(activity as ActivityMonitorItem[]);
+      setActivityItems(activity);
       setLastRefresh(new Date());
     } catch (error) {
       console.error('❌ [useActivity] Error loading activity data:', error);

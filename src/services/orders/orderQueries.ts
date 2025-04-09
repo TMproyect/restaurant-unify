@@ -1,102 +1,75 @@
-import { supabase } from '@/integrations/supabase/client';
-import { mapArrayResponse, mapSingleResponse, filterValue } from '@/utils/supabaseHelpers';
-import { Order, OrderItem } from '@/types/order.types';
 
-// Get all orders
+import { supabase } from '@/integrations/supabase/client';
+import { Order, OrderItem } from '@/types/order.types';
+import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
+
 export const getOrders = async (): Promise<Order[]> => {
+  console.log('🔍 [orderQueries] Fetching all orders');
+  
   try {
-    console.log('🔍 [getOrders] Starting to fetch all orders...');
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ [getOrders] Error fetching orders:', error);
-      console.error('❌ [getOrders] Error details:', JSON.stringify(error, null, 2));
-      return [];
-    }
-
-    console.log(`✅ [getOrders] Orders fetched successfully: ${data?.length || 0}`);
-    console.log(`📊 [getOrders] First few orders:`, data?.slice(0, 2));
     
-    try {
-      const mappedData = mapArrayResponse<Order>(data, 'Failed to map orders data');
-      console.log(`✅ [getOrders] Orders mapped successfully: ${mappedData.length}`);
-      return mappedData;
-    } catch (mappingError) {
-      console.error('❌ [getOrders] Error mapping orders data:', mappingError);
-      console.error('❌ [getOrders] Raw data that failed mapping:', JSON.stringify(data, null, 2));
-      return [];
+    if (error) {
+      console.error('❌ [orderQueries] Error fetching orders:', error);
+      throw new Error(error.message);
     }
+    
+    return mapArrayResponse<Order>(data || [], 'Failed to map orders from database');
   } catch (error) {
-    console.error('❌ [getOrders] Unexpected error getting orders:', error);
-    return [];
+    console.error('❌ [orderQueries] Exception fetching orders:', error);
+    throw error;
   }
 };
 
-// Get specific order with items
-export const getOrderWithItems = async (orderId: string): Promise<{ order: Order | null, items: OrderItem[] }> => {
+export const getOrderWithItems = async (orderId: string): Promise<{ order: Order | null; items: OrderItem[] }> => {
+  console.log(`🔍 [orderQueries] Fetching order ${orderId} with items`);
+  
   try {
-    console.log(`🔍 [getOrderWithItems] Fetching order details for ID: ${orderId}`);
-    // Get order
+    // Fetch the order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select('*')
-      .eq('id', filterValue(orderId))
+      .eq('id', orderId)
       .single();
-
+    
     if (orderError) {
-      console.error('❌ [getOrderWithItems] Error fetching order:', orderError);
-      console.error('❌ [getOrderWithItems] Error details:', JSON.stringify(orderError, null, 2));
-      return { order: null, items: [] };
+      if (orderError.code === 'PGRST116') {
+        console.log(`ℹ️ [orderQueries] Order ${orderId} not found`);
+        return { order: null, items: [] };
+      }
+      console.error('❌ [orderQueries] Error fetching order:', orderError);
+      throw new Error(orderError.message);
     }
-
-    console.log(`✅ [getOrderWithItems] Order fetched successfully:`, orderData);
-
-    // Get order items
+    
+    // Fetch the order items
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('*')
-      .eq('order_id', filterValue(orderId));
-
-    if (itemsError) {
-      console.error('❌ [getOrderWithItems] Error fetching order items:', itemsError);
-      console.error('❌ [getOrderWithItems] Error details:', JSON.stringify(itemsError, null, 2));
-      return { 
-        order: mapSingleResponse<Order>(orderData, 'Failed to map order data'), 
-        items: [] 
-      };
-    }
-
-    console.log(`✅ [getOrderWithItems] Order items fetched for ID ${orderId}:`, itemsData?.length || 0);
+      .eq('order_id', orderId);
     
-    try {
-      const mappedOrder = mapSingleResponse<Order>(orderData, 'Failed to map order data');
-      const mappedItems = mapArrayResponse<OrderItem>(itemsData, 'Failed to map order items');
-      
-      console.log(`✅ [getOrderWithItems] Order and items mapped successfully`);
-      
-      return {
-        order: mappedOrder,
-        items: mappedItems
-      };
-    } catch (mappingError) {
-      console.error('❌ [getOrderWithItems] Error mapping order or items data:', mappingError);
-      return { order: null, items: [] };
+    if (itemsError) {
+      console.error('❌ [orderQueries] Error fetching order items:', itemsError);
+      throw new Error(itemsError.message);
     }
+    
+    const order = mapSingleResponse<Order>(orderData, 'Failed to map order from database');
+    const items = mapArrayResponse<OrderItem>(itemsData || [], 'Failed to map order items from database');
+    
+    console.log(`✅ [orderQueries] Order ${orderId} fetched with ${items.length} items`);
+    return { order, items };
   } catch (error) {
-    console.error('❌ [getOrderWithItems] Unexpected error getting order with items:', error);
-    return { order: null, items: [] };
+    console.error(`❌ [orderQueries] Exception fetching order ${orderId}:`, error);
+    throw error;
   }
 };
 
-// Get order by external ID
 export const getOrderByExternalId = async (externalId: string): Promise<Order | null> => {
+  console.log(`🔍 [orderQueries] Fetching order by external_id: ${externalId}`);
+  
   try {
-    console.log(`🔍 [getOrderByExternalId] Buscando orden con ID externo: ${externalId}`);
-    
-    // Get the order by external_id
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -104,33 +77,42 @@ export const getOrderByExternalId = async (externalId: string): Promise<Order | 
       .maybeSingle();
     
     if (error) {
-      console.error('❌ [getOrderByExternalId] Error obteniendo orden por ID externo:', error);
-      return null;
+      console.error('❌ [orderQueries] Error fetching order by external_id:', error);
+      throw new Error(error.message);
     }
     
     if (!data) {
-      console.log('🔍 [getOrderByExternalId] No se encontró orden con ID externo:', externalId);
+      console.log(`ℹ️ [orderQueries] No order found with external_id ${externalId}`);
       return null;
     }
     
-    console.log('✅ [getOrderByExternalId] Orden encontrada por ID externo:', data);
-    return data as Order;
+    return mapSingleResponse<Order>(data, 'Failed to map order from database');
   } catch (error) {
-    console.error('❌ [getOrderByExternalId] Error inesperado al obtener orden por ID externo:', error);
-    return null;
+    console.error('❌ [orderQueries] Exception fetching order by external_id:', error);
+    throw error;
   }
 };
 
-// Get all kitchens
-export const getKitchens = async (): Promise<{ id: string, name: string }[]> => {
-  console.log('🔍 [getKitchens] Fetching kitchen options');
-  // In a real app, this would fetch from the database
-  // For now, we'll return hardcoded values
-  const kitchens = [
-    { id: 'main', name: 'Cocina Principal' },
-    { id: 'bar', name: 'Bar' },
-    { id: 'grill', name: 'Parrilla' }
-  ];
-  console.log('✅ [getKitchens] Kitchen options:', kitchens);
-  return kitchens;
+export const getOrdersByTableId = async (tableId: string): Promise<Order[]> => {
+  console.log(`🔍 [orderQueries] Fetching orders for table: ${tableId}`);
+  
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('table_id', filterValue(tableId))
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ [orderQueries] Error fetching orders by table_id:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log(`✅ [orderQueries] Found ${data?.length || 0} orders for table ${tableId}`);
+    return mapArrayResponse<Order>(data || [], 'Failed to map orders from database');
+  } catch (error) {
+    console.error(`❌ [orderQueries] Exception fetching orders for table ${tableId}:`, error);
+    throw error;
+  }
 };

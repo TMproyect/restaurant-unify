@@ -5,18 +5,40 @@ import OrderTaking from '@/components/order/OrderTaking';
 import OrderPrintController from '@/components/OrderPrintController';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw, CheckCircle } from 'lucide-react';
+import { Plus, RefreshCw, AlertCircle } from 'lucide-react';
 import NewOrderModal from '@/components/order/NewOrderModal';
 import OrdersList from '@/components/dashboard/OrdersList';
 import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
 import { getOrderWithItems } from '@/services/orderService';
+import { useAuth } from '@/contexts/auth/AuthContext';
+import WaiterTableView from '@/components/order/WaiterTableView';
 
 const Orders = () => {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [searchParams] = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  
+  // Verificar permisos del usuario
+  const isWaiter = user?.role === 'mesero';
+  const canViewTables = user?.role === 'admin' || 
+                       user?.role === 'propietario' || 
+                       user?.role === 'gerente' || 
+                       user?.role === 'mesero';
+  
+  const canCreateOrders = user?.role === 'admin' || 
+                          user?.role === 'propietario' || 
+                          user?.role === 'gerente' || 
+                          user?.role === 'mesero';
+  
+  console.log('🔍 [Orders] Comprobando permisos del usuario:', { 
+    role: user?.role, 
+    isWaiter,
+    canViewTables,
+    canCreateOrders
+  });
   
   const handleOrderComplete = () => {
     console.log('Order completed in Orders page');
@@ -65,6 +87,53 @@ const Orders = () => {
     }
   }, [searchParams]);
 
+  // Renderizar vista específica para meseros si el usuario tiene ese rol
+  if (isWaiter && canViewTables) {
+    return (
+      <Layout>
+        <OrderPrintController>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">Gestión de Mesas y Órdenes</h1>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+                <PrinterStatus compact />
+                {canCreateOrders && (
+                  <Button onClick={() => setShowNewOrderModal(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nueva Orden
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            {/* Vista de mesas para meseros */}
+            <WaiterTableView 
+              onCreateOrder={() => setShowNewOrderModal(true)} 
+              onRefresh={handleRefresh}
+              refreshKey={refreshKey}
+            />
+            
+            {/* Display NewOrderModal for creating new orders */}
+            <NewOrderModal 
+              open={showNewOrderModal} 
+              onClose={() => setShowNewOrderModal(false)}
+              onSuccess={handleOrderComplete}
+            />
+          </div>
+        </OrderPrintController>
+      </Layout>
+    );
+  }
+
+  // Si no es mesero, mostrar la vista estándar de órdenes
   return (
     <Layout>
       <OrderPrintController>
@@ -81,10 +150,12 @@ const Orders = () => {
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
               <PrinterStatus compact />
-              <Button onClick={() => setShowNewOrderModal(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nueva Orden
-              </Button>
+              {canCreateOrders && (
+                <Button onClick={() => setShowNewOrderModal(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nueva Orden
+                </Button>
+              )}
             </div>
           </div>
           

@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Check, ChefHat, AlertCircle } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
+import { Clock, Check, ChefHat, AlertCircle, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { 
   Select,
   SelectContent,
@@ -19,8 +20,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
-import { getOrderWithItems, updateOrderStatus, subscribeToOrders, Order } from '@/services/orderService';
+import { getOrderWithItems, updateOrderStatus, subscribeToOrders, subscribeToFilteredOrders, Order } from '@/services/orderService';
 import { mapArrayResponse, filterValue } from '@/utils/supabaseHelpers';
+import { useAuth } from '@/contexts/auth/AuthContext';
 
 // Kitchen options constants
 const kitchenOptions = [
@@ -48,40 +50,97 @@ interface OrderDisplay {
 
 const Kitchen = () => {
   const [selectedKitchen, setSelectedKitchen] = useState("main");
-  const [orderStatus, setOrderStatus] = useState<'pending' | 'preparing' | 'completed'>('pending');
+  const [orderStatus, setOrderStatus] = useState<'pending' | 'preparing' | 'ready'>('pending');
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { user } = useAuth();
+  
+  // Verificar permisos del usuario
+  const hasViewPermission = user?.role === 'admin' || 
+                            user?.role === 'propietario' ||
+                            user?.role === 'gerente' ||
+                            user?.role === 'cocina' || 
+                            user?.role === 'kitchen';
+  
+  const hasManagePermission = user?.role === 'admin' || 
+                             user?.role === 'propietario' ||
+                             user?.role === 'gerente' ||
+                             user?.role === 'cocina' || 
+                             user?.role === 'kitchen';
+  
+  console.log('🔍 [Kitchen] Comprobando permisos del usuario:', { 
+    role: user?.role, 
+    hasViewPermission, 
+    hasManagePermission 
+  });
+  
+  // Función para refrescar los datos
+  const handleRefresh = () => {
+    console.log('🔄 [Kitchen] Refreshing orders list');
+    setRefreshKey(prev => prev + 1);
+  };
 
   // Efecto para cargar órdenes
   useEffect(() => {
+    if (!hasViewPermission) {
+      console.log('⛔ [Kitchen] Usuario sin permisos para ver la cocina');
+      return;
+    }
+    
+    console.log('🔄 [Kitchen] Loading orders for kitchen:', selectedKitchen);
     loadOrders();
     
     // Suscribirse a cambios en órdenes
-    const unsubscribe = subscribeToOrders((payload) => {
-      console.log('Realtime kitchen update:', payload);
-      loadOrders();
+    try {
+      console.log('🔄 [Kitchen] Setting up realtime subscription...');
       
-      if (payload.eventType === 'INSERT' && payload.new.kitchen_id === selectedKitchen) {
-        toast({
-          title: "Nueva orden",
-          description: `Se ha recibido una nueva orden ${payload.new.is_delivery ? 'Delivery' : 'Mesa ' + payload.new.table_number}`
-        });
+      // Usar suscripción filtrada si hay un filtro activo para la cocina
+      const unsubscribe = subscribeToFilteredOrders(orderStatus, handleRealtimeUpdate);
+      
+      // Función para manejar las actualizaciones en tiempo real
+      function handleRealtimeUpdate(payload: any) {
+        console.log('✅ [Kitchen] Realtime order update received:', payload);
+        
+        // Verificar si la orden es para esta cocina
+        const order = payload.new;
+        if (order && order.kitchen_id === selectedKitchen) {
+          console.log('✅ [Kitchen] Order is for this kitchen:', selectedKitchen);
+          
+          // Notificación cuando se crea una nueva orden
+          if (payload.eventType === 'INSERT') {
+            toast.success(`Nueva orden recibida: ${order.customer_name} - Mesa: ${order.table_number || 'Delivery'}`, {
+              duration: 5000,
+            });
+          }
+          
+          // Recargar órdenes para obtener datos actualizados
+          loadOrders();
+        } else {
+          console.log('ℹ️ [Kitchen] Order is not for this kitchen or status filter');
+        }
       }
-    });
-    
-    return () => {
-      unsubscribe();
-    };
-  }, [selectedKitchen]);
+      
+      return () => {
+        console.log('🔄 [Kitchen] Cleaning up realtime subscription');
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('❌ [Kitchen] Error setting up realtime subscription:', error);
+      toast.error("Error al conectar con actualizaciones en tiempo real");
+    }
+  }, [selectedKitchen, orderStatus, refreshKey, hasViewPermission]);
 
   // Cargar órdenes desde Supabase
   const loadOrders = async () => {
+    if (!hasViewPermission) return;
+    
     try {
       setLoading(true);
+      console.log(`🔍 [Kitchen] Loading orders for kitchen ${selectedKitchen} with status filter ${orderStatus}`);
       
-      // Obtener las órdenes de la cocina seleccionada
-      const { data, error } = await supabase
+      // Construir la consulta base
+      let query = supabase
         .from('orders')
         .select(`
           id,
@@ -91,17 +150,35 @@ const Kitchen = () => {
           is_delivery,
           kitchen_id,
           created_at,
+          updated_at,
           order_items (
             id,
             name,
             quantity,
-            notes
+            notes,
+            status
           )
         `)
-        .eq('kitchen_id', filterValue(selectedKitchen))
-        .order('created_at', { ascending: false });
+        .eq('kitchen_id', filterValue(selectedKitchen));
       
-      if (error) throw error;
+      // Agregar filtro de estado si no es 'all'
+      if (orderStatus === 'pending') {
+        query = query.eq('status', 'pending');
+      } else if (orderStatus === 'preparing') {
+        query = query.eq('status', 'preparing');
+      } else if (orderStatus === 'ready') {
+        query = query.in('status', ['ready', 'delivered']);
+      }
+      
+      // Ejecutar la consulta
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('❌ [Kitchen] Error loading orders:', error);
+        throw error;
+      }
+      
+      console.log(`✅ [Kitchen] Received ${data?.length || 0} orders from Supabase`);
       
       if (!data) {
         setOrders([]);
@@ -132,14 +209,11 @@ const Kitchen = () => {
         }))
       }));
       
+      console.log('✅ [Kitchen] Formatted orders:', formattedOrders);
       setOrders(formattedOrders);
     } catch (error) {
-      console.error('Error cargando órdenes:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las órdenes",
-        variant: "destructive"
-      });
+      console.error('❌ [Kitchen] Error loading orders:', error);
+      toast.error('Error al cargar los pedidos para cocina');
     } finally {
       setLoading(false);
     }
@@ -147,21 +221,33 @@ const Kitchen = () => {
 
   // Function to update the status of an order
   const updateOrderStatusInKitchen = async (orderId: string, newStatus: string) => {
+    if (!hasManagePermission) {
+      toast.error("No tienes permisos para actualizar el estado de órdenes");
+      return;
+    }
+    
     try {
-      await updateOrderStatus(orderId, newStatus);
-      loadOrders();
+      console.log(`🔄 [Kitchen] Updating order ${orderId} status to ${newStatus}`);
+      const success = await updateOrderStatus(orderId, newStatus);
       
-      toast({
-        title: "Orden actualizada",
-        description: `Estado de la orden actualizado a "${newStatus}"`
-      });
+      if (success) {
+        toast.success(`Estado de la orden actualizado a "${
+          newStatus === 'pending' ? 'Pendiente' :
+          newStatus === 'preparing' ? 'En preparación' :
+          newStatus === 'ready' ? 'Lista' :
+          newStatus === 'delivered' ? 'Entregada' :
+          newStatus === 'cancelled' ? 'Cancelada' : newStatus
+        }"`);
+        
+        // Recargar órdenes para reflejar el cambio
+        loadOrders();
+      } else {
+        console.error('❌ [Kitchen] Failed to update order status');
+        toast.error("No se pudo actualizar el estado de la orden");
+      }
     } catch (error) {
-      console.error('Error actualizando estado de orden:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado de la orden",
-        variant: "destructive"
-      });
+      console.error('❌ [Kitchen] Error updating order status:', error);
+      toast.error("Ocurrió un error al actualizar el estado");
     }
   };
 
@@ -202,14 +288,15 @@ const Kitchen = () => {
     return kitchen ? kitchen.name : 'Desconocida';
   };
 
-  // Filtrar órdenes por estado
+  // Filtrar órdenes por estado (esto debería ser redundante con la consulta,
+  // pero proporciona una capa adicional de seguridad)
   const getFilteredOrders = () => {
     return orders.filter(order => {
       if (orderStatus === 'pending') {
         return order.status === 'pending';
       } else if (orderStatus === 'preparing') {
         return order.status === 'preparing';
-      } else if (orderStatus === 'completed') {
+      } else if (orderStatus === 'ready') {
         return order.status === 'ready' || order.status === 'delivered';
       }
       return false;
@@ -217,6 +304,21 @@ const Kitchen = () => {
   };
 
   const filteredOrders = getFilteredOrders();
+
+  // Si el usuario no tiene permisos, mostrar mensaje de acceso denegado
+  if (!hasViewPermission) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <AlertCircle className="h-16 w-16 text-red-500" />
+          <h1 className="text-2xl font-bold text-center">Acceso no permitido</h1>
+          <p className="text-muted-foreground text-center">
+            No tienes permisos para ver la pantalla de cocina.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -240,9 +342,18 @@ const Kitchen = () => {
           </div>
 
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </Button>
             <Button variant="outline" className="gap-2">
               <Clock size={16} />
-              Tiempo promedio: {getAverageTime()} min
+              Tiempo prom: {getAverageTime()} min
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -287,7 +398,7 @@ const Kitchen = () => {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="completed" className="relative">
+            <TabsTrigger value="ready" className="relative">
               Completados
               {stats.completedItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -318,14 +429,16 @@ const Kitchen = () => {
                             <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
                               {getKitchenName(order.kitchenId)}
                             </p>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="h-7"
-                              onClick={() => updateOrderStatusInKitchen(order.id, 'preparing')}
-                            >
-                              <ChefHat size={14} className="mr-1" /> Preparar
-                            </Button>
+                            {hasManagePermission && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7"
+                                onClick={() => updateOrderStatusInKitchen(order.id, 'preparing')}
+                              >
+                                <ChefHat size={14} className="mr-1" /> Preparar
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardHeader>
@@ -372,14 +485,16 @@ const Kitchen = () => {
                             <p className="text-xs bg-secondary/50 px-2 py-1 rounded">
                               {getKitchenName(order.kitchenId)}
                             </p>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="h-7"
-                              onClick={() => updateOrderStatusInKitchen(order.id, 'ready')}
-                            >
-                              <Check size={14} className="mr-1" /> Completado
-                            </Button>
+                            {hasManagePermission && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7"
+                                onClick={() => updateOrderStatusInKitchen(order.id, 'ready')}
+                              >
+                                <Check size={14} className="mr-1" /> Completado
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardHeader>
@@ -411,7 +526,7 @@ const Kitchen = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="completed" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TabsContent value="ready" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredOrders.length > 0 ? (
                   filteredOrders.map(order => (
                     <Card key={order.id} className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">

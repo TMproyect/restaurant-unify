@@ -56,7 +56,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                   <StatusBadge status={item.status} isDelayed={item.isDelayed} />
                 </td>
                 <td className="py-2 px-3">
-                  <OrderSourceBadge source={item.orderSource} />
+                  <OrderSourceBadge source={item.orderSource || 'pos'} />
                 </td>
                 <td className="py-2 px-3 text-sm">
                   {item.kitchenId ? (

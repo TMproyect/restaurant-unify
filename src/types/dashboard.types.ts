@@ -51,6 +51,19 @@ export interface DashboardCardData {
   lastUpdated?: string;
 }
 
+export interface DashboardCard {
+  title: string;
+  value: string;
+  subtitle?: string;
+  changeValue?: number;
+  changeType?: 'positive' | 'negative';
+  changeLabel?: string;
+  icon: string;
+  color: string;
+  listItems?: string[];
+  tooltip?: string;
+}
+
 export interface ActivityMonitorAction {
   label: string;
   action: string;
@@ -73,6 +86,7 @@ export interface ActivityMonitorItem {
   actions: string[]; // Actions are stored as strings with the format "actionType:id"
   kitchenId?: string;  // Add kitchen ID for connecting with kitchen area
   appliedBy?: string;
+  orderSource?: string; // Add order source field
 }
 
 export interface ActivityMonitorProps {

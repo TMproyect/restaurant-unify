@@ -68,6 +68,7 @@ const SalesMetricCard: React.FC = () => {
     title: 'Ventas del Día',
     value: formatCurrency(salesTotal),
     icon: 'dollar-sign',
+    color: 'green', // Add color property to fix the type error
     change: {
       value: transactionCount,
       label: `${transactionCount} transacciones`

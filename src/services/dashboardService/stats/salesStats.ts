@@ -61,7 +61,7 @@ export const getSalesStats = async () => {
     });
     
     // Totales para hoy
-    const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
+    const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (parseFloat(String(order.total)) || 0), 0) || 0;
     const transactionCount = todaySalesData?.length || 0;
     const averageTicket = transactionCount > 0 ? dailyTotal / transactionCount : 0;
     
@@ -87,7 +87,7 @@ export const getSalesStats = async () => {
       );
     });
     
-    const yesterdayTotal = yesterdaySalesData?.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
+    const yesterdayTotal = yesterdaySalesData?.reduce((sum, order) => sum + (parseFloat(String(order.total)) || 0), 0) || 0;
     
     // Calcular cambio porcentual con manejo especial para valores cero
     let changePercentage = 0;

@@ -45,6 +45,9 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                 `delayed=${isDelayed}, cancelled=${hasCancellation}, highDiscount=${hasHighDiscount}`);
             }
             
+            // Ensure the source value conforms to the expected type
+            const orderSource = (item.orderSource || 'pos') as 'pos' | 'delivery' | 'qr_table';
+            
             return (
               <tr key={item.id} className={rowClassName}>
                 <td className="py-2 px-3">
@@ -56,7 +59,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                   <StatusBadge status={item.status} isDelayed={item.isDelayed} />
                 </td>
                 <td className="py-2 px-3">
-                  <OrderSourceBadge source={item.orderSource || 'pos'} />
+                  <OrderSourceBadge source={orderSource} />
                 </td>
                 <td className="py-2 px-3 text-sm">
                   {item.kitchenId ? (

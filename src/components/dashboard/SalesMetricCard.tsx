@@ -15,6 +15,17 @@ import { supabase } from '@/integrations/supabase/client';
 import EnhancedDashboardCard from './EnhancedDashboardCard';
 import { toast } from 'sonner';
 
+// Status list that indicates a completed sale, including all variants and language versions
+const COMPLETED_STATUSES = [
+  'completado', 'completada', 'complete', 'completed',
+  'terminado', 'terminada', 'finished',
+  'finalizado', 'finalizada', 
+  'entregado', 'entregada', 'delivered',
+  'pagado', 'pagada', 'paid',
+  'listo', 'lista', 'ready',
+  'done', 'servido', 'servida', 'served'
+];
+
 const SalesMetricCard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +34,11 @@ const SalesMetricCard: React.FC = () => {
   
   const fetchSalesData = async () => {
     try {
-      console.log('🔄 [SalesMetricCard] Iniciando obtención de datos de ventas...');
+      console.log('🔄 [SalesMetricCard] Starting to fetch sales data...');
       setIsLoading(true);
       setError(null);
       
-      // Configurar fechas para "hoy"
+      // Set up today's date boundaries
       const now = new Date();
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
@@ -35,74 +46,74 @@ const SalesMetricCard: React.FC = () => {
       const todayEnd = new Date(now);
       todayEnd.setHours(23, 59, 59, 999);
       
-      console.log(`📊 [SalesMetricCard] Consultando ventas: Hoy=${todayStart.toISOString()} hasta ${todayEnd.toISOString()}`);
+      console.log(`📊 [SalesMetricCard] Fetching orders between ${todayStart.toISOString()} and ${todayEnd.toISOString()}`);
       
-      // Obtener TODAS las órdenes de hoy
+      // Get all orders for today
       const { data: allOrders, error: ordersError } = await supabase
         .from('orders')
-        .select('id, total, status, created_at')
+        .select('id, status, total, created_at, customer_name')
         .gte('created_at', todayStart.toISOString())
         .lte('created_at', todayEnd.toISOString());
       
       if (ordersError) {
-        console.error('❌ [SalesMetricCard] Error obteniendo órdenes:', ordersError);
+        console.error('❌ [SalesMetricCard] Error fetching orders:', ordersError);
         throw ordersError;
       }
       
-      console.log(`📊 [SalesMetricCard] Total órdenes encontradas: ${allOrders?.length || 0}`);
+      // Log all found orders
+      console.log(`📊 [SalesMetricCard] Found ${allOrders?.length || 0} total orders for today`);
+      allOrders?.slice(0, 3).forEach(order => {
+        console.log(`📊 [SalesMetricCard] Sample order: id=${order.id}, status=${order.status}, total=${order.total}`);
+      });
       
-      // Lista de estados que indican una venta completada
-      const completedStatuses = [
-        'completado', 'completada', 'terminado', 'terminada',
-        'finalizado', 'finalizada', 'entregado', 'entregada',
-        'pagado', 'pagada', 'cobrado', 'cobrada',
-        'listo', 'lista', 'servido', 'servida',
-        'completed', 'complete', 'finished', 'delivered',
-        'paid', 'ready', 'served', 'done',
-        'Completado', 'COMPLETADO', 'Listo', 'LISTO',
-        'Pagado', 'PAGADO', 'Entregado', 'ENTREGADO'
-      ];
-      
-      // Mostrar todos los estados presentes en las órdenes
+      // Log all statuses found to aid in debugging
       const allStatuses = [...new Set(allOrders?.map(order => order.status) || [])];
-      console.log('📊 [SalesMetricCard] Estados presentes:', allStatuses);
+      console.log('📊 [SalesMetricCard] All statuses found today:', allStatuses);
       
-      // Filtrar las órdenes completadas
+      // Filter for completed sales
       const completedOrders = allOrders?.filter(order => {
         const status = String(order.status || '').toLowerCase().trim();
-        const isCompleted = completedStatuses.some(s => 
+        
+        // Check if this order's status matches any in our completed list
+        const isCompleted = COMPLETED_STATUSES.some(s => 
           status === s.toLowerCase() || status.includes(s.toLowerCase())
         );
-        console.log(`📊 [SalesMetricCard] Orden ${order.id}: status="${order.status}", ¿es venta?=${isCompleted}, total=${order.total}`);
+        
+        console.log(`📊 [SalesMetricCard] Order ${order.id}: status="${order.status}", isCompleted=${isCompleted}, total=${order.total}`);
+        
         return isCompleted;
       }) || [];
       
-      console.log(`📊 [SalesMetricCard] Órdenes completadas: ${completedOrders.length}/${allOrders?.length || 0}`);
+      console.log(`📊 [SalesMetricCard] Identified ${completedOrders.length} completed sales out of ${allOrders?.length || 0} total orders`);
       
-      // Calcular totales
+      // Calculate sales totals
       let dailyTotal = 0;
       let validTransactions = 0;
       
       completedOrders.forEach(order => {
         let orderTotal = 0;
         
+        // Safely handle different total formats
         if (typeof order.total === 'number') {
           orderTotal = order.total;
         } else if (order.total !== null && order.total !== undefined) {
+          // Clean the total string and parse it
           const cleaned = String(order.total).replace(/[^\d.-]/g, '');
           orderTotal = parseFloat(cleaned) || 0;
         }
         
         if (!isNaN(orderTotal) && orderTotal > 0) {
-          console.log(`📊 [SalesMetricCard] Sumando venta: Orden ${order.id}, Total: $${orderTotal}`);
+          console.log(`📊 [SalesMetricCard] Adding to sales: Order=${order.id}, Total=$${orderTotal}`);
           dailyTotal += orderTotal;
           validTransactions++;
+        } else {
+          console.log(`📊 [SalesMetricCard] Skipping invalid total: Order=${order.id}, Total=${order.total}`);
         }
       });
       
-      console.log(`📊 [SalesMetricCard] RESULTADO FINAL: Total ventas=$${dailyTotal}, Transacciones=${validTransactions}`);
+      console.log(`📊 [SalesMetricCard] FINAL RESULT: Daily sales=$${dailyTotal}, Transactions=${validTransactions}`);
       
-      // Guardar datos de ventas
+      // Store sales data
       const ventas = {
         dailyTotal,
         transactionCount: validTransactions,
@@ -110,7 +121,7 @@ const SalesMetricCard: React.FC = () => {
       };
       setSalesData(ventas);
       
-      // Generar tarjeta para el dashboard
+      // Create dashboard card data
       const card = {
         title: 'Ventas del Día',
         value: formatCurrency(dailyTotal),
@@ -119,7 +130,7 @@ const SalesMetricCard: React.FC = () => {
           value: validTransactions,
           label: `${validTransactions} transacciones`
         },
-        trend: 'up'
+        trend: validTransactions > 0 ? 'up' : 'neutral'
       };
       setDashboardCard(card);
       
@@ -127,26 +138,25 @@ const SalesMetricCard: React.FC = () => {
       console.error('❌ [SalesMetricCard] Error:', err);
       setError('Error al obtener datos de ventas');
       toast.error('Error al cargar datos de ventas');
-      return null;
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Cargar datos al montar componente
+  // Load data on component mount
   useEffect(() => {
     fetchSalesData();
     
-    // Actualizar cada 3 minutos
+    // Refresh every 3 minutes
     const interval = setInterval(() => {
-      console.log('🔄 [SalesMetricCard] Actualizando automáticamente...');
+      console.log('🔄 [SalesMetricCard] Auto-refreshing sales data...');
       fetchSalesData();
     }, 3 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, []);
   
-  // Si está cargando, mostrar skeleton
+  // Show loading state
   if (isLoading) {
     return (
       <Card className="w-full md:w-[300px]">
@@ -162,7 +172,7 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Si hay error, mostrar mensaje de error
+  // Show error state
   if (error) {
     return (
       <Card className="w-full md:w-[300px] border-red-200">
@@ -185,7 +195,7 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Si no hay datos pero no hay error, mostrar estado alternativo
+  // Show empty state
   if (!salesData) {
     return (
       <Card className="w-full md:w-[300px]">
@@ -208,7 +218,7 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Caso donde tenemos ventas en 0 (mostrar información de diagnóstico)
+  // Zero sales state with diagnostic information
   if (salesData.dailyTotal === 0 && salesData.transactionCount === 0) {
     return (
       <Card className="w-full md:w-[300px] border border-yellow-200">
@@ -283,7 +293,7 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Caso normal: mostrar tarjeta de ventas con datos
+  // Normal state with sales data
   return dashboardCard ? (
     <div className="w-full md:w-[300px]">
       <EnhancedDashboardCard {...dashboardCard} />

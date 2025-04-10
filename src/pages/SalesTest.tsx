@@ -4,12 +4,27 @@ import Layout from '@/components/layout/Layout';
 import SalesMetricCard from '@/components/dashboard/SalesMetricCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, Database, Calendar } from 'lucide-react';
+import { RefreshCcw, Database, Calendar, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 export default function SalesTest() {
   const [todayOrders, setTodayOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [manualCalculation, setManualCalculation] = useState<{
+    totalSales: number;
+    orderCount: number;
+  }>({ totalSales: 0, orderCount: 0 });
+  
+  // Define the statuses that count as completed/paid sales
+  const completedStatuses = [
+    'completed', 'completada', 'completado',
+    'paid', 'pagado', 'pagada',
+    'delivered', 'entregado', 'entregada',
+    'ready', 'listo', 'lista',
+    'finished', 'finalizado', 'finalizada'
+  ];
   
   // Obtener todas las órdenes de hoy para diagnóstico
   const fetchTodayOrders = async () => {
@@ -24,7 +39,8 @@ export default function SalesTest() {
       const todayEnd = new Date(now);
       todayEnd.setHours(23, 59, 59, 999);
       
-      console.log(`📊 [SalesTest] Obteniendo órdenes: ${todayStart.toISOString()} a ${todayEnd.toISOString()}`);
+      toast.info('Fetching orders for diagnosis');
+      console.log(`📊 Diagnostic: Fetching orders from ${todayStart.toISOString()} to ${todayEnd.toISOString()}`);
       
       // Obtener órdenes
       const { data, error } = await supabase
@@ -35,14 +51,58 @@ export default function SalesTest() {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('❌ [SalesTest] Error:', error);
+        console.error('❌ Error fetching orders:', error);
+        toast.error('Error fetching orders');
         throw error;
       }
       
-      console.log(`📊 [SalesTest] Órdenes encontradas: ${data?.length || 0}`);
-      setTodayOrders(data || []);
+      console.log(`📊 Found ${data?.length || 0} orders for today`);
+      
+      // Calculate sales manually to diagnose SalesMetricCard issues
+      let totalSales = 0;
+      let orderCount = 0;
+      
+      const orders = data || [];
+      
+      // Process each order
+      orders.forEach(order => {
+        const status = (order.status || '').toLowerCase().trim();
+        
+        // Check if this is a completed sale by checking every possible status
+        const isSale = completedStatuses.some(s => 
+          status === s || status.includes(s)
+        );
+        
+        if (isSale) {
+          orderCount++;
+          
+          // Safely parse the total
+          let orderTotal = 0;
+          if (typeof order.total === 'number') {
+            orderTotal = order.total;
+          } else if (order.total !== null && order.total !== undefined) {
+            const cleaned = String(order.total).replace(/[^\d.-]/g, '');
+            orderTotal = parseFloat(cleaned) || 0;
+          }
+          
+          totalSales += orderTotal;
+          console.log(`📊 Order ${order.id} with status "${order.status}" counted as sale: $${orderTotal}`);
+        } else {
+          console.log(`📊 Order ${order.id} with status "${order.status}" NOT counted as sale`);
+        }
+      });
+      
+      console.log(`📊 Manual calculation: Total sales $${totalSales}, Orders: ${orderCount}`);
+      setManualCalculation({
+        totalSales,
+        orderCount
+      });
+      
+      setTodayOrders(orders);
+      toast.success(`Found ${orders.length} orders`);
     } catch (err) {
-      console.error('❌ [SalesTest] Error obteniendo órdenes:', err);
+      console.error('❌ Error getting orders:', err);
+      toast.error('Error loading order data');
     } finally {
       setLoading(false);
     }
@@ -51,6 +111,12 @@ export default function SalesTest() {
   useEffect(() => {
     fetchTodayOrders();
   }, []);
+  
+  // Function to determine if an order status counts as a completed sale
+  const isCompletedSale = (status: string) => {
+    status = (status || '').toLowerCase().trim();
+    return completedStatuses.some(s => status === s || status.includes(s));
+  };
   
   return (
     <Layout>
@@ -75,6 +141,35 @@ export default function SalesTest() {
           
           <SalesMetricCard />
         </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Cálculo Manual de Ventas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-6 w-1/4" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-bold">${manualCalculation.totalSales.toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {manualCalculation.orderCount} transacciones
+                  </span>
+                </div>
+                <p className="text-sm">
+                  Este cálculo cuenta todas las órdenes con estados que indican venta completada.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         
         <Card>
           <CardHeader>
@@ -112,28 +207,36 @@ export default function SalesTest() {
                         <th className="px-4 py-2 text-left">Estado</th>
                         <th className="px-4 py-2 text-right">Total</th>
                         <th className="px-4 py-2 text-left">Hora</th>
+                        <th className="px-4 py-2 text-center">¿Es venta?</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {todayOrders.map(order => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2">{order.id.substring(0, 8)}...</td>
-                          <td className="px-4 py-2">{order.customer_name || 'Sin nombre'}</td>
-                          <td className="px-4 py-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              ['completado','completada','entregado','pagado','listo','ready','delivered','paid'].some(
-                                s => String(order.status || '').toLowerCase().includes(s)
-                              ) ? 'bg-green-100 text-green-800' : 'bg-gray-100'
-                            }`}>
-                              {order.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-right font-medium">${parseFloat(order.total || 0).toFixed(2)}</td>
-                          <td className="px-4 py-2 text-gray-500">
-                            {new Date(order.created_at).toLocaleTimeString()}
-                          </td>
-                        </tr>
-                      ))}
+                      {todayOrders.map(order => {
+                        const isSale = isCompletedSale(order.status);
+                        return (
+                          <tr key={order.id} className={`hover:bg-gray-50 ${isSale ? 'bg-green-50' : ''}`}>
+                            <td className="px-4 py-2">{order.id.substring(0, 8)}...</td>
+                            <td className="px-4 py-2">{order.customer_name || 'Sin nombre'}</td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                isSale ? 'bg-green-100 text-green-800' : 'bg-gray-100'
+                              }`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-right font-medium">${parseFloat(order.total || 0).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-gray-500">
+                              {new Date(order.created_at).toLocaleTimeString()}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {isSale ? 
+                                <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /> : 
+                                <AlertTriangle className="h-4 w-4 text-gray-300 mx-auto" />
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -149,22 +252,11 @@ export default function SalesTest() {
           </p>
           <div className="bg-white rounded-lg p-4 border border-blue-100 text-sm">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">completado</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">completada</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">terminado</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">terminada</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">finalizado</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">finalizada</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">entregado</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">entregada</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">pagado</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">pagada</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">listo</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">lista</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">completed</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">paid</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">delivered</span>
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">ready</span>
+              {completedStatuses.map(status => (
+                <span key={status} className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                  {status}
+                </span>
+              ))}
             </div>
           </div>
         </div>

@@ -57,7 +57,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     }) || [];
     
     console.log(`📊 [DashboardService] Today's completed orders found: ${todaySales.length}`);
-    console.log('📊 [DashboardService] Today's orders sample:', todaySales.slice(0, 2));
+    console.log('📊 [DashboardService] Today\'s orders sample:', todaySales.slice(0, 2));
     
     // Calculate today's sales figures
     const dailyTotal = todaySales.reduce((sum, order) => sum + (order.total || 0), 0);
@@ -196,5 +196,3 @@ function getDefaultDashboardStats(): DashboardStats {
     popularItems: []
   };
 }
-
-// No duplicate export here - we only export the main function once

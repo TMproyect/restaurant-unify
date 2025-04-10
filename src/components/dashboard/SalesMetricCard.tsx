@@ -68,12 +68,17 @@ const SalesMetricCard: React.FC = () => {
     title: 'Ventas del Día',
     value: formatCurrency(salesTotal),
     icon: 'dollar-sign',
-    color: 'green', // Add color property to fix the type error
+    color: 'green',
     change: {
       value: transactionCount,
       label: `${transactionCount} transacciones`
     },
-    trend: transactionCount > 0 ? 'up' : 'neutral'
+    trend: {
+      value: 0,                                      // Default trend value
+      label: 'hoy',                                 // Label for trend
+      direction: transactionCount > 0 ? 'up' : 'down', // Direction of trend
+      icon: transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right' // Icon for trend
+    }
   };
   
   // Zero sales state with diagnostic information

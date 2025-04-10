@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import ApiKeyTab from '@/components/integration/ApiKeyTab';
 import DocumentationTab from '@/components/integration/DocumentationTab';
 import { TestingTab } from '@/components/integration/testing';
+import { generateSecureApiKey, saveApiKeyToDatabase } from '@/components/settings/api/utils/apiKeyUtils';
 
 const Integration = () => {
   const [apiKey, setApiKey] = useState<string>("");
@@ -73,7 +75,11 @@ const Integration = () => {
     try {
       setRefreshing(true);
       
-      const newKey = `pos_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      // Generar token permanente con formato fijo para facilitar identificación
+      const prefix = "pos_api_";
+      const timestamp = Date.now().toString(36);
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const newKey = `${prefix}${timestamp}_${randomString}`;
       
       const { error } = await supabase
         .from('system_settings')
@@ -90,7 +96,7 @@ const Integration = () => {
       setApiKey(newKey);
       toast({
         title: "Éxito",
-        description: "Se ha generado una nueva clave de API",
+        description: "Se ha generado una nueva clave de API permanente",
       });
     } catch (err) {
       console.error("Error al regenerar la API key:", err);
@@ -114,7 +120,7 @@ const Integration = () => {
           <AlertTitle>Información importante</AlertTitle>
           <AlertDescription>
             Esta API permite la integración con sistemas externos como n8n para recibir pedidos automáticamente. 
-            Proteja su clave API y asegúrese de utilizarla en entornos seguros.
+            Su clave API es permanente y no expirará. Protéjala y asegúrese de utilizarla en entornos seguros.
           </AlertDescription>
         </Alert>
         

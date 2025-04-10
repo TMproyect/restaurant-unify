@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,9 +31,14 @@ const Integrations = () => {
   const generateNewApiKey = async () => {
     setRefreshing(true);
     try {
-      // Simulated API key generation
+      // Generar token permanente con formato fijo para facilitar identificación
+      const prefix = "pos_api_";
+      const timestamp = Date.now().toString(36);
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const newKey = `${prefix}${timestamp}_${randomString}`;
+      
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setApiKey(`pk_${Math.random().toString(36).substring(2, 15)}`);
+      setApiKey(newKey);
       setRefreshing(false);
     } catch (error) {
       console.error('Error generating API key:', error);
@@ -66,7 +72,7 @@ const Integrations = () => {
               <CardHeader>
                 <CardTitle>Gestión de Clave API</CardTitle>
                 <CardDescription>
-                  Genera y administra tu clave API para integraciones externas
+                  Genera y administra tu clave API permanente para integraciones externas
                 </CardDescription>
               </CardHeader>
               <CardContent>

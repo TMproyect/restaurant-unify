@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,7 +74,7 @@ export const ApiIntegrationConfig = () => {
       <CardHeader>
         <CardTitle>Integración de Pedidos Externos (n8n)</CardTitle>
         <CardDescription>
-          Configure la integración para recibir pedidos desde sistemas externos como n8n
+          Configure la integración para recibir pedidos desde sistemas externos como n8n con una clave API permanente
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

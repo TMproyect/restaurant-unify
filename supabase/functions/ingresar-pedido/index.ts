@@ -58,7 +58,7 @@ async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
   }
   
   console.log(`Intento de validación de API key: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
-  console.log("Verificación de API key - Versión 3.0 con soporte para order_source");
+  console.log("Verificación de API key - Versión 3.0 con soporte para order_source y tokens permanentes");
   
   try {
     // Obtener API key almacenada en system_settings

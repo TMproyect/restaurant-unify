@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import SalesMetricCard from '@/components/dashboard/SalesMetricCard';
@@ -8,22 +7,30 @@ import { RefreshCcw, Database, Calendar, CheckCircle2, AlertTriangle } from 'luc
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { useDailySales } from '@/hooks/use-daily-sales';
 
 export default function SalesTest() {
   const [todayOrders, setTodayOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [manualCalculation, setManualCalculation] = useState<{
-    totalSales: number;
-    orderCount: number;
-  }>({ totalSales: 0, orderCount: 0 });
+  const { salesTotal, transactionCount, refreshSales } = useDailySales();
   
-  // Define the statuses that count as completed/paid sales
+  // Define the statuses that count as completed/paid sales (same as in the hook)
   const completedStatuses = [
-    'completed', 'completada', 'completado',
-    'paid', 'pagado', 'pagada',
-    'delivered', 'entregado', 'entregada',
-    'ready', 'listo', 'lista',
-    'finished', 'finalizado', 'finalizada'
+    // Spanish variations
+    'completado', 'completada', 'completo', 'completa',
+    'terminado', 'terminada', 'terminó',
+    'finalizado', 'finalizada', 'finalizó',
+    'entregado', 'entregada', 'entregó',
+    'pagado', 'pagada', 'pagó',
+    'cobrado', 'cobrada', 'cobró',
+    'listo', 'lista', 'preparado', 'preparada',
+    'servido', 'servida',
+    // English variations
+    'completed', 'complete',
+    'finished', 'done',
+    'delivered', 'ready',
+    'paid', 'processed',
+    'served'
   ];
   
   // Obtener todas las órdenes de hoy para diagnóstico
@@ -58,48 +65,10 @@ export default function SalesTest() {
       
       console.log(`📊 Found ${data?.length || 0} orders for today`);
       
-      // Calculate sales manually to diagnose SalesMetricCard issues
-      let totalSales = 0;
-      let orderCount = 0;
-      
-      const orders = data || [];
-      
-      // Process each order
-      orders.forEach(order => {
-        const status = (order.status || '').toLowerCase().trim();
-        
-        // Check if this is a completed sale by checking every possible status
-        const isSale = completedStatuses.some(s => 
-          status === s || status.includes(s)
-        );
-        
-        if (isSale) {
-          orderCount++;
-          
-          // Safely parse the total
-          let orderTotal = 0;
-          if (typeof order.total === 'number') {
-            orderTotal = order.total;
-          } else if (order.total !== null && order.total !== undefined) {
-            const cleaned = String(order.total).replace(/[^\d.-]/g, '');
-            orderTotal = parseFloat(cleaned) || 0;
-          }
-          
-          totalSales += orderTotal;
-          console.log(`📊 Order ${order.id} with status "${order.status}" counted as sale: $${orderTotal}`);
-        } else {
-          console.log(`📊 Order ${order.id} with status "${order.status}" NOT counted as sale`);
-        }
-      });
-      
-      console.log(`📊 Manual calculation: Total sales $${totalSales}, Orders: ${orderCount}`);
-      setManualCalculation({
-        totalSales,
-        orderCount
-      });
-      
-      setTodayOrders(orders);
-      toast.success(`Found ${orders.length} orders`);
+      setTodayOrders(data || []);
+      // Also refresh the sales data to keep consistency
+      refreshSales();
+      toast.success(`Found ${data?.length || 0} orders`);
     } catch (err) {
       console.error('❌ Error getting orders:', err);
       toast.error('Error loading order data');
@@ -115,7 +84,7 @@ export default function SalesTest() {
   // Function to determine if an order status counts as a completed sale
   const isCompletedSale = (status: string) => {
     status = (status || '').toLowerCase().trim();
-    return completedStatuses.some(s => status === s || status.includes(s));
+    return completedStatuses.some(s => status === s.toLowerCase() || status.includes(s.toLowerCase()));
   };
   
   return (
@@ -158,9 +127,9 @@ export default function SalesTest() {
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold">${manualCalculation.totalSales.toFixed(2)}</span>
+                  <span className="text-2xl font-bold">${salesTotal.toFixed(2)}</span>
                   <span className="text-sm text-muted-foreground">
-                    {manualCalculation.orderCount} transacciones
+                    {transactionCount} transacciones
                   </span>
                 </div>
                 <p className="text-sm">

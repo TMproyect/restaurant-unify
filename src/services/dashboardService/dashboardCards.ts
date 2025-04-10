@@ -3,9 +3,9 @@ import { DashboardCard, DashboardStats } from '@/types/dashboard.types';
 import { formatCurrency } from '@/utils/formatters';
 
 export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] => {
-  console.log('📊 [DashboardService] Generating dashboard cards from stats:', stats);
+  console.log('📊 [DashboardService] Generando tarjetas desde stats:', stats);
   
-  // Generate sales card
+  // Generar tarjeta de ventas
   const salesCard: DashboardCard = {
     title: 'Ventas del Día',
     value: formatCurrency(stats.salesStats.dailyTotal),
@@ -21,7 +21,7 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] =
     lastUpdated: stats.salesStats.lastUpdated
   };
   
-  // Generate orders card
+  // Generar tarjeta de órdenes
   const ordersCard: DashboardCard = {
     title: 'Pedidos Activos',
     value: `${stats.ordersStats.activeOrders}`,
@@ -31,7 +31,7 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] =
     lastUpdated: stats.ordersStats.lastUpdated
   };
   
-  // Generate customers card
+  // Generar tarjeta de clientes
   const customersCard: DashboardCard = {
     title: 'Clientes Hoy',
     value: `${stats.customersStats.todayCount}`,
@@ -46,7 +46,7 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] =
     }
   };
   
-  // Generate popular dishes card
+  // Generar tarjeta de platos populares
   const popularDishesCard: DashboardCard = {
     title: 'Platos Populares',
     icon: 'utensils',
@@ -60,15 +60,15 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] =
       : []
   };
   
-  // If no popular items, show "Sin datos" in the value field
+  // Si no hay platos populares, mostrar "Sin datos" en el campo de valor
   if (!stats.popularItems || stats.popularItems.length === 0) {
     popularDishesCard.value = 'Sin datos';
   } else {
-    // Show name of top dish as the value
+    // Mostrar nombre del plato más popular como valor
     popularDishesCard.value = stats.popularItems[0].name;
   }
   
-  console.log('📊 [DashboardService] Generated cards:', {
+  console.log('📊 [DashboardService] Tarjetas generadas:', {
     sales: salesCard.value,
     orders: ordersCard.value,
     customers: customersCard.value,

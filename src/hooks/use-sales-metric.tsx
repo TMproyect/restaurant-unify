@@ -8,19 +8,22 @@ export function useSalesMetric() {
   const [salesCard, setSalesCard] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rawSalesData, setRawSalesData] = useState<any>(null);
   
   const fetchSalesData = useCallback(async () => {
     try {
-      console.log('🔄 [useSalesMetric] Fetching sales data...');
+      console.log('🔄 [useSalesMetric] Iniciando obtención de datos de ventas...');
       setIsLoading(true);
       setError(null);
       
-      // Get sales stats directly
+      // Obtener estadísticas de ventas directamente
       const salesStats = await getSalesStats();
+      console.log('✅ [useSalesMetric] Estadísticas obtenidas:', salesStats);
       
-      console.log('✅ [useSalesMetric] Sales stats fetched:', salesStats);
+      // Guardar datos crudos para debugging
+      setRawSalesData(salesStats);
       
-      // Generate a minimal DashboardStats object with just the sales data
+      // Generar un objeto DashboardStats mínimo con solo los datos de ventas
       const minimalStats = {
         salesStats,
         ordersStats: {
@@ -38,19 +41,19 @@ export function useSalesMetric() {
         popularItems: []
       };
       
-      // Generate cards from the minimal stats
+      // Generar tarjetas a partir de las estadísticas mínimas
       const cards = generateDashboardCards(minimalStats);
       
-      // Extract just the sales card
+      // Extraer solo la tarjeta de ventas
       const salesCardOnly = cards[0];
-      console.log('✅ [useSalesMetric] Sales card generated:', salesCardOnly);
+      console.log('✅ [useSalesMetric] Tarjeta de ventas generada:', salesCardOnly);
       
       setSalesCard(salesCardOnly);
       return salesCardOnly;
     } catch (err) {
-      console.error('❌ [useSalesMetric] Error fetching sales data:', err);
+      console.error('❌ [useSalesMetric] Error obteniendo datos de ventas:', err);
       setError('Error al cargar los datos de ventas');
-      toast('Error', {
+      toast.error('Error', {
         description: 'No se pudieron cargar los datos de ventas',
       });
       return null;
@@ -59,13 +62,22 @@ export function useSalesMetric() {
     }
   }, []);
   
-  // Fetch data on mount
+  // Obtener datos al montar
   useEffect(() => {
     fetchSalesData();
+    
+    // Configurar un intervalo para refrescar los datos cada 5 minutos
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 [useSalesMetric] Refrescando datos automáticamente...');
+      fetchSalesData();
+    }, 5 * 60 * 1000); // 5 minutos
+    
+    return () => clearInterval(refreshInterval);
   }, [fetchSalesData]);
   
   return {
     salesCard,
+    rawSalesData,
     isLoading,
     error,
     refetchSalesData: fetchSalesData

@@ -1,10 +1,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
 
 export const getSalesStats = async () => {
   try {
-    console.log('📊 [SalesStats] Retrieving daily sales statistics...');
+    console.log('📊 [SalesStats] Iniciando cálculo de estadísticas de ventas...');
     
+    // Configuración de fechas
     const today = new Date();
     const todayStart = new Date(today);
     todayStart.setHours(0, 0, 0, 0);
@@ -16,62 +18,86 @@ export const getSalesStats = async () => {
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
     
-    console.log(`📊 [SalesStats] Today's date range: ${todayStart.toISOString()} to ${new Date().toISOString()}`);
-    console.log(`📊 [SalesStats] Yesterday's date range: ${yesterdayStart.toISOString()} to ${yesterdayEnd.toISOString()}`);
+    console.log(`📊 [SalesStats] Rango de hoy: ${todayStart.toISOString()} a ${new Date().toISOString()}`);
+    console.log(`📊 [SalesStats] Rango de ayer: ${yesterdayStart.toISOString()} a ${yesterdayEnd.toISOString()}`);
     
-    // Get today's sales - IMPORTANT: Include "listo" and "lista" statuses
-    const { data: todaySalesData, error: salesError } = await supabase
+    // VERIFICACIÓN DIRECTA: Obtener TODAS las órdenes de hoy para diagnóstico
+    const { data: allTodayOrders, error: allOrdersError } = await supabase
       .from('orders')
       .select('id, total, status, created_at')
-      .gte('created_at', todayStart.toISOString())
-      .in('status', ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado', 'listo', 'lista', 'ready']);
+      .gte('created_at', todayStart.toISOString());
     
-    if (salesError) {
-      console.error('❌ [SalesStats] Error fetching today sales:', salesError);
-      throw salesError;
+    if (allOrdersError) {
+      console.error('❌ [SalesStats] Error obteniendo todas las órdenes:', allOrdersError);
+      throw allOrdersError;
     }
     
-    // Debug - Log the found orders with their status for troubleshooting
-    console.log(`📊 [SalesStats] Today's sales data found (${todaySalesData?.length || 0} records):`);
-    todaySalesData?.forEach(order => {
-      console.log(`  - Order ID: ${order.id.substring(0, 6)}... | Status: ${order.status} | Total: ${order.total}`);
+    console.log(`📊 [SalesStats] Total de órdenes en el sistema hoy: ${allTodayOrders?.length || 0}`);
+    
+    // Lista amplia de estados que consideramos como "completados" o "pagados"
+    const completedStatuses = [
+      'completed', 'completado', 'complete', 'completo', 'completa', 'completada',
+      'delivered', 'entregado', 'entregada', 'deliver', 'entrega',
+      'paid', 'pagado', 'pagada', 'pago', 'pay',
+      'listo', 'lista', 'ready', 'done',
+      'finalizado', 'finalizada', 'finish',
+      'closed', 'cerrado', 'cerrada'
+    ];
+    
+    // Filtrar manualmente para mayor control y mostrar diagnóstico
+    const todaySalesData = allTodayOrders?.filter(order => {
+      // Normalizar el estado para comparación (minúsculas, sin espacios extras)
+      const normalizedStatus = (order.status || '').toLowerCase().trim();
+      
+      // Verificar si el estado normalizado está en nuestra lista de estados completados
+      const isCompleted = completedStatuses.some(status => 
+        normalizedStatus === status || normalizedStatus.includes(status)
+      );
+      
+      // Registrar cada orden y su estado para diagnóstico
+      console.log(`📊 [SalesStats] Orden ID: ${order.id.substring(0, 6)}... | Estado: "${order.status}" | ¿Completada?: ${isCompleted ? 'SÍ' : 'NO'} | Total: ${order.total || 0}`);
+      
+      return isCompleted;
     });
     
-    const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+    // Totales para hoy
+    const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
     const transactionCount = todaySalesData?.length || 0;
     const averageTicket = transactionCount > 0 ? dailyTotal / transactionCount : 0;
     
-    console.log(`📊 [SalesStats] Calculated daily total: ${dailyTotal}`);
-    console.log(`📊 [SalesStats] Transaction count: ${transactionCount}`);
+    console.log(`📊 [SalesStats] RESULTADO: Ventas de hoy: $${dailyTotal} | Transacciones: ${transactionCount}`);
     
-    // Get yesterday's sales with the same status inclusion
-    const { data: yesterdaySalesData, error: yesterdayError } = await supabase
+    // Ventas de ayer (usando el mismo enfoque más preciso)
+    const { data: allYesterdayOrders, error: allYesterdayError } = await supabase
       .from('orders')
-      .select('id, total')
+      .select('id, total, status, created_at')
       .gte('created_at', yesterdayStart.toISOString())
-      .lte('created_at', yesterdayEnd.toISOString())
-      .in('status', ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado', 'listo', 'lista', 'ready']);
+      .lte('created_at', yesterdayEnd.toISOString());
     
-    if (yesterdayError) {
-      console.error('❌ [SalesStats] Error fetching yesterday sales:', yesterdayError);
-      throw yesterdayError;
+    if (allYesterdayError) {
+      console.error('❌ [SalesStats] Error obteniendo órdenes de ayer:', allYesterdayError);
+      throw allYesterdayError;
     }
     
-    console.log(`📊 [SalesStats] Yesterday's sales count: ${yesterdaySalesData?.length || 0}`);
+    // Filtrar manualmente como hicimos con las órdenes de hoy
+    const yesterdaySalesData = allYesterdayOrders?.filter(order => {
+      const normalizedStatus = (order.status || '').toLowerCase().trim();
+      return completedStatuses.some(status => 
+        normalizedStatus === status || normalizedStatus.includes(status)
+      );
+    });
     
-    const yesterdayTotal = yesterdaySalesData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+    const yesterdayTotal = yesterdaySalesData?.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
     
-    // Avoid division by zero
+    // Calcular cambio porcentual con manejo especial para valores cero
     let changePercentage = 0;
     if (yesterdayTotal > 0) {
       changePercentage = ((dailyTotal - yesterdayTotal) / yesterdayTotal) * 100;
     } else if (dailyTotal > 0) {
-      // If yesterday was 0 but today has sales, show 100% increase
-      changePercentage = 100;
+      changePercentage = 100; // Si ayer fue 0 pero hoy hay ventas, mostrar un 100% de incremento
     }
     
-    console.log(`📊 [SalesStats] Yesterday total: ${yesterdayTotal}`);
-    console.log(`📊 [SalesStats] Change percentage: ${changePercentage.toFixed(2)}%`);
+    console.log(`📊 [SalesStats] Ventas de ayer: $${yesterdayTotal} | Cambio: ${changePercentage.toFixed(2)}%`);
     
     return {
       dailyTotal,
@@ -81,8 +107,9 @@ export const getSalesStats = async () => {
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
-    console.error('❌ [SalesStats] Error calculating sales statistics:', error);
-    // Return default values instead of throwing so the dashboard still renders
+    console.error('❌ [SalesStats] Error en cálculo de estadísticas:', error);
+    
+    // Retornar valores predeterminados en lugar de lanzar para que el dashboard siga renderizándose
     return {
       dailyTotal: 0,
       transactionCount: 0,

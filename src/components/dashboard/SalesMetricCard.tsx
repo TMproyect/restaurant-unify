@@ -76,7 +76,7 @@ const SalesMetricCard: React.FC = () => {
     trend: {
       value: 0,                                      // Default trend value
       label: 'hoy',                                 // Label for trend
-      direction: transactionCount > 0 ? 'up' : 'down' as const, // Fix: use 'as const' to ensure literal type
+      direction: (transactionCount > 0 ? 'up' : 'down') as 'up' | 'down', // Fix: use proper type assertion
       icon: transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right' // Icon for trend
     }
   };

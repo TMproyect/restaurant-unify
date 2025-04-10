@@ -24,46 +24,36 @@ export const N8nManualConfig: React.FC<N8nManualConfigProps> = ({ apiEndpoint })
         </Alert>
         
         <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-medium">URL del endpoint</h3>
-            <p className="text-sm text-muted-foreground">
-              {apiEndpoint}
-            </p>
+          <h3 className="text-sm font-medium">URL del endpoint</h3>
+          <p className="text-sm text-muted-foreground">
+            {apiEndpoint}
+          </p>
+          
+          <h3 className="text-sm font-medium">Método HTTP</h3>
+          <p className="text-sm text-muted-foreground">POST</p>
+          
+          <h3 className="text-sm font-medium">Autenticación</h3>
+          <p className="text-sm text-muted-foreground">
+            Selecciona <strong>None</strong> en la sección de Authentication
+          </p>
+          
+          <h3 className="text-sm font-medium">Headers (recomendado para n8n)</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-muted px-2 py-1 rounded">x-api-key</div>
+            <div className="bg-muted px-2 py-1 rounded">[Tu API Key]</div>
+            <div className="bg-muted px-2 py-1 rounded">Content-Type</div>
+            <div className="bg-muted px-2 py-1 rounded">application/json</div>
           </div>
           
-          <div>
-            <h3 className="text-sm font-medium">Método HTTP</h3>
-            <p className="text-sm text-muted-foreground">POST</p>
+          <h3 className="text-sm font-medium">Formato alternativo de Header</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-muted px-2 py-1 rounded">Authorization</div>
+            <div className="bg-muted px-2 py-1 rounded">Bearer [Tu API Key]</div>
+            <div className="bg-muted px-2 py-1 rounded">Content-Type</div>
+            <div className="bg-muted px-2 py-1 rounded">application/json</div>
           </div>
           
-          <div>
-            <h3 className="text-sm font-medium">Autenticación</h3>
-            <p className="text-sm text-muted-foreground">
-              Selecciona <strong>None</strong> en la sección de Authentication
-            </p>
-          </div>
-          
-          <div>
-            <h3 className="text-sm font-medium">Headers (recomendado para n8n)</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="bg-muted px-2 py-1 rounded">x-api-key</div>
-              <div className="bg-muted px-2 py-1 rounded">[Tu API Key]</div>
-              <div className="bg-muted px-2 py-1 rounded">Content-Type</div>
-              <div className="bg-muted px-2 py-1 rounded">application/json</div>
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="text-sm font-medium">Formato alternativo de Header</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="bg-muted px-2 py-1 rounded">Authorization</div>
-              <div className="bg-muted px-2 py-1 rounded">Bearer [Tu API Key]</div>
-              <div className="bg-muted px-2 py-1 rounded">Content-Type</div>
-              <div className="bg-muted px-2 py-1 rounded">application/json</div>
-            </div>
-          </div>
-          
-          <Alert className="mt-4 bg-amber-50 border-amber-200">
+          <Alert variant="warning" className="mt-4">
             <Info className="h-4 w-4 text-amber-500" />
             <AlertTitle className="text-amber-800">Formato de números</AlertTitle>
             <AlertDescription className="text-amber-700">

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FieldDescriptionTable from './FieldDescriptionTable';
@@ -16,8 +17,8 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ apiKey }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const { toast } = useToast();
   
-  const projectUrl = window.location.origin;
-  const apiEndpoint = `${projectUrl}/api/v1/ingresar-pedido`;
+  const projectId = 'imcxvnivqrckgjrimzck';
+  const apiEndpoint = `https://${projectId}.supabase.co/functions/v1/ingresar-pedido`;
   
   // Ejemplo de payload para la documentación
   const examplePayload = `{
@@ -89,12 +90,45 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ apiKey }) => {
           <div className="space-y-2">
             <h3 className="font-medium">Autenticación</h3>
             <p>
-              Todas las solicitudes deben incluir el encabezado <code className="bg-muted px-1">Authorization</code> con 
-              el formato Bearer seguido de la clave API proporcionada en la sección "Clave API".
+              Todas las solicitudes deben incluir autenticación mediante una de estas dos opciones:
             </p>
-            <code className="block bg-muted p-2 rounded">
-              Authorization: Bearer {apiKey ? apiKey.substring(0, 10) + "..." : "[Su clave API]"}
-            </code>
+            
+            <Tabs defaultValue="bearer">
+              <TabsList>
+                <TabsTrigger value="bearer">Encabezado Authorization</TabsTrigger>
+                <TabsTrigger value="apikey">Encabezado x-api-key</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="bearer" className="space-y-2 mt-2">
+                <p>Formato Bearer Token (recomendado para la mayoría de integraciones):</p>
+                <code className="block bg-muted p-2 rounded">
+                  Authorization: Bearer {apiKey ? apiKey.substring(0, 10) + "..." : "[Su clave API]"}
+                </code>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => copyToClipboard(`Authorization: Bearer ${apiKey || "[Su clave API]"}`)}
+                >
+                  <Copy className="mr-2 h-3 w-3" />
+                  Copiar
+                </Button>
+              </TabsContent>
+              
+              <TabsContent value="apikey" className="space-y-2 mt-2">
+                <p>Formato x-api-key (para n8n y plataformas similares):</p>
+                <code className="block bg-muted p-2 rounded">
+                  x-api-key: {apiKey ? apiKey.substring(0, 10) + "..." : "[Su clave API]"}
+                </code>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => copyToClipboard(`x-api-key: ${apiKey || "[Su clave API]"}`)}
+                >
+                  <Copy className="mr-2 h-3 w-3" />
+                  Copiar
+                </Button>
+              </TabsContent>
+            </Tabs>
           </div>
         </CardContent>
       </Card>

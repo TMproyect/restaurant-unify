@@ -1,6 +1,6 @@
 
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
-// Versión 3.1 - Refactorizado para mejor mantenibilidad - 2025-04-10
+// Versión 3.2 - Actualizado para mejor compatibilidad con n8n - 2025-04-10
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from './utils/cors.ts';
@@ -10,8 +10,8 @@ import { processOrder } from './utils/orderProcessing.ts';
 import { createNotification } from './utils/notifications.ts';
 
 serve(async (req) => {
-  console.log("Función ingresar-pedido v3.1 recibió una solicitud:", req.method);
-  console.log("Versión refactorizada con soporte para order_source - 2025-04-10");
+  console.log("Función ingresar-pedido v3.2 recibió una solicitud:", req.method);
+  console.log("Versión actualizada con mejor compatibilidad con n8n - 2025-04-10");
   
   // Imprimir todas las cabeceras recibidas para diagnóstico
   const headerEntries = Array.from(req.headers.entries());
@@ -35,12 +35,11 @@ serve(async (req) => {
     });
   }
   
-  // Obtener la API key del encabezado Authorization
+  // Obtener la API key de cualquiera de los encabezados posibles
   let apiKey = null;
   
+  // 1. Intentar obtener de cabecera Authorization (Bearer token)
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-  
-  // Extraer la API key del encabezado Authorization
   if (authHeader) {
     console.log("Se encontró encabezado Authorization:", authHeader.substring(0, 10) + "****");
     // Comprobar si comienza con "Bearer " y extraer el token
@@ -53,12 +52,21 @@ serve(async (req) => {
     }
   }
   
+  // 2. Si no hay Authorization, intentar con x-api-key (compatibilidad con n8n)
+  if (!apiKey) {
+    const xApiKey = req.headers.get('x-api-key');
+    if (xApiKey) {
+      apiKey = xApiKey.trim();
+      console.log("API Key extraída de x-api-key:", apiKey ? `${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}` : 'No proporcionada');
+    }
+  }
+  
   if (!apiKey) {
     console.log("API Key no encontrada en ninguna cabecera");
     console.log("Cabeceras disponibles:", JSON.stringify(headerEntries));
     return new Response(JSON.stringify({ 
       error: "API Key requerida", 
-      details: "Debe proporcionar una clave API válida en la cabecera 'Authorization: Bearer <API_KEY>'",
+      details: "Debe proporcionar una clave API válida en la cabecera 'Authorization: Bearer <API_KEY>' o 'x-api-key: <API_KEY>'",
       headers_received: Object.fromEntries(headerEntries)
     }), {
       status: 401,

@@ -2,6 +2,32 @@
 // Utilidad para procesar los pedidos
 
 /**
+ * Normaliza un valor numérico que puede venir en formato de cadena con diferentes separadores decimales
+ * @param value El valor a normalizar
+ * @returns Número normalizado
+ */
+function normalizeNumericValue(value: any): number {
+  if (typeof value === 'number') {
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    // Primero removemos cualquier separador de miles (asumiendo que los decimales usan punto o coma)
+    const normalizedString = value
+      .replace(/\./g, '') // Remueve separadores de miles si son puntos
+      .replace(',', '.'); // Reemplaza coma decimal por punto si existe
+    
+    const parsedNumber = parseFloat(normalizedString);
+    if (!isNaN(parsedNumber)) {
+      return parsedNumber;
+    }
+  }
+  
+  // Si no se puede convertir, devolvemos 0 como valor predeterminado
+  return 0;
+}
+
+/**
  * Procesa un pedido recibido
  * @param supabase Cliente de Supabase
  * @param payload Datos del pedido
@@ -27,11 +53,15 @@ export async function processOrder(supabase: any, payload: any) {
         };
       }
       
+      // Normalizar valores numéricos
+      const cantidad = normalizeNumericValue(item.cantidad);
+      const precioUnitario = normalizeNumericValue(item.precio_unitario) || menuItem.price;
+      
       validatedItems.push({
         menu_item_id: menuItem.id,
         name: item.nombre_personalizado || menuItem.name,
-        price: item.precio_unitario || menuItem.price,
-        quantity: item.cantidad,
+        price: precioUnitario,
+        quantity: cantidad,
         notes: item.notas_item || ''
       });
     }
@@ -40,13 +70,30 @@ export async function processOrder(supabase: any, payload: any) {
     const orderSource = payload.order_source || (payload.is_delivery ? 'delivery' : 'pos');
     console.log(`Fuente del pedido (order_source): ${orderSource}`);
     
+    // Normalizar número de mesa (puede ser string)
+    let tableNumber = null;
+    if (payload.numero_mesa) {
+      if (typeof payload.numero_mesa === 'number') {
+        tableNumber = payload.numero_mesa;
+      } else {
+        // Intentar convertir a número
+        const parsedNumber = parseInt(payload.numero_mesa, 10);
+        if (!isNaN(parsedNumber)) {
+          tableNumber = parsedNumber;
+        }
+      }
+    }
+    
+    // Normalizar total del pedido
+    const totalPedido = normalizeNumericValue(payload.total_pedido);
+    
     // Crear el pedido en la base de datos
     const orderData = {
       customer_name: payload.nombre_cliente,
-      table_number: payload.numero_mesa ? parseInt(payload.numero_mesa, 10) : null,
+      table_number: tableNumber,
       table_id: payload.table_id || null,
       status: payload.estado_pedido_inicial || 'pending',
-      total: payload.total_pedido,
+      total: totalPedido,
       items_count: validatedItems.length,
       is_delivery: !!payload.is_delivery,
       kitchen_id: payload.kitchen_id || null,

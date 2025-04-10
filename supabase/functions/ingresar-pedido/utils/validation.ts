@@ -2,6 +2,32 @@
 // Utilidad para validar la estructura del payload del pedido
 
 /**
+ * Normaliza un valor numérico que puede venir en formato de cadena con diferentes separadores decimales
+ * @param value El valor a normalizar
+ * @returns Número normalizado o null si no es un valor válido
+ */
+function normalizeNumericValue(value: any): number | null {
+  if (typeof value === 'number') {
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    // Intentar convertir el string a número
+    // Primero removemos cualquier separador de miles (asumiendo que los decimales usan punto o coma)
+    const normalizedString = value
+      .replace(/\./g, '') // Remueve separadores de miles si son puntos
+      .replace(',', '.'); // Reemplaza coma decimal por punto si existe
+    
+    const parsedNumber = parseFloat(normalizedString);
+    if (!isNaN(parsedNumber)) {
+      return parsedNumber;
+    }
+  }
+  
+  return null; // No se pudo convertir a número
+}
+
+/**
  * Valida la estructura y los datos del payload recibido
  * @param payload El objeto JSON recibido en la solicitud
  * @returns String con el mensaje de error, o null si es válido
@@ -23,16 +49,23 @@ export function validatePayload(payload: any): string | null {
   // Validar cada item del pedido
   for (const item of payload.items_pedido) {
     if (!item.sku_producto) return "Cada item debe tener un 'sku_producto'";
-    if (!item.cantidad || typeof item.cantidad !== 'number' || item.cantidad <= 0) {
+    
+    // Validar cantidad (aceptando string o número)
+    const cantidad = normalizeNumericValue(item.cantidad);
+    if (cantidad === null || cantidad <= 0) {
       return "Cada item debe tener una 'cantidad' válida mayor a cero";
     }
-    if (item.precio_unitario === undefined || typeof item.precio_unitario !== 'number' || item.precio_unitario < 0) {
+    
+    // Validar precio unitario (aceptando string o número)
+    const precioUnitario = normalizeNumericValue(item.precio_unitario);
+    if (precioUnitario === null || precioUnitario < 0) {
       return "Cada item debe tener un 'precio_unitario' válido";
     }
   }
   
-  // Validar total
-  if (payload.total_pedido === undefined || typeof payload.total_pedido !== 'number' || payload.total_pedido < 0) {
+  // Validar total (aceptando string o número)
+  const totalPedido = normalizeNumericValue(payload.total_pedido);
+  if (totalPedido === null || totalPedido < 0) {
     return "Campo 'total_pedido' debe ser un número válido";
   }
   

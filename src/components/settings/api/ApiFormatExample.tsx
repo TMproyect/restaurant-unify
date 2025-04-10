@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Card, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Code } from 'lucide-react';
+import { Code, AlertTriangle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export const ApiFormatExample = () => {
   const exampleJson = `{
@@ -36,6 +37,21 @@ export const ApiFormatExample = () => {
         <CardDescription className="mb-4">
           Ejemplo del formato JSON que debe enviarse en el cuerpo de la solicitud POST
         </CardDescription>
+        
+        <Alert variant="warning" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Importante: Formato de valores numéricos</AlertTitle>
+          <AlertDescription>
+            Los valores numéricos deben utilizar punto como separador decimal (ej: 8.50) y no deben incluir separadores de miles.
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>✅ <code className="bg-muted px-1 py-0.5 rounded">8.50</code></div>
+              <div>❌ <code className="bg-muted px-1 py-0.5 rounded">8,50</code></div>
+              <div>✅ <code className="bg-muted px-1 py-0.5 rounded">1250.75</code></div>
+              <div>❌ <code className="bg-muted px-1 py-0.5 rounded">1,250.75</code> o <code className="bg-muted px-1 py-0.5 rounded">1.250,75</code></div>
+            </div>
+          </AlertDescription>
+        </Alert>
+        
         <div className="bg-muted rounded-md p-4 overflow-x-auto">
           <pre className="text-xs md:text-sm whitespace-pre-wrap">{exampleJson}</pre>
         </div>

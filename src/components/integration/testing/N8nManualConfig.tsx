@@ -62,6 +62,20 @@ export const N8nManualConfig: React.FC<N8nManualConfigProps> = ({ apiEndpoint })
               <div className="bg-muted px-2 py-1 rounded">application/json</div>
             </div>
           </div>
+          
+          <Alert className="mt-4 bg-amber-50 border-amber-200">
+            <Info className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-800">Formato de números</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              Para valores numéricos en el JSON, use el formato estándar con punto como separador decimal (15.99) en lugar de coma (15,99) o separadores de miles (15.000).
+              <div className="mt-2">
+                <span className="font-bold">✅ Correcto:</span> <code className="bg-amber-100 px-1 rounded">15.99</code>
+              </div>
+              <div>
+                <span className="font-bold">❌ Incorrecto:</span> <code className="bg-amber-100 px-1 rounded">15,99</code> o <code className="bg-amber-100 px-1 rounded">15.000</code>
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
       </CardContent>
     </Card>

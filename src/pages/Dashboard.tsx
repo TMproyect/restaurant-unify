@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useDashboardInit } from '@/hooks/use-dashboard-init';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
@@ -18,6 +18,8 @@ export default function Dashboard() {
   // Track if component is mounted to prevent state updates after unmount
   const [isMounted, setIsMounted] = useState(false);
   const { error: initError, isReady } = useDashboardInit();
+  
+  // Use the optimized dashboard data hook
   const { 
     dashboardCards, 
     activityItems,
@@ -49,30 +51,24 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Safe refresh function that checks if component is still mounted
-  const safeRefresh = useCallback(() => {
-    if (isMounted) {
-      refreshAllData();
-    }
-  }, [isMounted, refreshAllData]);
-
-  // Handle connection errors with reconnection attempts
+  // Handle connection errors with a more conservative approach
   useEffect(() => {
     if (!dataError || !isMounted) return;
     
     console.error('❌ [Dashboard] Data loading error:', dataError);
     toast.error('Error al cargar datos del dashboard. Intentando reconectar...');
     
-    // Attempt to reconnect after a delay
+    // Attempt to reconnect after a longer delay (10 seconds)
+    // This prevents error cascades with too many rapid reconnection attempts
     const reconnectTimer = setTimeout(() => {
       if (isMounted) {
         console.log('🔄 [Dashboard] Attempting reconnection...');
-        safeRefresh();
+        refreshAllData();
       }
-    }, 10000); // 10-second delay before retry
+    }, 10000);
     
     return () => clearTimeout(reconnectTimer);
-  }, [dataError, isMounted, safeRefresh]);
+  }, [dataError, isMounted, refreshAllData]);
   
   // If not initialized, show loading state
   if (!isReady && !initError) {
@@ -119,9 +115,18 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header without refresh button */}
+        {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
+          
+          {/* Add a manual refresh button */}
+          <button
+            onClick={refreshAllData}
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+            disabled={isLoadingStats || isLoadingActivity}
+          >
+            {isLoadingStats || isLoadingActivity ? 'Cargando...' : 'Actualizar Datos'}
+          </button>
         </div>
         
         {/* Error display if any */}
@@ -159,7 +164,7 @@ export default function Dashboard() {
           )}
         </div>
         
-        {/* Activity Monitor (without refresh button) */}
+        {/* Activity Monitor */}
         <ActivityMonitor
           items={activityItems}
           isLoading={isLoadingActivity}

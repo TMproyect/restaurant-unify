@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useStats } from './dashboard/use-stats';
 import { useActivity } from './dashboard/use-activity';
 import { useDialogs } from './dashboard/use-dialogs';
@@ -40,38 +40,62 @@ export function useDashboardData() {
     setIsCancellationReasonOpen
   } = useDialogs();
   
+  // Use a ref to track if initial data has been loaded
+  const initialLoadDoneRef = useRef(false);
+  
   // Add detailed logging to track component lifecycle
   useEffect(() => {
     console.log('🔄 [useDashboardData] Hook initialized');
-    console.log('🔄 [useDashboardData] Initial loading states:', { isLoadingStats, isLoadingActivity });
+    
+    // Only fetch data once when the component mounts
+    if (!initialLoadDoneRef.current) {
+      console.log('🔄 [useDashboardData] Performing initial data load');
+      
+      // Load both data sets in parallel but with proper error handling
+      Promise.all([
+        fetchDashboardData().catch(err => {
+          console.error('❌ [useDashboardData] Error in initial dashboard stats load:', err);
+        }),
+        fetchActivityData().catch(err => {
+          console.error('❌ [useDashboardData] Error in initial activity data load:', err);
+        })
+      ]).then(() => {
+        console.log('✅ [useDashboardData] Initial data loading complete');
+        initialLoadDoneRef.current = true;
+      }).catch(err => {
+        console.error('❌ [useDashboardData] Unexpected error in initial data load:', err);
+      });
+    }
     
     return () => {
       console.log('🔄 [useDashboardData] Hook cleanup');
     };
-  }, [isLoadingStats, isLoadingActivity]);
+  }, [fetchDashboardData, fetchActivityData]);
   
   // Combine errors
   const error = statsError || activityError;
   
-  // Simplified refresh function without refs or complex locking
+  // Simplified refresh function
   const refreshAllData = useCallback(() => {
-    console.log('🔄 [useDashboardData] refreshAllData called - refreshing all dashboard data');
+    console.log('🔄 [useDashboardData] Manual refresh requested');
     
-    try {
-      // Use Promise.all but with proper error handling
-      Promise.all([
-        fetchDashboardData().catch(err => {
-          console.error('❌ [useDashboardData] Error refreshing dashboard stats:', err);
-        }),
-        fetchActivityData().catch(err => {
-          console.error('❌ [useDashboardData] Error refreshing activity data:', err);
-        })
-      ]).catch(err => {
-        console.error('❌ [useDashboardData] Error in Promise.all:', err);
-      });
-    } catch (err) {
-      console.error('❌ [useDashboardData] Unexpected error in refreshAllData:', err);
-    }
+    // Reset the initial load flag to force a reload
+    initialLoadDoneRef.current = false;
+    
+    // Use Promise.all but with proper error handling
+    Promise.all([
+      fetchDashboardData().catch(err => {
+        console.error('❌ [useDashboardData] Error refreshing dashboard stats:', err);
+      }),
+      fetchActivityData().catch(err => {
+        console.error('❌ [useDashboardData] Error refreshing activity data:', err);
+      })
+    ]).then(() => {
+      console.log('✅ [useDashboardData] Manual refresh complete');
+      initialLoadDoneRef.current = true;
+    }).catch(err => {
+      console.error('❌ [useDashboardData] Error in manual refresh:', err);
+    });
   }, [fetchDashboardData, fetchActivityData]);
   
   // Handle action clicks from the activity monitor
@@ -91,7 +115,7 @@ export function useDashboardData() {
         break;
         
       case 'prioritize':
-        // This is handled by useActivity hook
+        // Import dynamically to avoid circular dependencies
         import('./dashboard/use-activity').then(module => {
           module.prioritizeOrderAction(id, refreshAllData);
         }).catch(err => {

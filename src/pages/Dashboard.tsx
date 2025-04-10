@@ -118,15 +118,6 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
-          
-          {/* Add a manual refresh button */}
-          <button
-            onClick={refreshAllData}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
-            disabled={isLoadingStats || isLoadingActivity}
-          >
-            {isLoadingStats || isLoadingActivity ? 'Cargando...' : 'Actualizar Datos'}
-          </button>
         </div>
         
         {/* Error display if any */}

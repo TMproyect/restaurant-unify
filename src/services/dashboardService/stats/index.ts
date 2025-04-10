@@ -25,6 +25,9 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
     
+    console.log(`📊 [DashboardService] Date ranges - Today: ${todayStart.toISOString()} to ${now.toISOString()}`);
+    console.log(`📊 [DashboardService] Date ranges - Yesterday: ${yesterdayStart.toISOString()} to ${yesterdayEnd.toISOString()}`);
+    
     // Single efficient query to get all orders - we'll process everything locally
     const { data: allOrders, error: ordersError } = await supabase
       .from('orders')

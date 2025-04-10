@@ -18,7 +18,7 @@ const ActivityHeader: React.FC<ActivityHeaderProps> = ({
   console.log('🔄 [ActivityHeader] Rendering with filter:', activeFilter);
   
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
       <CardTitle className="text-xl font-semibold">Monitor de Actividad</CardTitle>
       <div className="flex items-center gap-2">
         <FilterDropdown 

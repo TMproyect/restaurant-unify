@@ -1,75 +1,84 @@
 
 import { DashboardCard, DashboardStats } from '@/types/dashboard.types';
 import { formatCurrency } from '@/utils/formatters';
+import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, UserRound, Utensils } from 'lucide-react';
 
-// Generate dashboard cards from dashboard statistics
-export function generateDashboardCards(stats: DashboardStats): DashboardCard[] {
-  console.log('📊 [DashboardService] Generating dashboard cards from stats');
+export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] => {
+  console.log('📊 [DashboardService] Generating dashboard cards from stats:', stats);
   
-  const {
-    salesStats,
-    ordersStats,
-    customersStats,
-    popularItems
-  } = stats;
-  
-  const cards: DashboardCard[] = [];
-  
-  // Sales card
-  cards.push({
+  // Generate sales card
+  const salesCard: DashboardCard = {
     title: 'Ventas del Día',
-    value: formatCurrency(salesStats.dailyTotal),
-    subtitle: `${salesStats.transactionCount} transacciones`,
-    changeValue: salesStats.changePercentage,
-    changeType: salesStats.changePercentage >= 0 ? 'positive' : 'negative',
-    changeLabel: 'vs. ayer',
-    icon: 'dollar-sign',
+    value: formatCurrency(stats.salesStats.dailyTotal),
+    icon: <DollarSign className="h-4 w-4" />,
+    description: `${stats.salesStats.transactionCount} transacciones`,
+    trend: {
+      value: stats.salesStats.changePercentage,
+      label: 'vs. ayer',
+      direction: stats.salesStats.changePercentage >= 0 ? 'up' : 'down',
+      icon: stats.salesStats.changePercentage >= 0 
+        ? <ArrowUpRight className="h-3 w-3" /> 
+        : <ArrowDownRight className="h-3 w-3" />
+    },
     color: 'blue',
-    tooltip: 'Total de ventas registradas hoy en órdenes completadas o entregadas'
-  });
+    lastUpdated: stats.salesStats.lastUpdated
+  };
   
-  // Active Orders card
-  cards.push({
+  // Generate orders card
+  const ordersCard: DashboardCard = {
     title: 'Pedidos Activos',
-    value: ordersStats.activeOrders.toString(),
-    subtitle: `${ordersStats.pendingOrders} pendientes, ${ordersStats.inPreparationOrders} en preparación`,
-    icon: 'utensils',
+    value: `${stats.ordersStats.activeOrders}`,
+    icon: <Activity className="h-4 w-4" />,
+    description: `${stats.ordersStats.pendingOrders} pendientes, ${stats.ordersStats.inPreparationOrders} en preparación`,
     color: 'green',
-    tooltip: 'Pedidos que requieren atención inmediata. Incluye órdenes pendientes, en preparación y listas para entregar'
-  });
+    lastUpdated: stats.ordersStats.lastUpdated
+  };
   
-  // Customers card
-  cards.push({
+  // Generate customers card
+  const customersCard: DashboardCard = {
     title: 'Clientes Hoy',
-    value: customersStats.todayCount.toString(),
-    changeValue: customersStats.changePercentage,
-    changeType: customersStats.changePercentage >= 0 ? 'positive' : 'negative',
-    changeLabel: 'vs. ayer',
-    icon: 'users',
-    color: 'purple',
-    tooltip: 'Clientes únicos que han realizado pedidos hoy'
-  });
+    value: `${stats.customersStats.todayCount}`,
+    icon: <UserRound className="h-4 w-4" />,
+    color: 'violet',
+    lastUpdated: stats.customersStats.lastUpdated,
+    trend: {
+      value: stats.customersStats.changePercentage,
+      label: 'vs. ayer',
+      direction: stats.customersStats.changePercentage >= 0 ? 'up' : 'down',
+      icon: stats.customersStats.changePercentage >= 0 
+        ? <ArrowUpRight className="h-3 w-3" /> 
+        : <ArrowDownRight className="h-3 w-3" />
+    }
+  };
   
-  // Popular Items card
-  const topItems = popularItems && popularItems.length > 0
-    ? popularItems.slice(0, 3).map(item => `${item.name} (${item.quantity})`)
-    : ['Sin datos'];
-    
-  cards.push({
+  // Generate popular dishes card
+  const popularDishesCard: DashboardCard = {
     title: 'Platos Populares',
-    value: popularItems && popularItems.length > 0 
-      ? popularItems[0]?.name || 'Sin datos'
-      : 'Sin datos',
-    subtitle: popularItems && popularItems.length > 0 
-      ? `Vendido ${popularItems[0]?.quantity || 0} veces`
-      : '',
-    listItems: topItems,
-    icon: 'star',
+    icon: <Utensils className="h-4 w-4" />,
     color: 'amber',
-    tooltip: 'Los platos más vendidos en los últimos 7 días'
+    lastUpdated: stats.salesStats.lastUpdated,
+    popularItems: stats.popularItems && stats.popularItems.length > 0 
+      ? stats.popularItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity
+        }))
+      : []
+  };
+  
+  // If no popular items, show "Sin datos" in the value field
+  if (!stats.popularItems || stats.popularItems.length === 0) {
+    popularDishesCard.value = 'Sin datos';
+  } else {
+    // Show name of top dish as the value
+    popularDishesCard.value = stats.popularItems[0].name;
+  }
+  
+  console.log('📊 [DashboardService] Generated cards:', {
+    sales: salesCard.value,
+    orders: ordersCard.value,
+    customers: customersCard.value,
+    popularDishes: popularDishesCard.value
   });
   
-  console.log('✅ [DashboardService] Generated', cards.length, 'dashboard cards');
-  
-  return cards;
-}
+  return [salesCard, ordersCard, customersCard, popularDishesCard];
+};

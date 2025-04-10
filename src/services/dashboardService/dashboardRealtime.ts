@@ -1,80 +1,79 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Define a type for the record structure
-interface OrderRecord {
-  id?: string;
-  status?: string;
-  [key: string]: any;
-}
-
-// Subscribe to dashboard updates using Supabase realtime
-export const subscribeToDashboardUpdates = (callback) => {
-  console.log('🔔 [DashboardService] Setting up realtime subscription');
+/**
+ * Subscribe to order updates using Supabase realtime
+ * This will call the onUpdate callback whenever orders are updated
+ */
+export const subscribeToDashboardUpdates = (onUpdate: () => void): (() => void) => {
+  console.log('🔄 [DashboardService] Setting up realtime subscription to orders...');
   
   try {
-    // Subscribe to orders table changes with a more robust channel
-    const channel = supabase
-      .channel('dashboard-realtime-updates')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' }, 
+    // Subscribe to order changes
+    const orderChanges = supabase
+      .channel('public:orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+        },
         (payload) => {
-          // Handle payload safely by casting to our interface
-          const newRecord = (payload.new || {}) as OrderRecord;
-          const oldRecord = (payload.old || {}) as OrderRecord;
+          console.log('🔄 [DashboardService] Received realtime order update:', payload);
           
-          // Extract relevant details for logging
-          const recordId = newRecord.id || oldRecord?.id || '';
-          const newStatus = newRecord.status || '';
-          const oldStatus = oldRecord?.status || '';
-          
-          console.log(`🔄 [DashboardService] Order change detected: ${payload.eventType} - ID: ${recordId}`);
-          if (newStatus !== oldStatus) {
-            console.log(`🔄 [DashboardService] Status changed: ${oldStatus} → ${newStatus}`);
+          // Show a toast notification for significant events
+          if (payload.eventType === 'INSERT') {
+            toast.info('Nuevo pedido recibido', {
+              description: `Pedido #${payload.new.id.substring(0, 6)} para ${payload.new.customer_name}`
+            });
+          } else if (payload.eventType === 'UPDATE' && 
+                    payload.old.status !== payload.new.status) {
+            toast.info('Estado de pedido actualizado', {
+              description: `Pedido #${payload.new.id.substring(0, 6)}: ${payload.new.status}`
+            });
           }
           
-          // Call callback directly without debouncing for now
-          callback();
+          // Call the update callback to refresh the dashboard data
+          onUpdate();
         }
       )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'order_items' },
-        () => {
-          console.log(`🔄 [DashboardService] Order items change detected`);
-          callback();
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'kitchen_orders' },
-        () => {
-          console.log(`🔄 [DashboardService] Kitchen orders change detected`);
-          callback();
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'sales' },
-        () => {
-          console.log(`🔄 [DashboardService] Sales change detected`);
-          callback();
-        }
-      )
-      .subscribe((status) => {
-        console.log(`🔄 [DashboardService] Subscription status: ${status}`);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [DashboardService] Successfully subscribed to realtime updates!');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [DashboardService] Error with subscription channel');
-        }
-      });
+      .subscribe();
     
-    // Return unsubscribe function
+    // Subscribe to order item changes
+    const orderItemsChanges = supabase
+      .channel('public:order_items')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items',
+        },
+        (payload) => {
+          console.log('🔄 [DashboardService] Received realtime order item update:', payload);
+          
+          // Call the update callback to refresh the dashboard data
+          onUpdate();
+        }
+      )
+      .subscribe();
+    
+    console.log('✅ [DashboardService] Realtime subscription setup complete');
+    
+    // Return cleanup function to unsubscribe from both channels
     return () => {
-      console.log('🔕 [DashboardService] Canceling dashboard subscription');
-      supabase.removeChannel(channel);
+      console.log('🔄 [DashboardService] Cleaning up realtime subscriptions');
+      supabase.removeChannel(orderChanges);
+      supabase.removeChannel(orderItemsChanges);
     };
   } catch (error) {
     console.error('❌ [DashboardService] Error setting up realtime subscription:', error);
-    // Return a no-op function to prevent errors when unsubscribing
-    return () => { console.log('🔕 [DashboardService] No-op unsubscribe (setup failed)'); };
+    
+    // Return a no-op cleanup function
+    return () => {
+      console.log('🔄 [DashboardService] No channels to clean up due to setup error');
+    };
   }
 };

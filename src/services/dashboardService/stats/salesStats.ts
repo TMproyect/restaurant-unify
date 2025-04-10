@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const getSalesStats = async () => {
@@ -9,7 +8,7 @@ export const getSalesStats = async () => {
     const { data: uniqueStatuses, error: statusError } = await supabase
       .from('orders')
       .select('status')
-      .is('status', 'not.null');
+      .not('status', 'is', null);
     
     if (statusError) {
       console.error('❌ [SalesStats] Error obteniendo estados de órdenes:', statusError);
@@ -18,7 +17,7 @@ export const getSalesStats = async () => {
     
     // Extraer estados únicos
     const allStatuses = [...new Set(uniqueStatuses.map(item => item.status))];
-    console.log('📊 [SalesStats] Calculando Ventas: TODOS los estados encontrados en BD =', allStatuses);
+    console.log('��� [SalesStats] Calculando Ventas: TODOS los estados encontrados en BD =', allStatuses);
     
     // 2. DEFINIR ESTADOS QUE REPRESENTAN VENTAS COMPLETADAS
     // Definimos estados que indican una venta completada

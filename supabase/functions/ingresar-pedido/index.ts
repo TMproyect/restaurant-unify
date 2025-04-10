@@ -1,117 +1,17 @@
 
 // API Endpoint para recibir pedidos externos desde n8n u otras integraciones
-// Versión 3.0 - Añadido soporte para order_source - 2025-04-09
+// Versión 3.1 - Refactorizado para mejor mantenibilidad - 2025-04-10
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-// Configuración para CORS
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-// Validar estructura del payload
-function validatePayload(payload: any): string | null {
-  if (!payload) return "Payload vacío o inválido";
-  if (!payload.nombre_cliente) return "Campo 'nombre_cliente' es requerido";
-  
-  // Validar si es para mesa o delivery
-  if (!payload.numero_mesa && !payload.is_delivery) {
-    return "Se requiere 'numero_mesa' o indicar que es delivery con 'is_delivery: true'";
-  }
-  
-  // Validar array de items
-  if (!payload.items_pedido || !Array.isArray(payload.items_pedido) || payload.items_pedido.length === 0) {
-    return "Campo 'items_pedido' debe ser un array no vacío";
-  }
-  
-  // Validar cada item del pedido
-  for (const item of payload.items_pedido) {
-    if (!item.sku_producto) return "Cada item debe tener un 'sku_producto'";
-    if (!item.cantidad || typeof item.cantidad !== 'number' || item.cantidad <= 0) {
-      return "Cada item debe tener una 'cantidad' válida mayor a cero";
-    }
-    if (item.precio_unitario === undefined || typeof item.precio_unitario !== 'number' || item.precio_unitario < 0) {
-      return "Cada item debe tener un 'precio_unitario' válido";
-    }
-  }
-  
-  // Validar total
-  if (payload.total_pedido === undefined || typeof payload.total_pedido !== 'number' || payload.total_pedido < 0) {
-    return "Campo 'total_pedido' debe ser un número válido";
-  }
-  
-  // Validar order_source si está presente
-  if (payload.order_source && !['delivery', 'qr_table', 'pos'].includes(payload.order_source)) {
-    return "El campo 'order_source' debe ser uno de: 'delivery', 'qr_table', 'pos'";
-  }
-  
-  return null; // Sin errores
-}
-
-// Función para extraer y validar la API Key
-async function validateApiKey(supabase: any, apiKey: string): Promise<boolean> {
-  if (!apiKey) {
-    console.log("Error de validación: API Key no proporcionada");
-    return false;
-  }
-  
-  console.log(`Intento de validación de API key: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
-  console.log("Verificación de API key - Versión 3.0 con soporte para order_source y tokens permanentes");
-  
-  try {
-    // Obtener API key almacenada en system_settings
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('value, updated_at')
-      .eq('key', 'external_api_key')
-      .single();
-    
-    if (error) {
-      console.error("Error obteniendo API key de la base de datos:", error.message);
-      console.error("Detalles completos del error:", JSON.stringify(error));
-      return false;
-    }
-    
-    if (!data || !data.value) {
-      console.error("No se encontró una API key configurada en system_settings");
-      return false;
-    }
-    
-    console.log(`API key en DB: ${data.value.substring(0, 4)}****${data.value.substring(data.value.length - 4)}, actualizada: ${data.updated_at}`);
-    console.log(`API key recibida: ${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}`);
-    
-    // Comparación insensible a espacios en blanco y comillas
-    const storedKey = data.value.trim().replace(/^["']|["']$/g, '');
-    const receivedKey = apiKey.trim().replace(/^["']|["']$/g, '');
-    const isValid = receivedKey === storedKey;
-    
-    console.log("¿API key válida?:", isValid);
-    
-    if (!isValid) {
-      console.log("Las API keys no coinciden. Verificando caracteres por caracteres:");
-      if (receivedKey.length !== storedKey.length) {
-        console.log(`Longitudes diferentes: Recibida (${receivedKey.length}) vs. Almacenada (${storedKey.length})`);
-      } else {
-        for (let i = 0; i < receivedKey.length; i++) {
-          if (receivedKey[i] !== storedKey[i]) {
-            console.log(`Diferencia en posición ${i}: '${receivedKey[i]}' vs '${storedKey[i]}'`);
-          }
-        }
-      }
-    }
-    
-    return isValid;
-  } catch (e) {
-    console.error("Error inesperado al validar API key:", e);
-    return false;
-  }
-}
+import { corsHeaders } from './utils/cors.ts';
+import { validatePayload } from './utils/validation.ts';
+import { validateApiKey } from './utils/auth.ts';
+import { processOrder } from './utils/orderProcessing.ts';
+import { createNotification } from './utils/notifications.ts';
 
 serve(async (req) => {
-  console.log("Función ingresar-pedido v3.0 recibió una solicitud:", req.method);
-  console.log("Versión con soporte para order_source - 2025-04-09");
+  console.log("Función ingresar-pedido v3.1 recibió una solicitud:", req.method);
+  console.log("Versión refactorizada con soporte para order_source - 2025-04-10");
   
   // Imprimir todas las cabeceras recibidas para diagnóstico
   const headerEntries = Array.from(req.headers.entries());
@@ -215,125 +115,30 @@ serve(async (req) => {
       });
     }
 
-    // Procesamiento de los items: validar SKUs y obtener datos de menú
-    const validatedItems = [];
-    for (const item of payload.items_pedido) {
-      // Buscar el producto por SKU
-      const { data: menuItem, error: menuError } = await supabase
-        .from('menu_items')
-        .select('id, name, price')
-        .eq('sku', item.sku_producto)
-        .single();
-      
-      if (menuError || !menuItem) {
-        console.log("SKU no encontrado:", item.sku_producto);
-        return new Response(JSON.stringify({ 
-          error: `SKU no encontrado: ${item.sku_producto}`
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      validatedItems.push({
-        menu_item_id: menuItem.id,
-        name: item.nombre_personalizado || menuItem.name,
-        price: item.precio_unitario || menuItem.price,
-        quantity: item.cantidad,
-        notes: item.notas_item || ''
-      });
-    }
+    // Procesar la orden y obtener resultado
+    const orderResult = await processOrder(supabase, payload);
     
-    // Registrar la fuente del pedido
-    const orderSource = payload.order_source || (payload.is_delivery ? 'delivery' : 'pos');
-    console.log(`Fuente del pedido (order_source): ${orderSource}`);
-    
-    // Crear el pedido en la base de datos
-    const orderData = {
-      customer_name: payload.nombre_cliente,
-      table_number: payload.numero_mesa ? parseInt(payload.numero_mesa, 10) : null,
-      table_id: payload.table_id || null,
-      status: payload.estado_pedido_inicial || 'pending',
-      total: payload.total_pedido,
-      items_count: validatedItems.length,
-      is_delivery: !!payload.is_delivery,
-      kitchen_id: payload.kitchen_id || null,
-      external_id: payload.id_externo || null,
-      order_source: orderSource
-    };
-    
-    console.log("Creando nuevo pedido con datos:", JSON.stringify(orderData));
-    
-    // Insertar el pedido
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert(orderData)
-      .select()
-      .single();
-    
-    if (orderError) {
-      console.error("Error creando el pedido:", orderError);
+    if (orderResult.error) {
+      console.error("Error procesando el pedido:", orderResult.error);
       return new Response(JSON.stringify({ 
-        error: "Error al crear el pedido en el sistema", 
-        details: orderError.message
+        error: orderResult.error, 
+        details: orderResult.details || "Error al procesar el pedido"
       }), {
-        status: 500,
+        status: orderResult.status || 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-    
-    console.log("Pedido creado exitosamente con ID:", order.id);
-    
-    // Insertar los items del pedido
-    const orderItems = validatedItems.map(item => ({
-      ...item,
-      order_id: order.id
-    }));
-    
-    console.log("Insertando", orderItems.length, "items para el pedido");
-    
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-    
-    if (itemsError) {
-      console.error("Error creando los items del pedido:", itemsError);
-      // Aunque falló al insertar items, el pedido ya fue creado
-      // En un sistema real, podríamos considerar eliminar el pedido en este caso
-      return new Response(JSON.stringify({ 
-        error: "Error al crear los items del pedido", 
-        details: itemsError.message,
-        order_id: order.id
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    console.log("Items del pedido creados exitosamente");
     
     // Crear notificación para el nuevo pedido
     try {
-      const notificationData = {
+      await createNotification(supabase, {
         title: "Nuevo pedido externo",
-        description: `${payload.nombre_cliente} - Mesa ${payload.numero_mesa || 'Delivery'} - ${validatedItems.length} ítems`,
+        description: `${payload.nombre_cliente} - Mesa ${payload.numero_mesa || 'Delivery'} - ${payload.items_pedido.length} ítems`,
         type: "order",
         user_id: null, // Se notificará a todos los usuarios
-        link: `/orders?id=${order.id}`,
+        link: `/orders?id=${orderResult.order.id}`,
         action_text: "Ver pedido"
-      };
-      
-      console.log("Creando notificación con datos:", JSON.stringify(notificationData));
-      
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert(notificationData);
-      
-      if (notifError) {
-        console.error("Error al crear notificación:", notifError);
-      } else {
-        console.log("Notificación creada exitosamente para el nuevo pedido");
-      }
+      });
     } catch (notifError) {
       console.error("Error al crear notificación:", notifError);
       // No interrumpimos el flujo por un error en la notificación
@@ -343,9 +148,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: "Pedido creado correctamente",
-      pos_order_id: order.id,
-      created_at: order.created_at,
-      order_source: orderSource
+      pos_order_id: orderResult.order.id,
+      created_at: orderResult.order.created_at,
+      order_source: orderResult.orderSource
     }), {
       status: 201,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

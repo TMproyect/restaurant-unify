@@ -51,10 +51,23 @@ export interface DashboardCardData {
   lastUpdated?: string;
 }
 
+export interface DashboardCardTrend {
+  value: number;
+  label: string;
+  direction: 'up' | 'down';
+  icon: string;
+}
+
+export interface DashboardCardPopularItem {
+  name: string;
+  quantity: number;
+}
+
 export interface DashboardCard {
   title: string;
-  value: string;
+  value?: string;
   subtitle?: string;
+  description?: string;
   changeValue?: number;
   changeType?: 'positive' | 'negative';
   changeLabel?: string;
@@ -62,6 +75,9 @@ export interface DashboardCard {
   color: string;
   listItems?: string[];
   tooltip?: string;
+  lastUpdated?: string;
+  trend?: DashboardCardTrend;
+  popularItems?: DashboardCardPopularItem[];
 }
 
 export interface ActivityMonitorAction {

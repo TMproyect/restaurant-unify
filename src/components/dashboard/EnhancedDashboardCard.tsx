@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   DollarSign, Users, Utensils, Package, Star, 
-  ArrowUpRight, ArrowDownRight, Info 
+  ArrowUpRight, ArrowDownRight, Info, Activity, UserRound
 } from 'lucide-react';
 import { 
   Tooltip,
@@ -23,7 +23,10 @@ const EnhancedDashboardCard: React.FC<DashboardCardType> = ({
   icon,
   color,
   listItems,
-  tooltip
+  tooltip,
+  description,
+  trend,
+  popularItems
 }) => {
   const getIcon = () => {
     switch (icon) {
@@ -31,14 +34,29 @@ const EnhancedDashboardCard: React.FC<DashboardCardType> = ({
         return <DollarSign className="h-4 w-4 text-white" />;
       case 'users':
         return <Users className="h-4 w-4 text-white" />;
+      case 'user-round':
+        return <UserRound className="h-4 w-4 text-white" />;
       case 'utensils':
         return <Utensils className="h-4 w-4 text-white" />;
       case 'package':
         return <Package className="h-4 w-4 text-white" />;
       case 'star':
         return <Star className="h-4 w-4 text-white" />;
+      case 'activity':
+        return <Activity className="h-4 w-4 text-white" />;
       default:
         return <DollarSign className="h-4 w-4 text-white" />;
+    }
+  };
+  
+  const getTrendIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'arrow-up-right':
+        return <ArrowUpRight className="h-3 w-3" />;
+      case 'arrow-down-right':
+        return <ArrowDownRight className="h-3 w-3" />;
+      default:
+        return null;
     }
   };
   
@@ -49,6 +67,7 @@ const EnhancedDashboardCard: React.FC<DashboardCardType> = ({
       case 'green':
         return 'from-green-500 to-green-600';
       case 'purple':
+      case 'violet':
         return 'from-purple-500 to-purple-600';
       case 'amber':
         return 'from-amber-500 to-amber-600';
@@ -86,19 +105,31 @@ const EnhancedDashboardCard: React.FC<DashboardCardType> = ({
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
         
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         
-        {changeType && (
+        {trend && (
           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-            <span className={changeType === 'positive' ? 'text-green-600 flex items-center gap-0.5' : 'text-red-600 flex items-center gap-0.5'}>
-              {changeType === 'positive' ? '+' : ''}{changeValue?.toFixed(1)}% 
-              {changeType === 'positive' ? 
-                <ArrowUpRight className="h-3 w-3" /> : 
-                <ArrowDownRight className="h-3 w-3" />
-              }
+            <span className={trend.direction === 'up' ? 'text-green-600 flex items-center gap-0.5' : 'text-red-600 flex items-center gap-0.5'}>
+              {trend.direction === 'up' ? '+' : ''}{trend.value.toFixed(1)}% 
+              {getTrendIcon(trend.icon)}
             </span>
-            {changeLabel}
+            {trend.label}
           </p>
+        )}
+        
+        {popularItems && popularItems.length > 0 && (
+          <div className="mt-3 space-y-1">
+            <p className="text-xs font-medium">Top platos:</p>
+            <ul className="space-y-1">
+              {popularItems.map((item, index) => (
+                <li key={index} className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground"></span>
+                  {item.name} ({item.quantity})
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         
         {listItems && listItems.length > 0 && (

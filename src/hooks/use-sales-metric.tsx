@@ -23,6 +23,17 @@ export function useSalesMetric() {
       // Guardar datos crudos para debugging
       setRawSalesData(salesStats);
       
+      // Verificar si hay un error específico guardado en las estadísticas
+      if (salesStats.error) {
+        console.warn('⚠️ [useSalesMetric] Error reportado:', salesStats.error);
+        setError(salesStats.error);
+        
+        // Notificar, pero no interrumpir el flujo
+        toast.warning('Advertencia', {
+          description: `Error en datos de ventas: ${salesStats.error}`,
+        });
+      }
+      
       // Generar un objeto DashboardStats mínimo con solo los datos de ventas
       const minimalStats = {
         salesStats,

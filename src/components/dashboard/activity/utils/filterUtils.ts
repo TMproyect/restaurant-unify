@@ -1,70 +1,86 @@
 
 import { ActivityMonitorItem } from '@/types/dashboard.types';
 
-// Constants for consistent categorization
-const ACTIVE_STATUSES = [
-  'pending', 'preparing', 'priority-pending', 'priority-preparing',
-  'pendiente', 'preparando', 'en preparación'
-];
+// Status group definitions for consistent classification
+const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
+const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
+const readyStatuses = ['ready', 'listo', 'lista'];
+const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
+const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
 
-const COMPLETED_STATUSES = [
-  'delivered', 'completed', 'entregado', 'completado', 'paid'
-];
+// Active orders are only pending and preparing
+const activeStatuses = [...pendingStatuses, ...preparingStatuses];
 
-const CANCELLED_STATUSES = [
-  'cancelled', 'cancelado', 'cancelada'
-];
-
+/**
+ * Filter items based on the selected tab and additional filter
+ */
 export const filterItems = (
-  items: ActivityMonitorItem[] | undefined, 
-  activeTab: string, 
-  activeFilter: string | null
+  items: ActivityMonitorItem[] = [],
+  activeTab = 'all',
+  activeFilter: string | null = null
 ): ActivityMonitorItem[] => {
-  if (!items || items.length === 0) {
-    return [];
+  if (!items || items.length === 0) return [];
+  
+  // Filter by tab
+  let filteredItems = [...items];
+  
+  switch (activeTab) {
+    case 'active':
+      // CORRECCIÓN: Solo pedidos pendientes y en preparación (no listos)
+      filteredItems = items.filter(item => 
+        activeStatuses.includes(item.status.toLowerCase())
+      );
+      break;
+    case 'completed':
+      // CORRECCIÓN: Solo pedidos completados/entregados (no cancelados)
+      filteredItems = items.filter(item => 
+        completedStatuses.includes(item.status.toLowerCase())
+      );
+      break;
+    case 'cancelled':
+      // Solo pedidos cancelados
+      filteredItems = items.filter(item => 
+        cancelledStatuses.includes(item.status.toLowerCase())
+      );
+      break;
+    case 'exceptions':
+      // CORRECCIÓN: Pedidos con cualquier excepción
+      filteredItems = items.filter(item => 
+        item.isDelayed || item.hasCancellation || 
+        (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
+      );
+      break;
+    // 'all' - no filtering needed
   }
   
-  let filtered = [...items]; // Create a copy of the array
-  
-  // Filter by tab with CORRECT business logic
-  if (activeTab === 'active') {
-    // Active tab should ONLY show orders that require action (pending, preparing)
-    // Explicitly exclude 'ready' and other statuses from active tab
-    filtered = filtered.filter(item => ACTIVE_STATUSES.includes(item.status.toLowerCase()));
-  } else if (activeTab === 'completed') {
-    // Completed tab should ONLY show successfully completed orders
-    // Explicitly exclude 'cancelled' status from completed tab
-    filtered = filtered.filter(item => COMPLETED_STATUSES.includes(item.status.toLowerCase()));
-  } else if (activeTab === 'cancelled') {
-    // Add a new tab specifically for cancelled orders
-    filtered = filtered.filter(item => CANCELLED_STATUSES.includes(item.status.toLowerCase()));
-  } else if (activeTab === 'exceptions') {
-    // Exceptions tab shows orders with special conditions requiring attention
-    filtered = filtered.filter(item => 
-      item.isDelayed || 
-      item.hasCancellation || 
-      (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
-    );
+  // Apply additional filters
+  if (activeFilter) {
+    switch (activeFilter) {
+      case 'delayed':
+        filteredItems = filteredItems.filter(item => item.isDelayed);
+        break;
+      case 'cancelled':
+        filteredItems = filteredItems.filter(item => item.hasCancellation);
+        break;
+      case 'discounts':
+        filteredItems = filteredItems.filter(item => 
+          item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15
+        );
+        break;
+      case 'kitchen':
+        filteredItems = filteredItems.filter(item => !!item.kitchenId);
+        break;
+    }
   }
   
-  // Apply additional filter if selected
-  if (activeFilter === 'delayed') {
-    filtered = filtered.filter(item => item.isDelayed);
-  } else if (activeFilter === 'cancelled') {
-    filtered = filtered.filter(item => item.hasCancellation);
-  } else if (activeFilter === 'discounts') {
-    filtered = filtered.filter(item => item.hasDiscount);
-  } else if (activeFilter === 'kitchen') {
-    filtered = filtered.filter(item => item.kitchenId && item.kitchenId !== '');
-  }
-  
-  // Log for verification
-  console.log(`📊 [ActivityMonitor] Items filtered (${activeTab}/${activeFilter || 'sin filtro'}): ${filtered.length}`);
-  
-  return filtered;
+  console.log(`📊 [filterItems] Filtrado: tab=${activeTab}, filter=${activeFilter}, items=${filteredItems.length}/${items.length}`);
+  return filteredItems;
 };
 
-export const calculateItemsCount = (items: ActivityMonitorItem[] | undefined): Record<string, number> => {
+/**
+ * Calculate the count of items for each category
+ */
+export const calculateItemsCount = (items: ActivityMonitorItem[] = []): Record<string, number> => {
   if (!items || items.length === 0) {
     return {
       all: 0,
@@ -74,30 +90,43 @@ export const calculateItemsCount = (items: ActivityMonitorItem[] | undefined): R
       exceptions: 0
     };
   }
-
-  // Calculate counts using the SAME consistent logic as in filterItems
-  const counts = {
-    all: items.length,
-    
-    // Active: ONLY pending and preparing (items requiring action)
-    active: items.filter(item => ACTIVE_STATUSES.includes(item.status.toLowerCase())).length,
-    
-    // Completed: ONLY successfully completed orders (not cancelled)
-    completed: items.filter(item => COMPLETED_STATUSES.includes(item.status.toLowerCase())).length,
-    
-    // Add cancelled count
-    cancelled: items.filter(item => CANCELLED_STATUSES.includes(item.status.toLowerCase())).length,
-    
-    // Exceptions: any order with delay, cancellation or high discount
-    exceptions: items.filter(item => 
-      item.isDelayed || 
-      item.hasCancellation || 
-      (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
-    ).length
+  
+  // CORRECCIÓN: Contar correctamente según definiciones de estado
+  const all = items.length;
+  
+  const active = items.filter(item => 
+    activeStatuses.includes(item.status.toLowerCase())
+  ).length;
+  
+  const completed = items.filter(item => 
+    completedStatuses.includes(item.status.toLowerCase())
+  ).length;
+  
+  const cancelled = items.filter(item => 
+    cancelledStatuses.includes(item.status.toLowerCase())
+  ).length;
+  
+  const exceptions = items.filter(item => 
+    item.isDelayed || 
+    item.hasCancellation || 
+    (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
+  ).length;
+  
+  return {
+    all,
+    active,
+    completed,
+    cancelled,
+    exceptions
   };
-  
-  // Log counts for verification
-  console.log('📊 [ActivityMonitor] Item counts:', counts);
-  
-  return counts;
+};
+
+// Exportar constantes para reutilización
+export {
+  pendingStatuses,
+  preparingStatuses,
+  readyStatuses,
+  completedStatuses,
+  cancelledStatuses,
+  activeStatuses
 };

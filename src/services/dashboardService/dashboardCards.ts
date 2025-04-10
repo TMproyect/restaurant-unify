@@ -1,124 +1,75 @@
 
-import { DashboardCardData, DashboardStats } from '@/types/dashboard.types';
-import {
-  CreditCard,
-  Utensils,
-  Clock,
-  TrendingUp,
-  ShoppingCart,
-  Users,
-  BarChart
-} from 'lucide-react';
+import { DashboardCard, DashboardStats } from '@/types/dashboard.types';
+import { formatCurrency } from '@/utils/formatters';
 
-// Generate dashboard cards from statistics data
-export const generateDashboardCards = (stats: DashboardStats): DashboardCardData[] => {
-  // Format money values with locale
-  const formatMoney = (value: number): string => {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(value);
-  };
-
-  // Format change percentage
-  const formatChangePercentage = (value: number): string => {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
-  };
-
-  // Sales Card
-  const salesCard: DashboardCardData = {
+// Generate dashboard cards from dashboard statistics
+export function generateDashboardCards(stats: DashboardStats): DashboardCard[] {
+  console.log('📊 [DashboardService] Generating dashboard cards from stats');
+  
+  const {
+    salesStats,
+    ordersStats,
+    customersStats,
+    popularItems
+  } = stats;
+  
+  const cards: DashboardCard[] = [];
+  
+  // Sales card
+  cards.push({
     title: 'Ventas del Día',
-    value: formatMoney(stats.salesStats.dailyTotal),
-    icon: 'CreditCard',
-    subvalue: `${stats.salesStats.transactionCount} transacciones • Ticket promedio: ${formatMoney(stats.salesStats.averageTicket)}`,
-    change: {
-      value: formatChangePercentage(stats.salesStats.changePercentage),
-      isPositive: stats.salesStats.changePercentage >= 0,
-      description: 'desde ayer'
-    },
-    tooltip: 'Total de ventas del día en órdenes completadas o entregadas.',
-    lastUpdated: stats.salesStats.lastUpdated
-  };
-
-  // Orders Card - CORRECTED DEFINITION
-  const ordersCard: DashboardCardData = {
+    value: formatCurrency(salesStats.dailyTotal),
+    subtitle: `${salesStats.transactionCount} transacciones`,
+    changeValue: salesStats.changePercentage,
+    changeType: salesStats.changePercentage >= 0 ? 'positive' : 'negative',
+    changeLabel: 'vs. ayer',
+    icon: 'dollar-sign',
+    color: 'blue',
+    tooltip: 'Total de ventas registradas hoy en órdenes completadas o entregadas'
+  });
+  
+  // Active Orders card
+  cards.push({
     title: 'Pedidos Activos',
-    value: String(stats.ordersStats.activeOrders),
-    icon: 'Utensils',
-    tooltip: 'Órdenes pendientes o en preparación que requieren atención inmediata. No incluye órdenes listas para entregar.',
-    items: [
-      {
-        name: `${stats.ordersStats.pendingOrders} pendientes`,
-        value: '',
-        link: '/orders?filter=pending'
-      },
-      {
-        name: `${stats.ordersStats.inPreparationOrders} en preparación`,
-        value: '',
-        link: '/orders?filter=preparing'
-      },
-      {
-        name: `${stats.ordersStats.readyOrders} listos para entregar`,
-        value: '',
-        link: '/orders?filter=ready'
-      }
-    ],
-    lastUpdated: stats.ordersStats.lastUpdated
-  };
-
-  // Customers Card
-  const customersCard: DashboardCardData = {
+    value: ordersStats.activeOrders.toString(),
+    subtitle: `${ordersStats.pendingOrders} pendientes, ${ordersStats.inPreparationOrders} en preparación`,
+    icon: 'utensils',
+    color: 'green',
+    tooltip: 'Pedidos que requieren atención inmediata. Incluye órdenes pendientes, en preparación y listas para entregar'
+  });
+  
+  // Customers card
+  cards.push({
     title: 'Clientes Hoy',
-    value: String(stats.customersStats.todayCount),
-    icon: 'Users',
-    tooltip: 'Número de clientes únicos atendidos hoy (basado en nombre de cliente).',
-    change: {
-      value: formatChangePercentage(stats.customersStats.changePercentage),
-      isPositive: stats.customersStats.changePercentage >= 0,
-      description: 'desde ayer'
-    },
-    lastUpdated: stats.customersStats.lastUpdated
-  };
-
-  // Popular Items Card - MANDATORY IMPLEMENTATION
-  const popularItemsItems = stats.popularItems.length > 0 
-    ? stats.popularItems.map(item => ({
-        name: item.name,
-        value: `${item.quantity} uds`,
-        link: `/menu/item/${item.id}`
-      }))
-    : [{ name: 'No hay datos suficientes', value: '', link: '' }];
+    value: customersStats.todayCount.toString(),
+    changeValue: customersStats.changePercentage,
+    changeType: customersStats.changePercentage >= 0 ? 'positive' : 'negative',
+    changeLabel: 'vs. ayer',
+    icon: 'users',
+    color: 'purple',
+    tooltip: 'Clientes únicos que han realizado pedidos hoy'
+  });
   
-  const popularItemsCard: DashboardCardData = {
+  // Popular Items card
+  const topItems = popularItems && popularItems.length > 0
+    ? popularItems.slice(0, 3).map(item => `${item.name} (${item.quantity})`)
+    : ['Sin datos'];
+    
+  cards.push({
     title: 'Platos Populares',
-    value: 'Últimos 7 días',
-    icon: 'BarChart',
-    tooltip: 'Los platos más vendidos durante los últimos 7 días, basado en órdenes completadas.',
-    items: popularItemsItems,
-    lastUpdated: stats.salesStats.lastUpdated
-  };
-
-  return [
-    salesCard,
-    ordersCard,
-    customersCard,
-    popularItemsCard
-  ];
-};
-
-// Map icon strings to Lucide React components
-export const getIconComponent = (iconName: string) => {
-  const icons: Record<string, React.ComponentType> = {
-    CreditCard,
-    Utensils,
-    Clock,
-    TrendingUp,
-    ShoppingCart,
-    Users,
-    BarChart
-  };
+    value: popularItems && popularItems.length > 0 
+      ? popularItems[0]?.name || 'Sin datos'
+      : 'Sin datos',
+    subtitle: popularItems && popularItems.length > 0 
+      ? `Vendido ${popularItems[0]?.quantity || 0} veces`
+      : '',
+    listItems: topItems,
+    icon: 'star',
+    color: 'amber',
+    tooltip: 'Los platos más vendidos en los últimos 7 días'
+  });
   
-  return icons[iconName] || CreditCard;
-};
+  console.log('✅ [DashboardService] Generated', cards.length, 'dashboard cards');
+  
+  return cards;
+}

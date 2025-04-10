@@ -6,6 +6,7 @@ import { ActivityMonitorItem } from '@/types/dashboard.types';
 import ActionButtons from './ActionButtons';
 import StatusBadge from './StatusBadge';
 import { ActivityTableProps } from './types';
+import OrderSourceBadge from '@/components/kitchen/OrderSourceBadge';
 
 const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionClick }) => {
   return (
@@ -16,6 +17,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
             <th className="text-left py-2 px-3">Orden</th>
             <th className="text-left py-2 px-3">Cliente</th>
             <th className="text-left py-2 px-3">Estado</th>
+            <th className="text-left py-2 px-3">Fuente</th>
             <th className="text-left py-2 px-3">Área</th>
             <th className="text-center py-2 px-3">Hora</th>
             <th className="text-right py-2 px-3">Total</th>
@@ -52,6 +54,9 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                 <td className="py-2 px-3 text-sm">{item.customer}</td>
                 <td className="py-2 px-3">
                   <StatusBadge status={item.status} isDelayed={item.isDelayed} />
+                </td>
+                <td className="py-2 px-3">
+                  <OrderSourceBadge source={item.orderSource} />
                 </td>
                 <td className="py-2 px-3 text-sm">
                   {item.kitchenId ? (
@@ -101,24 +106,33 @@ function getContextualActions(item: ActivityMonitorItem): string[] {
   // Add status-specific actions
   const status = item.status.toLowerCase();
   
-  if (status.includes('pending') || status.includes('preparing') || status === 'pendiente' || status === 'preparando' || status === 'en preparación') {
+  // CORRECCIÓN: Acciones contextuales específicas por estado
+  if (status === 'pending' || status === 'pendiente' || 
+      status === 'priority-pending' || status === 'preparing' || 
+      status === 'preparando' || status === 'priority-preparing' || 
+      status === 'en preparación') {
     // For pending/preparing orders, offer prioritize action
     actions.push(`prioritize:${item.id}`);
   }
   
-  if (status.includes('cancelled') || status === 'cancelado' || status === 'cancelada') {
+  if (status === 'cancelled' || status === 'cancelado' || status === 'cancelada') {
     // For cancelled orders, offer review-cancel action
     actions.push(`review-cancel:${item.id}`);
   }
   
-  if (status.includes('ready') || status.includes('completed') || status.includes('delivered') || 
-      status === 'listo' || status === 'completado' || status === 'entregado') {
+  // Acción para revisar descuentos altos
+  if (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15) {
+    actions.push(`review-discount:${item.id}`);
+  }
+  
+  if (status === 'ready' || status === 'listo' || status === 'lista' || 
+      status === 'completed' || status === 'completado' || 
+      status === 'delivered' || status === 'entregado') {
     // For completed/ready orders, offer view-receipt action
     actions.push(`view-receipt:${item.id}`);
   }
   
-  // Remove any "review-discount" actions that were previously defined
-  return actions.filter(action => !action.startsWith('review-discount'));
+  return actions;
 }
 
 // Helper to display the kitchen name based on kitchen ID

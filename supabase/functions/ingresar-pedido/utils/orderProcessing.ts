@@ -66,13 +66,16 @@ export async function processOrder(supabase: any, payload: any) {
       });
     }
     
-    // Registrar la fuente del pedido
-    const orderSource = payload.order_source || (payload.is_delivery ? 'delivery' : 'pos');
+    // Determinar la fuente del pedido
+    // CORRECCIÓN: Implementar lógica mejorada para detectar delivery
+    const isDelivery = payload.order_source === 'delivery' || payload.is_delivery === true;
+    const orderSource = payload.order_source || (isDelivery ? 'delivery' : 'pos');
     console.log(`Fuente del pedido (order_source): ${orderSource}`);
     
     // Normalizar número de mesa (puede ser string)
+    // CORRECCIÓN: Para delivery, forzar tableNumber a null
     let tableNumber = null;
-    if (payload.numero_mesa) {
+    if (!isDelivery && payload.numero_mesa) {
       if (typeof payload.numero_mesa === 'number') {
         tableNumber = payload.numero_mesa;
       } else {
@@ -87,6 +90,10 @@ export async function processOrder(supabase: any, payload: any) {
     // Normalizar total del pedido
     const totalPedido = normalizeNumericValue(payload.total_pedido);
     
+    // CORRECCIÓN: Procesar notas generales del pedido
+    const generalNotes = payload.notas_generales_pedido || null;
+    console.log("Notas generales del pedido:", generalNotes);
+    
     // Crear el pedido en la base de datos
     const orderData = {
       customer_name: payload.nombre_cliente,
@@ -95,10 +102,11 @@ export async function processOrder(supabase: any, payload: any) {
       status: payload.estado_pedido_inicial || 'pending',
       total: totalPedido,
       items_count: validatedItems.length,
-      is_delivery: !!payload.is_delivery,
+      is_delivery: isDelivery,
       kitchen_id: payload.kitchen_id || null,
       external_id: payload.id_externo || null,
-      order_source: orderSource
+      order_source: orderSource,
+      general_notes: generalNotes // CORRECCIÓN: Añadir notas generales
     };
     
     console.log("Creando nuevo pedido con datos:", JSON.stringify(orderData));

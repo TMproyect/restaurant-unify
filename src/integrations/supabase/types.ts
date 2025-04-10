@@ -283,6 +283,7 @@ export type Database = {
           customer_name: string
           discount: number | null
           external_id: string | null
+          general_notes: string | null
           id: string
           is_delivery: boolean
           items_count: number
@@ -299,6 +300,7 @@ export type Database = {
           customer_name: string
           discount?: number | null
           external_id?: string | null
+          general_notes?: string | null
           id?: string
           is_delivery?: boolean
           items_count?: number
@@ -315,6 +317,7 @@ export type Database = {
           customer_name?: string
           discount?: number | null
           external_id?: string | null
+          general_notes?: string | null
           id?: string
           is_delivery?: boolean
           items_count?: number

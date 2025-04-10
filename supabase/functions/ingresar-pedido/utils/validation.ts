@@ -36,9 +36,13 @@ export function validatePayload(payload: any): string | null {
   if (!payload) return "Payload vacío o inválido";
   if (!payload.nombre_cliente) return "Campo 'nombre_cliente' es requerido";
   
-  // Validar si es para mesa o delivery
-  if (!payload.numero_mesa && !payload.is_delivery) {
-    return "Se requiere 'numero_mesa' o indicar que es delivery con 'is_delivery: true'";
+  // CORRECCIÓN: Validación basada en order_source
+  // Si es delivery, no requerir número de mesa
+  // Si no es delivery, requerir número de mesa
+  const isDelivery = payload.order_source === 'delivery' || payload.is_delivery === true;
+  
+  if (!isDelivery && !payload.numero_mesa) {
+    return "Para pedidos que no son delivery, se requiere 'numero_mesa'";
   }
   
   // Validar array de items

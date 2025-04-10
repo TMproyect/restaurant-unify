@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -23,6 +22,7 @@ import Reports from '@/pages/Reports';
 import Delivery from '@/pages/Delivery';
 import Staff from '@/pages/Staff';
 import RolesAndPermissionsPage from '@/pages/RolesAndPermissions';
+import SalesTest from '@/pages/SalesTest';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -62,6 +62,7 @@ function App() {
             <Route path="/delivery" element={<Delivery />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/roles-and-permissions" element={<RolesAndPermissionsPage />} />
+            <Route path="/sales-test" element={<SalesTest />} />
           </Routes>
           <Toaster />
           <SonnerToaster position="top-right" />

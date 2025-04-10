@@ -177,8 +177,4 @@ function getDefaultDashboardStats(): DashboardStats {
   };
 }
 
-// We don't need these individual methods anymore since we're fetching all stats in one go
-// Export the main function for backward compatibility
-export {
-  getDashboardStats
-};
+// No duplicate export here - we only export the main function once

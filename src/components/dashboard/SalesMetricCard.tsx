@@ -5,7 +5,7 @@ import EnhancedDashboardCard from './EnhancedDashboardCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, Info, AlertTriangle, Database, ArrowUpRight } from 'lucide-react';
+import { RefreshCcw, Info, AlertTriangle, Database, ArrowUpRight, ExternalLink } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import {
   Tooltip,
@@ -91,7 +91,7 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Caso donde tenemos ventas en 0 (mostrar información de diagnóstico)
+  // Caso donde tenemos ventas en 0 (mostrar información de diagnóstico extendida)
   if (rawSalesData.dailyTotal === 0 && rawSalesData.transactionCount === 0) {
     return (
       <Card className="w-full md:w-[300px] border border-yellow-200">
@@ -107,7 +107,7 @@ const SalesMetricCard: React.FC = () => {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p className="text-xs">
-                    No se encontraron ventas completas hoy. Verifique que las órdenes tengan estados como:
+                    No se encontraron ventas completadas hoy. Verifique que las órdenes tengan estados como:
                     "completado", "pagado", "entregado", "listo" o similares.
                   </p>
                 </TooltipContent>

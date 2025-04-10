@@ -9,6 +9,7 @@ export function useSalesMetric() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rawSalesData, setRawSalesData] = useState<any>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
   const fetchSalesData = useCallback(async () => {
     try {
@@ -22,6 +23,7 @@ export function useSalesMetric() {
       
       // Guardar datos crudos para debugging
       setRawSalesData(salesStats);
+      setLastUpdated(new Date());
       
       // Verificar si hay un error específico guardado en las estadísticas
       if (salesStats.error) {
@@ -55,9 +57,15 @@ export function useSalesMetric() {
       // Generar tarjetas a partir de las estadísticas mínimas
       const cards = generateDashboardCards(minimalStats);
       
-      // Extraer solo la tarjeta de ventas
+      // Extraer solo la tarjeta de ventas y agregar info adicional
       const salesCardOnly = cards[0];
       console.log('✅ [useSalesMetric] Tarjeta de ventas generada:', salesCardOnly);
+      
+      // Agregar detalles de diagnóstico a la tarjeta si no hay ventas
+      if (salesStats.dailyTotal === 0 && salesStats.transactionCount === 0) {
+        salesCardOnly.description = "Sin ventas registradas hoy";
+        salesCardOnly.tooltip = "Verifique estados de órdenes o revise la consola para más detalles";
+      }
       
       setSalesCard(salesCardOnly);
       return salesCardOnly;
@@ -77,11 +85,11 @@ export function useSalesMetric() {
   useEffect(() => {
     fetchSalesData();
     
-    // Configurar un intervalo para refrescar los datos cada 5 minutos
+    // Configurar un intervalo para refrescar los datos cada 3 minutos
     const refreshInterval = setInterval(() => {
       console.log('🔄 [useSalesMetric] Refrescando datos automáticamente...');
       fetchSalesData();
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 3 * 60 * 1000); // 3 minutos
     
     return () => clearInterval(refreshInterval);
   }, [fetchSalesData]);
@@ -89,6 +97,7 @@ export function useSalesMetric() {
   return {
     salesCard,
     rawSalesData,
+    lastUpdated,
     isLoading,
     error,
     refetchSalesData: fetchSalesData

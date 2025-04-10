@@ -287,6 +287,7 @@ export type Database = {
           is_delivery: boolean
           items_count: number
           kitchen_id: string | null
+          order_source: string | null
           status: string
           table_id: string | null
           table_number: number | null
@@ -302,6 +303,7 @@ export type Database = {
           is_delivery?: boolean
           items_count?: number
           kitchen_id?: string | null
+          order_source?: string | null
           status?: string
           table_id?: string | null
           table_number?: number | null
@@ -317,6 +319,7 @@ export type Database = {
           is_delivery?: boolean
           items_count?: number
           kitchen_id?: string | null
+          order_source?: string | null
           status?: string
           table_id?: string | null
           table_number?: number | null

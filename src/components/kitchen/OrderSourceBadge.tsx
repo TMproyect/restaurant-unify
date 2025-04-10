@@ -12,47 +12,33 @@ const OrderSourceBadge: React.FC<OrderSourceBadgeProps> = ({ source }) => {
   if (!source) return null;
   
   // Set specific styles and icon based on order source
-  let Icon, label, badgeVariant;
+  let Icon, label, className;
   
   switch (source) {
     case 'delivery':
       Icon = Truck;
       label = 'DELIVERY';
-      badgeVariant = 'delivery';
+      className = 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
       break;
     case 'qr_table':
       Icon = QrCode;
       label = 'QR MESA';
-      badgeVariant = 'qr';
+      className = 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
       break;
     case 'pos':
       Icon = CreditCard;
       label = 'POS';
-      badgeVariant = 'pos';
+      className = 'bg-green-100 text-green-800 border-green-300 font-semibold';
       break;
     default:
       return null;
   }
   
-  // Get appropriate styles based on the source
-  const getBadgeClasses = () => {
-    switch (source) {
-      case 'delivery':
-        return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold hover:bg-blue-200';
-      case 'qr_table':
-        return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold hover:bg-purple-200';
-      case 'pos':
-        return 'bg-green-100 text-green-800 border-green-300 font-semibold hover:bg-green-200';
-      default:
-        return '';
-    }
-  };
-  
   return (
-    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md border ${getBadgeClasses()}`}>
-      <Icon size={14} className="flex-shrink-0" />
-      <span className="font-bold">{label}</span>
-    </div>
+    <Badge variant="outline" className={className}>
+      <Icon className="mr-1 h-3 w-3" />
+      {label}
+    </Badge>
   );
 };
 

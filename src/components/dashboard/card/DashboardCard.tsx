@@ -8,7 +8,7 @@ import { getCardGradient } from './dashboardCardStyles';
 
 const DashboardCard: React.FC<DashboardCardData> = ({ 
   title, 
-  value, 
+  value = 'N/A', // Add default value to handle optional value prop
   icon, 
   change, 
   subvalue 

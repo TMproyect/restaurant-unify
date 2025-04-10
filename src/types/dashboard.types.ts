@@ -42,7 +42,7 @@ export interface DashboardCardItem {
 
 export interface DashboardCardData {
   title: string;
-  value: string;
+  value?: string; // Changed to optional to match DashboardCard
   icon: string;
   subvalue?: string;
   change?: DashboardCardChange;

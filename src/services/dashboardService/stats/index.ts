@@ -28,7 +28,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     // Single efficient query to get all orders - we'll process everything locally
     const { data: allOrders, error: ordersError } = await supabase
       .from('orders')
-      .select('id, status, created_at, updated_at, customer_name, total')
+      .select('id, status, created_at, updated_at, customer_name, total, discount')
       .order('created_at', { ascending: false });
     
     if (ordersError) {
@@ -45,6 +45,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const pendingOrders = allOrders?.filter(order => pendingStatuses.includes(order.status)) || [];
     const preparingOrders = allOrders?.filter(order => preparingStatuses.includes(order.status)) || [];
     const readyOrders = allOrders?.filter(order => readyStatuses.includes(order.status)) || [];
+    
+    // CORRECTED: Active orders are ONLY pending and preparing orders
     const activeOrders = pendingOrders.length + preparingOrders.length;
     
     // Filter for today's sales (completed orders today)
@@ -54,10 +56,15 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
              completedStatuses.includes(order.status);
     }) || [];
     
+    console.log(`📊 [DashboardService] Today's completed orders found: ${todaySales.length}`);
+    console.log('📊 [DashboardService] Today's orders sample:', todaySales.slice(0, 2));
+    
     // Calculate today's sales figures
     const dailyTotal = todaySales.reduce((sum, order) => sum + (order.total || 0), 0);
     const transactionCount = todaySales.length;
     const averageTicket = transactionCount > 0 ? dailyTotal / transactionCount : 0;
+    
+    console.log(`📊 [DashboardService] Daily total calculated: ${dailyTotal}`);
     
     // Filter for yesterday's sales (for comparison)
     const yesterdaySales = allOrders?.filter(order => {
@@ -81,6 +88,11 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     });
     const todayCustomerCount = uniqueCustomers.size;
     
+    console.log(`📊 [DashboardService] Unique customers today: ${todayCustomerCount}`);
+    if (todayCustomerCount > 0) {
+      console.log(`📊 [DashboardService] Sample customers: ${Array.from(uniqueCustomers).slice(0, 3)}`);
+    }
+    
     // Get unique customers yesterday
     const yesterdayUniqueCustomers = new Set();
     yesterdaySales.forEach(order => {
@@ -96,9 +108,16 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     // In a separate query, get popular items information, but with optimized select
     const { data: orderItemsData, error: itemsError } = await supabase
       .from('order_items')
-      .select('id, name, menu_item_id, quantity, order_id')
-      .order('quantity', { ascending: false })
-      .limit(20); // Limit to just what we need
+      .select(`
+        id, 
+        name, 
+        menu_item_id, 
+        quantity, 
+        order_id, 
+        orders!inner(status)
+      `)
+      .in('orders.status', completedStatuses)
+      .limit(100); // Limit to a reasonable number to avoid excessive data transfer
     
     if (itemsError) {
       console.error('❌ [DashboardService] Error fetching popular items:', itemsError);
@@ -120,6 +139,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       .slice(0, 5); // Get top 5 items
     
     console.log('✅ [DashboardService] All dashboard stats calculated efficiently');
+    console.log('📊 [DashboardService] Popular items:', popularItems);
     
     // Compile all statistics into a single return object
     return {

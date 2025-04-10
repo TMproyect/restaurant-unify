@@ -8,6 +8,7 @@ import { filterItems, calculateItemsCount } from './activity/utils/filterUtils';
 import ActivityHeader from './activity/ActivityHeader';
 import ActivityTabs from './activity/ActivityTabs';
 import ActivityContent from './activity/ActivityContent';
+import DateRangeFilter from './activity/DateRangeFilter';
 
 const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ 
   items, 
@@ -16,6 +17,10 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({
+    start: null,
+    end: null
+  });
   const [itemsCount, setItemsCount] = useState<Record<string, number>>({
     all: 0,
     active: 0,
@@ -31,25 +36,35 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     { id: 'kitchen', label: 'Cocina', icon: <ChefHat className="h-4 w-4 mr-2" /> }
   ];
   
-  // Update counts whenever items change
+  // Update counts whenever items or date range change
   useEffect(() => {
     if (items && items.length > 0) {
-      const counts = calculateItemsCount(items);
+      const counts = calculateItemsCount(items, dateRange);
       setItemsCount(counts);
       console.log('📊 [ActivityMonitor] Item counts updated:', counts);
     }
-  }, [items]);
+  }, [items, dateRange]);
   
-  const filteredItems = filterItems(items, activeTab, activeFilter);
+  const filteredItems = filterItems(items, activeTab, activeFilter, dateRange);
+  
+  const handleDateRangeChange = (range: { start: Date | null; end: Date | null }) => {
+    console.log('📊 [ActivityMonitor] Date range changed:', range);
+    setDateRange(range);
+  };
   
   return (
     <Card>
       <CardHeader className="pb-2">
-        <ActivityHeader 
-          activeFilter={activeFilter} 
-          setActiveFilter={setActiveFilter} 
-          filters={filters} 
-        />
+        <div className="space-y-2">
+          <ActivityHeader 
+            activeFilter={activeFilter} 
+            setActiveFilter={setActiveFilter} 
+            filters={filters}
+          />
+          <div className="flex justify-end">
+            <DateRangeFilter onRangeChange={handleDateRangeChange} />
+          </div>
+        </div>
       </CardHeader>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>

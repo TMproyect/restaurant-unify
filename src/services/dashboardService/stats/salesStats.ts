@@ -19,22 +19,23 @@ export const getSalesStats = async () => {
     console.log(`📊 [SalesStats] Today's date range: ${todayStart.toISOString()} to ${new Date().toISOString()}`);
     console.log(`📊 [SalesStats] Yesterday's date range: ${yesterdayStart.toISOString()} to ${yesterdayEnd.toISOString()}`);
     
-    // Get today's sales from completed and delivered orders
+    // Get today's sales - IMPORTANT: Include "listo" and "lista" statuses
     const { data: todaySalesData, error: salesError } = await supabase
       .from('orders')
       .select('id, total, status, created_at')
       .gte('created_at', todayStart.toISOString())
-      .in('status', ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado']);
+      .in('status', ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado', 'listo', 'lista', 'ready']);
     
     if (salesError) {
       console.error('❌ [SalesStats] Error fetching today sales:', salesError);
       throw salesError;
     }
     
-    // Log the raw sales data for debugging
-    console.log(`📊 [SalesStats] Today's sales data (first 3 records):`, 
-      todaySalesData?.slice(0, 3) || 'No records');
-    console.log(`📊 [SalesStats] Today's sales count: ${todaySalesData?.length || 0}`);
+    // Debug - Log the found orders with their status for troubleshooting
+    console.log(`📊 [SalesStats] Today's sales data found (${todaySalesData?.length || 0} records):`);
+    todaySalesData?.forEach(order => {
+      console.log(`  - Order ID: ${order.id.substring(0, 6)}... | Status: ${order.status} | Total: ${order.total}`);
+    });
     
     const dailyTotal = todaySalesData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
     const transactionCount = todaySalesData?.length || 0;
@@ -43,13 +44,13 @@ export const getSalesStats = async () => {
     console.log(`📊 [SalesStats] Calculated daily total: ${dailyTotal}`);
     console.log(`📊 [SalesStats] Transaction count: ${transactionCount}`);
     
-    // Get yesterday's sales for comparison
+    // Get yesterday's sales with the same status inclusion
     const { data: yesterdaySalesData, error: yesterdayError } = await supabase
       .from('orders')
       .select('id, total')
       .gte('created_at', yesterdayStart.toISOString())
       .lte('created_at', yesterdayEnd.toISOString())
-      .in('status', ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado']);
+      .in('status', ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado', 'listo', 'lista', 'ready']);
     
     if (yesterdayError) {
       console.error('❌ [SalesStats] Error fetching yesterday sales:', yesterdayError);

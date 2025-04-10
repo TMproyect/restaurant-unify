@@ -12,7 +12,12 @@ const SalesMetricCard: React.FC = () => {
   const { salesCard, isLoading, error, refetchSalesData } = useSalesMetric();
   
   useEffect(() => {
-    console.log('Rendered SalesMetricCard with data:', { salesCard, isLoading, error });
+    console.log('Rendered SalesMetricCard with data:', { 
+      salesCard, 
+      isLoading, 
+      error,
+      cardValue: salesCard?.value || 'N/A'
+    });
   }, [salesCard, isLoading, error]);
   
   if (isLoading) {

@@ -28,7 +28,7 @@ export default function SalesTest() {
           <pre className="bg-white p-4 rounded border text-xs overflow-auto max-h-[300px]">
             {`
 1. Se obtiene información del endpoint /orders
-2. Se filtran órdenes con status: ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado']
+2. Se filtran órdenes con status: ['completed', 'delivered', 'completado', 'entregado', 'paid', 'pagado', 'listo', 'lista', 'ready']
 3. Se calcula el total de ventas del día
 4. Se obtienen las ventas de ayer para comparación
 5. Se muestra el resultado en la tarjeta

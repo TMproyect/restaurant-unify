@@ -5,7 +5,7 @@ import EnhancedDashboardCard from './EnhancedDashboardCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, Info, AlertTriangle, Database, ArrowUpRight, ExternalLink } from 'lucide-react';
+import { RefreshCcw, Info, AlertTriangle, Database, ArrowUpRight } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import {
   Tooltip,

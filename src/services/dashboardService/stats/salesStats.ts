@@ -1,13 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { normalizeOrderStatus, getCompletedOrderStatuses, isCompletedOrderStatus } from '@/utils/orderStatusUtils';
+import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
+
+// Función auxiliar para revisar si una orden está completada
+const isCompletedOrder = (status: string): boolean => {
+  return status === 'ready';
+};
 
 export const getSalesStats = async () => {
   try {
     console.log('📊 [SalesStats] INICIO: Calculando estadísticas de ventas');
-    
-    // Enfoque totalmente nuevo - Primero obtendremos todas las órdenes de hoy
-    // y luego filtraremos localmente para máximo control
     
     // 1. Configurar fechas para "hoy" con precisión
     const now = new Date();
@@ -19,7 +21,7 @@ export const getSalesStats = async () => {
     
     console.log(`📊 [SalesStats] Fechas configuradas: Hoy=${todayStart.toISOString()} hasta ${tomorrowStart.toISOString()}`);
     
-    // 2. Obtener TODAS las órdenes de hoy, sin filtro de estado inicial
+    // 2. Obtener TODAS las órdenes de hoy
     const { data: todayOrders, error: ordersError } = await supabase
       .from('orders')
       .select('id, total, status, created_at')
@@ -38,29 +40,18 @@ export const getSalesStats = async () => {
     const allOrderStatuses = [...new Set(todayOrders?.map(order => order.status) || [])];
     console.log('📊 [SalesStats] DIAGNÓSTICO - Todos los estados presentes hoy:', allOrderStatuses);
     
-    // Lista detallada de estados completados
-    const completedStatuses = getCompletedOrderStatuses();
-    console.log('📊 [SalesStats] DIAGNÓSTICO - Estados que se consideran completados:', completedStatuses);
-    
-    // 3. Filtrar por estados completados LOCALMENTE para mayor control
+    // 3. Filtrar órdenes completadas (estado 'ready')
     const completedOrders = todayOrders?.filter(order => {
-      // Normalizar el estado para comparación
-      const normalizedStatus = String(order.status || '').toLowerCase().trim();
-      
-      // Una orden cuenta como venta completa si su estado está en nuestra lista
-      const isCompleted = isCompletedOrderStatus(normalizedStatus);
-      
+      const isCompleted = isCompletedOrder(order.status);
       console.log(`📊 [SalesStats] Orden ${order.id}: estado='${order.status}', ¿es venta?=${isCompleted}`);
-      
       return isCompleted;
     }) || [];
     
     console.log(`📊 [SalesStats] Órdenes completadas filtradas: ${completedOrders.length}`);
     
-    // 4. Calcular totales con verificación de tipos
+    // 4. Calcular totales
     let dailyTotal = 0;
     completedOrders.forEach(order => {
-      // Asegurar que total sea un número válido
       const orderTotal = typeof order.total === 'number' 
         ? order.total 
         : parseFloat(String(order.total).replace(/[^\d.-]/g, '')) || 0;
@@ -74,7 +65,7 @@ export const getSalesStats = async () => {
     
     console.log(`📊 [SalesStats] Total calculado: $${dailyTotal}, Transacciones: ${transactionCount}`);
     
-    // 5. Obtener datos de ayer para comparación usando el mismo enfoque
+    // 5. Obtener datos de ayer para comparación
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStart = new Date(yesterday);
@@ -96,10 +87,10 @@ export const getSalesStats = async () => {
       throw yesterdayError;
     }
     
-    // Filtrar órdenes completadas de ayer usando la misma lógica
-    const completedYesterdayOrders = yesterdayOrders?.filter(order => {
-      return isCompletedOrderStatus(String(order.status || ''));
-    }) || [];
+    // Filtrar órdenes completadas de ayer
+    const completedYesterdayOrders = yesterdayOrders?.filter(order => 
+      isCompletedOrder(order.status)
+    ) || [];
     
     console.log(`📊 [SalesStats] Órdenes completadas ayer: ${completedYesterdayOrders.length}`);
     
@@ -113,17 +104,16 @@ export const getSalesStats = async () => {
       yesterdayTotal += orderTotal;
     });
     
-    // Calcular cambio porcentual con manejo especial para valores cero
+    // Calcular cambio porcentual
     let changePercentage = 0;
     if (yesterdayTotal > 0) {
       changePercentage = ((dailyTotal - yesterdayTotal) / yesterdayTotal) * 100;
     } else if (dailyTotal > 0) {
-      changePercentage = 100; // Si ayer fue 0 pero hoy hay ventas
+      changePercentage = 100;
     }
     
     console.log(`📊 [SalesStats] RESULTADO FINAL: $${dailyTotal} (${transactionCount} trans.) | Ayer: $${yesterdayTotal} | Cambio: ${changePercentage.toFixed(2)}%`);
     
-    // 6. RETORNAR RESULTADOS
     return {
       dailyTotal,
       transactionCount,
@@ -133,8 +123,6 @@ export const getSalesStats = async () => {
     };
   } catch (error) {
     console.error('❌ [SalesStats] Error fatal en cálculo de estadísticas:', error);
-    
-    // Retornar valores predeterminados en lugar de lanzar error
     return {
       dailyTotal: 0,
       transactionCount: 0,

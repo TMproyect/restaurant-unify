@@ -1,3 +1,4 @@
+
 import { DashboardStats } from '@/types/dashboard.types';
 import { getOrdersByDateRange, getOrderItems } from './utils/dbQueries';
 import { getTodayDateRange, getYesterdayDateRange } from './utils/dateUtils';
@@ -59,7 +60,10 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       : 0;
     
     // Get popular items
-    const { data: orderItemsData, error: itemsError } = await getOrderItems(ORDER_STATUSES.completed);
+    // Convert readonly array to mutable array using spread operator
+    const { data: orderItemsData, error: itemsError } = await getOrderItems(
+      Array.from(ORDER_STATUSES.completed)
+    );
     
     if (itemsError) {
       console.error('❌ [DashboardService] Error en consulta de items populares:', itemsError);

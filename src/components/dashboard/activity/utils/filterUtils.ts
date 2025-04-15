@@ -9,7 +9,10 @@ const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 
 const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
 
 // Active orders include pending, preparing and ready orders
-const activeStatuses = [...pendingStatuses, ...preparingStatuses, ...readyStatuses];
+const activeStatuses = [...pendingStatuses, ...preparingStatuses];
+
+// IMPORTANTE: Los pedidos "ready" ahora se consideran "completed" en el monitor de actividad
+// pero siguen siendo "active" en otros contextos como la cocina
 
 /**
  * Filter items based on the selected tab, additional filter, and date range
@@ -53,15 +56,16 @@ export const filterItems = (
   // Then filter by tab
   switch (activeTab) {
     case 'active':
-      // Active includes pending, preparing, and ready orders
+      // Active incluye sólo pending y preparing (no ready)
       filteredItems = filteredItems.filter(item => 
         activeStatuses.includes(item.status.toLowerCase())
       );
       break;
     case 'completed':
-      // CORRECTED: Only completed/delivered orders (not cancelled)
+      // CORRECCIÓN: Incluir órdenes "ready" y "completed"
       filteredItems = filteredItems.filter(item => 
-        completedStatuses.includes(item.status.toLowerCase())
+        completedStatuses.includes(item.status.toLowerCase()) || 
+        readyStatuses.includes(item.status.toLowerCase())
       );
       break;
     case 'cancelled':
@@ -150,12 +154,15 @@ export const calculateItemsCount = (
   // Count correctly according to status definitions
   const all = filteredItems.length;
   
+  // Active son solo pending y preparing (no ready)
   const active = filteredItems.filter(item => 
     activeStatuses.includes(item.status.toLowerCase())
   ).length;
   
+  // Ready y completados van juntos en la vista de actividad
   const completed = filteredItems.filter(item => 
-    completedStatuses.includes(item.status.toLowerCase())
+    completedStatuses.includes(item.status.toLowerCase()) ||
+    readyStatuses.includes(item.status.toLowerCase())
   ).length;
   
   const cancelled = filteredItems.filter(item => 

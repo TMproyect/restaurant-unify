@@ -50,10 +50,17 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       // Determine status flags locally
       const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
       const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
+      const readyStatuses = ['ready', 'listo', 'lista'];
       const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
       const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
       
       const status = order.status.toLowerCase();
+      
+      // CORRECCIÓN: Considerar pedidos 'ready' como 'completed' para el monitor de actividad
+      const normalizedStatus = readyStatuses.includes(status) ? 'completed' : status;
+      
+      // Log para depuración
+      console.log(`📊 [DashboardService] Orden ${order.id.substring(0, 6)}, status original: ${status}, normalizado: ${normalizedStatus}`);
       
       // Use local calculations instead of additional API calls
       const isDelayed = timeElapsedMs > 15 * 60 * 1000 && 
@@ -87,7 +94,7 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
         id: order.id,
         type: 'order',
         customer: order.customer_name,
-        status: order.status,
+        status: normalizedStatus, // Usar el estado normalizado
         timestamp: order.created_at,
         total: order.total || 0,
         itemsCount: order.items_count || 0,
@@ -134,13 +141,21 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
       return false;
     }
     
-    // Determine new status locally
+    // Determine new status with mejor manejo de priorización
     let newStatus = order.status;
-    if (order.status === 'pending' || order.status === 'pendiente') {
+    const normalizedStatus = order.status.toLowerCase();
+    
+    if (normalizedStatus === 'pending' || normalizedStatus === 'pendiente') {
       newStatus = 'priority-pending';
-    } else if (order.status === 'preparing' || order.status === 'preparando' || order.status === 'en preparación') {
+    } else if (normalizedStatus === 'preparing' || normalizedStatus === 'preparando' || normalizedStatus === 'en preparación') {
+      newStatus = 'priority-preparing';
+    } else if (normalizedStatus.includes('pend')) {
+      newStatus = 'priority-pending';
+    } else if (normalizedStatus.includes('prepar')) {
       newStatus = 'priority-preparing';
     }
+    
+    console.log(`🔄 [DashboardService] Cambiando estado de orden ${orderId} de "${order.status}" a "${newStatus}"`);
     
     // Update only if status changed
     if (newStatus !== order.status) {
@@ -159,6 +174,8 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
       
       console.log(`✅ [DashboardService] Order ${orderId} prioritized to "${newStatus}"`);
       return true;
+    } else {
+      console.log(`⚠️ [DashboardService] Order ${orderId} status was not changed because it's already in an appropriate state`);
     }
     
     return true;

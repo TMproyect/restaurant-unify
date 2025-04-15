@@ -1,6 +1,7 @@
 
 export const DASHBOARD_ORDER_STATUSES = {
-  ACTIVE: ['pending', 'preparing', 'ready', 'priority-pending', 'priority-preparing'] as string[],
+  // En el dashboard, Active no incluye ready (solo pending y preparing)
+  ACTIVE: ['pending', 'preparing', 'priority-pending', 'priority-preparing'] as string[],
   PENDING: ['pending', 'priority-pending', 'pendiente', 'nueva', 'nuevo'] as string[],
   PREPARING: ['preparing', 'priority-preparing', 'preparando', 'en preparación', 'cocinando'] as string[],
   READY: ['ready', 'listo', 'lista', 'preparado', 'preparada'] as string[],
@@ -11,8 +12,10 @@ export const DASHBOARD_ORDER_STATUSES = {
 export const isActiveStatus = (status: string): boolean => {
   if (!status) return false;
   const normalizedStatus = status.toLowerCase().trim();
-  return DASHBOARD_ORDER_STATUSES.ACTIVE.some(s => 
-    normalizedStatus === s || normalizedStatus.includes(s)
+  // CORRECCIÓN: Active no incluye ready
+  return ['pending', 'preparing', 'priority-pending', 'priority-preparing'].some(s => 
+    normalizedStatus === s || 
+    normalizedStatus.includes(s)
   );
 };
 
@@ -20,7 +23,8 @@ export const isPendingStatus = (status: string): boolean => {
   if (!status) return false;
   const normalizedStatus = status.toLowerCase().trim();
   return DASHBOARD_ORDER_STATUSES.PENDING.some(s => 
-    normalizedStatus === s || normalizedStatus.includes(s)
+    normalizedStatus === s || 
+    (normalizedStatus.includes(s) && !normalizedStatus.includes('preparing'))
   );
 };
 
@@ -43,9 +47,10 @@ export const isReadyStatus = (status: string): boolean => {
 export const isCompletedStatus = (status: string): boolean => {
   if (!status) return false;
   const normalizedStatus = status.toLowerCase().trim();
+  // Para el Dashboard, consideramos ready como completado
   return DASHBOARD_ORDER_STATUSES.COMPLETED.some(s => 
     normalizedStatus === s || normalizedStatus.includes(s)
-  );
+  ) || isReadyStatus(status); // Incluir ready en completados
 };
 
 export const isCancelledStatus = (status: string): boolean => {

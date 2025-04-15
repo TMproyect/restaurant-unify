@@ -45,7 +45,8 @@ export const getOrdersByDateRange = async (
 
 export const getActiveOrders = async (): Promise<QueryResult<any>> => {
   const { start, end } = getTodayRange();
-  // Create a new array from the readonly array
+  // Crear una copia del array para no modificar el original
+  // IMPORTANTE: Ahora solo incluye pending y preparing (no ready)
   const activeStatuses = [...DASHBOARD_ORDER_STATUSES.ACTIVE];
   console.log(`📊 [DbQueries] Consultando órdenes activas con estados: ${activeStatuses.join(', ')}`);
   return getOrdersByDateRange(start, end, activeStatuses);

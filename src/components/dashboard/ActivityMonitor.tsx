@@ -9,6 +9,9 @@ import ActivityHeader from './activity/ActivityHeader';
 import ActivityTabs from './activity/ActivityTabs';
 import ActivityContent from './activity/ActivityContent';
 import DateRangeFilter from './activity/DateRangeFilter';
+import ActivityPagination from './activity/ActivityPagination';
+
+const ITEMS_PER_PAGE = 50; // Límite de 50 elementos por página
 
 const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ 
   items, 
@@ -29,6 +32,9 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     exceptions: 0
   });
   
+  // Añadir estado para la paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  
   const filters = [
     { id: 'delayed', label: 'Órdenes con Retraso', icon: <Clock className="h-4 w-4 mr-2" /> },
     { id: 'cancelled', label: 'Cancelaciones', icon: <AlertCircle className="h-4 w-4 mr-2" /> },
@@ -45,7 +51,32 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     }
   }, [items, dateRange]);
   
+  // Filtrar los items según los criterios actuales
   const filteredItems = filterItems(items, activeTab, activeFilter, dateRange);
+  
+  // Calcular el número total de páginas
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  
+  // Resetear a página 1 cuando cambie el filtrado
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, activeFilter, dateRange]);
+  
+  // Aplicar paginación a los items filtrados
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
+  );
+  
+  // Manejar cambio de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll al inicio de la tabla
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
   
   const handleDateRangeChange = (range: { start: Date | null; end: Date | null }) => {
     console.log('📊 [ActivityMonitor] Date range changed:', range);
@@ -76,10 +107,21 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
           <ActivityContent 
             isLoading={isLoading}
             items={items}
-            filteredItems={filteredItems}
+            filteredItems={paginatedItems}
             onActionClick={onActionClick}
             activeFilter={activeFilter}
           />
+          
+          {/* Componente de paginación */}
+          {filteredItems.length > ITEMS_PER_PAGE && (
+            <div className="px-6 py-4">
+              <ActivityPagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </Card>

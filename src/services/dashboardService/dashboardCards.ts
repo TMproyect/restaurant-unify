@@ -21,12 +21,12 @@ export const generateDashboardCards = (stats: DashboardStats): DashboardCard[] =
     lastUpdated: stats.salesStats.lastUpdated
   };
   
-  // Generar tarjeta de órdenes
+  // Generar tarjeta de órdenes con mensajes claros para cada estado
   const ordersCard: DashboardCard = {
     title: 'Pedidos Activos',
     value: `${stats.ordersStats.activeOrders}`,
     icon: 'activity',
-    description: `${stats.ordersStats.pendingOrders} pendientes, ${stats.ordersStats.inPreparationOrders} en preparación`,
+    description: `${stats.ordersStats.pendingOrders} pendientes, ${stats.ordersStats.inPreparationOrders} en preparación, ${stats.ordersStats.readyOrders} listos`,
     color: 'green',
     lastUpdated: stats.ordersStats.lastUpdated
   };

@@ -27,6 +27,15 @@ export const getOrdersByDateRange = async (
       
     if (error) throw createServiceError('Error al consultar órdenes', 'QUERY_ERROR', error);
     
+    // Log the raw data for debugging
+    console.log(`📊 [DbQueries] Órdenes obtenidas (${data?.length || 0}):`, data);
+    if (data && data.length > 0) {
+      // Log each order's status for debugging
+      data.forEach(order => {
+        console.log(`📊 [DbQueries] Orden ${order.id}: estado=${order.status}`);
+      });
+    }
+    
     return { data, error: null };
   } catch (error) {
     console.error('❌ [DbQueries] Error:', error);
@@ -38,6 +47,7 @@ export const getActiveOrders = async (): Promise<QueryResult<any>> => {
   const { start, end } = getTodayRange();
   // Create a new array from the readonly array
   const activeStatuses = [...DASHBOARD_ORDER_STATUSES.ACTIVE];
+  console.log(`📊 [DbQueries] Consultando órdenes activas con estados: ${activeStatuses.join(', ')}`);
   return getOrdersByDateRange(start, end, activeStatuses);
 };
 

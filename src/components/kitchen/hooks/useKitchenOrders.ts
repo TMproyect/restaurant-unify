@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { subscribeToOrders } from '@/services/orders/orderSubscriptions';
@@ -44,6 +43,14 @@ export const useKitchenOrders = (
       
       const allStatuses = [...pendingDbStatuses, ...preparingDbStatuses, ...readyDbStatuses];
       
+      // Add debugging to log raw status arrays
+      console.log('🔍 [Kitchen] Status arrays used for filtering:', { 
+        pending: pendingDbStatuses, 
+        preparing: preparingDbStatuses, 
+        ready: readyDbStatuses,
+        all: allStatuses 
+      });
+      
       console.log(`🔍 [Kitchen] Fetching orders with all kitchen statuses: ${allStatuses.join(', ')}`);
       
       // Obtener fecha actual para filtrar
@@ -63,12 +70,18 @@ export const useKitchenOrders = (
       }
       
       console.log(`✅ [Kitchen] Fetched ${data.length} orders`);
+      console.log('🔍 [Kitchen] Raw orders data:', data);
       
       const ordersWithCreatedAt = data.map(order => {
         if (!order) {
           console.warn('[Kitchen] Orden nula encontrada en los datos');
           return null;
         }
+        
+        // Add debugging to see how statuses are being normalized
+        const originalStatus = order.status;
+        const normalizedStatus = normalizeOrderStatus(originalStatus);
+        console.log(`🔍 [Kitchen] Order ${order.id}: Original status "${originalStatus}" normalized to "${normalizedStatus}"`);
         
         return {
           ...order,

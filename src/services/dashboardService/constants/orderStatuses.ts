@@ -9,17 +9,33 @@ export const DASHBOARD_ORDER_STATUSES = {
 };
 
 export const isActiveStatus = (status: string): boolean => {
-  return DASHBOARD_ORDER_STATUSES.ACTIVE.includes(status.toLowerCase());
+  if (!status) return false;
+  const normalizedStatus = status.toLowerCase().trim();
+  return DASHBOARD_ORDER_STATUSES.ACTIVE.some(s => 
+    normalizedStatus === s || normalizedStatus.includes(s)
+  );
 };
 
 export const isPendingStatus = (status: string): boolean => {
-  return DASHBOARD_ORDER_STATUSES.PENDING.includes(status.toLowerCase());
+  if (!status) return false;
+  const normalizedStatus = status.toLowerCase().trim();
+  return DASHBOARD_ORDER_STATUSES.PENDING.some(s => 
+    normalizedStatus === s || normalizedStatus.includes(s)
+  );
 };
 
 export const isPreparingStatus = (status: string): boolean => {
-  return DASHBOARD_ORDER_STATUSES.PREPARING.includes(status.toLowerCase());
+  if (!status) return false;
+  const normalizedStatus = status.toLowerCase().trim();
+  return DASHBOARD_ORDER_STATUSES.PREPARING.some(s => 
+    normalizedStatus === s || normalizedStatus.includes(s)
+  );
 };
 
 export const isReadyStatus = (status: string): boolean => {
-  return DASHBOARD_ORDER_STATUSES.READY.includes(status.toLowerCase());
+  if (!status) return false;
+  const normalizedStatus = status.toLowerCase().trim();
+  return DASHBOARD_ORDER_STATUSES.READY.some(s => 
+    normalizedStatus === s || normalizedStatus.includes(s)
+  );
 };

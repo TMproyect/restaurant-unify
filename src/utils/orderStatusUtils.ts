@@ -25,13 +25,15 @@ export const normalizeOrderStatus = (status: string): NormalizedOrderStatus => {
       normalizedStatus === 'pendiente' || 
       normalizedStatus.includes('pend') || 
       normalizedStatus.includes('nueva') ||
-      normalizedStatus.includes('nuevo')) {
+      normalizedStatus.includes('nuevo') ||
+      normalizedStatus.includes('priority-pend')) {
     return 'pending';
   } else if (normalizedStatus === 'preparing' || 
              normalizedStatus === 'preparando' || 
              normalizedStatus.includes('prepar') || 
              normalizedStatus.includes('en prep') || 
-             normalizedStatus.includes('cocinando')) {
+             normalizedStatus.includes('cocinando') ||
+             normalizedStatus.includes('priority-prepar')) {
     return 'preparing';
   } else if (normalizedStatus === 'ready' || 
              normalizedStatus === 'listo' || 

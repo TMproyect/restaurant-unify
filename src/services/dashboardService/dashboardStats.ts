@@ -1,6 +1,9 @@
 import { DashboardStats } from '@/types/dashboard.types';
 import { getOrdersByDateRange, getOrderItems } from './utils/dbQueries';
 import { getTodayDateRange, getYesterdayDateRange } from './utils/dateUtils';
+import { calculateOrderCounts } from './utils/orderCalculations';
+import { getUniqueCustomers } from './utils/customerCalculations';
+import { ORDER_STATUSES } from './utils/statusConstants';
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   try {
@@ -13,7 +16,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const { data: ordersData, error: ordersError } = await getOrdersByDateRange(
       todayStart,
       tomorrowStart,
-      ['pending', 'preparing', 'ready']
+      [...ORDER_STATUSES.pending, ...ORDER_STATUSES.preparing, ...ORDER_STATUSES.ready]
     );
     
     if (ordersError) throw ordersError;
@@ -25,26 +28,14 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const { data: yesterdaySales, error: yesterdayError } = await getOrdersByDateRange(yesterdayStart, yesterdayEnd);
     if (yesterdayError) throw yesterdayError;
     
-    // Calculate metrics using existing logic
-    // Define status groups for consistent categorization
-    const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
-    const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
-    const readyStatuses = ['ready', 'listo', 'lista'];
-    
-    // CORRECCIÓN: Usar exactamente 'ready' como único estado que cuenta como completado
-    const completedStatuses = ['ready'];
-    
-    const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
-    
-    // Count orders by status with consistent categorization
-    const pendingOrders = ordersData?.filter(order => pendingStatuses.includes(order.status)).length || 0;
-    const preparingOrders = ordersData?.filter(order => preparingStatuses.includes(order.status)).length || 0;
-    const readyOrders = ordersData?.filter(order => readyStatuses.includes(order.status)).length || 0;
-    const completedOrders = todaySales?.length || 0;
-    const cancelledOrders = ordersData?.filter(order => cancelledStatuses.includes(order.status)).length || 0;
-    
-    // CORRECT: Active orders are ONLY pending and preparing (not ready)
-    const activeOrders = pendingOrders + preparingOrders;
+    // Calculate order metrics
+    const {
+      pendingOrders,
+      preparingOrders,
+      readyOrders,
+      completedOrders,
+      activeOrders
+    } = calculateOrderCounts(ordersData);
     
     // Calculate sales totals
     const dailyTotal = todaySales?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
@@ -57,40 +48,25 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       ? ((dailyTotal - yesterdayTotal) / yesterdayTotal) * 100 
       : 0;
     
-    // Get unique customers today with accurate time filter
-    // Count unique customer names only from completed/delivered orders
-    const uniqueCustomers = new Set();
-    todaySales?.forEach(order => {
-      if (order.customer_name) {
-        uniqueCustomers.add(order.customer_name.toLowerCase());
-      }
-    });
+    // Calculate customer metrics
+    const uniqueCustomers = getUniqueCustomers(todaySales);
+    const yesterdayUniqueCustomers = getUniqueCustomers(yesterdaySales);
     
     const todayCustomerCount = uniqueCustomers.size;
-    
-    // Get unique customers yesterday for comparison
-    const yesterdayUniqueCustomers = new Set();
-    yesterdaySales?.forEach(order => {
-      if (order.customer_name) {
-        yesterdayUniqueCustomers.add(order.customer_name.toLowerCase());
-      }
-    });
-    
     const yesterdayCustomerCount = yesterdayUniqueCustomers.size;
     const customerChangePercentage = yesterdayCustomerCount > 0
       ? ((todayCustomerCount - yesterdayCustomerCount) / yesterdayCustomerCount) * 100
       : 0;
     
-    // Get popular items (all time, not just 7 days) - MODIFIED TO ENSURE RESULTS
-    // We'll query order_items directly with no time limit first to ensure we get some data
-    const { data: orderItemsData, error: itemsError } = await getOrderItems(completedStatuses);
+    // Get popular items
+    const { data: orderItemsData, error: itemsError } = await getOrderItems(ORDER_STATUSES.completed);
     
     if (itemsError) {
       console.error('❌ [DashboardService] Error en consulta de items populares:', itemsError);
       throw itemsError;
     }
     
-    // Calculate item popularity with detailed logging
+    // Calculate item popularity
     const itemCountMap = new Map();
     orderItemsData?.forEach(item => {
       const itemId = item.menu_item_id || item.name;
@@ -99,10 +75,9 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       itemCountMap.set(itemId, count);
     });
     
-    // Convert to array and sort by quantity
     const popularItems = Array.from(itemCountMap.values())
       .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5) // Get top 5 items
+      .slice(0, 5)
       .map(item => ({
         name: item.name,
         quantity: item.quantity,

@@ -39,8 +39,7 @@ export const loadKitchenOrders = async (
           id,
           name,
           quantity,
-          notes,
-          variants
+          notes
         )
       `)
       .in('status', statusFilters)
@@ -80,7 +79,7 @@ export const loadKitchenOrders = async (
         name: item.name,
         quantity: item.quantity,
         notes: item.notes || '',
-        variants: item.variants || [],
+        variants: [] // Proporcionar un array vacío ya que la columna no existe
       }));
       
       // Normalizar el orderSource para que cumpla con los tipos esperados

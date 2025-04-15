@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import ActionButton from './ActionButton';
@@ -46,29 +45,23 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
-  // Determine if the order is urgent based on timer calculations
   const createdDate = new Date(order.createdAt);
   const now = new Date();
   const secondsElapsed = Math.floor((now.getTime() - createdDate.getTime()) / 1000);
   const minutesElapsed = secondsElapsed / 60;
   
-  // Calculate urgency and warning thresholds
   const isUrgent = minutesElapsed >= urgencyThreshold;
   const isWarning = minutesElapsed >= (urgencyThreshold * 0.7) && minutesElapsed < urgencyThreshold;
 
-  // Determine card styling based on status and urgency
   const getCardStyles = () => {
-    // Urgent style takes precedence
     if (orderStatus === 'pending' && isUrgent) {
       return 'border-l-4 border-l-red-500 bg-red-50/80';
     }
     
-    // Warning state
     if (orderStatus === 'pending' && isWarning) {
       return 'border-l-4 border-l-yellow-500 bg-yellow-50/80';
     }
 
-    // Otherwise, use status-based styling
     switch (orderStatus) {
       case 'pending':
         return 'border-l-4 border-l-gray-300 bg-white';
@@ -83,18 +76,16 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     }
   };
 
-  // Add subtle shadow for urgent orders
   const urgentClass = isUrgent && orderStatus === 'pending' ? 'shadow-md' : '';
   
-  // Abrir el diálogo con detalles
   const handleOpenDetails = () => {
     setIsDialogOpen(true);
   };
 
-  // Handle dialog close and action 
-  const handleAction = async (newStatus: NormalizedOrderStatus) => {
-    await updateOrderStatus(order.id, newStatus);
+  const handleAction = async (newStatus: NormalizedOrderStatus): Promise<boolean> => {
+    const result = await updateOrderStatus(order.id, newStatus);
     setIsDialogOpen(false);
+    return result;
   };
 
   return (
@@ -145,7 +136,6 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             ))}
           </ul>
           
-          {/* Action button now at the bottom with auto margin top */}
           {hasManagePermission && (
             <div className="mt-auto pt-2">
               <ActionButton 

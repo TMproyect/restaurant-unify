@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useDailySales } from '@/hooks/use-daily-sales';
 import EnhancedDashboardCard from './EnhancedDashboardCard';
+import { DashboardCard } from '@/types/dashboard.types';
 
 const SalesMetricCard: React.FC = () => {
   const { 
@@ -64,7 +65,7 @@ const SalesMetricCard: React.FC = () => {
   }
   
   // Create dashboard card data with proper type definitions
-  const dashboardCard = {
+  const dashboardCard: DashboardCard = {
     title: 'Ventas del Día',
     value: formatCurrency(salesTotal),
     icon: 'dollar-sign',
@@ -74,10 +75,12 @@ const SalesMetricCard: React.FC = () => {
       label: `${transactionCount} transacciones`
     },
     trend: {
-      value: 0,                                      // Default trend value
-      label: 'hoy',                                 // Label for trend
-      direction: (transactionCount > 0 ? 'up' : 'down') as 'up' | 'down', // Define strict union type
-      icon: (transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right') // Icon for trend
+      value: 0,
+      label: 'hoy',
+      // Definir explícitamente como literal de unión
+      direction: transactionCount > 0 ? 'up' : 'down',
+      // Asignar el nombre del icono según la dirección
+      icon: transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right'
     }
   };
   

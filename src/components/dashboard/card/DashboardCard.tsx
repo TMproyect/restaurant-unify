@@ -14,6 +14,7 @@ interface DashboardCardProps extends DashboardCardData {
   };
   subvalue?: string;
   value?: string; // Make value optional to match DashboardCard interface
+  icon?: string | React.ReactNode; // Allow both string and ReactNode for icon
 }
 
 const DashboardCard: React.FC<DashboardCardProps> = ({ 
@@ -23,7 +24,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   change, 
   subvalue 
 }) => {
-  const { bg, iconBg, textColor } = getCardGradient(icon);
+  const { bg, iconBg, textColor } = getCardGradient(typeof icon === 'string' ? icon : undefined);
   
   return (
     <Card className={`overflow-hidden border-none shadow-md bg-gradient-to-br ${bg} hover:shadow-lg transition-shadow`}>
@@ -32,7 +33,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
           {title}
         </CardTitle>
         <div className={`h-8 w-8 rounded-full bg-gradient-to-r ${iconBg} flex items-center justify-center`}>
-          <CardIcon icon={icon} />
+          {typeof icon === 'string' ? <CardIcon icon={icon} /> : icon}
         </div>
       </CardHeader>
       <CardContent>
@@ -62,3 +63,4 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
 };
 
 export default DashboardCard;
+

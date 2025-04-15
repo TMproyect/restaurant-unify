@@ -36,7 +36,9 @@ export const getOrdersByDateRange = async (
 
 export const getActiveOrders = async (): Promise<QueryResult<any>> => {
   const { start, end } = getTodayRange();
-  return getOrdersByDateRange(start, end, DASHBOARD_ORDER_STATUSES.ACTIVE);
+  // Create a new array from the readonly array
+  const activeStatuses = [...DASHBOARD_ORDER_STATUSES.ACTIVE];
+  return getOrdersByDateRange(start, end, activeStatuses);
 };
 
 export const getOrderItems = async (status: string[] = ['ready']): Promise<QueryResult<any>> => {
@@ -63,4 +65,3 @@ export const getOrderItems = async (status: string[] = ['ready']): Promise<Query
     return { data: null, error: error as Error };
   }
 };
-

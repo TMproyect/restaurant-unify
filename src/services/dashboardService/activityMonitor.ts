@@ -56,11 +56,14 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       
       const status = order.status.toLowerCase();
       
+      // Check if the order has a priority prefix
+      const isPrioritized = status.startsWith('priority-');
+      
       // CORRECCIÓN: Considerar pedidos 'ready' como 'completed' para el monitor de actividad
       const normalizedStatus = readyStatuses.includes(status) ? 'completed' : status;
       
       // Log para depuración
-      console.log(`📊 [DashboardService] Orden ${order.id.substring(0, 6)}, status original: ${status}, normalizado: ${normalizedStatus}`);
+      console.log(`📊 [DashboardService] Orden ${order.id.substring(0, 6)}, status original: ${status}, normalizado: ${normalizedStatus}, priorizado: ${isPrioritized}`);
       
       // Use local calculations instead of additional API calls
       const isDelayed = timeElapsedMs > 15 * 60 * 1000 && 
@@ -78,7 +81,10 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       actions.push(`view:${order.id}`);
       
       if (pendingStatuses.includes(status) || preparingStatuses.includes(status)) {
-        actions.push(`prioritize:${order.id}`);
+        // Only show prioritize option if not already prioritized
+        if (!isPrioritized) {
+          actions.push(`prioritize:${order.id}`);
+        }
       }
       
       if (!cancelledStatuses.includes(status)) {
@@ -105,7 +111,8 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
         discountPercentage: hasDiscount ? discountPercentage : undefined,
         actions,
         kitchenId: order.kitchen_id || '',
-        orderSource: order.order_source || 'pos'
+        orderSource: order.order_source || 'pos',
+        isPrioritized // Add the prioritized flag to the activity item
       };
     });
     
@@ -127,7 +134,7 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
     // Get current status in a single query
     const { data: order, error: getError } = await supabase
       .from('orders')
-      .select('status')
+      .select('status, id')
       .eq('id', orderId)
       .single();
     

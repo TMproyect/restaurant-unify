@@ -55,7 +55,10 @@ export function prioritizeOrderAction(orderId: string, callback?: () => void) {
     loading: 'Priorizando orden...',
     success: () => {
       console.log('✅ [useActivity] Order prioritized successfully');
-      if (callback) callback();
+      if (callback) {
+        console.log('✅ [useActivity] Running callback after prioritization');
+        callback();
+      }
       return 'Orden priorizada exitosamente';
     },
     error: (err) => {

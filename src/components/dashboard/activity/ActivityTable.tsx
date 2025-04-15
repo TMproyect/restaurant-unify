@@ -7,6 +7,7 @@ import ActionButtons from './ActionButtons';
 import StatusBadge from './StatusBadge';
 import { ActivityTableProps } from './types';
 import OrderSourceBadge from '@/components/kitchen/OrderSourceBadge';
+import { Clock, Zap } from 'lucide-react';
 
 const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionClick }) => {
   return (
@@ -20,6 +21,8 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
             <th className="text-left py-2 px-3">Fuente</th>
             <th className="text-left py-2 px-3">Área</th>
             <th className="text-center py-2 px-3">Hora</th>
+            <th className="text-center py-2 px-3">Prioridad</th>
+            <th className="text-center py-2 px-3">Atrasado</th>
             <th className="text-right py-2 px-3">Total</th>
             <th className="text-center py-2 px-3">Acciones</th>
           </tr>
@@ -78,6 +81,26 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                     {formatTime(new Date(item.timestamp))}
                   </div>
                 </td>
+                <td className="py-2 px-3 text-center">
+                  {item.isPrioritized ? (
+                    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Priorizado
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Normal</span>
+                  )}
+                </td>
+                <td className="py-2 px-3 text-center">
+                  {item.isDelayed ? (
+                    <Badge variant="destructive" className="flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Atrasado
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">A tiempo</span>
+                  )}
+                </td>
                 <td className="py-2 px-3 text-right">
                   <div className="font-medium text-sm">{formatCurrency(item.total)}</div>
                   {item.hasDiscount && item.discountPercentage !== undefined && (
@@ -108,13 +131,13 @@ function getContextualActions(item: ActivityMonitorItem): string[] {
   
   // Add status-specific actions
   const status = item.status.toLowerCase();
+  const isPrioritized = item.isPrioritized;
   
   // CORRECCIÓN: Acciones contextuales específicas por estado
-  if (status === 'pending' || status === 'pendiente' || 
-      status === 'priority-pending' || status === 'preparing' || 
-      status === 'preparando' || status === 'priority-preparing' || 
-      status === 'en preparación') {
-    // For pending/preparing orders, offer prioritize action
+  if ((status === 'pending' || status === 'pendiente' || 
+      status === 'preparing' || status === 'preparando' || 
+      status === 'en preparación') && !isPrioritized) {
+    // For pending/preparing orders, offer prioritize action if not already prioritized
     actions.push(`prioritize:${item.id}`);
   }
   

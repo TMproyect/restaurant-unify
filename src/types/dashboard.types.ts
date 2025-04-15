@@ -1,113 +1,80 @@
 
-// Dashboard types for the dashboard service
+import { ReactNode } from 'react';
 
+// Dashboard stats and metric types
 export interface DashboardStats {
-  salesStats: {
-    dailyTotal: number;
-    transactionCount: number;
-    averageTicket: number;
-    changePercentage: number;
-    lastUpdated: string;
-  };
-  ordersStats: {
-    activeOrders: number;
-    pendingOrders: number;
-    inPreparationOrders: number;
-    readyOrders: number;
-    lastUpdated: string;
-  };
-  customersStats: {
-    todayCount: number;
-    changePercentage: number;
-    lastUpdated: string;
-  };
-  popularItems: Array<{
-    name: string;
-    quantity: number;
-    id: string;
-  }>;
+  salesStats: SalesStats;
+  ordersStats: OrdersStats;
+  customersStats: CustomersStats;
+  popularItems: PopularMenuItem[];
 }
 
-export interface DashboardCardChange {
-  value: string;
-  isPositive: boolean;
-  description: string;
+export interface SalesStats {
+  dailyTotal: number;
+  transactionCount: number;
+  averageTicket: number;
+  changePercentage: number;
+  lastUpdated: string;
 }
 
-export interface DashboardCardItem {
-  name: string;
-  value: string;
-  link?: string;
+export interface OrdersStats {
+  activeOrders: number;
+  pendingOrders: number;
+  inPreparationOrders: number;
+  readyOrders: number;
+  completedOrders?: number;
+  cancelledOrders?: number;
+  lastUpdated: string;
 }
 
-export interface DashboardCardData {
-  title: string;
-  value?: string; // Changed to optional to match DashboardCard
-  icon: string;
-  subvalue?: string;
-  change?: DashboardCardChange;
-  items?: DashboardCardItem[];
-  tooltip?: string;
-  lastUpdated?: string;
+export interface CustomersStats {
+  todayCount: number;
+  changePercentage: number;
+  lastUpdated: string;
 }
 
-export interface DashboardCardTrend {
-  value: number;
-  label: string;
-  direction: 'up' | 'down';
-  icon: string;
-}
-
-export interface DashboardCardPopularItem {
+export interface PopularMenuItem {
+  id: string;
   name: string;
   quantity: number;
 }
 
-export interface DashboardCard {
+// Dashboard cards and UI types
+export interface DashboardCardData {
   title: string;
-  value?: string;
-  subtitle?: string;
-  description?: string;
-  changeValue?: number;
-  changeType?: 'positive' | 'negative';
-  changeLabel?: string;
-  icon: string;
-  color: string;
-  listItems?: string[];
-  tooltip?: string;
-  lastUpdated?: string;
-  trend?: DashboardCardTrend;
-  popularItems?: DashboardCardPopularItem[];
+  value: string;
+  changePercent?: number;
+  changeText?: string;
+  icon?: ReactNode;
+  color?: 'default' | 'success' | 'warning' | 'error' | 'info';
+  linkText?: string;
+  linkHref?: string;
+  detail?: string;
+  footer?: ReactNode | string;
 }
 
-export interface ActivityMonitorAction {
-  label: string;
-  action: string;
-  type: 'default' | 'warning' | 'danger' | 'success';
-}
-
+// Activity monitor types
 export interface ActivityMonitorItem {
   id: string;
-  type: 'order' | 'reservation';
-  status: string;
+  type: 'order' | 'customer' | 'staff' | 'system';
   customer: string;
-  total: number;
+  status: string;
   timestamp: string;
+  total: number;
+  itemsCount: number;
   timeElapsed: number;
   isDelayed: boolean;
   hasCancellation: boolean;
   hasDiscount: boolean;
   discountPercentage?: number;
-  itemsCount: number;
-  actions: string[]; // Actions are stored as strings with the format "actionType:id"
-  kitchenId?: string;  // Add kitchen ID for connecting with kitchen area
-  appliedBy?: string;
-  orderSource?: string; // Add order source field
+  actions: string[];
+  kitchenId: string;
+  orderSource: string;
+  isPrioritized?: boolean;
 }
 
 export interface ActivityMonitorProps {
   items: ActivityMonitorItem[];
   isLoading: boolean;
-  onRefresh?: () => void;
-  onActionClick?: (action: string) => void;
+  onActionClick: (action: string) => void;
 }

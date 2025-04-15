@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import ActionButton from './ActionButton';
@@ -8,13 +9,14 @@ import OrderDetails from './OrderDetails';
 import OrderStatusActions from './OrderStatusActions';
 import { OrderItem } from './types';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
-import { Calendar } from 'lucide-react';
+import { Calendar, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from '@/components/ui/badge';
 
 interface KitchenOrderCardProps {
   order: {
@@ -53,7 +55,15 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
   const isUrgent = minutesElapsed >= urgencyThreshold;
   const isWarning = minutesElapsed >= (urgencyThreshold * 0.7) && minutesElapsed < urgencyThreshold;
 
+  // Check if the order is prioritized by examining its status
+  const isPrioritized = order.status.toLowerCase().includes('priority-');
+
   const getCardStyles = () => {
+    // First, check if the order is prioritized
+    if (isPrioritized) {
+      return 'border-l-4 border-l-yellow-500 bg-yellow-50/80';
+    }
+    
     if (orderStatus === 'pending' && isUrgent) {
       return 'border-l-4 border-l-red-500 bg-red-50/80';
     }
@@ -76,7 +86,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     }
   };
 
-  const urgentClass = isUrgent && orderStatus === 'pending' ? 'shadow-md' : '';
+  const urgentClass = (isUrgent && orderStatus === 'pending') || isPrioritized ? 'shadow-md' : '';
   
   const handleOpenDetails = () => {
     setIsDialogOpen(true);
@@ -101,6 +111,12 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
               <span className="text-sm font-normal">
                 Mesa {order.table}
               </span>
+              {isPrioritized && (
+                <Badge className="ml-1 bg-yellow-100 text-yellow-800 border-yellow-300 flex items-center">
+                  <Zap size={12} className="mr-1" />
+                  <span className="text-xs">Priorizado</span>
+                </Badge>
+              )}
             </CardTitle>
             <OrderTimer 
               createdAt={order.createdAt} 
@@ -143,6 +159,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                 hasManagePermission={hasManagePermission}
                 orderId={order.id}
                 updateOrderStatus={updateOrderStatus}
+                isPrioritized={isPrioritized}
               />
             </div>
           )}
@@ -152,7 +169,15 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Detalles del Pedido #{order.id.substring(0, 6)}</DialogTitle>
+            <DialogTitle>
+              Detalles del Pedido #{order.id.substring(0, 6)}
+              {isPrioritized && (
+                <Badge className="ml-2 bg-yellow-100 text-yellow-800 border-yellow-300">
+                  <Zap size={12} className="mr-1" />
+                  Priorizado
+                </Badge>
+              )}
+            </DialogTitle>
           </DialogHeader>
           <OrderDetails 
             order={order}
@@ -164,6 +189,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             <OrderStatusActions 
               orderStatus={orderStatus}
               onAction={handleAction}
+              isPrioritized={isPrioritized}
             />
           )}
         </DialogContent>

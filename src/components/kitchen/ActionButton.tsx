@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChefHat, CheckCircle, XCircle } from 'lucide-react';
+import { ChefHat, CheckCircle, XCircle, Zap } from 'lucide-react';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 interface ActionButtonProps {
@@ -9,13 +9,15 @@ interface ActionButtonProps {
   hasManagePermission: boolean;
   orderId: string;
   updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<boolean>;
+  isPrioritized?: boolean;
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({
   orderStatus,
   hasManagePermission,
   orderId,
-  updateOrderStatus
+  updateOrderStatus,
+  isPrioritized = false
 }) => {
   // Only show button if user has permission
   if (!hasManagePermission) {
@@ -28,17 +30,22 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     updateOrderStatus(orderId, newStatus);
   };
 
+  // Use a different variant for prioritized orders
+  const priorityVariant = isPrioritized ? "priority" : "warning";
+
   // Determine which action button to show based on current status
   switch (orderStatus) {
     case 'pending':
       return (
         <Button 
-          variant="warning" 
+          variant={priorityVariant}
           size="sm"
-          className="flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full"
+          className={`flex items-center gap-1 shadow-sm hover:shadow-md transition-all font-medium w-full ${
+            isPrioritized ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : ''
+          }`}
           onClick={(e) => handleClick(e, 'preparing')}
         >
-          <ChefHat size={18} />
+          {isPrioritized ? <Zap size={18} /> : <ChefHat size={18} />}
           <span>Preparar</span>
         </Button>
       );

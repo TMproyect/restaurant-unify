@@ -146,3 +146,46 @@ export const isDbStatusMatchingUiStatus = (dbStatus: string, uiStatus: Normalize
     normalizedDbStatus.includes(status.toLowerCase().trim())
   );
 };
+
+/**
+ * NUEVA FUNCIÓN: Determina los estados de orden que se consideran "completados"
+ * para propósitos de ventas y contabilidad.
+ * @returns Array de posibles estados de orden completada
+ */
+export const getCompletedOrderStatuses = (): string[] => {
+  return [
+    // Español - variaciones más comunes
+    'completado', 'completada', 'completo', 'completa',
+    'terminado', 'terminada', 'terminó',
+    'finalizado', 'finalizada', 'finalizó',
+    'entregado', 'entregada', 'entregó',
+    'pagado', 'pagada', 'pagó',
+    'cobrado', 'cobrada', 'cobró',
+    'listo', 'lista', 'preparado', 'preparada',
+    'servido', 'servida',
+    
+    // Inglés - variaciones más comunes
+    'completed', 'complete',
+    'finished', 'done',
+    'delivered', 'ready',
+    'paid', 'processed', 
+    'served'
+  ];
+};
+
+/**
+ * NUEVA FUNCIÓN: Verifica si un estado de orden se considera "completado"
+ * @param status Estado a verificar
+ * @returns true si el estado corresponde a una orden completada
+ */
+export const isCompletedOrderStatus = (status: string): boolean => {
+  if (!status) return false;
+  
+  const normalizedStatus = status.toLowerCase().trim();
+  const completedStatuses = getCompletedOrderStatuses();
+  
+  return completedStatuses.some(completedStatus => 
+    normalizedStatus === completedStatus.toLowerCase() || 
+    normalizedStatus.includes(completedStatus.toLowerCase())
+  );
+};

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { getSalesStats } from '@/services/dashboardService/stats/salesStats';
 import { generateDashboardCards } from '@/services/dashboardService/dashboardCards';
+import { isCompletedOrderStatus } from '@/utils/orderStatusUtils';
 
 export function useSalesMetric() {
   const [salesCard, setSalesCard] = useState<any>(null);
@@ -20,6 +21,17 @@ export function useSalesMetric() {
       // Obtener estadísticas de ventas usando el servicio centralizado
       const salesStats = await getSalesStats();
       console.log('✅ [useSalesMetric] Datos de ventas obtenidos:', salesStats);
+      
+      // Verificar que usamos estados correctos para contabilizar ventas
+      if (salesStats && typeof salesStats === 'object') {
+        console.log('🧪 [useSalesMetric] Estados que cuentan como ventas completadas:', 
+          isCompletedOrderStatus('completado'), // Debería ser true
+          isCompletedOrderStatus('pendiente'), // Debería ser false
+          isCompletedOrderStatus('listo'),     // Debería ser true
+          isCompletedOrderStatus('paid'),      // Debería ser true
+          isCompletedOrderStatus('ready')      // Debería ser true
+        );
+      }
       
       // Adaptar los datos al formato esperado por generateDashboardCards
       const adaptedStats = {

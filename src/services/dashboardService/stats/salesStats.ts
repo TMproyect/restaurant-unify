@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
+import { normalizeOrderStatus, getCompletedOrderStatuses, isCompletedOrderStatus } from '@/utils/orderStatusUtils';
 
 export const getSalesStats = async () => {
   try {
@@ -34,27 +34,21 @@ export const getSalesStats = async () => {
     console.log(`📊 [SalesStats] Órdenes encontradas hoy: ${todayOrders?.length || 0}`);
     console.log('📊 [SalesStats] Muestra de órdenes:', todayOrders?.slice(0, 3));
     
-    // 3. Filtrar por estados completados LOCALMENTE para mayor control
-    // Definimos los estados que indican que una orden está completada y debe contar como venta
-    const completedStatuses = ['completed', 'completado', 'completada', 
-                              'entregado', 'entregada', 'delivered',
-                              'pagado', 'pagada', 'paid',
-                              'listo', 'lista', 'ready',
-                              'finalizado', 'finalizada', 'finished'];
-    
-    // Mostrar todos los estados presentes en las órdenes de hoy
+    // 3. Obtener y mostrar todos los estados presentes en las órdenes de hoy
     const allOrderStatuses = [...new Set(todayOrders?.map(order => order.status) || [])];
-    console.log('📊 [SalesStats] Todos los estados presentes hoy:', allOrderStatuses);
+    console.log('📊 [SalesStats] DIAGNÓSTICO - Todos los estados presentes hoy:', allOrderStatuses);
     
-    // Filtrar las órdenes completadas
+    // Lista detallada de estados completados
+    const completedStatuses = getCompletedOrderStatuses();
+    console.log('📊 [SalesStats] DIAGNÓSTICO - Estados que se consideran completados:', completedStatuses);
+    
+    // 3. Filtrar por estados completados LOCALMENTE para mayor control
     const completedOrders = todayOrders?.filter(order => {
       // Normalizar el estado para comparación
       const normalizedStatus = String(order.status || '').toLowerCase().trim();
       
       // Una orden cuenta como venta completa si su estado está en nuestra lista
-      const isCompleted = completedStatuses.some(status => 
-        normalizedStatus === status || normalizedStatus.includes(status)
-      );
+      const isCompleted = isCompletedOrderStatus(normalizedStatus);
       
       console.log(`📊 [SalesStats] Orden ${order.id}: estado='${order.status}', ¿es venta?=${isCompleted}`);
       
@@ -102,12 +96,9 @@ export const getSalesStats = async () => {
       throw yesterdayError;
     }
     
-    // Filtrar órdenes completadas de ayer
+    // Filtrar órdenes completadas de ayer usando la misma lógica
     const completedYesterdayOrders = yesterdayOrders?.filter(order => {
-      const normalizedStatus = String(order.status || '').toLowerCase().trim();
-      return completedStatuses.some(status => 
-        normalizedStatus === status || normalizedStatus.includes(status)
-      );
+      return isCompletedOrderStatus(String(order.status || ''));
     }) || [];
     
     console.log(`📊 [SalesStats] Órdenes completadas ayer: ${completedYesterdayOrders.length}`);

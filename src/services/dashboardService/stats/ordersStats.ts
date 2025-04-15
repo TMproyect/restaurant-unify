@@ -5,10 +5,19 @@ export const getOrdersStats = async () => {
   try {
     console.log('📊 [DashboardService] Obteniendo estadísticas de órdenes');
     
-    // Get ALL orders to correctly categorize
+    // Obtener solo órdenes de hoy
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Get orders from today only
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id, status, created_at')
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
       .order('created_at', { ascending: false });
     
     if (ordersError) {
@@ -17,7 +26,7 @@ export const getOrdersStats = async () => {
     }
     
     if (!ordersData || ordersData.length === 0) {
-      console.log('⚠️ [DashboardService] No se encontraron órdenes en la base de datos');
+      console.log('⚠️ [DashboardService] No se encontraron órdenes hoy');
       return {
         activeOrders: 0,
         pendingOrders: 0,
@@ -28,7 +37,7 @@ export const getOrdersStats = async () => {
       };
     }
     
-    console.log(`✅ [DashboardService] Se encontraron ${ordersData.length} órdenes en total`);
+    console.log(`✅ [DashboardService] Se encontraron ${ordersData.length} órdenes hoy`);
     
     // Asegurarse de que cada orden se clasifica correctamente
     const pendingOrders = ordersData.filter(order => 
@@ -58,14 +67,14 @@ export const getOrdersStats = async () => {
       order.status === 'completado'
     ).length || 0;
     
-    console.log(`📊 [DashboardService] Pedidos pendientes: ${pendingOrders}`);
-    console.log(`📊 [DashboardService] Pedidos en preparación: ${preparingOrders}`);
-    console.log(`📊 [DashboardService] Pedidos listos: ${readyOrders}`);
-    console.log(`📊 [DashboardService] Pedidos completados: ${completedOrders}`);
+    console.log(`📊 [DashboardService] Pedidos pendientes hoy: ${pendingOrders}`);
+    console.log(`📊 [DashboardService] Pedidos en preparación hoy: ${preparingOrders}`);
+    console.log(`📊 [DashboardService] Pedidos listos hoy: ${readyOrders}`);
+    console.log(`📊 [DashboardService] Pedidos completados hoy: ${completedOrders}`);
     
-    // Solo los pedidos pendientes, en preparación y listos son activos
+    // Los pedidos activos son pendientes, en preparación y listos
     const activeOrders = pendingOrders + preparingOrders + readyOrders;
-    console.log(`📊 [DashboardService] Total pedidos activos: ${activeOrders}`);
+    console.log(`📊 [DashboardService] Total pedidos activos hoy: ${activeOrders}`);
     
     return {
       activeOrders,

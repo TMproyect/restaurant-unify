@@ -14,6 +14,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const { start: todayStart, end: tomorrowStart } = getTodayDateRange();
     const { start: yesterdayStart, end: yesterdayEnd } = getYesterdayDateRange(todayStart);
     
+    console.log(`📊 [DashboardStats] Rango de fecha: ${todayStart.toISOString()} a ${tomorrowStart.toISOString()}`);
+    
     // Obtener pedidos activos (solo del día de hoy)
     const { data: ordersData, error: ordersError } = await getOrdersByDateRange(
       todayStart,

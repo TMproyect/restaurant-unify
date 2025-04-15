@@ -8,8 +8,8 @@ const readyStatuses = ['ready', 'listo', 'lista'];
 const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
 const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
 
-// CORRECTION: Active orders are only pending and preparing
-const activeStatuses = [...pendingStatuses, ...preparingStatuses];
+// Active orders include pending, preparing and ready orders
+const activeStatuses = [...pendingStatuses, ...preparingStatuses, ...readyStatuses];
 
 /**
  * Filter items based on the selected tab, additional filter, and date range
@@ -53,7 +53,7 @@ export const filterItems = (
   // Then filter by tab
   switch (activeTab) {
     case 'active':
-      // CORRECTED: Only pending and in preparation orders (not ready)
+      // Active includes pending, preparing, and ready orders
       filteredItems = filteredItems.filter(item => 
         activeStatuses.includes(item.status.toLowerCase())
       );
@@ -71,7 +71,7 @@ export const filterItems = (
       );
       break;
     case 'exceptions':
-      // CORRECTED: Orders with any exception
+      // Orders with any exception
       filteredItems = filteredItems.filter(item => 
         item.isDelayed || item.hasCancellation || 
         (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
@@ -147,7 +147,7 @@ export const calculateItemsCount = (
     });
   }
   
-  // CORRECTED: Count correctly according to status definitions
+  // Count correctly according to status definitions
   const all = filteredItems.length;
   
   const active = filteredItems.filter(item => 

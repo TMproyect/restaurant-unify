@@ -13,6 +13,7 @@ export const getOrdersByDateRange = async (
   status: string[] = ['ready']
 ): Promise<QueryResult<any>> => {
   console.log(`📊 [DbQueries] Consultando órdenes entre ${startDate.toISOString()} y ${endDate.toISOString()}`);
+  console.log(`📊 [DbQueries] Filtrando por estados: ${status.join(', ')}`);
   
   return await supabase
     .from('orders')
@@ -23,6 +24,8 @@ export const getOrdersByDateRange = async (
 };
 
 export const getOrderItems = async (status: string[] = ['ready']): Promise<QueryResult<any>> => {
+  console.log(`📊 [DbQueries] Consultando items de órdenes con estados: ${status.join(', ')}`);
+  
   return await supabase
     .from('order_items')
     .select(`
@@ -31,7 +34,7 @@ export const getOrderItems = async (status: string[] = ['ready']): Promise<Query
       menu_item_id,
       quantity,
       order_id,
-      orders!inner(status)
+      orders!inner(status, created_at)
     `)
     .in('orders.status', status);
 };

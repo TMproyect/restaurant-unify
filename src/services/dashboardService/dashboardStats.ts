@@ -1,9 +1,9 @@
-
 import { DashboardStats } from '@/types/dashboard.types';
 import { getOrdersByDateRange, getOrderItems } from './utils/dbQueries';
 import { getTodayDateRange, getYesterdayDateRange } from './utils/dateUtils';
 import { calculateOrderCounts } from './utils/orderCalculations';
 import { getUniqueCustomers } from './utils/customerCalculations';
+import { calculateSalesMetrics, calculatePopularItems } from './utils/metricsCalculations';
 import { ORDER_STATUSES } from './utils/statusConstants';
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
@@ -29,25 +29,9 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const { data: yesterdaySales, error: yesterdayError } = await getOrdersByDateRange(yesterdayStart, yesterdayEnd);
     if (yesterdayError) throw yesterdayError;
     
-    // Calculate order metrics
-    const {
-      pendingOrders,
-      preparingOrders,
-      readyOrders,
-      completedOrders,
-      activeOrders
-    } = calculateOrderCounts(ordersData);
-    
-    // Calculate sales totals
-    const dailyTotal = todaySales?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
-    const transactionCount = todaySales?.length || 0;
-    const averageTicket = transactionCount > 0 ? dailyTotal / transactionCount : 0;
-    
-    // Calculate yesterday totals for comparison
-    const yesterdayTotal = yesterdaySales?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
-    const changePercentage = yesterdayTotal > 0 
-      ? ((dailyTotal - yesterdayTotal) / yesterdayTotal) * 100 
-      : 0;
+    // Calculate metrics using utility functions
+    const orderCounts = calculateOrderCounts(ordersData);
+    const salesMetrics = calculateSalesMetrics(todaySales, yesterdaySales);
     
     // Calculate customer metrics
     const uniqueCustomers = getUniqueCustomers(todaySales);
@@ -60,7 +44,6 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       : 0;
     
     // Get popular items
-    // Convert readonly array to mutable array using spread operator
     const { data: orderItemsData, error: itemsError } = await getOrderItems(
       Array.from(ORDER_STATUSES.completed)
     );
@@ -70,39 +53,16 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       throw itemsError;
     }
     
-    // Calculate item popularity
-    const itemCountMap = new Map();
-    orderItemsData?.forEach(item => {
-      const itemId = item.menu_item_id || item.name;
-      const count = itemCountMap.get(itemId) || { name: item.name, quantity: 0, id: itemId };
-      count.quantity += item.quantity;
-      itemCountMap.set(itemId, count);
-    });
-    
-    const popularItems = Array.from(itemCountMap.values())
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5)
-      .map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        id: item.id
-      }));
-    
+    const popularItems = calculatePopularItems(orderItemsData);
     const lastUpdated = new Date().toISOString();
     
     return {
       salesStats: {
-        dailyTotal,
-        transactionCount,
-        averageTicket,
-        changePercentage,
+        ...salesMetrics,
         lastUpdated
       },
       ordersStats: {
-        activeOrders,
-        pendingOrders,
-        inPreparationOrders: preparingOrders,
-        readyOrders,
+        ...orderCounts,
         lastUpdated
       },
       customersStats: {

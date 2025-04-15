@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -29,7 +29,7 @@ export function useDailySales() {
     'served'
   ];
 
-  const fetchDailySales = async () => {
+  const fetchDailySales = useCallback(async () => {
     console.log('🔍 [useDailySales] Fetching daily sales data...');
     setIsLoading(true);
     setError(null);
@@ -41,6 +41,9 @@ export function useDailySales() {
       const endOfDay = new Date(today.setHours(23, 59, 59, 999));
       
       console.log(`📅 [useDailySales] Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+      
+      // Añadimos un pequeño retraso para asegurar que la conexión esté establecida
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Fetch ALL orders for today without filtering by status in the query
       const { data: orders, error } = await supabase
@@ -112,7 +115,7 @@ export function useDailySales() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Fetch data on mount
   useEffect(() => {
@@ -125,7 +128,7 @@ export function useDailySales() {
     }, 3 * 60 * 1000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchDailySales]);
 
   return {
     salesTotal,

@@ -63,7 +63,7 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Create dashboard card data
+  // Create dashboard card data with proper type definitions
   const dashboardCard = {
     title: 'Ventas del Día',
     value: formatCurrency(salesTotal),
@@ -76,8 +76,8 @@ const SalesMetricCard: React.FC = () => {
     trend: {
       value: 0,                                      // Default trend value
       label: 'hoy',                                 // Label for trend
-      direction: (transactionCount > 0 ? 'up' : 'down') as 'up' | 'down', // Fix: use proper type assertion
-      icon: transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right' // Icon for trend
+      direction: (transactionCount > 0 ? 'up' : 'down') as 'up' | 'down', // Define strict union type
+      icon: (transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right') // Icon for trend
     }
   };
   

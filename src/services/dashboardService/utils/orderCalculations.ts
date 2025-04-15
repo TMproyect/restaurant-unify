@@ -1,5 +1,11 @@
 
-import { ORDER_STATUSES } from './statusConstants';
+import { isWithinToday } from './dateRangeUtils';
+import { 
+  isActiveStatus, 
+  isPendingStatus, 
+  isPreparingStatus, 
+  isReadyStatus 
+} from '../constants/orderStatuses';
 
 export const calculateOrderCounts = (ordersData: any[] | null) => {
   if (!ordersData) return { 
@@ -12,44 +18,33 @@ export const calculateOrderCounts = (ordersData: any[] | null) => {
   };
 
   // Filtrar órdenes para incluir solo las de hoy
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const ordersFromToday = ordersData.filter(order => isWithinToday(order.created_at));
   
-  const ordersFromToday = ordersData.filter(order => {
-    const orderDate = new Date(order.created_at);
-    return orderDate >= today;
-  });
-  
-  // Log the order statuses for debugging
   console.log('📊 [OrderCalculations] Order statuses from today:', ordersFromToday.map(order => order.status));
   console.log(`📊 [OrderCalculations] Today's orders count: ${ordersFromToday.length} of ${ordersData.length}`);
   
-  // Count each status type using today's orders
-  const pendingOrders = ordersFromToday.filter(order => ORDER_STATUSES.pending.includes(order.status.toLowerCase())).length;
-  const inPreparationOrders = ordersFromToday.filter(order => ORDER_STATUSES.preparing.includes(order.status.toLowerCase())).length;
-  const readyOrders = ordersFromToday.filter(order => ORDER_STATUSES.ready.includes(order.status.toLowerCase())).length;
-  const cancelledOrders = ordersFromToday.filter(order => ORDER_STATUSES.cancelled.includes(order.status.toLowerCase())).length;
-  const completedOrders = ordersFromToday.filter(order => ORDER_STATUSES.completed.includes(order.status.toLowerCase())).length;
+  // Contar cada tipo de estado usando las nuevas funciones de utilidad
+  const pendingOrders = ordersFromToday.filter(order => isPendingStatus(order.status)).length;
+  const inPreparationOrders = ordersFromToday.filter(order => isPreparingStatus(order.status)).length;
+  const readyOrders = ordersFromToday.filter(order => isReadyStatus(order.status)).length;
 
-  // Active orders are pending, preparing, and ready orders from today
-  const activeOrders = pendingOrders + inPreparationOrders + readyOrders;
+  // Active orders son pending, preparing, y ready orders de hoy
+  const activeOrders = ordersFromToday.filter(order => isActiveStatus(order.status)).length;
   
-  // Log the counts for debugging
   console.log('📊 [OrderCalculations] Today\'s counts:', {
     pendingOrders,
     inPreparationOrders,
     readyOrders,
-    activeOrders,
-    cancelledOrders,
-    completedOrders
+    activeOrders
   });
 
   return {
     pendingOrders,
     inPreparationOrders,
     readyOrders,
-    completedOrders,
-    cancelledOrders,
-    activeOrders
+    activeOrders,
+    completedOrders: 0,
+    cancelledOrders: 0
   };
 };
+

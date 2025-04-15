@@ -13,11 +13,12 @@ interface DashboardCardProps extends DashboardCardData {
     description: string;
   };
   subvalue?: string;
+  value?: string; // Make value optional to match DashboardCard interface
 }
 
 const DashboardCard: React.FC<DashboardCardProps> = ({ 
   title, 
-  value = 'N/A', // Add default value to handle optional value prop
+  value = 'N/A', // Default value if not provided
   icon, 
   change, 
   subvalue 

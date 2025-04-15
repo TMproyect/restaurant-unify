@@ -10,10 +10,29 @@ import {
 import DashboardCard from './card/DashboardCard';
 import LoadingCards from './card/LoadingCards';
 import DefaultCards from './card/DefaultCards';
+import { DashboardCard as DashboardCardType } from '@/types/dashboard.types';
 
-const DashboardCardsRealtime: React.FC = () => {
+// Adapter function to convert DashboardCardType to DashboardCardProps
+const adaptCardToProps = (card: DashboardCardType, index: number) => {
+  // Create a prop object that matches DashboardCardProps interface
+  return {
+    key: index,
+    title: card.title,
+    value: card.value || 'N/A',
+    icon: card.icon,
+    // Convert trend data to change format if it exists
+    change: card.trend ? {
+      isPositive: card.trend.direction === 'up',
+      value: `${card.trend.direction === 'up' ? '+' : ''}${card.trend.value.toFixed(1)}%`,
+      description: card.trend.label || ''
+    } : undefined,
+    subvalue: card.description || card.subtitle
+  };
+};
+
+const DashboardCardRealtime: React.FC = () => {
   const { toast } = useToast();
-  console.log('🔄 [DashboardCardsRealtime] Rendering dashboard cards');
+  console.log('🔄 [DashboardCardRealtime] Rendering dashboard cards');
   
   const { data: stats, isLoading, isError, refetch, error } = useQuery({
     queryKey: ['dashboard-stats'],
@@ -24,7 +43,7 @@ const DashboardCardsRealtime: React.FC = () => {
   // Manejar errores
   useEffect(() => {
     if (isError && error) {
-      console.error('❌ [DashboardCardsRealtime] Error fetching stats:', error);
+      console.error('❌ [DashboardCardRealtime] Error fetching stats:', error);
       toast({
         title: 'Error al cargar estadísticas',
         description: 'No se pudieron cargar las estadísticas del dashboard. Intentando nuevamente...',
@@ -36,14 +55,14 @@ const DashboardCardsRealtime: React.FC = () => {
   // Configurar la suscripción en tiempo real
   useEffect(() => {
     const unsubscribe = subscribeToDashboardUpdates(() => {
-      console.log('🔄 [DashboardCardsRealtime] Actualizando stats en tiempo real...');
+      console.log('🔄 [DashboardCardRealtime] Actualizando stats en tiempo real...');
       refetch().catch(err => {
-        console.error('❌ [DashboardCardsRealtime] Error refetching stats:', err);
+        console.error('❌ [DashboardCardRealtime] Error refetching stats:', err);
       });
     });
     
     return () => {
-      console.log('🔄 [DashboardCardsRealtime] Cleaning up subscriptions');
+      console.log('🔄 [DashboardCardRealtime] Cleaning up subscriptions');
       unsubscribe();
     };
   }, [refetch]);
@@ -65,11 +84,14 @@ const DashboardCardsRealtime: React.FC = () => {
 const renderCardsFromStats = (stats: any) => {
   try {
     const cards = generateDashboardCards(stats);
-    return cards.map((card, i) => <DashboardCard key={i} {...card} />);
+    return cards.map((card, i) => {
+      const cardProps = adaptCardToProps(card, i);
+      return <DashboardCard {...cardProps} />;
+    });
   } catch (err) {
-    console.error('❌ [DashboardCardsRealtime] Error generating cards:', err);
+    console.error('❌ [DashboardCardRealtime] Error generating cards:', err);
     return <DefaultCards />;
   }
 };
 
-export default DashboardCardsRealtime;
+export default DashboardCardRealtime;

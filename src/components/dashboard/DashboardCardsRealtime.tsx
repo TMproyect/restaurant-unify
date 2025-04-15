@@ -10,6 +10,25 @@ import {
 import DashboardCard from './card/DashboardCard';
 import LoadingCards from './card/LoadingCards';
 import DefaultCards from './card/DefaultCards';
+import { DashboardCard as DashboardCardType } from '@/types/dashboard.types';
+
+// Adapter function to convert DashboardCardType to DashboardCardProps
+const adaptCardToProps = (card: DashboardCardType, index: number) => {
+  // Create a prop object that matches DashboardCardProps interface
+  return {
+    key: index,
+    title: card.title,
+    value: card.value || 'N/A',
+    icon: card.icon,
+    // Convert trend data to change format if it exists
+    change: card.trend ? {
+      isPositive: card.trend.direction === 'up',
+      value: `${card.trend.direction === 'up' ? '+' : ''}${card.trend.value.toFixed(1)}%`,
+      description: card.trend.label || ''
+    } : undefined,
+    subvalue: card.description || card.subtitle
+  };
+};
 
 const DashboardCardsRealtime: React.FC = () => {
   const { toast } = useToast();
@@ -65,7 +84,10 @@ const DashboardCardsRealtime: React.FC = () => {
 const renderCardsFromStats = (stats: any) => {
   try {
     const cards = generateDashboardCards(stats);
-    return cards.map((card, i) => <DashboardCard key={i} {...card} />);
+    return cards.map((card, i) => {
+      const cardProps = adaptCardToProps(card, i);
+      return <DashboardCard {...cardProps} />;
+    });
   } catch (err) {
     console.error('❌ [DashboardCardsRealtime] Error generating cards:', err);
     return <DefaultCards />;

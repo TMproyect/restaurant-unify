@@ -42,7 +42,7 @@ export interface PopularMenuItem {
 // Dashboard cards and UI types
 export interface DashboardCardData {
   title: string;
-  value: string;
+  value?: string; // Make value optional to match DashboardCard interface
   changePercent?: number;
   changeText?: string;
   icon?: ReactNode;

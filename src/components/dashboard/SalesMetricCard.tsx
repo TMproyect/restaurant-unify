@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useDailySales } from '@/hooks/use-daily-sales';
 import EnhancedDashboardCard from './EnhancedDashboardCard';
+import EnhancedDashboardCardWrapper from './EnhancedDashboardCardWrapper';
 import { DashboardCard } from '@/types/dashboard.types';
 
 const SalesMetricCard: React.FC = () => {
@@ -70,16 +71,14 @@ const SalesMetricCard: React.FC = () => {
     value: formatCurrency(salesTotal),
     icon: 'dollar-sign',
     color: 'green',
-    change: {
-      value: transactionCount,
-      label: `${transactionCount} transacciones`
-    },
+    // Using the correct properties from DashboardCard interface
+    subtitle: `${transactionCount} transacciones`,
+    changeValue: transactionCount,
+    changeLabel: 'transacciones',
     trend: {
       value: 0,
       label: 'hoy',
-      // Definir explícitamente como literal de unión
       direction: transactionCount > 0 ? 'up' : 'down',
-      // Asignar el nombre del icono según la dirección
       icon: transactionCount > 0 ? 'arrow-up-right' : 'arrow-down-right'
     }
   };
@@ -159,10 +158,10 @@ const SalesMetricCard: React.FC = () => {
     );
   }
   
-  // Normal state with sales data
+  // Normal state with sales data - using EnhancedDashboardCardWrapper for type safety
   return (
     <div className="w-full md:w-[300px]">
-      <EnhancedDashboardCard {...dashboardCard} />
+      <EnhancedDashboardCardWrapper cardData={dashboardCard} />
       <div className="mt-2 flex justify-between items-center">
         <span className="text-xs text-gray-400">
           {transactionCount} transacciones

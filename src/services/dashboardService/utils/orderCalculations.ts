@@ -4,7 +4,9 @@ import {
   isActiveStatus, 
   isPendingStatus, 
   isPreparingStatus, 
-  isReadyStatus 
+  isReadyStatus,
+  isCompletedStatus,
+  isCancelledStatus
 } from '../constants/orderStatuses';
 
 export const calculateOrderCounts = (ordersData: any[] | null) => {
@@ -27,6 +29,8 @@ export const calculateOrderCounts = (ordersData: any[] | null) => {
   const pendingOrders = ordersFromToday.filter(order => isPendingStatus(order.status)).length;
   const inPreparationOrders = ordersFromToday.filter(order => isPreparingStatus(order.status)).length;
   const readyOrders = ordersFromToday.filter(order => isReadyStatus(order.status)).length;
+  const completedOrders = ordersFromToday.filter(order => isCompletedStatus(order.status)).length;
+  const cancelledOrders = ordersFromToday.filter(order => isCancelledStatus(order.status)).length;
 
   // Active orders son pending, preparing, y ready orders de hoy
   const activeOrders = pendingOrders + inPreparationOrders + readyOrders;
@@ -35,7 +39,9 @@ export const calculateOrderCounts = (ordersData: any[] | null) => {
     pendingOrders,
     inPreparationOrders,
     readyOrders,
-    activeOrders
+    activeOrders,
+    completedOrders,
+    cancelledOrders
   });
 
   return {
@@ -43,7 +49,7 @@ export const calculateOrderCounts = (ordersData: any[] | null) => {
     inPreparationOrders,
     readyOrders,
     activeOrders,
-    completedOrders: 0, // Si necesitamos contar estos, añadir función similar
-    cancelledOrders: 0  // Si necesitamos contar estos, añadir función similar
+    completedOrders,
+    cancelledOrders
   };
 };

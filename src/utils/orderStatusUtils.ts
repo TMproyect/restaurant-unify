@@ -20,38 +20,42 @@ export const normalizeOrderStatus = (status: string): NormalizedOrderStatus => {
   // Convertir todo a minúsculas para facilitar la comparación
   const normalizedStatus = status.toLowerCase().trim();
   
+  // IMPORTANTE: Manejar casos con prefijo 'priority-'
+  const hasPriorityPrefix = normalizedStatus.startsWith('priority-');
+  const statusWithoutPrefix = hasPriorityPrefix 
+    ? normalizedStatus.substring('priority-'.length) 
+    : normalizedStatus;
+  
   // Mapeo más preciso de estados a categorías estándar
-  if (normalizedStatus === 'pending' || 
-      normalizedStatus === 'pendiente' || 
-      normalizedStatus.includes('pend') || 
-      normalizedStatus.includes('nueva') ||
-      normalizedStatus.includes('nuevo') ||
-      normalizedStatus.includes('priority-pend')) {
+  if (statusWithoutPrefix === 'pending' || 
+      statusWithoutPrefix === 'pendiente' || 
+      statusWithoutPrefix.includes('pend') || 
+      statusWithoutPrefix.includes('nueva') ||
+      statusWithoutPrefix.includes('nuevo')) {
     return 'pending';
-  } else if (normalizedStatus === 'preparing' || 
-             normalizedStatus === 'preparando' || 
-             normalizedStatus.includes('prepar') || 
-             normalizedStatus.includes('en prep') || 
-             normalizedStatus.includes('cocinando') ||
-             normalizedStatus.includes('priority-prepar')) {
+  } else if (statusWithoutPrefix === 'preparing' || 
+             statusWithoutPrefix === 'preparando' || 
+             statusWithoutPrefix.includes('prepar') || 
+             statusWithoutPrefix.includes('en prep') || 
+             statusWithoutPrefix.includes('cocinando')) {
     return 'preparing';
-  } else if (normalizedStatus === 'ready' || 
-             normalizedStatus === 'listo' || 
-             normalizedStatus === 'lista' || 
-             normalizedStatus.includes('list') || 
-             normalizedStatus.includes('ready') ||
-             normalizedStatus.includes('complet')) {
+  } else if (statusWithoutPrefix === 'ready' || 
+             statusWithoutPrefix === 'listo' || 
+             statusWithoutPrefix === 'lista' || 
+             statusWithoutPrefix.includes('list') || 
+             statusWithoutPrefix.includes('ready') ||
+             statusWithoutPrefix.includes('complet')) {
     return 'ready';
-  } else if (normalizedStatus === 'delivered' || 
-             normalizedStatus === 'entregado' || 
-             normalizedStatus === 'entregada' || 
-             normalizedStatus.includes('entrega') || 
-             normalizedStatus.includes('deliver')) {
+  } else if (statusWithoutPrefix === 'delivered' || 
+             statusWithoutPrefix === 'entregado' || 
+             statusWithoutPrefix === 'entregada' || 
+             statusWithoutPrefix.includes('entrega') || 
+             statusWithoutPrefix.includes('deliver')) {
     return 'delivered';
-  } else if (normalizedStatus === 'cancelled' || 
-             normalizedStatus === 'cancelado' || 
-             normalizedStatus === 'cancelada' || 
-             normalizedStatus.includes('cancel')) {
+  } else if (statusWithoutPrefix === 'cancelled' || 
+             statusWithoutPrefix === 'cancelado' || 
+             statusWithoutPrefix === 'cancelada' || 
+             statusWithoutPrefix.includes('cancel')) {
     return 'cancelled';
   }
   
@@ -93,10 +97,14 @@ export const DB_TO_UI_STATUS_MAP: Record<string, NormalizedOrderStatus> = {
   'pendiente': 'pending',
   'nueva': 'pending',
   'nuevo': 'pending',
+  'priority-pending': 'pending',
+  'priority-pendiente': 'pending',
   'preparing': 'preparing',
   'preparando': 'preparing',
   'en preparación': 'preparing',
   'cocinando': 'preparing',
+  'priority-preparing': 'preparing',
+  'priority-preparando': 'preparing',
   'ready': 'ready',
   'listo': 'ready',
   'lista': 'ready',
@@ -117,9 +125,9 @@ export const getDBStatusesFromUIStatus = (uiStatus: NormalizedOrderStatus): stri
   let dbStatuses: string[] = [];
   
   if (uiStatus === 'pending') {
-    dbStatuses = ['pending', 'Pendiente', 'pendiente', 'nueva', 'nuevo', 'Nueva'];
+    dbStatuses = ['pending', 'Pendiente', 'pendiente', 'nueva', 'nuevo', 'Nueva', 'priority-pending', 'priority-pendiente'];
   } else if (uiStatus === 'preparing') {
-    dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación', 'cocinando', 'Cocinando'];
+    dbStatuses = ['preparing', 'Preparando', 'preparando', 'En preparación', 'en preparación', 'cocinando', 'Cocinando', 'priority-preparing', 'priority-preparando'];
   } else if (uiStatus === 'ready') {
     dbStatuses = ['ready', 'Listo', 'listo', 'Lista', 'lista', 'completado', 'Completado'];
   } else if (uiStatus === 'delivered') {
@@ -150,7 +158,7 @@ export const isDbStatusMatchingUiStatus = (dbStatus: string, uiStatus: Normalize
 };
 
 /**
- * NUEVA FUNCIÓN: Determina los estados de orden que se consideran "completados"
+ * Determina los estados de orden que se consideran "completados"
  * para propósitos de ventas y contabilidad.
  * @returns Array de posibles estados de orden completada
  */
@@ -176,7 +184,7 @@ export const getCompletedOrderStatuses = (): string[] => {
 };
 
 /**
- * NUEVA FUNCIÓN: Verifica si un estado de orden se considera "completado"
+ * Verifica si un estado de orden se considera "completado"
  * @param status Estado a verificar
  * @returns true si el estado corresponde a una orden completada
  */

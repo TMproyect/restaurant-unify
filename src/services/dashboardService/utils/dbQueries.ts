@@ -20,7 +20,7 @@ export const getOrdersByDateRange = async (
     
     const { data, error } = await supabase
       .from('orders')
-      .select('id, total, status, created_at, customer_name')
+      .select('id, total, status, created_at, customer_name, kitchen_id, table_number')
       .gte('created_at', startDate.toISOString())
       .lt('created_at', endDate.toISOString())
       .in('status', status);
@@ -32,7 +32,7 @@ export const getOrdersByDateRange = async (
     if (data && data.length > 0) {
       // Log each order's status for debugging
       data.forEach(order => {
-        console.log(`📊 [DbQueries] Orden ${order.id}: estado=${order.status}`);
+        console.log(`📊 [DbQueries] Orden ${order.id}: estado=${order.status}, kitchen=${order.kitchen_id}, table=${order.table_number}`);
       });
     }
     
@@ -63,7 +63,7 @@ export const getOrderItems = async (status: string[] = ['ready']): Promise<Query
         menu_item_id,
         quantity,
         order_id,
-        orders!inner(status, created_at)
+        orders!inner(status, created_at, kitchen_id)
       `)
       .in('orders.status', status);
       

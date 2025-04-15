@@ -11,7 +11,9 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
     const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
     const readyStatuses = ['ready', 'listo', 'lista'];
-    const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
+    
+    // CORRECCIÓN: Usar exactamente 'ready' como único estado que cuenta como completado
+    const completedStatuses = ['ready'];
     
     // Get today's date boundaries for calculations
     const now = new Date();
@@ -43,6 +45,10 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     
     // Process all statistics from the same dataset locally
     // This eliminates multiple queries and N+1 problems
+    
+    // DIAGNÓSTICO: Mostrar todos los estados presentes en las órdenes
+    const uniqueStatuses = [...new Set(allOrders?.map(order => order.status) || [])];
+    console.log('📊 [DashboardService] DIAGNÓSTICO - Todos los estados presentes:', uniqueStatuses);
     
     // Filter active orders
     const pendingOrders = allOrders?.filter(order => pendingStatuses.includes(order.status)) || [];

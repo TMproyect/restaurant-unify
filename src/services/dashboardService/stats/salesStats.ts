@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
 
 // Función auxiliar para revisar si una orden está completada
+// Modificada para usar exactamente 'ready' como estado completado
 const isCompletedOrder = (status: string): boolean => {
   return status === 'ready';
 };

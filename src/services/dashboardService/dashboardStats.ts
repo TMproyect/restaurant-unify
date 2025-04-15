@@ -40,11 +40,18 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       return getDefaultDashboardStats();
     }
     
+    // DIAGNÓSTICO: Mostrar todos los estados presentes en las órdenes
+    const uniqueStatuses = [...new Set(ordersData.map(order => order.status))];
+    console.log('📊 [DashboardService] DIAGNÓSTICO - Todos los estados de órdenes encontrados:', uniqueStatuses);
+    
     // Define status groups for consistent categorization
     const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
     const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
     const readyStatuses = ['ready', 'listo', 'lista'];
-    const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
+    
+    // CORRECCIÓN: Usar exactamente 'ready' como único estado que cuenta como completado
+    const completedStatuses = ['ready'];
+    
     const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
     
     // Count orders by status with consistent categorization

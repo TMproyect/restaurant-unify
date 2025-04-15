@@ -7,6 +7,7 @@ import { useKitchenPermissions } from './useKitchenPermissions';
 import { KITCHEN_OPTIONS, KitchenTabStatus, UseKitchenDataReturn } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
+import { updateOrderStatusInKitchen } from '@/services/kitchen/kitchenService';
 
 export { KITCHEN_OPTIONS as kitchenOptions };
 
@@ -72,14 +73,18 @@ export const useKitchenData = (): UseKitchenDataReturn => {
   );
   
   // Utility functions
-  const { getFilteredOrders, getKitchenStats, getAverageTime, getKitchenName } = useKitchenUtils(
+  const { getFilteredOrders, getKitchenStats, getAverageTime, getAverageTimeForStatus, getKitchenName } = useKitchenUtils(
     orders,
     selectedKitchen
   );
   
   // Final update status handler with local state update
-  const updateOrderStatusInKitchen = async (orderId: string, newStatus: NormalizedOrderStatus) => {
-    updateOrderStatusHandler(orderId, newStatus);
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: NormalizedOrderStatus) => {
+    const success = await updateOrderStatusInKitchen(orderId, newStatus, hasManagePermission);
+    if (success) {
+      updateOrderStatusHandler(orderId, newStatus);
+    }
+    return success;
   };
 
   return {
@@ -97,8 +102,9 @@ export const useKitchenData = (): UseKitchenDataReturn => {
     hasManagePermission,
     getKitchenStats,
     getAverageTime,
+    getAverageTimeForStatus,
     getKitchenName,
-    updateOrderStatusInKitchen,
+    updateOrderStatusInKitchen: handleUpdateOrderStatus,
     urgencyThreshold,
     setUrgencyThreshold,
     showOnlyToday,

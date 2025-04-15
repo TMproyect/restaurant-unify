@@ -1,3 +1,4 @@
+
 /**
  * Tipos unificados para el módulo de cocina
  */
@@ -28,6 +29,7 @@ export interface OrderItem {
   name: string;
   notes: string;
   quantity: number;
+  variants?: any[];
 }
 
 // Order display interface
@@ -67,9 +69,10 @@ export interface UseKitchenDataReturn {
   hasViewPermission: boolean;
   hasManagePermission: boolean;
   getKitchenStats: () => KitchenStats;
-  getAverageTime: (status: NormalizedOrderStatus) => number | null;
+  getAverageTime: () => string;
+  getAverageTimeForStatus: (status: NormalizedOrderStatus) => number;
   getKitchenName: (kitchenId: string) => string;
-  updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<boolean>;
   urgencyThreshold: number;
   setUrgencyThreshold: (minutes: number) => void;
   showOnlyToday: boolean;

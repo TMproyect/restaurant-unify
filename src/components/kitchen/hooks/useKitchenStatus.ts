@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { updateOrderStatusInKitchen as updateOrderStatus } from '@/services/kitchen/kitchenService';
+import { updateOrderStatus } from '@/services/orders/orderUpdates';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 import { KitchenTabStatus } from '../types';
 
@@ -38,7 +38,7 @@ export const useKitchenStatus = (hasManagePermission: boolean, onOrderUpdated: (
       
       console.log(`⏳ Actualizando orden ${orderId} a estado: ${newStatus}`);
       
-      const success = await updateOrderStatus(orderId, newStatus, hasManagePermission);
+      const success = await updateOrderStatus(orderId, newStatus);
       
       // Si la actualización fue exitosa, recargar órdenes
       if (success) {

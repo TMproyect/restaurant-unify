@@ -62,7 +62,7 @@ export const useKitchenUtils = (orders: any[], selectedKitchen: string) => {
     };
   };
   
-  // Format average time for display
+  // Format average time for display - Now returns a string
   const getAverageTime = (): string => {
     const stats = getKitchenStats();
     
@@ -74,6 +74,28 @@ export const useKitchenUtils = (orders: any[], selectedKitchen: string) => {
     const seconds = Math.round((stats.averageTime - minutes) * 60);
     
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Calculate average time for a specific status - Returns a number for the dashboard
+  const getAverageTimeForStatus = (status: NormalizedOrderStatus): number => {
+    const filteredOrders = orders.filter(order => order.status === status);
+    
+    if (filteredOrders.length === 0) {
+      return 0;
+    }
+    
+    let totalMinutes = 0;
+    
+    filteredOrders.forEach(order => {
+      if (order.createdAt) {
+        const created = new Date(order.createdAt).getTime();
+        const now = new Date().getTime();
+        const elapsedMinutes = (now - created) / (1000 * 60);
+        totalMinutes += elapsedMinutes;
+      }
+    });
+    
+    return filteredOrders.length > 0 ? totalMinutes / filteredOrders.length : 0;
   };
   
   // Get kitchen name from kitchen ID
@@ -90,6 +112,7 @@ export const useKitchenUtils = (orders: any[], selectedKitchen: string) => {
     getFilteredOrders,
     getKitchenStats,
     getAverageTime,
+    getAverageTimeForStatus,
     getKitchenName
   };
 };

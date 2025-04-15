@@ -1,7 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { OrderDisplay, OrderItem } from '@/components/kitchen/types';
-import { normalizeOrderStatus } from '@/utils/orderStatusUtils';
+import { normalizeOrderStatus, NormalizedOrderStatus } from '@/utils/orderStatusUtils';
+import { updateOrderStatus } from '@/services/orders/orderUpdates';
 
 export const loadKitchenOrders = async (
   kitchenId: string,
@@ -82,6 +83,12 @@ export const loadKitchenOrders = async (
         variants: item.variants || [],
       }));
       
+      // Normalizar el orderSource para que cumpla con los tipos esperados
+      let orderSource: 'delivery' | 'qr_table' | 'pos' | null = null;
+      if (order.order_source === 'delivery' || order.order_source === 'qr_table' || order.order_source === 'pos') {
+        orderSource = order.order_source as 'delivery' | 'qr_table' | 'pos';
+      }
+      
       return {
         id: order.id,
         table: order.table_number?.toString() || 'Delivery',
@@ -91,7 +98,7 @@ export const loadKitchenOrders = async (
         kitchenId: order.kitchen_id || 'main',
         status: normalizeOrderStatus(order.status),
         items,
-        orderSource: order.order_source || null,
+        orderSource,
       };
     });
     
@@ -99,5 +106,27 @@ export const loadKitchenOrders = async (
   } catch (error) {
     console.error('❌ [KitchenService] Error en loadKitchenOrders:', error);
     throw error;
+  }
+};
+
+// Add the missing updateOrderStatusInKitchen function 
+export const updateOrderStatusInKitchen = async (
+  orderId: string, 
+  newStatus: NormalizedOrderStatus,
+  hasManagePermission: boolean
+): Promise<boolean> => {
+  if (!hasManagePermission) {
+    console.error('⛔ [KitchenService] Usuario sin permisos para actualizar orden');
+    return false;
+  }
+  
+  try {
+    console.log(`🔄 [KitchenService] Actualizando orden ${orderId} a estado: ${newStatus}`);
+    // Usar el servicio de órdenes para actualizar el estado
+    const success = await updateOrderStatus(orderId, newStatus);
+    return success;
+  } catch (error) {
+    console.error(`❌ [KitchenService] Error al actualizar orden ${orderId}:`, error);
+    return false;
   }
 };

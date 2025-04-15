@@ -17,7 +17,7 @@ interface KitchenHeaderProps {
   };
   loading: boolean;
   handleRefresh: () => void;
-  getAverageTime: () => string; // Ensure this is correctly typed as string
+  getAverageTime: () => string;
 }
 
 const KitchenHeader: React.FC<KitchenHeaderProps> = ({
@@ -38,7 +38,6 @@ const KitchenHeader: React.FC<KitchenHeaderProps> = ({
               <SelectValue placeholder="Seleccionar cocina" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas las Cocinas</SelectItem>
               {kitchenOptions.map(option => (
                 <SelectItem key={option.id} value={option.id}>
                   {option.name}

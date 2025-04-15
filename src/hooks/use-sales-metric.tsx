@@ -62,11 +62,10 @@ export function useSalesMetric() {
     }
   }, []);
   
-  // Obtener datos al montar el componente
+  // Obtener datos al montar el componente y configurar actualización automática
   useEffect(() => {
     fetchSalesData();
     
-    // Configurar un intervalo para refrescar los datos cada 3 minutos
     const refreshInterval = setInterval(() => {
       console.log('🔄 [useSalesMetric] Refrescando datos automáticamente...');
       fetchSalesData();

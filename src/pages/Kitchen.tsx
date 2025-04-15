@@ -1,9 +1,12 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
+import { Settings, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useKitchenData, kitchenOptions } from '@/components/kitchen/hooks/useKitchenData';
 import KitchenHeader from '@/components/kitchen/KitchenHeader';
 import KitchenStatusTabs from '@/components/kitchen/KitchenStatusTabs';
@@ -32,7 +35,9 @@ const Kitchen = () => {
     getKitchenName,
     updateOrderStatusInKitchen,
     urgencyThreshold,
-    setUrgencyThreshold
+    setUrgencyThreshold,
+    showOnlyToday,
+    setShowOnlyToday
   } = useKitchenData();
 
   const stats = getKitchenStats();
@@ -60,15 +65,29 @@ const Kitchen = () => {
             getAverageTime={getAverageTime}
           />
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex items-center gap-1"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings size={16} />
-            <span className="hidden md:inline">Configuración</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-muted/30 px-3 py-1 rounded-md">
+              <Switch 
+                id="today-filter" 
+                checked={showOnlyToday}
+                onCheckedChange={setShowOnlyToday}
+              />
+              <Label htmlFor="today-filter" className="text-sm flex items-center">
+                <Calendar className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                Solo hoy
+              </Label>
+            </div>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings size={16} />
+              <span className="hidden md:inline">Configuración</span>
+            </Button>
+          </div>
         </div>
 
         <KitchenStatusTabs
@@ -152,3 +171,4 @@ const Kitchen = () => {
 };
 
 export default Kitchen;
+

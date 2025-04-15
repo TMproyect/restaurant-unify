@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useKitchenOrders } from './useKitchenOrders';
 import { useKitchenStatus } from './useKitchenStatus';
@@ -13,6 +14,7 @@ export const useKitchenData = (): UseKitchenDataReturn => {
   const [selectedKitchen, setSelectedKitchen] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
   const [urgencyThreshold, setUrgencyThreshold] = useState(15); // Default to 15 minutes
+  const [showOnlyToday, setShowOnlyToday] = useState(true); // Por defecto, mostrar solo órdenes de hoy
   
   // Get permissions
   const { hasViewPermission, hasManagePermission } = useKitchenPermissions();
@@ -59,7 +61,8 @@ export const useKitchenData = (): UseKitchenDataReturn => {
   const { orders, loading, fetchOrders } = useKitchenOrders(
     selectedKitchen,
     refreshKey,
-    hasViewPermission
+    hasViewPermission,
+    showOnlyToday
   );
   
   // Handle order status
@@ -97,6 +100,8 @@ export const useKitchenData = (): UseKitchenDataReturn => {
     getKitchenName,
     updateOrderStatusInKitchen,
     urgencyThreshold,
-    setUrgencyThreshold
+    setUrgencyThreshold,
+    showOnlyToday,
+    setShowOnlyToday
   };
 };

@@ -11,7 +11,8 @@ import { safeGet } from '@/utils/safetyUtils';
 export const useKitchenOrders = (
   selectedKitchen: string,
   refreshKey: number,
-  hasViewPermission: boolean
+  hasViewPermission: boolean,
+  showOnlyToday: boolean = true // Nuevo parámetro para filtrar solo por hoy
 ) => {
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,10 +46,16 @@ export const useKitchenOrders = (
       
       console.log(`🔍 [Kitchen] Fetching orders with all kitchen statuses: ${allStatuses.join(', ')}`);
       
+      // Obtener fecha actual para filtrar
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Pasar el filtro de fecha si showOnlyToday es true
       const data = await loadKitchenOrders(
         selectedKitchen,
         allStatuses,
-        hasViewPermission
+        hasViewPermission,
+        showOnlyToday ? today : undefined
       );
       
       if (!Array.isArray(data)) {
@@ -167,7 +174,7 @@ export const useKitchenOrders = (
         console.error('❌ [Kitchen] Error cleaning up subscription:', cleanupError);
       }
     };
-  }, [selectedKitchen, refreshKey, hasViewPermission]);
+  }, [selectedKitchen, refreshKey, hasViewPermission, showOnlyToday]);
 
   return { orders, loading, error, fetchOrders };
 };

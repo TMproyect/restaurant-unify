@@ -14,10 +14,11 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const { start: todayStart, end: tomorrowStart } = getTodayDateRange();
     const { start: yesterdayStart, end: yesterdayEnd } = getYesterdayDateRange(todayStart);
     
-    // Get orders data
+    // Obtener pedidos activos (solo del día de hoy)
     const { data: ordersData, error: ordersError } = await getOrdersByDateRange(
       todayStart,
       tomorrowStart,
+      // Obtener todos los estados activos para el dashboard
       [...ORDER_STATUSES.pending, ...ORDER_STATUSES.preparing, ...ORDER_STATUSES.ready]
     );
     
@@ -56,6 +57,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     
     const popularItems = calculatePopularItems(orderItemsData);
     const lastUpdated = new Date().toISOString();
+    
+    console.log('📊 [DashboardStats] Recuentos calculados:', orderCounts);
     
     return {
       salesStats: {

@@ -1,4 +1,3 @@
-
 /**
  * Tipos unificados para el módulo de cocina
  */
@@ -58,7 +57,7 @@ export interface KitchenStats {
 // Return type for useKitchenData hook
 export interface UseKitchenDataReturn {
   selectedKitchen: string;
-  setSelectedKitchen: (kitchen: string) => void;
+  setSelectedKitchen: (kitchenId: string) => void;
   orderStatus: KitchenTabStatus;
   setOrderStatus: (status: KitchenTabStatus) => void;
   orders: OrderDisplay[];
@@ -68,9 +67,11 @@ export interface UseKitchenDataReturn {
   hasViewPermission: boolean;
   hasManagePermission: boolean;
   getKitchenStats: () => KitchenStats;
-  getAverageTime: () => string;
+  getAverageTime: (status: NormalizedOrderStatus) => number | null;
   getKitchenName: (kitchenId: string) => string;
   updateOrderStatusInKitchen: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
   urgencyThreshold: number;
-  setUrgencyThreshold: (threshold: number) => void;
+  setUrgencyThreshold: (minutes: number) => void;
+  showOnlyToday: boolean;
+  setShowOnlyToday: (value: boolean) => void;
 }

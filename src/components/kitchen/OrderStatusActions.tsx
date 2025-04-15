@@ -6,7 +6,7 @@ import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 interface OrderStatusActionsProps {
   orderStatus: NormalizedOrderStatus;
-  onAction: (newStatus: NormalizedOrderStatus) => Promise<void>;
+  onAction: (newStatus: NormalizedOrderStatus) => Promise<boolean>;
 }
 
 const OrderStatusActions: React.FC<OrderStatusActionsProps> = ({

@@ -8,7 +8,7 @@ interface ActionButtonProps {
   orderStatus: NormalizedOrderStatus;
   hasManagePermission: boolean;
   orderId: string;
-  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<boolean>;
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({

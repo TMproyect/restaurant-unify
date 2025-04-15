@@ -32,7 +32,7 @@ interface KitchenOrderCardProps {
   kitchenName: string;
   orderStatus: NormalizedOrderStatus;
   hasManagePermission: boolean;
-  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<boolean>;
   urgencyThreshold: number;
 }
 

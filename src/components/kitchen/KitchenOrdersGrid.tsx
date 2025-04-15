@@ -8,7 +8,7 @@ interface KitchenOrdersGridProps {
   orders: OrderDisplay[];
   orderStatus: NormalizedOrderStatus;
   hasManagePermission: boolean;
-  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<void>;
+  updateOrderStatus: (orderId: string, newStatus: NormalizedOrderStatus) => Promise<boolean>;
   getKitchenName: (kitchenId: string) => string;
   selectedKitchen: string;
   urgencyThreshold: number;

@@ -1,4 +1,3 @@
-
 /**
  * Tipos unificados para el módulo de cocina
  */

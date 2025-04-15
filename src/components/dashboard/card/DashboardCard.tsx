@@ -6,7 +6,16 @@ import { DashboardCardData } from '@/types/dashboard.types';
 import CardIcon from './CardIcon';
 import { getCardGradient } from './dashboardCardStyles';
 
-const DashboardCard: React.FC<DashboardCardData> = ({ 
+interface DashboardCardProps extends DashboardCardData {
+  change?: {
+    isPositive: boolean;
+    value: string;
+    description: string;
+  };
+  subvalue?: string;
+}
+
+const DashboardCard: React.FC<DashboardCardProps> = ({ 
   title, 
   value = 'N/A', // Add default value to handle optional value prop
   icon, 

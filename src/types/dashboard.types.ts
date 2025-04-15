@@ -53,6 +53,32 @@ export interface DashboardCardData {
   footer?: ReactNode | string;
 }
 
+// Extended interface for the enhanced dashboard cards
+export interface DashboardCard {
+  title: string;
+  value?: string;
+  subtitle?: string;
+  changeValue?: number;
+  changeType?: 'increase' | 'decrease';
+  changeLabel?: string;
+  icon?: string;
+  color?: string;
+  listItems?: string[];
+  tooltip?: string;
+  description?: string;
+  trend?: {
+    value: number;
+    label: string;
+    direction: 'up' | 'down';
+    icon: string;
+  };
+  popularItems?: {
+    name: string;
+    quantity: number;
+  }[];
+  lastUpdated?: string;
+}
+
 // Activity monitor types
 export interface ActivityMonitorItem {
   id: string;
@@ -71,6 +97,7 @@ export interface ActivityMonitorItem {
   kitchenId: string;
   orderSource: string;
   isPrioritized?: boolean;
+  appliedBy?: string; // Adding the missing property
 }
 
 export interface ActivityMonitorProps {

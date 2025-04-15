@@ -11,9 +11,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { DashboardCard as DashboardCardType } from '@/types/dashboard.types';
+import { DashboardCard } from '@/types/dashboard.types';
 
-const EnhancedDashboardCard: React.FC<DashboardCardType> = ({
+const EnhancedDashboardCard: React.FC<DashboardCard> = ({
   title,
   value,
   subtitle,

@@ -1,3 +1,4 @@
+
 import { DashboardStats } from '@/types/dashboard.types';
 import { getOrdersByDateRange, getOrderItems } from './utils/dbQueries';
 import { getTodayDateRange, getYesterdayDateRange } from './utils/dateUtils';
@@ -62,7 +63,10 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         lastUpdated
       },
       ordersStats: {
-        ...orderCounts,
+        activeOrders: orderCounts.activeOrders,
+        pendingOrders: orderCounts.pendingOrders,
+        inPreparationOrders: orderCounts.inPreparationOrders,
+        readyOrders: orderCounts.readyOrders,
         lastUpdated
       },
       customersStats: {

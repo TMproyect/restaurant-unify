@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
+import { KitchenTabTrigger } from './KitchenTabTrigger';
 
 interface KitchenStatusTabsProps {
   children: React.ReactNode;
@@ -29,42 +29,10 @@ const KitchenStatusTabs: React.FC<KitchenStatusTabsProps> = ({
       className="w-full"
     >
       <TabsList className="grid grid-cols-4 mb-4">
-        <TabsTrigger 
-          value="pending" 
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          )}
-        >
-          Pendientes <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{pendingCount}</span>
-        </TabsTrigger>
-        <TabsTrigger 
-          value="preparing" 
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          )}
-        >
-          En preparación <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{preparingCount}</span>
-        </TabsTrigger>
-        <TabsTrigger 
-          value="ready" 
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          )}
-        >
-          Completados <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{completedCount}</span>
-        </TabsTrigger>
-        <TabsTrigger 
-          value="cancelled" 
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          )}
-        >
-          Cancelados <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{cancelledCount}</span>
-        </TabsTrigger>
+        <KitchenTabTrigger value="pending" label="Pendientes" count={pendingCount} />
+        <KitchenTabTrigger value="preparing" label="En preparación" count={preparingCount} />
+        <KitchenTabTrigger value="ready" label="Completados" count={completedCount} />
+        <KitchenTabTrigger value="cancelled" label="Cancelados" count={cancelledCount} />
       </TabsList>
 
       {children}

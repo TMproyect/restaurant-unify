@@ -1,6 +1,3 @@
-
-// Utilidad para procesar los pedidos
-
 /**
  * Normaliza un valor numérico que puede venir en formato de cadena con diferentes separadores decimales
  * @param value El valor a normalizar
@@ -37,7 +34,23 @@ export async function processOrder(supabase: any, payload: any) {
   try {
     // Procesamiento de los items: validar SKUs y obtener datos de menú
     const validatedItems = [];
+    console.log('Procesando items del pedido:', payload.items_pedido);
+    
+    if (!Array.isArray(payload.items_pedido)) {
+      console.error('items_pedido no es un array válido:', payload.items_pedido);
+      return { 
+        error: 'El formato de items_pedido es inválido',
+        status: 400
+      };
+    }
+
+    // Validar y procesar cada item del pedido
     for (const item of payload.items_pedido) {
+      if (!item.sku_producto) {
+        console.error('Item sin SKU:', item);
+        continue; // Saltamos items sin SKU
+      }
+
       // Buscar el producto por SKU
       const { data: menuItem, error: menuError } = await supabase
         .from('menu_items')
@@ -55,6 +68,11 @@ export async function processOrder(supabase: any, payload: any) {
       
       // Normalizar valores numéricos
       const cantidad = normalizeNumericValue(item.cantidad);
+      if (cantidad <= 0) {
+        console.error('Cantidad inválida para item:', item);
+        continue; // Saltamos items con cantidad inválida
+      }
+
       const precioUnitario = normalizeNumericValue(item.precio_unitario) || menuItem.price;
       
       validatedItems.push({
@@ -64,6 +82,14 @@ export async function processOrder(supabase: any, payload: any) {
         quantity: cantidad,
         notes: item.notas_item || ''
       });
+    }
+
+    if (validatedItems.length === 0) {
+      console.error('No se encontraron items válidos para procesar');
+      return {
+        error: 'No se encontraron items válidos en el pedido',
+        status: 400
+      };
     }
     
     // Determinar la fuente del pedido
@@ -110,6 +136,7 @@ export async function processOrder(supabase: any, payload: any) {
     };
     
     console.log("Creando nuevo pedido con datos:", JSON.stringify(orderData));
+    console.log("Items validados:", JSON.stringify(validatedItems));
     
     // Insertar el pedido
     const { data: order, error: orderError } = await supabase
@@ -143,7 +170,6 @@ export async function processOrder(supabase: any, payload: any) {
     
     if (itemsError) {
       console.error("Error creando los items del pedido:", itemsError);
-      // Aunque falló al insertar items, el pedido ya fue creado
       return { 
         error: "Error al crear los items del pedido", 
         details: itemsError.message,
@@ -157,7 +183,7 @@ export async function processOrder(supabase: any, payload: any) {
     return {
       success: true,
       order,
-      orderSource
+      orderSource: orderData.order_source
     };
   } catch (error) {
     console.error("Error inesperado procesando el pedido:", error);

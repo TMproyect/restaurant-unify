@@ -77,6 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isWaiter = user.role === "mesero";
   const isKitchen = user.role === "cocina" || user.role === "kitchen";
   const isDelivery = user.role === "repartidor" || user.role === "delivery";
+  const isCashier = user.role === "cajero";
 
   console.log(`🔵 Sidebar: User role detected as '${user.role}'`);
 
@@ -99,7 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
         
         {/* Orders - accessible to all except kitchen */}
-        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'mesero', 'repartidor', 'delivery']) && (
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'mesero', 'repartidor', 'delivery', 'cajero']) && (
           <NavItem
             to="/orders"
             icon={<ClipboardList />}
@@ -142,8 +143,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         )}
         
-        {/* Cashier - accessible to admin and manager */}
-        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+        {/* Cashier - accessible to admin, manager and cashier */}
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'cajero']) && (
           <NavItem
             to="/cashier"
             icon={<CircleDollarSign />}
@@ -165,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
         
         {/* Sales - accessible to admin and manager */}
-        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'cajero']) && (
           <NavItem
             to="/sales"
             icon={<BarChart />}
@@ -176,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
         
         {/* Reports - accessible to admin and manager */}
-        {shouldShowMenuItem(['admin', 'propietario', 'gerente']) && (
+        {shouldShowMenuItem(['admin', 'propietario', 'gerente', 'cajero']) && (
           <NavItem
             to="/reports"
             icon={<FileText />}

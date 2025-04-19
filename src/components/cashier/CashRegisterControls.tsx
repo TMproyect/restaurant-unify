@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Calendar,
   Clock,
@@ -19,52 +20,122 @@ import {
   FileText,
   Printer,
   Lock,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import { useCashRegister } from '@/hooks/use-cash-register';
+import { CashRegisterShift } from '@/services/cashierService';
+import { formatCurrency } from '@/lib/utils';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-const CashRegisterControls = () => {
+interface CashRegisterControlsProps {
+  shift: CashRegisterShift | null;
+}
+
+const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) => {
   const [registerTab, setRegisterTab] = useState('cashbox');
-  const [isRegisterOpen, setIsRegisterOpen] = useState(true);
-  const [initialCashAmount, setInitialCashAmount] = useState('');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+  const [finalAmount, setFinalAmount] = useState('');
+  const { closeCurrentShift, isEndingShift } = useCashRegister();
   const { toast } = useToast();
 
-  const handleOpenRegister = () => {
-    if (!initialCashAmount || parseFloat(initialCashAmount) < 0) {
+  const handleCloseCashRegister = async () => {
+    if (!finalAmount) {
       toast({
         title: "Error",
-        description: "Ingresa un monto inicial válido",
+        description: "Por favor ingresa el monto final en caja",
         variant: "destructive"
       });
       return;
     }
-    
-    toast({
-      title: "Caja abierta",
-      description: `Turno iniciado con $${initialCashAmount} en caja`
-    });
-    setIsRegisterOpen(true);
-  };
 
-  const handleCloseRegister = () => {
-    setIsRegisterOpen(false);
-    toast({
-      title: "Caja cerrada",
-      description: "El turno ha sido cerrado exitosamente"
-    });
+    const success = await closeCurrentShift(parseFloat(finalAmount));
+    if (success) {
+      setIsCloseDialogOpen(false);
+    }
   };
 
   const handleCashMovement = (type: 'in' | 'out') => {
+    if (!amount || parseFloat(amount) <= 0) {
+      toast({
+        title: "Error",
+        description: "Ingresa un monto válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!reason.trim()) {
+      toast({
+        title: "Error",
+        description: "Ingresa un motivo para el movimiento",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: type === 'in' ? "Entrada registrada" : "Salida registrada",
       description: "El movimiento de efectivo ha sido registrado"
     });
+
+    // Limpiar los campos después del registro
+    setAmount('');
+    setReason('');
   };
 
-  const handlePrintReport = () => {
+  const handlePrintReport = (reportType: string) => {
     toast({
       title: "Reporte generado",
-      description: "El reporte ha sido enviado a la impresora"
+      description: `El reporte "${reportType}" ha sido enviado a la impresora`
     });
   };
+
+  // Formatear fecha de apertura si existe
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), 'HH:mm:ss', { locale: es });
+    } catch (e) {
+      return "Fecha inválida";
+    }
+  };
+
+  if (!shift) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium flex items-center">
+            <LayoutGrid className="mr-2 h-5 w-5 text-primary" />
+            Control de Caja
+          </h2>
+          <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-200">
+            <Clock className="mr-1 h-3 w-3" />
+            Sin Turno Activo
+          </Badge>
+        </div>
+        
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Sin turno activo</AlertTitle>
+          <AlertDescription>
+            No hay un turno de caja activo. Por favor inicia un turno para acceder a estas funciones.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -73,13 +144,9 @@ const CashRegisterControls = () => {
           <LayoutGrid className="mr-2 h-5 w-5 text-primary" />
           Control de Caja
         </h2>
-        <Badge variant={isRegisterOpen ? "outline" : "secondary"} className={
-          isRegisterOpen 
-            ? "bg-green-100 text-green-800 border-green-200" 
-            : "bg-gray-100 text-gray-800 border-gray-200"
-        }>
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
           <Clock className="mr-1 h-3 w-3" />
-          {isRegisterOpen ? "Caja Abierta" : "Caja Cerrada"}
+          Caja Abierta
         </Badge>
       </div>
       
@@ -91,81 +158,31 @@ const CashRegisterControls = () => {
         </TabsList>
         
         <TabsContent value="cashbox" className="flex-grow">
-          {!isRegisterOpen ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Apertura de Caja</CardTitle>
-                <CardDescription>
-                  Ingresa el monto inicial para iniciar el turno
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="initialCash">Monto Inicial</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="initialCash"
-                        type="number" 
-                        min="0" 
-                        step="0.01"
-                        placeholder="0.00" 
-                        className="pl-8"
-                        value={initialCashAmount}
-                        onChange={(e) => setInitialCashAmount(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cashier">Cajero</Label>
-                    <Select defaultValue="current">
-                      <SelectTrigger id="cashier">
-                        <SelectValue placeholder="Seleccionar cajero" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="current">Usuario Actual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full"
-                  onClick={handleOpenRegister}
-                >
-                  Iniciar Turno
-                </Button>
-              </CardFooter>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-muted/30 p-3 rounded-md">
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Monto Inicial:</span>
-                  <span className="text-sm">${initialCashAmount}</span>
-                </div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Ventas del Turno:</span>
-                  <span className="text-sm">$1,250.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Hora de Apertura:</span>
-                  <span className="text-sm">{new Date().toLocaleTimeString()}</span>
-                </div>
+          <div className="space-y-4">
+            <div className="bg-muted/30 p-3 rounded-md">
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Monto Inicial:</span>
+                <span className="text-sm">${shift.initial_amount?.toFixed(2) || '0.00'}</span>
               </div>
-              
-              <Button 
-                variant="destructive" 
-                className="w-full"
-                onClick={handleCloseRegister}
-              >
-                <Lock className="mr-2 h-4 w-4" />
-                Cerrar Turno
-              </Button>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Ventas del Turno:</span>
+                <span className="text-sm">${shift.total_sales?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Hora de Apertura:</span>
+                <span className="text-sm">{formatDate(shift.started_at)}</span>
+              </div>
             </div>
-          )}
+            
+            <Button 
+              variant="destructive" 
+              className="w-full"
+              onClick={() => setIsCloseDialogOpen(true)}
+            >
+              <Lock className="mr-2 h-4 w-4" />
+              Cerrar Turno
+            </Button>
+          </div>
         </TabsContent>
         
         <TabsContent value="movements" className="flex-grow">
@@ -190,6 +207,8 @@ const CashRegisterControls = () => {
                         step="0.01"
                         placeholder="0.00" 
                         className="pl-8"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
                       />
                     </div>
                   </div>
@@ -197,7 +216,9 @@ const CashRegisterControls = () => {
                     <Label htmlFor="reason">Motivo</Label>
                     <Input 
                       id="reason"
-                      placeholder="Proporciona un motivo para el movimiento" 
+                      placeholder="Proporciona un motivo para el movimiento"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
                     />
                   </div>
                 </div>
@@ -239,7 +260,7 @@ const CashRegisterControls = () => {
             <Button 
               variant="outline" 
               className="w-full flex items-center justify-start"
-              onClick={handlePrintReport}
+              onClick={() => handlePrintReport('Ventas del Turno')}
             >
               <FileText className="mr-2 h-4 w-4" />
               Reporte de Ventas del Turno
@@ -247,7 +268,7 @@ const CashRegisterControls = () => {
             <Button 
               variant="outline" 
               className="w-full flex items-center justify-start"
-              onClick={handlePrintReport}
+              onClick={() => handlePrintReport('Ventas Diario')}
             >
               <Calendar className="mr-2 h-4 w-4" />
               Reporte de Ventas Diario
@@ -255,7 +276,7 @@ const CashRegisterControls = () => {
             <Button 
               variant="outline" 
               className="w-full flex items-center justify-start"
-              onClick={handlePrintReport}
+              onClick={() => handlePrintReport('Corte de Caja')}
             >
               <Printer className="mr-2 h-4 w-4" />
               Imprimir Corte de Caja
@@ -269,28 +290,93 @@ const CashRegisterControls = () => {
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Efectivo Inicial:</span>
-                <span>${initialCashAmount || '0.00'}</span>
+                <span>${shift.initial_amount?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Ventas en Efectivo:</span>
-                <span>$750.00</span>
+                <span>${shift.total_cash_sales?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Ventas con Tarjeta:</span>
-                <span>$500.00</span>
+                <span>${shift.total_card_sales?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Ventas:</span>
-                <span>$1,250.00</span>
+                <span>${shift.total_sales?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Efectivo en Caja:</span>
-                <span>${initialCashAmount ? (parseFloat(initialCashAmount) + 750).toFixed(2) : '750.00'}</span>
+                <span>${(shift.initial_amount + (shift.total_cash_sales || 0)).toFixed(2)}</span>
               </div>
             </div>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Diálogo de confirmación para cierre de caja */}
+      <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar Turno de Caja</DialogTitle>
+            <DialogDescription>
+              Para cerrar el turno, ingresa el monto final de efectivo en caja.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="finalCashAmount">Monto Final en Efectivo</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  id="finalCashAmount"
+                  type="number" 
+                  min="0" 
+                  step="0.01"
+                  placeholder={(shift.initial_amount + (shift.total_cash_sales || 0)).toFixed(2)} 
+                  className="pl-8"
+                  value={finalAmount}
+                  onChange={(e) => setFinalAmount(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Monto esperado en caja: ${(shift.initial_amount + (shift.total_cash_sales || 0)).toFixed(2)}
+              </p>
+            </div>
+            
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Importante</AlertTitle>
+              <AlertDescription>
+                Al cerrar el turno se generará un reporte final y no podrás procesar más ventas hasta iniciar un nuevo turno.
+              </AlertDescription>
+            </Alert>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCloseDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleCloseCashRegister}
+              disabled={isEndingShift}
+            >
+              {isEndingShift ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cerrando...
+                </>
+              ) : (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Cerrar Turno
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

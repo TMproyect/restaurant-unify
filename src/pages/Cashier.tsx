@@ -13,6 +13,9 @@ import { Search, CircleDollarSign, Receipt, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
+import { useCashRegister } from '@/hooks/use-cash-register';
+import OpenShiftForm from '@/components/cashier/OpenShiftForm';
+import { useAuth } from '@/contexts/auth/AuthContext';
 
 const Cashier = () => {
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -22,6 +25,8 @@ const Cashier = () => {
   const [filter, setFilter] = useState<'ready' | 'delivered'>('ready');
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const { toast } = useToast();
+  const { activeShift, isShiftActive, isLoading: isShiftLoading } = useCashRegister();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (selectedOrder) {
@@ -84,6 +89,46 @@ const Cashier = () => {
     });
   };
 
+  // Si está cargando el estado del turno, mostrar loading
+  if (isShiftLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <div className="text-center">
+            <CircleDollarSign className="mx-auto h-12 w-12 text-primary animate-pulse mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Cargando Caja</h2>
+            <p className="text-muted-foreground">Verificando estado del turno...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Si no hay un turno activo, mostrar el formulario de apertura
+  if (!isShiftActive) {
+    return (
+      <Layout>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <CircleDollarSign size={24} className="text-primary" />
+            <h1 className="text-2xl font-bold">Punto de Venta / Caja</h1>
+          </div>
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
+            <h2 className="text-lg font-medium text-amber-800 mb-2">Apertura de Caja Requerida</h2>
+            <p className="text-amber-700 mb-3">
+              Para acceder a la funcionalidad completa del Punto de Venta, es necesario iniciar un turno de caja.
+              Por favor ingresa el monto inicial con el que comienzas tu turno.
+            </p>
+          </div>
+          
+          <OpenShiftForm />
+        </div>
+      </Layout>
+    );
+  }
+
+  // Mostrar la interfaz principal de caja cuando hay un turno activo
   return (
     <Layout>
       <div className="space-y-4">
@@ -94,10 +139,6 @@ const Cashier = () => {
           </div>
           <div className="flex gap-3 items-center">
             <PrinterStatus compact />
-            <Button onClick={() => setIsPaymentSheetOpen(true)} disabled={!selectedOrder}>
-              <Receipt className="mr-2 h-4 w-4" />
-              Procesar Pago
-            </Button>
           </div>
         </div>
 
@@ -123,7 +164,7 @@ const Cashier = () => {
               <Tabs defaultValue="ready" onValueChange={(value) => setFilter(value as 'ready' | 'delivered')}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="ready">Listos para Cobrar</TabsTrigger>
-                  <TabsTrigger value="delivered">Entregados</TabsTrigger>
+                  <TabsTrigger value="delivered">Pagadas</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -145,7 +186,7 @@ const Cashier = () => {
           </div>
 
           <div className="lg:col-span-1 border rounded-md p-4">
-            <CashRegisterControls />
+            <CashRegisterControls shift={activeShift} />
           </div>
         </div>
       </div>

@@ -33,7 +33,7 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
       
       // Filter relevant orders (ready or delivered)
       const filteredOrders = data.filter(order => 
-        order.status === 'ready' || order.status === 'delivered'
+        order.status === 'ready' || order.status === 'delivered' || order.status === 'paid'
       );
       
       setOrders(filteredOrders || []);
@@ -69,7 +69,8 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
   const filteredOrders = orders
     .filter(order => {
       // Filter by status
-      if (order.status !== filter) return false;
+      if (filter === 'ready' && order.status !== 'ready') return false;
+      if (filter === 'delivered' && order.status !== 'paid' && order.status !== 'delivered') return false;
       
       // Filter by search query
       if (searchQuery) {
@@ -108,7 +109,7 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
         ) : (
           <>
             <Clock className="h-12 w-12 text-muted-foreground/50 mb-2" />
-            <p className="text-muted-foreground">No hay órdenes {filter === 'ready' ? 'listas para cobrar' : 'entregadas'}</p>
+            <p className="text-muted-foreground">No hay órdenes {filter === 'ready' ? 'listas para cobrar' : 'pagadas'}</p>
             <p className="text-sm mt-1 text-muted-foreground">Las órdenes aparecerán aquí cuando estén listas</p>
           </>
         )}
@@ -144,10 +145,17 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
                 variant={order.status === 'ready' ? 'outline' : 'secondary'} 
                 className={order.status === 'ready' 
                   ? 'bg-green-100 text-green-800 border-green-200' 
-                  : 'bg-gray-100 text-gray-800 border-gray-200'
+                  : order.status === 'paid' 
+                    ? 'bg-blue-100 text-blue-800 border-blue-200'
+                    : 'bg-gray-100 text-gray-800 border-gray-200'
                 }
               >
-                {order.status === 'ready' ? 'Listo para Cobrar' : 'Entregado'}
+                {order.status === 'ready' 
+                  ? 'Listo para Cobrar' 
+                  : order.status === 'paid'
+                    ? 'Pagado'
+                    : 'Entregado'
+                }
               </Badge>
             </div>
             

@@ -10,11 +10,12 @@ export const validateUserRole = (role?: string): UserRole => {
     'kitchen': 'cocina',
     'delivery': 'repartidor',
     'manager': 'gerente',
-    'owner': 'propietario'
+    'owner': 'propietario',
+    'cashier': 'cajero'
   };
 
   // First check if it's already a valid Spanish role
-  if (role && ['admin', 'gerente', 'mesero', 'cocina', 'repartidor', 'propietario'].includes(role)) {
+  if (role && ['admin', 'gerente', 'mesero', 'cocina', 'repartidor', 'propietario', 'cajero'].includes(role)) {
     return role as UserRole;
   }
 

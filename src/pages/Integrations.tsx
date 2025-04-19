@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +8,28 @@ import { TestingTab } from '@/components/integration/testing';
 
 const Integrations = () => {
   // State for API key management
-  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>(() => {
+    // Generate a secure API key on initial load if not existing
+    const generateSecureApiKey = () => {
+      const prefix = "pos_api_";
+      const randomPart = crypto.getRandomValues(new Uint32Array(4))
+        .map(x => x.toString(36))
+        .join('');
+      const timestampPart = Date.now().toString(36);
+      const specialChars = "!@#$%^&*()_+";
+      const specialChar = specialChars[Math.floor(Math.random() * specialChars.length)];
+      
+      return `${prefix}${timestampPart}_${randomPart}${specialChar}`.slice(0, 48);
+    };
+
+    // Check if there's an existing API key in localStorage
+    const storedApiKey = localStorage.getItem('pos_api_key');
+    if (storedApiKey) return storedApiKey;
+
+    const newApiKey = generateSecureApiKey();
+    localStorage.setItem('pos_api_key', newApiKey);
+    return newApiKey;
+  });
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
@@ -29,21 +49,18 @@ const Integrations = () => {
 
   // Function to generate new API key
   const generateNewApiKey = async () => {
-    setRefreshing(true);
-    try {
-      // Generar token permanente con formato fijo para facilitar identificación
-      const prefix = "pos_api_";
-      const timestamp = Date.now().toString(36);
-      const randomString = Math.random().toString(36).substring(2, 10);
-      const newKey = `${prefix}${timestamp}_${randomString}`;
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setApiKey(newKey);
-      setRefreshing(false);
-    } catch (error) {
-      console.error('Error generating API key:', error);
-      setRefreshing(false);
-    }
+    const prefix = "pos_api_";
+    const randomPart = crypto.getRandomValues(new Uint32Array(4))
+      .map(x => x.toString(36))
+      .join('');
+    const timestampPart = Date.now().toString(36);
+    const specialChars = "!@#$%^&*()_+";
+    const specialChar = specialChars[Math.floor(Math.random() * specialChars.length)];
+    
+    const newKey = `${prefix}${timestampPart}_${randomPart}${specialChar}`.slice(0, 48);
+    
+    setApiKey(newKey);
+    localStorage.setItem('pos_api_key', newKey);
   };
 
   return (

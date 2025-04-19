@@ -88,7 +88,7 @@ export const ApiIntegrationConfig = () => {
             <ApiEndpointDisplay apiUrl={apiUrl} />
 
             <div className="space-y-2 pt-4">
-              <ApiKeySection apiKey={apiKey} onApiKeyChange={setApiKey} />
+              <ApiKeySection />
             </div>
 
             <ApiFormatExample />

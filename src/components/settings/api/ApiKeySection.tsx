@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Label } from '@/components/ui/label';
 import { HelpCircle } from 'lucide-react';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/tooltip';
 import { ApiKeyDisplay } from './ApiKeyDisplay';
 
+// Remove the props since we're using a fixed API key now
 export const ApiKeySection = () => {
   const fixedApiKey = "pos_api_fixed_token_123456789";
 

@@ -1,69 +1,72 @@
 
 import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Define allowed status values for tabs
-type KitchenTabStatus = 'pending' | 'preparing' | 'ready' | 'cancelled';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 interface KitchenStatusTabsProps {
-  defaultValue: KitchenTabStatus;
-  onValueChange: (value: KitchenTabStatus) => void;
-  pendingCount: number;
-  preparingCount: number;
-  completedCount: number;
-  cancelledCount: number;
   children: React.ReactNode;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  pendingCount?: number;
+  preparingCount?: number;
+  completedCount?: number;
+  cancelledCount?: number;
 }
 
 const KitchenStatusTabs: React.FC<KitchenStatusTabsProps> = ({
-  defaultValue,
+  children,
+  defaultValue = "pending",
   onValueChange,
-  pendingCount,
-  preparingCount,
-  completedCount,
-  cancelledCount,
-  children
+  pendingCount = 0,
+  preparingCount = 0,
+  completedCount = 0,
+  cancelledCount = 0
 }) => {
   return (
     <Tabs 
       defaultValue={defaultValue} 
+      onValueChange={onValueChange}
       className="w-full"
-      onValueChange={(value) => onValueChange(value as KitchenTabStatus)}
     >
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="pending" className="relative">
-          Pendientes
-          {pendingCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {pendingCount}
-            </span>
+      <TabsList className="grid grid-cols-4 mb-4">
+        <TabsTrigger 
+          value="pending" 
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           )}
+        >
+          Pendientes <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{pendingCount}</span>
         </TabsTrigger>
-        <TabsTrigger value="preparing" className="relative">
-          En preparación
-          {preparingCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {preparingCount}
-            </span>
+        <TabsTrigger 
+          value="preparing" 
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           )}
+        >
+          En preparación <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{preparingCount}</span>
         </TabsTrigger>
-        <TabsTrigger value="ready" className="relative">
-          Completados
-          {completedCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {completedCount}
-            </span>
+        <TabsTrigger 
+          value="ready" 
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           )}
+        >
+          Completados <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{completedCount}</span>
         </TabsTrigger>
-        <TabsTrigger value="cancelled" className="relative">
-          Cancelados
-          {cancelledCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {cancelledCount}
-            </span>
+        <TabsTrigger 
+          value="cancelled" 
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           )}
+        >
+          Cancelados <span className="ml-2 text-xs bg-secondary text-secondary-foreground rounded-full px-2">{cancelledCount}</span>
         </TabsTrigger>
       </TabsList>
+
       {children}
     </Tabs>
   );

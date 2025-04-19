@@ -2,20 +2,15 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { EyeOff, Copy, Check } from 'lucide-react';
+import { EyeOff, Eye, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ApiKeyDisplayProps {
   apiKey: string | null;
-  isVisible: boolean;
-  onVisibilityChange: (visible: boolean) => void;
 }
 
-export const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({
-  apiKey,
-  isVisible,
-  onVisibilityChange
-}) => {
+export const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({ apiKey }) => {
+  const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
@@ -30,7 +25,6 @@ export const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({
           description: "Clave API copiada al portapapeles",
         });
         
-        // Reset copied status after 2 seconds
         setTimeout(() => setCopied(false), 2000);
       })
       .catch(err => {
@@ -43,12 +37,12 @@ export const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({
       });
   };
 
-  if (apiKey && isVisible) {
+  if (apiKey) {
     return (
       <div className="mt-2 relative">
         <Input
           id="api-key"
-          value={apiKey}
+          value={isVisible ? apiKey : "****************************************"}
           readOnly
           className="pr-20 font-mono bg-muted"
         />
@@ -56,10 +50,10 @@ export const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onVisibilityChange(false)}
+            onClick={() => setIsVisible(!isVisible)}
             className="h-full rounded-l-none"
           >
-            <EyeOff className="h-4 w-4" />
+            {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
           <Button
             variant="ghost"
@@ -75,7 +69,7 @@ export const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({
   } else {
     return (
       <div className="flex items-center h-10 px-3 py-2 text-sm border rounded-md">
-        {apiKey === 'exists' ? "****************************************" : "No hay clave configurada"}
+        No hay clave configurada
       </div>
     );
   }

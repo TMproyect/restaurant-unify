@@ -43,16 +43,16 @@ const TestingTab: React.FC<TestingTabProps> = ({ apiKey, examplePayload }) => {
     );
   };
 
-  // Genera un comando cURL completo para n8n con el formato Authorization Bearer
+  // Modifica el comando cURL para usar el token fijo
   const curlCommand = `curl -X POST "${apiEndpoint}" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${apiKey || 'YOUR_API_KEY_HERE'}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
   -d '${testPayload.replace(/\n/g, ' ')}'`;
   
-  // Genera una versión del comando para importar directamente en n8n
+  // Genera una versión del comando para importar directamente en n8n con el token fijo
   const n8nImportCommand = `${apiEndpoint}
 Content-Type: application/json
-Authorization: Bearer ${apiKey || 'YOUR_API_KEY_HERE'}
+Authorization: Bearer ${apiKey}
 
 ${testPayload}`;
   
@@ -75,20 +75,12 @@ ${testPayload}`;
         </Alert>
         
         <div className="space-y-4">
-          <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Atención</AlertTitle>
-            <AlertDescription>
-              Debe generar una API key en la sección "Configuración &gt; Integraciones" antes de poder realizar pruebas.
-              Las claves API se regeneran completamente, no se modifican.
-            </AlertDescription>
-          </Alert>
-          
           <ApiKeySelector 
             useStoredKey={useStoredKey}
             setUseStoredKey={setUseStoredKey}
             manualApiKey={manualApiKey}
             setManualApiKey={setManualApiKey}
+            fixedApiKey={apiKey}
           />
           
           <DirectTestSection 
@@ -98,6 +90,7 @@ ${testPayload}`;
             setIsLoading={setIsLoading}
             useStoredKey={useStoredKey}
             manualApiKey={manualApiKey}
+            fixedApiKey={apiKey}
             setTestResult={setTestResult}
             setTestStatus={setTestStatus}
             toast={toast}

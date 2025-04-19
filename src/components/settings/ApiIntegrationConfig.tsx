@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { ApiEndpointDisplay } from './api/ApiEndpointDisplay';
 import { ApiKeySection } from './api/ApiKeySection';
 import { ApiFormatExample } from './api/ApiFormatExample';
@@ -9,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TestingTab } from '@/components/integration/testing';
 
 export const ApiIntegrationConfig = () => {
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiUrl, setApiUrl] = useState('');
   const [examplePayload, setExamplePayload] = useState('');
+  // Fixed API key used throughout the application
+  const fixedApiKey = "pos_api_fixed_token_123456789";
 
   useEffect(() => {
     const projectId = 'imcxvnivqrckgjrimzck';
@@ -42,33 +42,6 @@ export const ApiIntegrationConfig = () => {
     setExamplePayload(JSON.stringify(payload, null, 2));
   }, []);
 
-  const fetchApiKeyExistence = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'external_api_key')
-        .single();
-
-      if (error) {
-        console.error('Error verificando la existencia de la clave API:', error);
-        return;
-      }
-
-      if (data?.value) {
-        setApiKey('exists');
-      } else {
-        setApiKey(null);
-      }
-    } catch (error) {
-      console.error('Error inesperado al verificar la clave API:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchApiKeyExistence();
-  }, []);
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -96,7 +69,7 @@ export const ApiIntegrationConfig = () => {
           
           <TabsContent value="testing">
             <TestingTab 
-              apiKey={apiKey === 'exists' ? '' : apiKey || ''} 
+              apiKey={fixedApiKey} 
               examplePayload={examplePayload} 
             />
           </TabsContent>

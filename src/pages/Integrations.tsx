@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +13,7 @@ const Integrations = () => {
     // Generate a secure API key on initial load if not existing
     const generateSecureApiKey = () => {
       const prefix = "pos_api_";
-      const randomPart = crypto.getRandomValues(new Uint32Array(4))
+      const randomPart = Array.from(crypto.getRandomValues(new Uint32Array(4)))
         .map(x => x.toString(36))
         .join('');
       const timestampPart = Date.now().toString(36);
@@ -50,7 +51,7 @@ const Integrations = () => {
   // Function to generate new API key
   const generateNewApiKey = async () => {
     const prefix = "pos_api_";
-    const randomPart = crypto.getRandomValues(new Uint32Array(4))
+    const randomPart = Array.from(crypto.getRandomValues(new Uint32Array(4)))
       .map(x => x.toString(36))
       .join('');
     const timestampPart = Date.now().toString(36);

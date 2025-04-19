@@ -10,8 +10,8 @@ import { TestingTab } from '@/components/integration/testing';
 export const ApiIntegrationConfig = () => {
   const [apiUrl, setApiUrl] = useState('');
   const [examplePayload, setExamplePayload] = useState('');
-  // Fixed API key used throughout the application
-  const fixedApiKey = "pos_api_fixed_token_123456789";
+  // Updated with a more complex API key
+  const fixedApiKey = "pos_api_XJ7p2Q8rK#5LmVz9F3eTy1A@Bc6D";
 
   useEffect(() => {
     const projectId = 'imcxvnivqrckgjrimzck';

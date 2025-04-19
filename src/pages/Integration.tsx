@@ -12,8 +12,10 @@ import { TestingTab } from '@/components/integration/testing';
 import { generateSecureApiKey, saveApiKeyToDatabase } from '@/components/settings/api/utils/apiKeyUtils';
 
 const Integration = () => {
-  const [apiKey, setApiKey] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
+  // Updated with a more complex and secure API key
+  const defaultApiKey = "pos_api_XJ7p2Q8rK#5LmVz9F3eTy1A@Bc6D";
+  const [apiKey, setApiKey] = useState<string>(defaultApiKey);
+  const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { toast } = useToast();
   
@@ -58,6 +60,9 @@ const Integration = () => {
       
       if (data) {
         setApiKey(data.value);
+      } else {
+        // Use the default key if no key is found in the database
+        setApiKey(defaultApiKey);
       }
     } catch (err) {
       console.error("Error al cargar la API key:", err);
@@ -66,6 +71,8 @@ const Integration = () => {
         description: "No se pudo cargar la clave de API",
         variant: "destructive",
       });
+      // Fall back to default key if there's an error
+      setApiKey(defaultApiKey);
     } finally {
       setLoading(false);
     }

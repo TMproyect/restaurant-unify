@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/tooltip';
 import { ApiKeyDisplay } from './ApiKeyDisplay';
 
-// Remove the props since we're using a fixed API key now
+// Updated with a more complex API key
 export const ApiKeySection = () => {
-  const fixedApiKey = "pos_api_fixed_token_123456789";
+  const fixedApiKey = "pos_api_XJ7p2Q8rK#5LmVz9F3eTy1A@Bc6D";
 
   return (
     <div className="space-y-2">

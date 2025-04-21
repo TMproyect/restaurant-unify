@@ -11,7 +11,8 @@ const createDefaultPermissions = (defaults: Partial<Record<UserRole, boolean>>):
     kitchen: false, // English equivalent of cocina
     repartidor: false,
     delivery: false, // English equivalent of repartidor
-    propietario: false
+    propietario: false,
+    cajero: false   // Add the cajero role to fix the error
   };
   
   // Override with provided values
@@ -461,7 +462,8 @@ export const systemRoles: Record<string, string> = {
   kitchen: 'Cocina', // Map kitchen to Cocina in display
   repartidor: 'Repartidor',
   delivery: 'Repartidor', // Map delivery to Repartidor in display
-  propietario: 'Propietario'
+  propietario: 'Propietario',
+  cajero: 'Cajero'  // Add the cajero role
 };
 
 // Utility function to get default role permissions

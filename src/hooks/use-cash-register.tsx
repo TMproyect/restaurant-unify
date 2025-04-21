@@ -65,7 +65,7 @@ export const useCashRegister = () => {
         setActiveShift(newShift);
         toast({
           title: "Turno iniciado",
-          description: `Turno iniciado con $${initialAmount.toFixed(2)} en caja`
+          description: `Turno iniciado con $${initialAmount.toLocaleString('es-ES')} en caja`
         });
         return newShift;
       } else {

@@ -86,6 +86,9 @@ export const startShift = async (userData: {
     // Guardar en localStorage para simular persistencia
     localStorage.setItem('active_shift', JSON.stringify(newShift));
     
+    // Agregar un pequeño retraso para simular una operación de red
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     return newShift;
     
     // Implementación futura con Supabase:

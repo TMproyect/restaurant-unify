@@ -12,6 +12,7 @@ import { CloseShiftDialog } from './components/CloseShiftDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { formatCurrency } from '@/utils/formatters';
 
 interface CashRegisterControlsProps {
   shift: CashRegisterShift | null;
@@ -113,11 +114,11 @@ const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) =>
             <div className="bg-muted/30 p-3 rounded-md">
               <div className="flex justify-between mb-1">
                 <span className="text-sm font-medium">Monto Inicial:</span>
-                <span className="text-sm">${shift.initial_amount?.toFixed(2) || '0.00'}</span>
+                <span className="text-sm">{formatCurrency(shift.initial_amount || 0)}</span>
               </div>
               <div className="flex justify-between mb-1">
                 <span className="text-sm font-medium">Ventas del Turno:</span>
-                <span className="text-sm">${shift.total_sales?.toFixed(2) || '0.00'}</span>
+                <span className="text-sm">{formatCurrency(shift.total_sales || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm font-medium">Hora de Apertura:</span>

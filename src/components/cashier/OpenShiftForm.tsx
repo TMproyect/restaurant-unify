@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { useCashRegister } from '@/hooks/use-cash-register';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { DollarSign, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { formatNumber } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
 
 const OpenShiftForm = () => {
   const [initialCashAmount, setInitialCashAmount] = useState('');
@@ -26,7 +27,7 @@ const OpenShiftForm = () => {
     try {
       const numericValue = parseFloat(initialCashAmount);
       if (!isNaN(numericValue)) {
-        setDisplayValue(formatNumber(numericValue));
+        setDisplayValue(formatCurrency(numericValue));
       }
     } catch (error) {
       console.error('Error formatting number:', error);
@@ -86,7 +87,7 @@ const OpenShiftForm = () => {
                 <Input 
                   id="initialCash"
                   type="text" 
-                  placeholder="0.00" 
+                  placeholder="0" 
                   className="pl-8"
                   value={displayValue}
                   onChange={handleInputChange}

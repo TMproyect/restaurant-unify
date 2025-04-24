@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DollarSign, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { CashRegisterShift } from '@/services/cashierService';
+import { formatCurrency } from '@/utils/formatters';
 
 interface CloseShiftDialogProps {
   isOpen: boolean;
@@ -27,6 +28,8 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
   finalAmount,
   onFinalAmountChange,
 }) => {
+  const expectedAmount = shift.initial_amount + (shift.total_cash_sales || 0);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -47,14 +50,14 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
                 type="number" 
                 min="0" 
                 step="0.01"
-                placeholder={(shift.initial_amount + (shift.total_cash_sales || 0)).toFixed(2)} 
+                placeholder={formatCurrency(expectedAmount)} 
                 className="pl-8"
                 value={finalAmount}
                 onChange={(e) => onFinalAmountChange(e.target.value)}
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Monto esperado en caja: ${(shift.initial_amount + (shift.total_cash_sales || 0)).toFixed(2)}
+              Monto esperado en caja: {formatCurrency(expectedAmount)}
             </p>
           </div>
           

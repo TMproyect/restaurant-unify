@@ -16,6 +16,7 @@ export const formatCurrency = (
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+    useGrouping: true  // Ensure thousand separators are used
   }).format(value);
 };
 

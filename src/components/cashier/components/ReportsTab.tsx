@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, FileText, Printer } from 'lucide-react';
 import { CashRegisterShift } from '@/services/cashierService';
+import { formatCurrency } from '@/utils/formatters';
 
 interface ReportsTabProps {
   shift: CashRegisterShift;
@@ -45,23 +46,23 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ shift, onPrintReport }) 
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Efectivo Inicial:</span>
-            <span>${shift.initial_amount?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(shift.initial_amount || 0)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Ventas en Efectivo:</span>
-            <span>${shift.total_cash_sales?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(shift.total_cash_sales || 0)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Ventas con Tarjeta:</span>
-            <span>${shift.total_card_sales?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(shift.total_card_sales || 0)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Total Ventas:</span>
-            <span>${shift.total_sales?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(shift.total_sales || 0)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Efectivo en Caja:</span>
-            <span>${(shift.initial_amount + (shift.total_cash_sales || 0)).toFixed(2)}</span>
+            <span>{formatCurrency(shift.initial_amount + (shift.total_cash_sales || 0))}</span>
           </div>
         </div>
       </div>

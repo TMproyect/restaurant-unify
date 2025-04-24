@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Lock, LayoutGrid, AlertCircle } from 'lucide-react';
-import { CashRegisterShift } from '@/services/cashierService';
+import { CashRegisterShift } from '@/services/cashier';
 import { MovementForm } from './MovementForm';
 import { ReportsTab } from './ReportsTab';
 import { CloseShiftDialog } from './CloseShiftDialog';

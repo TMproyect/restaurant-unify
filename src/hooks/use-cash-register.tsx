@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { 
@@ -6,8 +5,8 @@ import {
   startShift, 
   endShift, 
   CashRegisterShift,
-  loadActiveShiftFromStorage
-} from '@/services/cashierService';
+  loadActiveShiftFromStorage 
+} from '@/services/cashier';
 import { useToast } from '@/hooks/use-toast';
 
 export const useCashRegister = () => {
@@ -18,20 +17,17 @@ export const useCashRegister = () => {
   const [isStartingShift, setIsStartingShift] = useState(false);
   const [isEndingShift, setIsEndingShift] = useState(false);
   
-  // Cargar turno activo al iniciar
   useEffect(() => {
     const loadShift = async () => {
       if (!user) return;
       
       setIsLoading(true);
       try {
-        // Para la demostración, primero intentamos cargar desde localStorage
         const storedShift = loadActiveShiftFromStorage();
         
         if (storedShift) {
           setActiveShift(storedShift);
         } else {
-          // En un sistema real, esto cargaría desde la base de datos
           const shift = await getActiveShift(user.id);
           setActiveShift(shift);
         }
@@ -50,7 +46,6 @@ export const useCashRegister = () => {
     loadShift();
   }, [user]);
   
-  // Iniciar un nuevo turno
   const startNewShift = async (initialAmount: number) => {
     if (!user) return null;
     
@@ -89,7 +84,6 @@ export const useCashRegister = () => {
     }
   };
   
-  // Finalizar el turno actual
   const closeCurrentShift = async (finalAmount?: number) => {
     if (!activeShift || !activeShift.id) return false;
     

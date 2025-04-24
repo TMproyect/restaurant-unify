@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, LayoutGrid, Lock } from 'lucide-react';
+import { Clock, LayoutGrid, Lock, AlertCircle } from 'lucide-react';
 import { useCashRegister } from '@/hooks/use-cash-register';
 import { CashRegisterShift } from '@/services/cashierService';
 import { MovementForm } from './components/MovementForm';
@@ -12,6 +11,7 @@ import { ReportsTab } from './components/ReportsTab';
 import { CloseShiftDialog } from './components/CloseShiftDialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface CashRegisterControlsProps {
   shift: CashRegisterShift | null;

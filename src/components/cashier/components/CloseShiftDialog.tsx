@@ -3,9 +3,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertCircle, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DollarSign, Lock, Loader2 } from 'lucide-react';
+import { DollarSign, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { CashRegisterShift } from '@/services/cashierService';
 
 interface CloseShiftDialogProps {

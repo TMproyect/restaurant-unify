@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, LayoutGrid, AlertCircle, Clock } from 'lucide-react';
+import { Lock, LayoutGrid, AlertCircle } from 'lucide-react';
 import { CashRegisterShift } from '@/services/cashierService';
 import { MovementForm } from './MovementForm';
 import { ReportsTab } from './ReportsTab';
@@ -11,9 +12,6 @@ import { CashRegisterOverview } from './CashRegisterOverview';
 import { useToast } from '@/hooks/use-toast';
 import { useCashRegister } from '@/hooks/use-cash-register';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { formatCurrency } from '@/utils/formatters';
 
 interface CashRegisterControlsProps {
   shift: CashRegisterShift | null;
@@ -38,15 +36,6 @@ const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) =>
       title: "Reporte generado",
       description: `El reporte "${reportType}" ha sido enviado a la impresora`
     });
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    try {
-      return format(new Date(dateString), 'HH:mm:ss', { locale: es });
-    } catch (e) {
-      return "Fecha inválida";
-    }
   };
 
   if (!shift) {

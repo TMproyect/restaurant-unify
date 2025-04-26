@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -93,7 +92,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     
     try {
       setIsProcessing(true);
-      const success = await updateOrderStatus(order.id, 'paid');
+      const success = await updateOrderStatus(order.id, 'delivered');
       
       if (success) {
         setPaymentStep('success');

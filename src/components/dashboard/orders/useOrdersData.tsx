@@ -5,6 +5,7 @@ import { getOrders, subscribeToOrders, subscribeToFilteredOrders, updateOrderSta
 import { useToast } from '@/hooks/use-toast';
 import { safeArray } from '@/utils/safetyUtils';
 import { toast } from 'sonner';
+import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
 type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
 
@@ -57,7 +58,9 @@ export function useOrdersData({
     try {
       console.log(`🔄 [useOrdersData] Updating order ${orderId} status to ${newStatus}`);
       setLoading(true);
-      const success = await updateOrderStatus(orderId, newStatus);
+      // Convert the string status to a valid NormalizedOrderStatus
+      const normalizedStatus = newStatus as NormalizedOrderStatus;
+      const success = await updateOrderStatus(orderId, normalizedStatus);
       
       if (success) {
         console.log(`✅ [useOrdersData] Successfully updated order status`);

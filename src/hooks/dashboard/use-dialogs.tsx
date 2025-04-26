@@ -1,7 +1,6 @@
-
 import { useState, useCallback } from 'react';
 import { ActivityMonitorItem } from '@/types/dashboard.types';
-import { updateOrderStatus } from '@/services/dashboardService';
+import { updateOrderStatus } from '@/services/orders';
 import { toast } from 'sonner';
 
 export function useDialogs() {
@@ -39,7 +38,8 @@ export function useDialogs() {
     
     try {
       // Update order status with cancellation reason
-      const success = await updateOrderStatus(orderIdToCancel, 'cancelled', reason);
+      // Fix: pass only two arguments as expected by the updated function
+      const success = await updateOrderStatus(orderIdToCancel, 'cancelled');
       
       if (success) {
         toast.success(`Orden ${orderIdToCancel.substring(0, 6)} cancelada`);

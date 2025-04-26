@@ -1,72 +1,74 @@
-import React, { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/theme-provider';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as SonnerToaster } from 'sonner';
+import { Toaster } from "@/components/ui/toaster";
+import { ShiftStateProvider } from '@/hooks/cashier/use-shift-state';
+
+// Pages
+import Index from '@/pages/Index';
+import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Orders from '@/pages/Orders';
 import Menu from '@/pages/Menu';
-import Tables from '@/pages/Tables';
-import Settings from '@/pages/Settings';
 import Cashier from '@/pages/Cashier';
 import Kitchen from '@/pages/Kitchen';
-import Integrations from '@/pages/Integrations';
-import { setupRealtimeForTables } from './utils/enableRealtimeFunction';
-import { AuthProvider } from '@/contexts/auth/AuthContext';
-import Login from '@/pages/Login';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Tables from '@/pages/Tables';
+import Settings from '@/pages/Settings';
+import NotFound from '@/pages/NotFound';
+import RolesAndPermissions from '@/pages/RolesAndPermissions';
 import Sales from '@/pages/Sales';
-import Notifications from '@/pages/Notifications';
-import Messages from '@/pages/Messages';
-import Reports from '@/pages/Reports';
 import Delivery from '@/pages/Delivery';
 import Staff from '@/pages/Staff';
-import RolesAndPermissionsPage from '@/pages/RolesAndPermissions';
+import Messages from '@/pages/Messages';
+import Notifications from '@/pages/Notifications';
 import SalesTest from '@/pages/SalesTest';
+import Reports from '@/pages/Reports';
+import Integrations from '@/pages/Integrations';
+import Integration from '@/pages/Integration';
 
-// Create a client
+// Create React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+      retry: 0,
     },
   },
 });
 
 function App() {
-  // Set up realtime for tables when the app starts
-  useEffect(() => {
-    setupRealtimeForTables();
-  }, []);
-
   return (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/menu" element={<Menu />} />
-            <Route path="/tables" element={<Tables />} />
-            <Route path="/settings/*" element={<Settings />} />
-            <Route path="/cashier" element={<Cashier />} />
-            <Route path="/kitchen" element={<Kitchen />} />
-            <Route path="/integrations" element={<Integrations />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/delivery" element={<Delivery />} />
-            <Route path="/staff" element={<Staff />} />
-            <Route path="/roles-and-permissions" element={<RolesAndPermissionsPage />} />
-            <Route path="/sales-test" element={<SalesTest />} />
-          </Routes>
-          <Toaster />
-          <SonnerToaster position="top-right" />
-        </AuthProvider>
+        <ShiftStateProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route path="/menu" element={<Menu />} />
+              <Route path="/cashier" element={<Cashier />} />
+              <Route path="/kitchen" element={<Kitchen />} />
+              <Route path="/tables" element={<Tables />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/roles" element={<RolesAndPermissions />} />
+              <Route path="/sales" element={<Sales />} />
+              <Route path="/delivery" element={<Delivery />} />
+              <Route path="/staff" element={<Staff />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/sales-test" element={<SalesTest />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/integrations" element={<Integrations />} />
+              <Route path="/integration/:id" element={<Integration />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Toaster />
+          </Router>
+        </ShiftStateProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

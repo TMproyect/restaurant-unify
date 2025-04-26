@@ -7,36 +7,20 @@ export const useShiftLoader = (userId: string | undefined) => {
   const { setActiveShift, setIsLoading } = useShiftState();
 
   useEffect(() => {
-    const loadShift = async () => {
-      try {
-        console.log("[useShiftLoader] Loading shift for user:", userId);
-        
-        // Start with loading state true
-        setIsLoading(true);
-        
-        // Directly use stored shift - no API verification
-        if (userId) {
-          const storedShift = loadActiveShiftFromStorage();
-          console.log("[useShiftLoader] Stored shift loaded:", storedShift);
-          
-          if (storedShift && storedShift.user_id === userId) {
-            console.log("[useShiftLoader] Setting active shift");
-            setActiveShift(storedShift);
-          } else {
-            console.log("[useShiftLoader] No active shift found for user");
-            setActiveShift(null);
-          }
-        }
-      } catch (error) {
-        console.error("[useShiftLoader] Error loading shift:", error);
+    // Set loading to false by default to avoid infinite loading state
+    setIsLoading(false);
+    
+    // Simple synchronous check for stored shift
+    if (userId) {
+      const storedShift = loadActiveShiftFromStorage();
+      
+      if (storedShift && storedShift.user_id === userId) {
+        console.log("[useShiftLoader] Found active shift for user:", userId);
+        setActiveShift(storedShift);
+      } else {
+        console.log("[useShiftLoader] No active shift found for user:", userId);
         setActiveShift(null);
-      } finally {
-        // Always ensure we exit loading state
-        console.log("[useShiftLoader] Finished loading shift");
-        setIsLoading(false);
       }
-    };
-
-    loadShift();
+    }
   }, [userId, setActiveShift, setIsLoading]);
 };

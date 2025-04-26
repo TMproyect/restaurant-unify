@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Loader2, Check, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,6 +71,19 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     const paidAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
     return Math.max(0, total - paidAmount);
   };
+
+  if (!order) {
+    return (
+      <div className="h-full flex flex-col justify-center items-center text-center">
+        <Receipt className="h-16 w-16 text-muted-foreground/30 mb-4" />
+        <h3 className="text-lg font-medium mb-1">No hay orden seleccionada</h3>
+        <p className="text-muted-foreground">
+          Regresa y selecciona una orden para procesar el pago
+        </p>
+        <Button className="mt-6" onClick={onCancel}>Regresar</Button>
+      </div>
+    );
+  }
 
   const handlePayment = async () => {
     if (!order?.id) {
@@ -152,19 +164,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     });
   };
 
-  if (!order) {
-    return (
-      <div className="h-full flex flex-col justify-center items-center text-center">
-        <Receipt className="h-16 w-16 text-muted-foreground/30 mb-4" />
-        <h3 className="text-lg font-medium mb-1">No hay orden seleccionada</h3>
-        <p className="text-muted-foreground">
-          Regresa y selecciona una orden para procesar el pago
-        </p>
-        <Button className="mt-6" onClick={onCancel}>Regresar</Button>
-      </div>
-    );
-  }
-
   if (paymentStep === 'success') {
     return (
       <PaymentSuccess
@@ -180,7 +179,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Payment Form Content */}
       <PaymentMethodSelector
         selectedMethod={currentPayment.method}
         onMethodChange={(value) => setCurrentPayment({...currentPayment, method: value})}

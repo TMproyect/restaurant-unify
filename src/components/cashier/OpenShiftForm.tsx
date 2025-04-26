@@ -140,7 +140,7 @@ const OpenShiftForm = () => {
         console.log("[OpenShiftForm] Shift started successfully, showing confirmation toast");
         toast({
           title: "Éxito",
-          description: `Turno iniciado con ${formatCurrency(amount)}`,
+          description: `Turno iniciado con ${formatCurrency(amount)}`
         });
       }
     } catch (error) {

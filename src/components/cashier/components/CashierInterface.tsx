@@ -2,13 +2,10 @@
 import React, { useState } from 'react';
 import { CircleDollarSign } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import CashierOrdersList from '../CashierOrdersList';
 import OrderDetails from '../OrderDetails';
 import PaymentPanel from '../PaymentPanel';
 import CashRegisterControls from './CashRegisterControls';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import CashierOrdersSection from './orders/CashierOrdersSection';
 import { useToast } from '@/hooks/use-toast';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 import { CashRegisterShift } from '@/services/cashier';
@@ -66,31 +63,11 @@ export const CashierInterface: React.FC<CashierInterfaceProps> = ({ activeShift 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 border rounded-md p-4">
-          <div className="mb-4">
-            <h2 className="text-lg font-medium mb-2">Órdenes Pendientes</h2>
-            <div className="flex mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar por mesa, cliente o código..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-            <Tabs defaultValue="ready" onValueChange={(value) => setFilter(value as 'ready' | 'delivered')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="ready">Listos para Cobrar</TabsTrigger>
-                <TabsTrigger value="delivered">Pagadas</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          <CashierOrdersList 
-            filter={filter}
+          <CashierOrdersSection
             searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filter={filter}
+            onFilterChange={setFilter}
             onSelectOrder={handleOrderSelect}
             selectedOrderId={selectedOrder}
           />

@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { CircleDollarSign } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import OrderDetails from '../OrderDetails';
 import PaymentPanel from '../PaymentPanel';
-import CashRegisterControls from './CashRegisterControls';
+import CashRegisterControls from './CashierControls';
 import CashierOrdersSection from './orders/CashierOrdersSection';
 import { useToast } from '@/hooks/use-toast';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
@@ -23,8 +22,33 @@ export const CashierInterface: React.FC<CashierInterfaceProps> = ({ activeShift 
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleOrderSelect = (orderId: string) => {
-    setSelectedOrder(orderId);
+  const handleOrderSelect = async (orderId: string) => {
+    try {
+      setIsLoading(true);
+      setSelectedOrder(orderId);
+      
+      // Fetch order details
+      const response = await getOrderWithItems(orderId);
+      if (response && response.order) {
+        setOrderDetails(response);
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los detalles de la orden",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      toast({
+        title: "Error",
+        description: "Error al cargar los detalles de la orden",
+        variant: "destructive"
+      });
+      setSelectedOrder(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePaymentStart = () => {

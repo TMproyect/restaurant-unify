@@ -197,10 +197,18 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
             key={order.id}
             className={`p-3 rounded-lg transition-colors cursor-pointer ${
               isSelected 
-                ? 'bg-primary/10 border border-primary/30' 
+                ? 'bg-primary/10 border border-primary/30 shadow-sm' 
                 : 'bg-card hover:bg-accent/50 border border-border'
             }`}
-            onClick={() => onSelectOrder(order.id || '')}
+            onClick={() => order.id && onSelectOrder(order.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                order.id && onSelectOrder(order.id);
+              }
+            }}
           >
             <div className="flex justify-between items-start mb-2">
               <div>
@@ -227,7 +235,7 @@ const CashierOrdersList: React.FC<CashierOrdersListProps> = ({
               <div className="text-sm font-medium">{order.customer_name}</div>
               <div className="text-sm font-bold flex items-center">
                 <DollarSign className="h-3 w-3 mr-1" />
-                ${order.total.toFixed(2)}
+                {formatCurrency(order.total)}
               </div>
             </div>
             

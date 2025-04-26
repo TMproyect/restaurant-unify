@@ -21,15 +21,6 @@ const Cashier = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show minimal loading for a very short time
-  if (isShiftLoading && !activeShift) {
-    return (
-      <Layout>
-        <CashierLoading />
-      </Layout>
-    );
-  }
-
   // If no active shift, show the open shift form
   if (!isShiftActive) {
     return (

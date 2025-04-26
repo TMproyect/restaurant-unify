@@ -2,16 +2,7 @@
 import React from 'react';
 import { Percent } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-
-interface PaymentSummaryProps {
-  subtotal: number;
-  discount: number;
-  discountType: 'percent' | 'amount';
-  tax: number;
-  tipAmount: number;
-  tipType: 'percent' | 'amount';
-  total: number;
-}
+import { PaymentSummaryProps } from '../types';
 
 const PaymentSummary = ({
   subtotal,
@@ -19,8 +10,9 @@ const PaymentSummary = ({
   discountType,
   tax,
   tipAmount,
-  tipType,
-  total
+  tipPercentage,
+  total,
+  pendingAmount
 }: PaymentSummaryProps) => {
   return (
     <div className="flex-grow">
@@ -51,9 +43,16 @@ const PaymentSummary = ({
         {tipAmount > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              Propina {tipType === 'percent' ? `(${tipAmount}%)` : ''}:
+              Propina {tipPercentage > 0 ? `(${tipPercentage}%)` : ''}:
             </span>
-            <span>${(tipType === 'percent' ? subtotal * (tipAmount/100) : tipAmount).toFixed(2)}</span>
+            <span>${tipAmount.toFixed(2)}</span>
+          </div>
+        )}
+
+        {pendingAmount > 0 && (
+          <div className="flex justify-between text-muted-foreground">
+            <span>Pendiente por pagar:</span>
+            <span>${pendingAmount.toFixed(2)}</span>
           </div>
         )}
       </div>

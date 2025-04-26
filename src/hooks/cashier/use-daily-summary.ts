@@ -1,17 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { DailySummaryData } from '@/components/cashier/payment/types';
 import { getDailySummary, updateDailySummary as updateSummaryService } from '@/services/cashier/summaryService';
-
-interface DailySales {
-  date: string;
-  totalSales: number;
-  cashSales: number;
-  cardSales: number;
-  transferSales: number;
-  orderCount: number;
-  averageTicket: number;
-}
 
 interface UpdateSummaryData {
   sales: number;
@@ -23,7 +14,7 @@ interface UpdateSummaryData {
 }
 
 export const useDailySummary = () => {
-  const [summary, setSummary] = useState<DailySales | null>(null);
+  const [summary, setSummary] = useState<DailySummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -33,7 +24,14 @@ export const useDailySummary = () => {
     setError(null);
     try {
       const data = await getDailySummary();
-      setSummary(data);
+      if (data) {
+        // Ensure averageTicket is calculated
+        const averageTicket = data.orderCount > 0 ? data.totalSales / data.orderCount : 0;
+        setSummary({
+          ...data,
+          averageTicket
+        });
+      }
     } catch (err) {
       console.error('Error loading daily summary:', err);
       setError('No se pudo cargar el resumen diario');
@@ -62,15 +60,18 @@ export const useDailySummary = () => {
         .filter(p => p.method === 'transfer')
         .reduce((sum, p) => sum + p.amount, 0);
 
-      // Update the summary in the service/database
-      await updateSummaryService({
+      const summaryData: DailySummaryData = {
         date: new Date().toISOString().split('T')[0],
         totalSales: data.sales,
         cashSales: cashAmount,
         cardSales: cardAmount,
         transferSales: transferAmount,
-        orderCount: data.orderCount
-      });
+        orderCount: data.orderCount,
+        averageTicket: data.orderCount > 0 ? data.sales / data.orderCount : 0
+      };
+
+      // Update the summary in the service/database
+      await updateSummaryService(summaryData);
 
       // Reload summary
       await loadDailySummary();

@@ -23,9 +23,20 @@ export const subscribeToOrders = (callback: (payload: any) => void): (() => void
           event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'orders'
-        }, (payload) => {
-          console.log('🔄 [orderSubscriptions] Realtime update received:', payload.eventType);
-          console.log('🔄 [orderSubscriptions] Order data:', payload.new || payload.old);
+        }, (payload: any) => {
+          // Type guard to ensure payload has necessary properties
+          if (!payload || typeof payload !== 'object') {
+            console.error('Invalid payload received:', payload);
+            return;
+          }
+
+          // Safely access payload properties
+          const eventType = payload.eventType as string;
+          const newData = payload.new as Record<string, any> | null;
+          const oldData = payload.old as Record<string, any> | null;
+
+          console.log('🔄 [orderSubscriptions] Realtime update received:', eventType);
+          console.log('🔄 [orderSubscriptions] Order data:', newData || oldData);
           
           // Reset reconnection attempts on successful data
           reconnectAttempts = 0;
@@ -126,6 +137,32 @@ export const subscribeToFilteredOrders = (
   try {
     let channel: RealtimeChannel;
     
+    const handlePayload = (payload: any) => {
+      if (!payload || typeof payload !== 'object') {
+        console.error('Invalid payload received:', payload);
+        return;
+      }
+
+      const newData = payload.new as Record<string, any> | null;
+      const oldData = payload.old as Record<string, any> | null;
+      const eventId = `${payload.eventType}-${newData?.id || oldData?.id}-${Date.now()}`;
+      
+      // Check if we've already processed this event
+      if (eventCache.has(eventId)) {
+        return;
+      }
+      
+      // Add to cache and trim if needed
+      eventCache.add(eventId);
+      if (eventCache.size > MAX_CACHE_SIZE) {
+        const firstItem = eventCache.values().next().value;
+        eventCache.delete(firstItem);
+      }
+      
+      console.log(`🔄 [orderSubscriptions] Filtered order update (${filter}):`, payload.eventType);
+      callback(payload);
+    };
+
     if (filter) {
       // Subscribe with filter
       channel = supabase
@@ -135,24 +172,7 @@ export const subscribeToFilteredOrders = (
           schema: 'public',
           table: 'orders',
           filter: `status=eq.${filter}`
-        }, (payload) => {
-          const eventId = `${payload.eventType}-${payload.new?.id || payload.old?.id}-${Date.now()}`;
-          
-          // Check if we've already processed this event
-          if (eventCache.has(eventId)) {
-            return;
-          }
-          
-          // Add to cache and trim if needed
-          eventCache.add(eventId);
-          if (eventCache.size > MAX_CACHE_SIZE) {
-            const firstItem = eventCache.values().next().value;
-            eventCache.delete(firstItem);
-          }
-          
-          console.log(`🔄 [orderSubscriptions] Filtered order update (${filter}):`, payload.eventType);
-          callback(payload);
-        })
+        }, handlePayload)
         .subscribe((status) => {
           console.log(`🔄 [orderSubscriptions] Filtered subscription status (${filter}): ${status}`);
         });
@@ -164,24 +184,7 @@ export const subscribeToFilteredOrders = (
           event: '*',
           schema: 'public',
           table: 'orders'
-        }, (payload) => {
-          const eventId = `${payload.eventType}-${payload.new?.id || payload.old?.id}-${Date.now()}`;
-          
-          // Check if we've already processed this event
-          if (eventCache.has(eventId)) {
-            return;
-          }
-          
-          // Add to cache and trim if needed
-          eventCache.add(eventId);
-          if (eventCache.size > MAX_CACHE_SIZE) {
-            const firstItem = eventCache.values().next().value;
-            eventCache.delete(firstItem);
-          }
-          
-          console.log('🔄 [orderSubscriptions] All orders update:', payload.eventType);
-          callback(payload);
-        })
+        }, handlePayload)
         .subscribe((status) => {
           console.log(`🔄 [orderSubscriptions] All orders subscription status: ${status}`);
         });

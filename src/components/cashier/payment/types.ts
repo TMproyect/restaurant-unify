@@ -1,4 +1,3 @@
-
 import { Order, OrderItem } from "@/services/orderService";
 
 export interface PaymentMethod {
@@ -32,6 +31,17 @@ export interface PaymentData {
   paymentDate: string;
 }
 
+export interface PaymentSummaryProps {
+  subtotal: number;
+  discount: number;
+  discountType: 'percent' | 'amount';
+  tax: number;
+  tipAmount: number;
+  tipPercentage: number;
+  total: number;
+  pendingAmount: number;
+}
+
 export interface DailySummaryData {
   date: string;
   totalSales: number;
@@ -39,4 +49,5 @@ export interface DailySummaryData {
   cardSales: number;
   transferSales: number;
   orderCount: number;
+  averageTicket: number;
 }

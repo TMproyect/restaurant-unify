@@ -28,16 +28,19 @@ export const useCashRegister = () => {
       setIsLoading(true);
       try {
         console.log("[useCashRegister] Loading shift for user:", user.id);
+        // Directly check local storage first for faster response
         const storedShift = loadActiveShiftFromStorage();
         
-        if (storedShift) {
+        if (storedShift && storedShift.user_id === user.id) {
           console.log("[useCashRegister] Found stored shift:", storedShift);
           setActiveShift(storedShift);
+          setIsLoading(false); // Set loading to false immediately when we have data
         } else {
           console.log("[useCashRegister] No stored shift, checking API");
           const shift = await getActiveShift(user.id);
           console.log("[useCashRegister] API shift result:", shift);
           setActiveShift(shift);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('[useCashRegister] Error loading active shift:', error);
@@ -46,12 +49,21 @@ export const useCashRegister = () => {
           description: "No se pudo cargar la información del turno",
           variant: "destructive"
         });
-      } finally {
         setIsLoading(false);
       }
     };
     
     loadShift();
+    
+    // Safety timeout to ensure loading state doesn't get stuck
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.log("[useCashRegister] Safety timeout reached, forcing loading to false");
+        setIsLoading(false);
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timeout);
   }, [user]);
   
   // Start a new shift
@@ -92,8 +104,12 @@ export const useCashRegister = () => {
           description: `Turno iniciado con $${initialAmount.toLocaleString('es-ES')} en caja`
         });
         
-        // Recarga la página para mostrar la interfaz actualizada
-        window.location.reload();
+        // Update local state first for immediate UI feedback
+        setTimeout(() => {
+          console.log("[useCashRegister] Reloading page to refresh interface");
+          window.location.href = "/cashier"; // Use direct URL instead of reload for better routing
+        }, 300);
+        
         return newShift;
       } else {
         console.log("[useCashRegister] Failed to create new shift");
@@ -137,6 +153,14 @@ export const useCashRegister = () => {
                               (activeShift.total_cash_sales || 0);
       
       console.log("[useCashRegister] Closing shift with final amount:", calculatedAmount);
+      
+      // Update local state for immediate UI feedback
+      setActiveShift({
+        ...activeShift,
+        status: 'closing', // Add intermediate state
+        final_amount: calculatedAmount
+      });
+      
       const success = await endShift(activeShift.id, calculatedAmount);
       
       if (success) {
@@ -147,14 +171,22 @@ export const useCashRegister = () => {
           description: "El turno ha sido cerrado exitosamente"
         });
         
-        // Recarga la página para mostrar la interfaz actualizada
+        // Redirect to cashier page after brief delay
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          console.log("[useCashRegister] Redirecting to cashier page");
+          window.location.href = "/cashier"; // Use direct URL instead of reload for better routing
+        }, 300);
         
         return true;
       } else {
         console.log("[useCashRegister] Failed to close shift");
+        // Reset the shift status since closing failed
+        setActiveShift({
+          ...activeShift,
+          status: 'open', // Reset to open
+          final_amount: undefined
+        });
+        
         toast({
           title: "Error",
           description: "No se pudo cerrar el turno",

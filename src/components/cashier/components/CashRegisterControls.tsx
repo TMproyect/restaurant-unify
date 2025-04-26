@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Lock, LayoutGrid, AlertCircle } from 'lucide-react';
@@ -23,6 +23,15 @@ const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) =>
   const [finalAmount, setFinalAmount] = useState('');
   const { closeCurrentShift, isEndingShift } = useCashRegister();
   const { toast } = useToast();
+
+  // Reset finalAmount when dialog opens, prefill with expected amount
+  useEffect(() => {
+    if (isCloseDialogOpen && shift) {
+      const expectedAmount = shift.initial_amount + (shift.total_cash_sales || 0);
+      console.log("[CashRegisterControls] Dialog opened, setting default amount:", expectedAmount);
+      setFinalAmount(expectedAmount.toString());
+    }
+  }, [isCloseDialogOpen, shift]);
 
   const handleCashMovement = (type: 'in' | 'out', amount: number, reason: string) => {
     toast({
@@ -53,6 +62,16 @@ const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) =>
     try {
       const amount = parseFloat(finalAmountValue);
       console.log("[CashRegisterControls] Parsed amount:", amount);
+      
+      if (isNaN(amount)) {
+        console.log("[CashRegisterControls] Invalid amount format");
+        toast({
+          title: "Error",
+          description: "Por favor ingresa un monto válido",
+          variant: "destructive"
+        });
+        return;
+      }
       
       const success = await closeCurrentShift(amount);
       console.log("[CashRegisterControls] Shift close result:", success);

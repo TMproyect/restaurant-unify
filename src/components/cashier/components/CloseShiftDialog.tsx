@@ -1,12 +1,12 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DollarSign, Lock, Loader2, AlertCircle } from 'lucide-react';
-import { CashRegisterShift } from '@/services/cashierService';
+import { CashRegisterShift } from '@/services/cashier';
 import { formatCurrency } from '@/utils/formatters';
 
 interface CloseShiftDialogProps {
@@ -29,6 +29,57 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
   onFinalAmountChange,
 }) => {
   const expectedAmount = shift.initial_amount + (shift.total_cash_sales || 0);
+  const [displayValue, setDisplayValue] = React.useState('');
+  
+  // Format value when component mounts or finalAmount changes
+  useEffect(() => {
+    console.log("[CloseShiftDialog] Initial amount set:", finalAmount);
+    if (finalAmount) {
+      setDisplayValue(formatCurrency(parseFloat(finalAmount)));
+    } else {
+      setDisplayValue('');
+    }
+  }, [finalAmount]);
+
+  // Handle input focus to show raw value
+  const handleFocus = () => {
+    console.log("[CloseShiftDialog] Input focused, showing raw value:", finalAmount);
+    setDisplayValue(finalAmount);
+  };
+
+  // Handle input blur to format value
+  const handleBlur = () => {
+    console.log("[CloseShiftDialog] Input blurred, formatting value");
+    if (finalAmount) {
+      const numericValue = parseFloat(finalAmount);
+      if (!isNaN(numericValue)) {
+        setDisplayValue(formatCurrency(numericValue));
+      }
+    }
+  };
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Remove any non-numeric characters except decimal point
+    const inputVal = e.target.value;
+    console.log("[CloseShiftDialog] Raw input value:", inputVal);
+    
+    // Accept only digits and decimal point
+    const rawValue = inputVal.replace(/[^\d.]/g, '');
+    
+    // Ensure only one decimal point
+    const parts = rawValue.split('.');
+    let cleanValue = parts[0];
+    if (parts.length > 1) {
+      cleanValue += '.' + parts[1];
+    }
+    
+    console.log("[CloseShiftDialog] Clean value after processing:", cleanValue);
+    
+    // Update both the internal state and display value
+    onFinalAmountChange(cleanValue);
+    setDisplayValue(cleanValue);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -47,13 +98,15 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
               <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input 
                 id="finalCashAmount"
-                type="number" 
+                type="text" 
                 min="0" 
-                step="0.01"
-                placeholder={formatCurrency(expectedAmount)} 
                 className="pl-8"
-                value={finalAmount}
-                onChange={(e) => onFinalAmountChange(e.target.value)}
+                value={displayValue}
+                onChange={handleInputChange}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                inputMode="decimal"
+                placeholder={formatCurrency(expectedAmount)}
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">

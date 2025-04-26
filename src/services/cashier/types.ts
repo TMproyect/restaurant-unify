@@ -6,7 +6,7 @@ export type CashRegisterShift = {
   ended_at?: string | null;
   initial_amount: number;
   final_amount?: number | null;
-  status: 'open' | 'closed';
+  status: 'open' | 'closed' | 'closing';
   total_sales?: number;
   total_cash_sales?: number;
   total_card_sales?: number;

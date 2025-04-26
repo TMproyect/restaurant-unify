@@ -154,10 +154,10 @@ export const useCashRegister = () => {
       
       console.log("[useCashRegister] Closing shift with final amount:", calculatedAmount);
       
-      // Update local state for immediate UI feedback
+      // Update local state for immediate UI feedback, using a valid status from the type definition
       setActiveShift({
         ...activeShift,
-        status: 'closing', // Add intermediate state
+        status: 'closed', // Changed from 'closing' to 'closed' to match the type definition
         final_amount: calculatedAmount
       });
       

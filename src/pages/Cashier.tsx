@@ -14,7 +14,7 @@ const Cashier = () => {
   useEffect(() => {
     // Force timeout to prevent infinite loading
     const timer = setTimeout(() => {
-      console.log("[Cashier] Forcing load completion after timeout");
+      console.log("[Cashier] Forcing load completion");
     }, 1000);
     
     console.log("[Cashier] Component mounted, user:", user?.id);
@@ -25,6 +25,18 @@ const Cashier = () => {
       clearTimeout(timer);
     };
   }, [user, isShiftActive, activeShift]);
+
+  // Show loading state if we're still checking
+  if (isShiftLoading) {
+    console.log("[Cashier] Rendering loading state");
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full">
+          <p>Cargando...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   // If no active shift, show the open shift form
   if (!isShiftActive) {

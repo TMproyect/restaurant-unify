@@ -31,14 +31,7 @@ export const startShift = async (userData: {
   try {
     console.log("[shiftService] Starting new shift for user:", userData.userId, "with initial amount:", userData.initialAmount);
     
-    // Check if there's already an active shift
-    const existingShift = await getActiveShift(userData.userId);
-    if (existingShift) {
-      console.log("[shiftService] User already has an active shift:", existingShift);
-      return existingShift;
-    }
-    
-    // Validate input
+    // Input validation first
     if (!userData.userId) {
       console.error("[shiftService] Invalid user ID");
       return null;
@@ -49,9 +42,20 @@ export const startShift = async (userData: {
       return null;
     }
     
+    // Check if there's already an active shift
+    const existingShift = await getActiveShift(userData.userId);
+    if (existingShift) {
+      console.log("[shiftService] User already has an active shift:", existingShift);
+      return existingShift;
+    }
+    
+    // Create a new shift with unique ID
+    const shiftId = 'shift_' + Math.random().toString(36).substr(2, 9);
+    console.log("[shiftService] Generated new shift ID:", shiftId);
+    
     // Create a new shift
     const newShift: CashRegisterShift = {
-      id: 'shift_' + Math.random().toString(36).substr(2, 9),
+      id: shiftId,
       user_id: userData.userId,
       initial_amount: userData.initialAmount,
       started_at: new Date().toISOString(),

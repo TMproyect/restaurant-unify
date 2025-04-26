@@ -26,7 +26,8 @@ const OpenShiftForm = () => {
     isStartingShift, 
     activeShift, 
     isShiftActive,
-    validationError 
+    validationError,
+    user
   });
 
   // Handle input focus state to show raw value
@@ -77,17 +78,22 @@ const OpenShiftForm = () => {
   };
 
   const validateAmount = (): boolean => {
+    console.log("[OpenShiftForm] Validating amount:", initialCashAmount);
+    
     if (!initialCashAmount || initialCashAmount.trim() === '') {
       setValidationError("Ingresa un monto inicial para continuar");
+      console.log("[OpenShiftForm] Validation failed: No amount provided");
       return false;
     }
     
     const amount = parseFloat(initialCashAmount);
     if (isNaN(amount) || amount <= 0) {
       setValidationError("El monto inicial debe ser mayor a cero");
+      console.log("[OpenShiftForm] Validation failed: Invalid amount", amount);
       return false;
     }
     
+    console.log("[OpenShiftForm] Validation passed");
     return true;
   };
 
@@ -105,12 +111,22 @@ const OpenShiftForm = () => {
       return;
     }
     
+    if (!user?.id) {
+      console.error("[OpenShiftForm] No user ID available");
+      toast({
+        title: "Error",
+        description: "No se pudo determinar el usuario actual. Por favor, inicia sesión de nuevo.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       const amount = parseFloat(initialCashAmount);
       console.log("[OpenShiftForm] Parsed amount:", amount);
+      console.log("[OpenShiftForm] Starting new shift with user:", user.id);
       
-      console.log("[OpenShiftForm] Starting new shift...");
-      const result = await startNewShift(amount);
+      const result = await startNewShift(user.id, amount);
       console.log("[OpenShiftForm] Shift start result:", result);
       
       if (!result) {
@@ -169,6 +185,7 @@ const OpenShiftForm = () => {
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   inputMode="decimal"
+                  required
                 />
               </div>
             </div>

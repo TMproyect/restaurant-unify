@@ -11,8 +11,6 @@ export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
   try {
     console.log("[storageService] Attempting to load active shift from storage");
     
-    // Try to get from memory cache first to improve performance
-    const start = performance.now();
     const storedShift = localStorage.getItem(STORAGE_KEY);
     
     if (!storedShift) {
@@ -21,8 +19,7 @@ export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
     }
     
     const shift = JSON.parse(storedShift);
-    const end = performance.now();
-    console.log(`[storageService] Shift parsed in ${(end-start).toFixed(2)}ms:`, shift);
+    console.log("[storageService] Shift parsed:", shift);
     
     if (!shift || shift.status !== 'open') {
       console.log("[storageService] Shift is not active:", shift?.status);
@@ -46,7 +43,6 @@ export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
 export const saveShiftToStorage = (shift: CashRegisterShift): void => {
   try {
     console.log("[storageService] Saving shift to storage:", shift.id);
-    const start = performance.now();
     
     if (!shift || !shift.id || !shift.user_id) {
       console.error("[storageService] Cannot save invalid shift:", shift);
@@ -57,18 +53,15 @@ export const saveShiftToStorage = (shift: CashRegisterShift): void => {
     const shiftData = JSON.stringify(shift);
     localStorage.setItem(STORAGE_KEY, shiftData);
     
-    const end = performance.now();
-    console.log(`[storageService] Shift ${shift.id} saved in ${(end-start).toFixed(2)}ms`);
+    console.log("[storageService] Shift saved successfully:", shift.id);
     
     // Verify storage was successful
-    const verifyStart = performance.now();
     const saved = localStorage.getItem(STORAGE_KEY);
     
     if (!saved) {
       console.error("[storageService] Verification failed - shift not saved!");
     } else {
-      const verifyEnd = performance.now();
-      console.log(`[storageService] Verification completed in ${(verifyEnd-verifyStart).toFixed(2)}ms - shift saved successfully`);
+      console.log("[storageService] Verification completed - shift saved successfully");
     }
   } catch (error) {
     console.error('[storageService] Error saving shift to storage:', error);
@@ -81,12 +74,10 @@ export const saveShiftToStorage = (shift: CashRegisterShift): void => {
 export const removeShiftFromStorage = (): void => {
   try {
     console.log("[storageService] Removing shift from storage");
-    const start = performance.now();
     
     localStorage.removeItem(STORAGE_KEY);
     
-    const end = performance.now();
-    console.log(`[storageService] Shift removed in ${(end-start).toFixed(2)}ms`);
+    console.log("[storageService] Shift removed from storage");
     
     // Verify removal was successful
     const check = localStorage.getItem(STORAGE_KEY);

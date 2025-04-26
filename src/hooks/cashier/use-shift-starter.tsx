@@ -8,6 +8,8 @@ export const useShiftStarter = () => {
   const { toast } = useToast();
 
   const startNewShift = async (userId: string, initialAmount: number) => {
+    console.log("[useShiftStarter] Starting new shift request", { userId, initialAmount });
+    
     if (!userId) {
       console.log("[useShiftStarter] Cannot start shift: No user");
       toast({
@@ -46,11 +48,10 @@ export const useShiftStarter = () => {
           description: `Turno iniciado con $${initialAmount.toLocaleString('es-ES')} en caja`
         });
         
-        // Instead of reloading the page which causes white screen, update the state
-        // that will trigger a re-render of the Cashier component
+        // Return the new shift instead of reloading to prevent white screen
         return newShift;
       } else {
-        console.log("[useShiftStarter] Failed to create new shift");
+        console.error("[useShiftStarter] Failed to create new shift - service returned null");
         toast({
           title: "Error",
           description: "No se pudo iniciar el turno",

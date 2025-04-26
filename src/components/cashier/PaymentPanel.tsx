@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Loader2, Check, Receipt } from 'lucide-react';
+import { Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateOrderStatus } from '@/services/orderService';
 import { PaymentState, OrderPaymentDetails } from './payment/types';
-import PaymentMethodSelector from './payment/components/PaymentMethodSelector';
-import PaymentSummary from './payment/components/PaymentSummary';
 import PaymentSuccess from './payment/components/PaymentSuccess';
+import PaymentForm from './payment/components/PaymentForm';
 import {
   calculateSubtotal,
   calculateDiscount,
@@ -178,104 +175,23 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <PaymentMethodSelector
-        selectedMethod={currentPayment.method}
-        onMethodChange={(value) => setCurrentPayment({...currentPayment, method: value})}
-      />
-
-      <div className="mb-4 space-y-4">
-        <div>
-          <Label htmlFor="paymentAmount">
-            Monto a Pagar [{currentPayment.method === 'cash' ? 'Efectivo' : 
-                          currentPayment.method === 'card' ? 'Tarjeta' : 'Transferencia'}]
-          </Label>
-          <div className="relative">
-            <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="paymentAmount"
-              type="number"
-              min="0"
-              step="0.01"
-              className="pl-8"
-              value={currentPayment.amount || ''}
-              onChange={(e) => setCurrentPayment({
-                ...currentPayment, 
-                amount: parseFloat(e.target.value) || 0
-              })}
-            />
-          </div>
-        </div>
-        
-        {currentPayment.method === 'cash' && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="cashReceived">Efectivo recibido</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="cashReceived"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="pl-8"
-                  placeholder="0.00"
-                  value={currentPayment.cashReceived || ''}
-                  onChange={(e) => setCurrentPayment({
-                    ...currentPayment, 
-                    cashReceived: parseFloat(e.target.value) || 0
-                  })}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Cambio</Label>
-              <div className="h-10 px-3 py-2 rounded-md border border-input bg-muted/50 flex items-center">
-                <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
-                <span className="font-medium">{change.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <PaymentSummary
-        subtotal={subtotal}
-        discount={discount}
-        discountType={discountType}
-        tax={tax}
-        tipAmount={tipAmount}
-        tipType={tipType}
-        total={total}
-      />
-
-      <div className="flex justify-between pt-6 gap-4">
-        <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
-          Cancelar
-        </Button>
-        <Button 
-          className="flex-1" 
-          onClick={handlePayment} 
-          disabled={
-            isProcessing || 
-            calculatePendingAmount() !== 0 || 
-            (payments.length === 0 && currentPayment.amount <= 0)
-          }
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Procesando...
-            </>
-          ) : (
-            <>
-              Confirmar Pago ${total.toFixed(2)}
-              <Check className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+    <PaymentForm
+      currentPayment={currentPayment}
+      onPaymentChange={setCurrentPayment}
+      onCancel={onCancel}
+      onSubmit={handlePayment}
+      isProcessing={isProcessing}
+      subtotal={subtotal}
+      discount={discount}
+      discountType={discountType}
+      tax={tax}
+      tipAmount={tipAmount}
+      tipType={tipType}
+      total={total}
+      change={change}
+      pendingAmount={calculatePendingAmount()}
+      payments={payments}
+    />
   );
 };
 

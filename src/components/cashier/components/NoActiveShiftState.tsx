@@ -1,13 +1,18 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CircleDollarSign } from 'lucide-react';
 import OpenShiftForm from '../OpenShiftForm';
 import { useCashRegister } from '@/hooks/use-cash-register';
 
 export const NoActiveShiftState = () => {
   const { isLoading } = useCashRegister();
+  const [renderCount, setRenderCount] = useState(0);
   
-  console.log("[NoActiveShiftState] Is loading:", isLoading);
+  // Help debug rendering issues
+  useEffect(() => {
+    setRenderCount(prev => prev + 1);
+    console.log("[NoActiveShiftState] Rendered, loading state:", isLoading, "Render count:", renderCount + 1);
+  }, [isLoading]);
   
   return (
     <div className="space-y-4">
@@ -25,12 +30,17 @@ export const NoActiveShiftState = () => {
       </div>
       
       {isLoading ? (
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+          <p className="text-sm text-muted-foreground">Cargando información del turno...</p>
         </div>
       ) : (
         <OpenShiftForm />
       )}
+      
+      <div className="text-xs text-muted-foreground text-right mt-4">
+        Estado de carga: {isLoading ? 'Cargando' : 'Completado'}
+      </div>
     </div>
   );
 };

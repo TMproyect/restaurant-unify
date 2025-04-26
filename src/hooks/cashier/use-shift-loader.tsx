@@ -9,33 +9,45 @@ export const useShiftLoader = (userId: string | undefined) => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let isComponentMounted = true;
+    
     const loadShift = async () => {
-      if (!userId) return;
+      if (!userId) {
+        if (isComponentMounted) setIsLoading(false);
+        return;
+      }
       
-      setIsLoading(true);
+      if (isComponentMounted) setIsLoading(true);
+      
       try {
         console.log("[useShiftLoader] Loading shift for user:", userId);
         const storedShift = loadActiveShiftFromStorage();
         
         if (storedShift && storedShift.user_id === userId) {
           console.log("[useShiftLoader] Found stored shift:", storedShift);
-          setActiveShift(storedShift);
-          setIsLoading(false);
+          if (isComponentMounted) {
+            setActiveShift(storedShift);
+            setIsLoading(false);
+          }
         } else {
           console.log("[useShiftLoader] No stored shift, checking API");
           const shift = await getActiveShift(userId);
           console.log("[useShiftLoader] API shift result:", shift);
-          setActiveShift(shift);
-          setIsLoading(false);
+          if (isComponentMounted) {
+            setActiveShift(shift);
+            setIsLoading(false);
+          }
         }
       } catch (error) {
         console.error('[useShiftLoader] Error loading active shift:', error);
-        toast({
-          title: "Error",
-          description: "No se pudo cargar la información del turno",
-          variant: "destructive"
-        });
-        setIsLoading(false);
+        if (isComponentMounted) {
+          toast({
+            title: "Error",
+            description: "No se pudo cargar la información del turno",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+        }
       }
     };
     
@@ -43,9 +55,15 @@ export const useShiftLoader = (userId: string | undefined) => {
     
     // Add safety timeout to prevent UI from being stuck in loading state indefinitely
     const timeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
+      if (isComponentMounted) {
+        console.log("[useShiftLoader] Safety timeout triggered, resetting loading state");
+        setIsLoading(false);
+      }
+    }, 5000); // Increased timeout to 5 seconds to give more time for loading
     
-    return () => clearTimeout(timeout);
+    return () => {
+      isComponentMounted = false;
+      clearTimeout(timeout);
+    };
   }, [userId, setActiveShift, setIsLoading, toast]);
 };

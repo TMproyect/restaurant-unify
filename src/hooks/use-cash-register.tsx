@@ -14,7 +14,9 @@ export const useCashRegister = () => {
     isEndingShift
   } = useShiftState();
   
+  // Load shift data when the component mounts
   useShiftLoader(user?.id);
+  
   const { startNewShift } = useShiftStarter();
   const { closeCurrentShift } = useShiftEnder();
   

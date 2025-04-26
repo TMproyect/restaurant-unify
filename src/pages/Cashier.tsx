@@ -12,19 +12,13 @@ const Cashier = () => {
   const { user } = useAuth();
   
   useEffect(() => {
-    // Force timeout to prevent infinite loading
-    const timer = setTimeout(() => {
-      console.log("[Cashier] Forcing load completion");
-    }, 1000);
-    
     console.log("[Cashier] Component mounted, user:", user?.id);
-    console.log("[Cashier] Active shift status:", { isShiftActive, activeShift });
+    console.log("[Cashier] Active shift status:", { isShiftActive, activeShift, isShiftLoading });
     
     return () => {
-      console.log("[Cashier] Component unmounting, clearing timeout");
-      clearTimeout(timer);
+      console.log("[Cashier] Component unmounting");
     };
-  }, [user, isShiftActive, activeShift]);
+  }, [user, isShiftActive, activeShift, isShiftLoading]);
 
   // Show loading state if we're still checking
   if (isShiftLoading) {
@@ -32,7 +26,7 @@ const Cashier = () => {
     return (
       <Layout>
         <div className="flex items-center justify-center h-full">
-          <p>Cargando...</p>
+          <CashierLoading />
         </div>
       </Layout>
     );

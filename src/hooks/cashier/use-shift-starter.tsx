@@ -48,7 +48,6 @@ export const useShiftStarter = () => {
           description: `Turno iniciado con $${initialAmount.toLocaleString('es-ES')} en caja`
         });
         
-        // Return the new shift instead of reloading to prevent white screen
         return newShift;
       } else {
         console.error("[useShiftStarter] Failed to create new shift - service returned null");

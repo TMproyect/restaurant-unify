@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { 
@@ -8,31 +9,38 @@ import {
   loadActiveShiftFromStorage 
 } from '@/services/cashier';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 export const useCashRegister = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeShift, setActiveShift] = useState<CashRegisterShift | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStartingShift, setIsStartingShift] = useState(false);
   const [isEndingShift, setIsEndingShift] = useState(false);
   
+  // Load active shift from storage or API on initial load
   useEffect(() => {
     const loadShift = async () => {
       if (!user) return;
       
       setIsLoading(true);
       try {
+        console.log("[useCashRegister] Loading shift for user:", user.id);
         const storedShift = loadActiveShiftFromStorage();
         
         if (storedShift) {
+          console.log("[useCashRegister] Found stored shift:", storedShift);
           setActiveShift(storedShift);
         } else {
+          console.log("[useCashRegister] No stored shift, checking API");
           const shift = await getActiveShift(user.id);
+          console.log("[useCashRegister] API shift result:", shift);
           setActiveShift(shift);
         }
       } catch (error) {
-        console.error('Error loading active shift:', error);
+        console.error('[useCashRegister] Error loading active shift:', error);
         toast({
           title: "Error",
           description: "No se pudo cargar la información del turno",
@@ -46,24 +54,37 @@ export const useCashRegister = () => {
     loadShift();
   }, [user]);
   
+  // Start a new shift
   const startNewShift = async (initialAmount: number) => {
-    if (!user) return null;
+    if (!user) {
+      console.log("[useCashRegister] Cannot start shift: No user");
+      return null;
+    }
     
     setIsStartingShift(true);
     try {
+      console.log("[useCashRegister] Starting new shift with amount:", initialAmount);
       const newShift = await startShift({
         userId: user.id,
         initialAmount
       });
       
       if (newShift) {
+        console.log("[useCashRegister] New shift created:", newShift);
         setActiveShift(newShift);
         toast({
           title: "Turno iniciado",
           description: `Turno iniciado con $${initialAmount.toLocaleString('es-ES')} en caja`
         });
+        
+        // Force reload to update UI with new shift state
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        
         return newShift;
       } else {
+        console.log("[useCashRegister] Failed to create new shift");
         toast({
           title: "Error",
           description: "No se pudo iniciar el turno",
@@ -72,7 +93,7 @@ export const useCashRegister = () => {
         return null;
       }
     } catch (error) {
-      console.error('Error starting shift:', error);
+      console.error('[useCashRegister] Error starting shift:', error);
       toast({
         title: "Error",
         description: "Ocurrió un error al iniciar el turno",
@@ -84,17 +105,24 @@ export const useCashRegister = () => {
     }
   };
   
+  // Close current shift
   const closeCurrentShift = async (finalAmount?: number) => {
-    if (!activeShift || !activeShift.id) return false;
+    if (!activeShift || !activeShift.id) {
+      console.log("[useCashRegister] Cannot close shift: No active shift");
+      return false;
+    }
     
     setIsEndingShift(true);
     try {
-      const success = await endShift(
-        activeShift.id, 
-        finalAmount || activeShift.initial_amount + (activeShift.total_cash_sales || 0)
-      );
+      const calculatedAmount = finalAmount || 
+                              activeShift.initial_amount + 
+                              (activeShift.total_cash_sales || 0);
+      
+      console.log("[useCashRegister] Closing shift with final amount:", calculatedAmount);
+      const success = await endShift(activeShift.id, calculatedAmount);
       
       if (success) {
+        console.log("[useCashRegister] Shift closed successfully");
         setActiveShift(null);
         toast({
           title: "Turno cerrado",
@@ -102,6 +130,7 @@ export const useCashRegister = () => {
         });
         return true;
       } else {
+        console.log("[useCashRegister] Failed to close shift");
         toast({
           title: "Error",
           description: "No se pudo cerrar el turno",
@@ -110,7 +139,7 @@ export const useCashRegister = () => {
         return false;
       }
     } catch (error) {
-      console.error('Error closing shift:', error);
+      console.error('[useCashRegister] Error closing shift:', error);
       toast({
         title: "Error",
         description: "Ocurrió un error al cerrar el turno",

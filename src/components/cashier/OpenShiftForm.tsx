@@ -14,45 +14,27 @@ import { formatCurrency } from '@/utils/formatters';
 const OpenShiftForm = () => {
   const [initialCashAmount, setInitialCashAmount] = useState('');
   const [displayValue, setDisplayValue] = useState('');
-  const { startNewShift, isStartingShift } = useCashRegister();
+  const { startNewShift, isStartingShift, activeShift, isShiftActive } = useCashRegister();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Actualizar el displayValue cuando cambia el initialCashAmount
-  useEffect(() => {
-    if (initialCashAmount === '') {
-      setDisplayValue('');
-      return;
-    }
-    
-    try {
-      const numericValue = parseFloat(initialCashAmount);
-      if (!isNaN(numericValue)) {
-        setDisplayValue(formatCurrency(numericValue));
-      }
-    } catch (error) {
-      console.error('Error formateando número:', error);
-      setDisplayValue(initialCashAmount);
-    }
-  }, [initialCashAmount]);
+  console.log("[OpenShiftForm] Current state:", { 
+    initialCashAmount, 
+    displayValue, 
+    isStartingShift, 
+    activeShift, 
+    isShiftActive 
+  });
 
-  // Manejador de cambio para la entrada numérica
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Solo permitir dígitos y punto decimal, eliminar otros caracteres
-    let value = e.target.value.replace(/[^\d.]/g, '');
-    
-    // Prevenir múltiples puntos decimales
-    const decimalPoints = value.match(/\./g);
-    if (decimalPoints && decimalPoints.length > 1) {
-      value = value.slice(0, value.lastIndexOf('.'));
-    }
-    
-    // Actualizar el estado con el valor limpio
-    setInitialCashAmount(value);
+  // Handle input focus state to show raw value
+  const handleFocus = () => {
+    console.log("[OpenShiftForm] Input focused, showing raw value:", initialCashAmount);
+    setDisplayValue(initialCashAmount);
   };
 
-  // Manejador para cuando el input pierde el foco
+  // Handle input blur state to format value
   const handleBlur = () => {
+    console.log("[OpenShiftForm] Input blurred, formatting value");
     if (initialCashAmount) {
       const numericValue = parseFloat(initialCashAmount);
       if (!isNaN(numericValue)) {
@@ -61,33 +43,58 @@ const OpenShiftForm = () => {
     }
   };
 
-  // Manejador para cuando el input obtiene el foco
-  const handleFocus = () => {
-    // Mostrar el valor sin formato cuando el campo recibe el foco
-    setDisplayValue(initialCashAmount);
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Remove any non-numeric characters except decimal point
+    const rawValue = e.target.value.replace(/[^\d.]/g, '');
+    
+    console.log("[OpenShiftForm] Raw input value:", rawValue);
+    
+    // Handle decimal points - allow only one
+    const parts = rawValue.split('.');
+    let cleanValue = parts[0];
+    if (parts.length > 1) {
+      cleanValue += '.' + parts[1];
+    }
+    
+    console.log("[OpenShiftForm] Clean value after processing:", cleanValue);
+    
+    // Update both the internal state and display value
+    setInitialCashAmount(cleanValue);
+    setDisplayValue(cleanValue);
   };
 
   const handleOpenRegister = async () => {
-    if (!initialCashAmount || parseFloat(initialCashAmount) < 0) {
+    console.log("[OpenShiftForm] Attempting to open register with amount:", initialCashAmount);
+    
+    if (!initialCashAmount || parseFloat(initialCashAmount) <= 0) {
       toast({
         title: "Error",
-        description: "Ingresa un monto inicial válido",
+        description: "Ingresa un monto inicial válido (mayor a cero)",
         variant: "destructive"
       });
       return;
     }
     
     try {
+      console.log("[OpenShiftForm] Starting new shift...");
       const result = await startNewShift(parseFloat(initialCashAmount));
+      console.log("[OpenShiftForm] Shift start result:", result);
+      
       if (!result) {
         toast({
           title: "Error",
           description: "No se pudo iniciar el turno. Inténtalo de nuevo.",
           variant: "destructive"
         });
+      } else {
+        toast({
+          title: "Éxito",
+          description: `Turno iniciado con ${formatCurrency(parseFloat(initialCashAmount))}`,
+        });
       }
     } catch (error) {
-      console.error('Error al iniciar turno:', error);
+      console.error('[OpenShiftForm] Error al iniciar turno:', error);
       toast({
         title: "Error",
         description: "Ocurrió un error al iniciar el turno",

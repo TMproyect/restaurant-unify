@@ -2,8 +2,13 @@
 import React from 'react';
 import { CircleDollarSign } from 'lucide-react';
 import OpenShiftForm from '../OpenShiftForm';
+import { useCashRegister } from '@/hooks/use-cash-register';
 
 export const NoActiveShiftState = () => {
+  const { isLoading } = useCashRegister();
+  
+  console.log("[NoActiveShiftState] Is loading:", isLoading);
+  
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
@@ -19,7 +24,13 @@ export const NoActiveShiftState = () => {
         </p>
       </div>
       
-      <OpenShiftForm />
+      {isLoading ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <OpenShiftForm />
+      )}
     </div>
   );
 };

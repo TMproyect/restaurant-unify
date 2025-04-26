@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { formatCurrency } from '@/utils/formatters';
 interface CloseShiftDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onClose: () => void;
+  onClose: (finalAmount: string) => void; // Updated to match how it's called in CashRegisterControls
   isClosing: boolean;
   shift: CashRegisterShift;
   finalAmount: string;
@@ -104,7 +105,7 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
             Cancelar
           </Button>
           <Button 
-            onClick={onClose}
+            onClick={() => onClose(finalAmount)}
             disabled={isClosing}
           >
             {isClosing ? (

@@ -1,10 +1,12 @@
+
 import React, { useState } from 'react';
 import { CircleDollarSign } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import OrderDetails from '../OrderDetails';
 import PaymentPanel from '../PaymentPanel';
-import CashRegisterControls from './CashierControls';
+import CashRegisterControls from './CashRegisterControls';  // Corrected import path
 import CashierOrdersSection from './orders/CashierOrdersSection';
+import { getOrderWithItems } from '@/services/orders/orderQueries';  // Added import
 import { useToast } from '@/hooks/use-toast';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 import { CashRegisterShift } from '@/services/cashier';

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { getOrders, subscribeToFilteredOrders, Order, updateOrderStatus } from '@/services/orderService';
+import { formatCurrency } from '@/lib/utils';  // Add this import
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';

@@ -1,10 +1,9 @@
-
-import React, { useState } from 'react';
-import { DollarSign, Loader2, Check, CreditCard, Banknote, ArrowRightLeft, Percent, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, Loader2, Check, CreditCard, Banknote, ArrowRightLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentState } from '../types';
+import { AmountInput } from './AmountInput';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentSummary from './PaymentSummary';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -52,53 +51,36 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 }) => {
   const [denominationsMode, setDenominationsMode] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("payment");
+  
+  // Auto-select total amount when payment method changes
+  useEffect(() => {
+    if (pendingAmount > 0) {
+      onPaymentChange({
+        ...currentPayment,
+        amount: pendingAmount
+      });
+    }
+  }, [currentPayment.method]);
 
-  // Common cash denominations in Mexico (pesos)
-  const cashDenominations = [
-    { value: 1000, label: "$1000" },
-    { value: 500, label: "$500" },
-    { value: 200, label: "$200" },
-    { value: 100, label: "$100" },
-    { value: 50, label: "$50" },
-    { value: 20, label: "$20" },
-    { value: 10, label: "$10" },
-    { value: 5, label: "$5" },
-    { value: 2, label: "$2" },
-    { value: 1, label: "$1" },
-  ];
+  // Enable confirm button when valid
+  const isPaymentValid = () => {
+    if (payments.length === 0 && currentPayment.amount <= 0) return false;
+    if (pendingAmount !== 0) return false;
+    if (currentPayment.method === 'cash' && 
+        (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
+      return false;
+    }
+    return true;
+  };
 
-  const handleApplyDenomination = (value: number) => {
-    const currentCashReceived = currentPayment.cashReceived || 0;
+  // Show partial payment only for large amounts or specific conditions
+  const showPartialPayment = allowPartialPayments && pendingAmount > 50000;
+
+  const handleCashReceived = (value: number) => {
     onPaymentChange({
       ...currentPayment,
-      cashReceived: currentCashReceived + value
+      cashReceived: value
     });
-  };
-
-  const handleApplyTip = (amount: number, percentage: number) => {
-    onPaymentChange({
-      ...currentPayment,
-      tipAmount: amount,
-      tipPercentage: percentage
-    });
-  };
-
-  const getPaymentIcon = (method: string) => {
-    switch (method) {
-      case 'cash': return <Banknote className="h-4 w-4 mr-2" />;
-      case 'card': return <CreditCard className="h-4 w-4 mr-2" />;
-      case 'transfer': return <ArrowRightLeft className="h-4 w-4 mr-2" />;
-      default: return <DollarSign className="h-4 w-4 mr-2" />;
-    }
-  };
-
-  const getPaymentMethodName = (method: string) => {
-    switch (method) {
-      case 'cash': return 'Efectivo';
-      case 'card': return 'Tarjeta';
-      case 'transfer': return 'Transferencia';
-      default: return method;
-    }
   };
 
   return (
@@ -116,90 +98,36 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             onMethodChange={(value) => onPaymentChange({...currentPayment, method: value})}
           />
 
-          <div className="mb-4 space-y-4">
-            <div>
-              <Label htmlFor="paymentAmount">
-                Monto a Pagar [{getPaymentMethodName(currentPayment.method)}]
-              </Label>
-              <div className="relative">
-                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="paymentAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="pl-8"
-                  value={currentPayment.amount || ''}
-                  onChange={(e) => onPaymentChange({
-                    ...currentPayment, 
-                    amount: parseFloat(e.target.value) || 0
-                  })}
-                />
-              </div>
-            </div>
-            
-            {currentPayment.method === 'cash' && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex justify-between">
-                      <Label htmlFor="cashReceived">Efectivo recibido</Label>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setDenominationsMode(!denominationsMode)}
-                        className="text-xs h-6 px-2"
-                      >
-                        {denominationsMode ? "Ocultar denominaciones" : "Mostrar denominaciones"}
-                      </Button>
-                    </div>
-                    <div className="relative">
-                      <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="cashReceived"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="pl-8"
-                        placeholder="0.00"
-                        value={currentPayment.cashReceived || ''}
-                        onChange={(e) => onPaymentChange({
-                          ...currentPayment, 
-                          cashReceived: parseFloat(e.target.value) || 0
-                        })}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Cambio</Label>
-                    <div className="h-10 px-3 py-2 rounded-md border border-input bg-muted/50 flex items-center">
-                      <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
-                      <span className="font-medium">{change.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
+          <div className="space-y-4">
+            <AmountInput
+              id="paymentAmount"
+              label={`Monto a Pagar [${
+                currentPayment.method === 'cash' ? 'Efectivo' :
+                currentPayment.method === 'card' ? 'Tarjeta' : 'Transferencia'
+              }]`}
+              value={currentPayment.amount}
+              onChange={(value) => onPaymentChange({...currentPayment, amount: value})}
+              className="bg-primary/5 border-primary/20"
+            />
 
-                {denominationsMode && (
-                  <div className="mt-2">
-                    <Label className="mb-2 block">Denominaciones</Label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {cashDenominations.map(denom => (
-                        <Button
-                          key={denom.value}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleApplyDenomination(denom.value)}
-                          className="h-10"
-                        >
-                          {denom.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+            {currentPayment.method === 'cash' && (
+              <AmountInput
+                id="cashReceived"
+                label="Efectivo Recibido"
+                value={currentPayment.cashReceived || 0}
+                onChange={handleCashReceived}
+                autoFocus
+                onEnterPress={() => isPaymentValid() && onSubmit()}
+              />
+            )}
+
+            {currentPayment.method === 'cash' && currentPayment.cashReceived > 0 && (
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg">
+                <Label>Cambio a Devolver</Label>
+                <div className="text-2xl font-mono text-right text-primary">
+                  ${new Intl.NumberFormat('es-CO').format(change)}
+                </div>
+              </div>
             )}
           </div>
         </TabsContent>
@@ -209,7 +137,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             subtotal={subtotal}
             currentTipAmount={currentPayment.tipAmount || 0}
             currentTipPercentage={currentPayment.tipPercentage || 0}
-            onApplyTip={handleApplyTip}
+            onApplyTip={(amount: number, percentage: number) => onPaymentChange({
+              ...currentPayment,
+              tipAmount: amount,
+              tipPercentage: percentage
+            })}
           />
         </TabsContent>
 
@@ -235,7 +167,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             Cancelar
           </Button>
           
-          {allowPartialPayments && pendingAmount > 0 && currentPayment.amount > 0 && (
+          {showPartialPayment && currentPayment.amount > 0 && (
             <Button 
               variant="secondary"
               onClick={onPartialPayment} 
@@ -251,12 +183,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           
           <Button 
             className="flex-1" 
-            onClick={onSubmit} 
-            disabled={
-              isProcessing || 
-              pendingAmount !== 0 || 
-              (payments.length === 0 && currentPayment.amount <= 0)
-            }
+            onClick={onSubmit}
+            disabled={!isPaymentValid() || isProcessing}
           >
             {isProcessing ? (
               <>
@@ -265,7 +193,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </>
             ) : (
               <>
-                Confirmar Pago ${total.toFixed(2)}
+                Confirmar Pago ${new Intl.NumberFormat('es-CO').format(total)}
                 <Check className="ml-2 h-4 w-4" />
               </>
             )}

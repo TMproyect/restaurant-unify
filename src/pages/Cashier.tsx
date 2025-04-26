@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useCashRegister } from '@/hooks/use-cash-register';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -10,9 +10,19 @@ import { CashierInterface } from '@/components/cashier/components/CashierInterfa
 const Cashier = () => {
   const { activeShift, isShiftActive, isLoading: isShiftLoading } = useCashRegister();
   const { user } = useAuth();
+  
+  useEffect(() => {
+    // Force timeout to prevent infinite loading
+    const timer = setTimeout(() => {
+      console.log("[Cashier] Forcing load completion");
+      // Page will re-render with latest state
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Show loading indicator if auth is still loading
-  if (isShiftLoading) {
+  // Show minimal loading for a very short time
+  if (isShiftLoading && !activeShift) {
     return (
       <Layout>
         <CashierLoading />

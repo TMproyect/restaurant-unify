@@ -1,24 +1,18 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { CashRegisterShift } from "./types";
 import { loadActiveShiftFromStorage, saveShiftToStorage, removeShiftFromStorage } from "./storageService";
 
 export const getActiveShift = async (userId: string): Promise<CashRegisterShift | null> => {
   try {
-    console.log("[shiftService] Checking for active shift for user:", userId);
-    
-    // First check localStorage for active shift
+    // Fast check in localStorage only - no API call
     const storedShift = loadActiveShiftFromStorage();
     if (storedShift && storedShift.user_id === userId && storedShift.status === 'open') {
-      console.log("[shiftService] Found active shift in local storage:", storedShift);
       return storedShift;
     }
     
-    // If no shift is found, return null (no active shift)
-    console.log("[shiftService] No active shift found for user");
     return null;
   } catch (error) {
-    console.error('[shiftService] Error checking active shift:', error);
+    console.error('[shiftService] Error:', error);
     return null;
   }
 };

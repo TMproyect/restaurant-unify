@@ -29,9 +29,17 @@ export const AmountInput = ({
 }: AmountInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const {
+    value: numericValue,
     displayValue,
-    handleInputChange
+    onChange: handleInputChange
   } = useCurrencyInput(value);
+
+  // Sync external value changes with internal state
+  useEffect(() => {
+    if (value !== numericValue) {
+      handleInputChange(value.toString());
+    }
+  }, [value]);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {

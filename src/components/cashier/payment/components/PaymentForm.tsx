@@ -52,29 +52,37 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [denominationsMode, setDenominationsMode] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("payment");
   
-  // Auto-select total amount when payment method changes
   useEffect(() => {
     if (pendingAmount > 0) {
+      const autoSelectAmount = currentPayment.method !== 'cash' 
+        ? pendingAmount 
+        : 0;
+      
       onPaymentChange({
         ...currentPayment,
-        amount: pendingAmount
+        amount: autoSelectAmount
       });
     }
-  }, [currentPayment.method]);
+  }, [currentPayment.method, pendingAmount]);
 
-  // Enable confirm button when valid
   const isPaymentValid = () => {
-    if (payments.length === 0 && currentPayment.amount <= 0) return false;
-    if (pendingAmount !== 0) return false;
-    if (currentPayment.method === 'cash' && 
-        (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
-      return false;
-    }
-    return true;
+    const isValidPaymentAmount = 
+      currentPayment.amount > 0 && 
+      (payments.length > 0 || currentPayment.amount > 0);
+    
+    const isCashPaymentValid = currentPayment.method !== 'cash' || 
+      (currentPayment.cashReceived && currentPayment.cashReceived >= currentPayment.amount);
+    
+    const isPendingAmountResolved = pendingAmount === 0;
+    
+    return isValidPaymentAmount && isCashPaymentValid && isPendingAmountResolved;
   };
 
-  // Show partial payment only for large amounts or specific conditions
-  const showPartialPayment = allowPartialPayments && pendingAmount > 50000;
+  const showPartialPayment = 
+    allowPartialPayments && 
+    pendingAmount > 50000 && 
+    currentPayment.amount > 0 && 
+    currentPayment.amount < pendingAmount;
 
   const handleCashReceived = (value: number) => {
     onPaymentChange({
@@ -163,17 +171,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         />
 
         <div className="flex justify-between pt-6 gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+          <Button 
+            variant="outline" 
+            onClick={onCancel} 
+            disabled={isProcessing}
+          >
             Cancelar
           </Button>
           
-          {showPartialPayment && currentPayment.amount > 0 && (
+          {showPartialPayment && (
             <Button 
               variant="secondary"
               onClick={onPartialPayment} 
-              disabled={isProcessing || 
-                (currentPayment.method === 'cash' && 
-                (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount))}
+              disabled={isProcessing || !currentPayment.amount}
               className="flex-1"
             >
               <Plus className="mr-2 h-4 w-4" />

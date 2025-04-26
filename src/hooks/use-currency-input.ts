@@ -5,6 +5,7 @@ export const useCurrencyInput = (initialValue: number = 0) => {
   const [numericValue, setNumericValue] = useState(initialValue);
   
   const formatToDisplay = (value: number): string => {
+    // Use Colombian locale for currency formatting with period as thousand separator
     return new Intl.NumberFormat('es-CO', {
       style: 'decimal',
       minimumFractionDigits: 0,
@@ -13,12 +14,12 @@ export const useCurrencyInput = (initialValue: number = 0) => {
   };
 
   const parseFromInput = (displayValue: string): number => {
-    // Remove all non-digit characters except decimal point
+    // Remove all non-digit characters
     const cleanValue = displayValue.replace(/[^\d]/g, '');
     return parseInt(cleanValue, 10) || 0;
   };
 
-  const handleInputChange = (inputValue: string) => {
+  const handleChange = (inputValue: string) => {
     const newValue = parseFromInput(inputValue);
     setNumericValue(newValue);
     return newValue;
@@ -27,7 +28,7 @@ export const useCurrencyInput = (initialValue: number = 0) => {
   return {
     value: numericValue,
     displayValue: formatToDisplay(numericValue),
-    onChange: handleInputChange,
+    onChange: handleChange,
     setValue: setNumericValue
   };
 };

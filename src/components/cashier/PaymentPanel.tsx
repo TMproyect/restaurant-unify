@@ -6,13 +6,7 @@ import { updateOrderStatus } from '@/services/orderService';
 import { PaymentState, OrderPaymentDetails } from './payment/types';
 import PaymentSuccess from './payment/components/PaymentSuccess';
 import PaymentForm from './payment/components/PaymentForm';
-import {
-  calculateSubtotal,
-  calculateDiscount,
-  calculateTax,
-  calculateTip,
-  calculateTotal,
-} from './payment/utils/calculations';
+import usePaymentCalculations from './payment/hooks/usePaymentCalculations';
 
 interface PaymentPanelProps {
   orderDetails: OrderPaymentDetails | null;
@@ -34,53 +28,31 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     cashReceived: 0
   });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [discount, setDiscount] = useState(order?.discount || 0);
-  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
-  const [tipAmount, setTipAmount] = useState(0);
-  const [tipType, setTipType] = useState<'percent' | 'amount'>('percent');
-  const [change, setChange] = useState(0);
   const { toast } = useToast();
+
+  const {
+    subtotal,
+    discountValue,
+    tax,
+    tipValue,
+    total,
+    change,
+    pendingAmount
+  } = usePaymentCalculations({
+    items,
+    discount: order?.discount || 0,
+    discountType: 'percent',
+    tipAmount: 0,
+    tipType: 'percent',
+    currentPayment,
+    payments
+  });
 
   useEffect(() => {
     if (order) {
-      const pendingAmount = calculatePendingAmount();
       setCurrentPayment(prev => ({ ...prev, amount: pendingAmount }));
     }
-  }, [order, payments]);
-
-  useEffect(() => {
-    if (currentPayment.method === 'cash' && currentPayment.cashReceived) {
-      const cashReceived = currentPayment.cashReceived || 0;
-      const amount = currentPayment.amount || 0;
-      setChange(cashReceived >= amount ? cashReceived - amount : 0);
-    } else {
-      setChange(0);
-    }
-  }, [currentPayment]);
-
-  const subtotal = calculateSubtotal(items);
-  const discountValue = calculateDiscount(subtotal, discountType, discount);
-  const tax = calculateTax(subtotal, discountValue);
-  const tipValue = calculateTip(subtotal, tipType, tipAmount);
-  const total = calculateTotal(subtotal, discountValue, tax, tipValue);
-
-  const calculatePendingAmount = () => {
-    const paidAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    return Math.max(0, total - paidAmount);
-  };
-
-  if (!order) {
-    return (
-      <div className="h-full flex flex-col justify-center items-center text-center">
-        <Receipt className="h-16 w-16 text-muted-foreground/30 mb-4" />
-        <h3 className="text-lg font-medium mb-1">No hay orden seleccionada</h3>
-        <p className="text-muted-foreground">
-          Regresa y selecciona una orden para procesar el pago
-        </p>
-        <Button className="mt-6" onClick={onCancel}>Regresar</Button>
-      </div>
-    );
-  }
+  }, [order, payments, pendingAmount]);
 
   const handlePayment = async () => {
     if (!order?.id) {
@@ -92,7 +64,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       return;
     }
 
-    const pendingAmount = calculatePendingAmount();
     const isValid = pendingAmount === 0 || 
                     (currentPayment.amount > 0 && currentPayment.amount === pendingAmount);
     
@@ -140,35 +111,24 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     }
   };
 
-  const handlePrintReceipt = () => {
-    toast({
-      title: "Ticket impreso",
-      description: "El ticket de venta se ha enviado a la impresora"
-    });
-  };
-
-  const handlePrintInvoice = () => {
-    toast({
-      title: "Factura generada",
-      description: "La factura fiscal se ha enviado a la impresora"
-    });
-  };
-
-  const handleSendEmail = () => {
-    toast({
-      title: "Recibo enviado",
-      description: "El recibo digital ha sido enviado por correo electrónico"
-    });
-  };
+  if (!order) {
+    return (
+      <div className="h-full flex flex-col justify-center items-center text-center">
+        <Receipt className="h-16 w-16 text-muted-foreground/30 mb-4" />
+        <h3 className="text-lg font-medium mb-1">No hay orden seleccionada</h3>
+        <p className="text-muted-foreground">
+          Regresa y selecciona una orden para procesar el pago
+        </p>
+        <Button className="mt-6" onClick={onCancel}>Regresar</Button>
+      </div>
+    );
+  }
 
   if (paymentStep === 'success') {
     return (
       <PaymentSuccess
         order={order}
         total={total}
-        onPrintReceipt={handlePrintReceipt}
-        onPrintInvoice={handlePrintInvoice}
-        onSendEmail={handleSendEmail}
         onComplete={onPaymentComplete}
       />
     );
@@ -182,14 +142,14 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       onSubmit={handlePayment}
       isProcessing={isProcessing}
       subtotal={subtotal}
-      discount={discount}
-      discountType={discountType}
+      discount={order.discount || 0}
+      discountType="percent"
       tax={tax}
-      tipAmount={tipAmount}
-      tipType={tipType}
+      tipAmount={0}
+      tipType="percent"
       total={total}
       change={change}
-      pendingAmount={calculatePendingAmount()}
+      pendingAmount={pendingAmount}
       payments={payments}
     />
   );

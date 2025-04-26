@@ -7,29 +7,34 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCashRegister } from '@/hooks/use-cash-register';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { DollarSign, Loader2 } from 'lucide-react';
+import { DollarSign, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/formatters';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const OpenShiftForm = () => {
   const [initialCashAmount, setInitialCashAmount] = useState('');
   const [displayValue, setDisplayValue] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
   const { startNewShift, isStartingShift, activeShift, isShiftActive } = useCashRegister();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  console.log("[OpenShiftForm] Current state:", { 
+  console.log("[OpenShiftForm] Rendering with state:", { 
     initialCashAmount, 
     displayValue, 
     isStartingShift, 
     activeShift, 
-    isShiftActive 
+    isShiftActive,
+    validationError 
   });
 
   // Handle input focus state to show raw value
   const handleFocus = () => {
     console.log("[OpenShiftForm] Input focused, showing raw value:", initialCashAmount);
     setDisplayValue(initialCashAmount);
+    // Clear any validation errors when the user focuses the field
+    setValidationError(null);
   };
 
   // Handle input blur state to format value
@@ -64,15 +69,37 @@ const OpenShiftForm = () => {
     // Update both the internal state and display value
     setInitialCashAmount(cleanValue);
     setDisplayValue(cleanValue);
+    
+    // Clear validation errors when user types
+    if (cleanValue) {
+      setValidationError(null);
+    }
+  };
+
+  const validateAmount = (): boolean => {
+    if (!initialCashAmount || initialCashAmount.trim() === '') {
+      setValidationError("Ingresa un monto inicial para continuar");
+      return false;
+    }
+    
+    const amount = parseFloat(initialCashAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setValidationError("El monto inicial debe ser mayor a cero");
+      return false;
+    }
+    
+    return true;
   };
 
   const handleOpenRegister = async () => {
     console.log("[OpenShiftForm] Attempting to open register with amount:", initialCashAmount);
     
-    if (!initialCashAmount || parseFloat(initialCashAmount) <= 0) {
+    // Validate the input first
+    if (!validateAmount()) {
+      console.log("[OpenShiftForm] Validation failed");
       toast({
         title: "Error",
-        description: "Ingresa un monto inicial válido (mayor a cero)",
+        description: validationError || "Ingresa un monto inicial válido",
         variant: "destructive"
       });
       return;
@@ -87,12 +114,14 @@ const OpenShiftForm = () => {
       console.log("[OpenShiftForm] Shift start result:", result);
       
       if (!result) {
+        console.error("[OpenShiftForm] Failed to start shift - result was null or false");
         toast({
           title: "Error",
           description: "No se pudo iniciar el turno. Inténtalo de nuevo.",
           variant: "destructive"
         });
       } else {
+        console.log("[OpenShiftForm] Shift started successfully, showing confirmation toast");
         toast({
           title: "Éxito",
           description: `Turno iniciado con ${formatCurrency(amount)}`,
@@ -119,6 +148,13 @@ const OpenShiftForm = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {validationError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="initialCash">Monto Inicial</Label>
               <div className="relative">

@@ -10,6 +10,7 @@ const STORAGE_KEY = 'active_shift';
 export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
   try {
     console.log("[storageService] Attempting to load active shift from storage");
+    
     // Try to get from memory cache first to improve performance
     const start = performance.now();
     const storedShift = localStorage.getItem(STORAGE_KEY);
@@ -28,7 +29,7 @@ export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
       return null;
     }
     
-    console.log("[storageService] Active shift loaded successfully");
+    console.log("[storageService] Active shift loaded successfully:", shift.id);
     return shift;
   } catch (error) {
     console.error('[storageService] Error parsing stored shift:', error);
@@ -44,15 +45,20 @@ export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
  */
 export const saveShiftToStorage = (shift: CashRegisterShift): void => {
   try {
-    console.log("[storageService] Saving shift to storage");
+    console.log("[storageService] Saving shift to storage:", shift.id);
     const start = performance.now();
+    
+    if (!shift || !shift.id || !shift.user_id) {
+      console.error("[storageService] Cannot save invalid shift:", shift);
+      return;
+    }
     
     // Stringify ahead of time to catch any serialization errors
     const shiftData = JSON.stringify(shift);
     localStorage.setItem(STORAGE_KEY, shiftData);
     
     const end = performance.now();
-    console.log(`[storageService] Shift saved in ${(end-start).toFixed(2)}ms`);
+    console.log(`[storageService] Shift ${shift.id} saved in ${(end-start).toFixed(2)}ms`);
     
     // Verify storage was successful
     const verifyStart = performance.now();
@@ -62,7 +68,7 @@ export const saveShiftToStorage = (shift: CashRegisterShift): void => {
       console.error("[storageService] Verification failed - shift not saved!");
     } else {
       const verifyEnd = performance.now();
-      console.log(`[storageService] Verification completed in ${(verifyEnd-verifyStart).toFixed(2)}ms`);
+      console.log(`[storageService] Verification completed in ${(verifyEnd-verifyStart).toFixed(2)}ms - shift saved successfully`);
     }
   } catch (error) {
     console.error('[storageService] Error saving shift to storage:', error);

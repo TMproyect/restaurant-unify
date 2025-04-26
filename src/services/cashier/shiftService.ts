@@ -1,15 +1,22 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { CashRegisterShift } from "./types";
 import { loadActiveShiftFromStorage, saveShiftToStorage, removeShiftFromStorage } from "./storageService";
 
 export const getActiveShift = async (userId: string): Promise<CashRegisterShift | null> => {
   try {
+    console.log("[shiftService] Checking for active shift for user", userId);
+    
     // Fast check in localStorage only - no API call
     const storedShift = loadActiveShiftFromStorage();
+    console.log("[shiftService] Stored shift from localStorage:", storedShift);
+    
     if (storedShift && storedShift.user_id === userId && storedShift.status === 'open') {
+      console.log("[shiftService] Found active shift in storage");
       return storedShift;
     }
     
+    console.log("[shiftService] No active shift found for user", userId);
     return null;
   } catch (error) {
     console.error('[shiftService] Error:', error);
@@ -31,6 +38,17 @@ export const startShift = async (userData: {
       return existingShift;
     }
     
+    // Validate input
+    if (!userData.userId) {
+      console.error("[shiftService] Invalid user ID");
+      return null;
+    }
+    
+    if (isNaN(userData.initialAmount) || userData.initialAmount <= 0) {
+      console.error("[shiftService] Invalid initial amount:", userData.initialAmount);
+      return null;
+    }
+    
     // Create a new shift
     const newShift: CashRegisterShift = {
       id: 'shift_' + Math.random().toString(36).substr(2, 9),
@@ -46,8 +64,9 @@ export const startShift = async (userData: {
     };
     
     // Store the shift in localStorage
+    console.log("[shiftService] Saving new shift to storage:", newShift);
     saveShiftToStorage(newShift);
-    console.log("[shiftService] New shift created and stored:", newShift);
+    console.log("[shiftService] New shift created and stored successfully");
     
     return newShift;
   } catch (error) {

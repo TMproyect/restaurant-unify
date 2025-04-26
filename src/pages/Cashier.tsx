@@ -14,15 +14,21 @@ const Cashier = () => {
   useEffect(() => {
     // Force timeout to prevent infinite loading
     const timer = setTimeout(() => {
-      console.log("[Cashier] Forcing load completion");
-      // Page will re-render with latest state
+      console.log("[Cashier] Forcing load completion after timeout");
     }, 1000);
     
-    return () => clearTimeout(timer);
-  }, []);
+    console.log("[Cashier] Component mounted, user:", user?.id);
+    console.log("[Cashier] Active shift status:", { isShiftActive, activeShift });
+    
+    return () => {
+      console.log("[Cashier] Component unmounting, clearing timeout");
+      clearTimeout(timer);
+    };
+  }, [user, isShiftActive, activeShift]);
 
   // If no active shift, show the open shift form
   if (!isShiftActive) {
+    console.log("[Cashier] Rendering NoActiveShiftState");
     return (
       <Layout>
         <NoActiveShiftState />
@@ -31,6 +37,7 @@ const Cashier = () => {
   }
 
   // Show the main cashier interface when there's an active shift
+  console.log("[Cashier] Rendering CashierInterface with active shift");
   return (
     <Layout>
       <CashierInterface activeShift={activeShift} />

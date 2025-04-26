@@ -18,6 +18,7 @@ const OpenShiftForm = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Actualizar el displayValue cuando cambia el initialCashAmount
   useEffect(() => {
     if (initialCashAmount === '') {
       setDisplayValue('');
@@ -30,14 +31,40 @@ const OpenShiftForm = () => {
         setDisplayValue(formatCurrency(numericValue));
       }
     } catch (error) {
-      console.error('Error formatting number:', error);
+      console.error('Error formateando número:', error);
       setDisplayValue(initialCashAmount);
     }
   }, [initialCashAmount]);
 
+  // Manejador de cambio para la entrada numérica
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^\d.]/g, '');
+    // Solo permitir dígitos y punto decimal, eliminar otros caracteres
+    let value = e.target.value.replace(/[^\d.]/g, '');
+    
+    // Prevenir múltiples puntos decimales
+    const decimalPoints = value.match(/\./g);
+    if (decimalPoints && decimalPoints.length > 1) {
+      value = value.slice(0, value.lastIndexOf('.'));
+    }
+    
+    // Actualizar el estado con el valor limpio
     setInitialCashAmount(value);
+  };
+
+  // Manejador para cuando el input pierde el foco
+  const handleBlur = () => {
+    if (initialCashAmount) {
+      const numericValue = parseFloat(initialCashAmount);
+      if (!isNaN(numericValue)) {
+        setDisplayValue(formatCurrency(numericValue));
+      }
+    }
+  };
+
+  // Manejador para cuando el input obtiene el foco
+  const handleFocus = () => {
+    // Mostrar el valor sin formato cuando el campo recibe el foco
+    setDisplayValue(initialCashAmount);
   };
 
   const handleOpenRegister = async () => {
@@ -91,6 +118,9 @@ const OpenShiftForm = () => {
                   className="pl-8"
                   value={displayValue}
                   onChange={handleInputChange}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  inputMode="decimal"
                 />
               </div>
             </div>

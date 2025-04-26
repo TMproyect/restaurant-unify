@@ -8,12 +8,13 @@ import { QzDiagnosticTool } from '@/components/ui/printing/QzDiagnosticTool';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
+import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle, DollarSign } from 'lucide-react';
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
 import ApiIntegrationConfig from '@/components/settings/ApiIntegrationConfig';
 import { PrinterStationsConfig } from '@/components/ui/printing/PrinterStationsConfig';
+import PaymentConfiguration from '@/components/settings/PaymentConfiguration';
 
 const QZ_DOWNLOAD_LINK = "https://qz.io/download/";
 
@@ -74,9 +75,10 @@ const Settings = () => {
           <h1 className="text-2xl font-bold">Configuración</h1>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-8">
+            <TabsList className="grid w-full grid-cols-5 mb-8">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="printers">Impresión</TabsTrigger>
+              <TabsTrigger value="payments">Pagos</TabsTrigger>
               <TabsTrigger value="roles">Roles y Permisos</TabsTrigger>
               <TabsTrigger value="integration">Integraciones</TabsTrigger>
             </TabsList>
@@ -254,6 +256,11 @@ const Settings = () => {
                   <p>QZ Tray debe estar instalado en cada computadora que necesite imprimir tickets o comandas.</p>
                 </CardFooter>
               </Card>
+            </TabsContent>
+
+            {/* Nueva pestaña de configuración de pagos */}
+            <TabsContent value="payments" className="space-y-4">
+              <PaymentConfiguration />
             </TabsContent>
 
             <TabsContent value="roles">

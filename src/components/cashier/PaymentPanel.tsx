@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import PaymentForm from './payment/components/PaymentForm';
 import usePaymentCalculations from './payment/hooks/usePaymentCalculations';
 import { useDailySummary } from '@/hooks/cashier/use-daily-summary';
 import { registerPayment } from '@/services/cashier/paymentService';
+import { paymentConfig } from './payment/config/paymentConfig';
 
 interface PaymentPanelProps {
   orderDetails: OrderPaymentDetails | null;
@@ -56,8 +58,10 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
   const [paymentHistory, setPaymentHistory] = useState<PaymentState[]>([]);
 
+  // Initialize payment amount when order changes or after adding a partial payment
   useEffect(() => {
     if (order) {
+      // Always set the payment amount to the pending amount
       setCurrentPayment(prev => ({ 
         ...prev, 
         amount: pendingAmount,
@@ -65,13 +69,14 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         tipPercentage: 0
       }));
     }
-  }, [order, payments, pendingAmount]);
+  }, [order, pendingAmount]);
 
   const addPayment = (payment: PaymentState) => {
     const newPayments = [...payments, payment];
     setPayments(newPayments);
     setPaymentHistory(prev => [...prev, payment]);
     
+    // Reset current payment with remaining amount
     setCurrentPayment({
       method: 'cash',
       amount: pendingAmount - payment.amount,
@@ -80,9 +85,18 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       tipPercentage: 0
     });
     
+    // Show toast notification for partial payment
+    let methodName = '';
+    switch (payment.method) {
+      case 'cash': methodName = 'Efectivo'; break;
+      case 'card': methodName = 'Tarjeta'; break;
+      case 'transfer': methodName = 'Transferencia'; break;
+      default: methodName = payment.method;
+    }
+    
     toast({
       title: "Pago parcial registrado",
-      description: `${payment.method === 'cash' ? 'Efectivo' : payment.method === 'card' ? 'Tarjeta' : 'Transferencia'}: $${payment.amount.toFixed(2)}`,
+      description: `${methodName}: $${new Intl.NumberFormat('es-CO').format(payment.amount)}`,
     });
   };
 
@@ -96,7 +110,9 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       return;
     }
 
+    // Add current payment if needed
     if (currentPayment.amount > 0 && pendingAmount > 0) {
+      // Validate cash payment
       if (currentPayment.method === 'cash' && 
         (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
         toast({
@@ -109,6 +125,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
       addPayment(currentPayment);
       
+      // If there's still an amount pending, return early (partial payment)
       if (pendingAmount - currentPayment.amount > 0) {
         return;
       }
@@ -117,11 +134,13 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     try {
       setIsProcessing(true);
 
+      // Collect all payments including current payment if needed
       const allPayments = [...payments];
       if (currentPayment.amount > 0) {
         allPayments.push(currentPayment);
       }
 
+      // Prepare payment data for registration
       const paymentData = {
         orderId: order.id,
         payments: allPayments,
@@ -133,10 +152,13 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         paymentDate: new Date().toISOString()
       };
 
+      // Register payment in the system
       await registerPayment(paymentData);
       
+      // Update order status to delivered (paid)
       const success = await updateOrderStatus(order.id, 'delivered');
       
+      // Update daily summary statistics
       await updateDailySummary({
         sales: total,
         orderCount: 1,
@@ -202,7 +224,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       change={change}
       pendingAmount={pendingAmount}
       payments={payments}
-      allowPartialPayments={true}
+      allowPartialPayments={paymentConfig.general.partialPaymentThreshold <= total}
     />
   );
 };

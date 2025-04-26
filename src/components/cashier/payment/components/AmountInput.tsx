@@ -56,9 +56,12 @@ export const AmountInput = ({
           ref={inputRef}
           id={id}
           type="text"
-          className={cn("pl-8 text-right font-mono text-lg", className)}
+          className={cn("pl-8 text-right font-mono text-lg", 
+            readOnly ? "bg-muted/50 border-muted" : "",
+            className)}
           value={displayValue}
           onChange={(e) => {
+            if (readOnly) return;
             const newValue = handleInputChange(e.target.value);
             onChange(newValue);
           }}

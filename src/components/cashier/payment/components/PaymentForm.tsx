@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Loader2, Check, CreditCard, Banknote, ArrowRightLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,11 +53,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [denominationsMode, setDenominationsMode] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("payment");
   
+  // Set payment amount based on selected payment method
   useEffect(() => {
     if (pendingAmount > 0) {
+      // For card and transfer, automatically select the pending amount
+      // For cash, let the user enter the amount manually
       const autoSelectAmount = currentPayment.method !== 'cash' 
         ? pendingAmount 
-        : 0;
+        : pendingAmount;
       
       onPaymentChange({
         ...currentPayment,
@@ -66,16 +70,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   }, [currentPayment.method, pendingAmount]);
 
   const isPaymentValid = () => {
-    const isValidPaymentAmount = 
-      currentPayment.amount > 0 && 
-      (payments.length > 0 || currentPayment.amount > 0);
+    // Valid payment requirements:
+    // 1. Payment amount must be greater than 0
+    // 2. If cash payment, cash received must be >= payment amount
+    // 3. For partial payments, we check separately
+    
+    // For completed payments (no pending amount)
+    if (pendingAmount === 0) {
+      return true;
+    }
+    
+    const isValidPaymentAmount = currentPayment.amount > 0;
     
     const isCashPaymentValid = currentPayment.method !== 'cash' || 
       (currentPayment.cashReceived && currentPayment.cashReceived >= currentPayment.amount);
     
-    const isPendingAmountResolved = pendingAmount === 0;
-    
-    return isValidPaymentAmount && isCashPaymentValid && isPendingAmountResolved;
+    return isValidPaymentAmount && isCashPaymentValid;
   };
 
   const showPartialPayment = 
@@ -116,6 +126,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               value={currentPayment.amount}
               onChange={(value) => onPaymentChange({...currentPayment, amount: value})}
               className="bg-primary/5 border-primary/20"
+              readOnly={true} // Force read-only to prevent manual editing
             />
 
             {currentPayment.method === 'cash' && (
@@ -135,6 +146,33 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 <div className="text-2xl font-mono text-right text-primary">
                   ${new Intl.NumberFormat('es-CO').format(change)}
                 </div>
+              </div>
+            )}
+            
+            {currentPayment.method === 'card' && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm">Esperando Terminal...</Label>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Inserte, deslice o acerque la tarjeta al datáfono para procesar el pago
+                </div>
+              </div>
+            )}
+            
+            {currentPayment.method === 'transfer' && (
+              <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                <Label className="text-sm">Información de Transferencia</Label>
+                <div className="p-2 bg-background rounded border">
+                  <p className="text-sm">Banco: <span className="font-medium">Bancolombia</span></p>
+                  <p className="text-sm">Cuenta: <span className="font-medium">1234 5678 9012</span></p>
+                  <p className="text-sm">Titular: <span className="font-medium">Restaurante Demo S.A.S</span></p>
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  <Check className="mr-2 h-4 w-4" />
+                  Verificar Transferencia
+                </Button>
               </div>
             )}
           </div>

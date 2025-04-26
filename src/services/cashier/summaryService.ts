@@ -2,10 +2,15 @@
 import { toast } from 'sonner';
 import { DailySummaryData } from '@/components/cashier/payment/types';
 
-// In a real application, this would interact with the database
-// For now, we'll use localStorage to persist the summary
-
+// Storage key constant
 const SUMMARY_STORAGE_KEY = 'cashier_daily_summary';
+
+// Helper function to calculate average ticket
+const calculateAverageTicket = (totalSales: number, orderCount: number): number => {
+  if (orderCount === 0) return 0;
+  // Round to 2 decimal places for consistency
+  return Number((totalSales / orderCount).toFixed(2));
+};
 
 export const getDailySummary = async (): Promise<DailySummaryData | null> => {
   try {
@@ -18,7 +23,10 @@ export const getDailySummary = async (): Promise<DailySummaryData | null> => {
       
       // Check if the stored summary is for today
       if (parsedData.date === today) {
-        return parsedData;
+        return {
+          ...parsedData,
+          averageTicket: calculateAverageTicket(parsedData.totalSales, parsedData.orderCount)
+        };
       }
     }
     
@@ -29,7 +37,8 @@ export const getDailySummary = async (): Promise<DailySummaryData | null> => {
       cashSales: 0,
       cardSales: 0,
       transferSales: 0,
-      orderCount: 0
+      orderCount: 0,
+      averageTicket: 0
     };
     
     // Store in localStorage
@@ -48,8 +57,12 @@ export const updateDailySummary = async (data: DailySummaryData): Promise<boolea
     const currentSummary = await getDailySummary();
     
     if (!currentSummary) {
-      // If no current summary, create a new one
-      localStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(data));
+      // If no current summary, create a new one with calculated average ticket
+      const summaryWithAverage: DailySummaryData = {
+        ...data,
+        averageTicket: calculateAverageTicket(data.totalSales, data.orderCount)
+      };
+      localStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(summaryWithAverage));
       return true;
     }
     
@@ -60,7 +73,11 @@ export const updateDailySummary = async (data: DailySummaryData): Promise<boolea
       cashSales: currentSummary.cashSales + data.cashSales,
       cardSales: currentSummary.cardSales + data.cardSales,
       transferSales: currentSummary.transferSales + data.transferSales,
-      orderCount: currentSummary.orderCount + data.orderCount
+      orderCount: currentSummary.orderCount + data.orderCount,
+      averageTicket: calculateAverageTicket(
+        currentSummary.totalSales + data.totalSales,
+        currentSummary.orderCount + data.orderCount
+      )
     };
     
     // Store in localStorage
@@ -79,14 +96,15 @@ export const resetDailySummary = async (): Promise<boolean> => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    // Create empty summary
+    // Create empty summary with averageTicket
     const emptySummary: DailySummaryData = {
       date: today,
       totalSales: 0,
       cashSales: 0,
       cardSales: 0,
       transferSales: 0,
-      orderCount: 0
+      orderCount: 0,
+      averageTicket: 0
     };
     
     // Store in localStorage

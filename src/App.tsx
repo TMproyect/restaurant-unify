@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster";
@@ -43,31 +43,30 @@ function App() {
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <ShiftStateProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/menu" element={<Menu />} />
-              <Route path="/cashier" element={<Cashier />} />
-              <Route path="/kitchen" element={<Kitchen />} />
-              <Route path="/tables" element={<Tables />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/roles" element={<RolesAndPermissions />} />
-              <Route path="/sales" element={<Sales />} />
-              <Route path="/delivery" element={<Delivery />} />
-              <Route path="/staff" element={<Staff />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/sales-test" element={<SalesTest />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/integrations" element={<Integrations />} />
-              <Route path="/integration/:id" element={<Integration />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <Toaster />
-          </Router>
+          {/* Removed the Router component since it's already in main.tsx */}
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/cashier" element={<Cashier />} />
+            <Route path="/kitchen" element={<Kitchen />} />
+            <Route path="/tables" element={<Tables />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/roles" element={<RolesAndPermissions />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/delivery" element={<Delivery />} />
+            <Route path="/staff" element={<Staff />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/sales-test" element={<SalesTest />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/integrations" element={<Integrations />} />
+            <Route path="/integration/:id" element={<Integration />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
         </ShiftStateProvider>
       </QueryClientProvider>
     </ThemeProvider>

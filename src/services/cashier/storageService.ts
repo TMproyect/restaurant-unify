@@ -18,12 +18,14 @@ export const loadActiveShiftFromStorage = (): CashRegisterShift | null => {
     }
     
     const shift = JSON.parse(storedShift);
+    console.log("[storageService] Found shift in storage:", shift);
+    
     if (!shift || shift.status !== 'open') {
-      console.log("[storageService] Found shift but it's not active:", shift);
+      console.log("[storageService] Shift is not active:", shift?.status);
       return null;
     }
     
-    console.log("[storageService] Found active shift in storage:", shift);
+    console.log("[storageService] Active shift loaded successfully:", shift);
     return shift;
   } catch (error) {
     console.error('[storageService] Error parsing stored shift:', error);
@@ -41,6 +43,9 @@ export const saveShiftToStorage = (shift: CashRegisterShift): void => {
   try {
     console.log("[storageService] Saving shift to storage:", shift);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(shift));
+    // Verificamos que se guardó correctamente
+    const saved = localStorage.getItem(STORAGE_KEY);
+    console.log("[storageService] Shift saved successfully:", saved ? JSON.parse(saved) : null);
   } catch (error) {
     console.error('[storageService] Error saving shift to storage:', error);
   }
@@ -53,6 +58,9 @@ export const removeShiftFromStorage = (): void => {
   try {
     console.log("[storageService] Removing shift from storage");
     localStorage.removeItem(STORAGE_KEY);
+    // Verificamos que se eliminó correctamente
+    const check = localStorage.getItem(STORAGE_KEY);
+    console.log("[storageService] Shift removed check:", check ? "Failed to remove" : "Successfully removed");
   } catch (error) {
     console.error('[storageService] Error removing shift from storage:', error);
   }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,11 +46,13 @@ const OpenShiftForm = () => {
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Remove any non-numeric characters except decimal point
-    const rawValue = e.target.value.replace(/[^\d.]/g, '');
+    const inputVal = e.target.value;
+    console.log("[OpenShiftForm] Raw input value:", inputVal);
     
-    console.log("[OpenShiftForm] Raw input value:", rawValue);
+    // Accept only digits and decimal point
+    const rawValue = inputVal.replace(/[^\d.]/g, '');
     
-    // Handle decimal points - allow only one
+    // Ensure only one decimal point
     const parts = rawValue.split('.');
     let cleanValue = parts[0];
     if (parts.length > 1) {
@@ -77,8 +79,11 @@ const OpenShiftForm = () => {
     }
     
     try {
+      const amount = parseFloat(initialCashAmount);
+      console.log("[OpenShiftForm] Parsed amount:", amount);
+      
       console.log("[OpenShiftForm] Starting new shift...");
-      const result = await startNewShift(parseFloat(initialCashAmount));
+      const result = await startNewShift(amount);
       console.log("[OpenShiftForm] Shift start result:", result);
       
       if (!result) {
@@ -90,7 +95,7 @@ const OpenShiftForm = () => {
       } else {
         toast({
           title: "Éxito",
-          description: `Turno iniciado con ${formatCurrency(parseFloat(initialCashAmount))}`,
+          description: `Turno iniciado con ${formatCurrency(amount)}`,
         });
       }
     } catch (error) {

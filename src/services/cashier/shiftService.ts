@@ -1,27 +1,17 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { CashRegisterShift } from "./types";
-
-const STORAGE_KEY = 'active_shift';
+import { loadActiveShiftFromStorage, saveShiftToStorage, removeShiftFromStorage } from "./storageService";
 
 export const getActiveShift = async (userId: string): Promise<CashRegisterShift | null> => {
   try {
     console.log("[shiftService] Checking for active shift for user:", userId);
     
     // First check localStorage for active shift
-    const storedShift = localStorage.getItem(STORAGE_KEY);
-    if (storedShift) {
-      try {
-        const shift = JSON.parse(storedShift);
-        if (shift && shift.user_id === userId && shift.status === 'open') {
-          console.log("[shiftService] Found active shift in local storage:", shift);
-          return shift;
-        }
-      } catch (e) {
-        console.error("[shiftService] Error parsing stored shift:", e);
-        // Clear invalid data
-        localStorage.removeItem(STORAGE_KEY);
-      }
+    const storedShift = loadActiveShiftFromStorage();
+    if (storedShift && storedShift.user_id === userId && storedShift.status === 'open') {
+      console.log("[shiftService] Found active shift in local storage:", storedShift);
+      return storedShift;
     }
     
     // If no shift is found, return null (no active shift)
@@ -62,7 +52,7 @@ export const startShift = async (userData: {
     };
     
     // Store the shift in localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newShift));
+    saveShiftToStorage(newShift);
     console.log("[shiftService] New shift created and stored:", newShift);
     
     return newShift;
@@ -76,37 +66,32 @@ export const endShift = async (shiftId: string, finalAmount: number): Promise<bo
   try {
     console.log("[shiftService] Ending shift:", shiftId, "with final amount:", finalAmount);
     
-    const storedShift = localStorage.getItem(STORAGE_KEY);
+    // Get the stored shift
+    const storedShift = loadActiveShiftFromStorage();
     if (!storedShift) {
       console.error("[shiftService] No active shift found to close");
       return false;
     }
     
-    try {
-      const shift = JSON.parse(storedShift);
-      if (shift.id !== shiftId) {
-        console.error("[shiftService] Shift ID mismatch when closing");
-        return false;
-      }
-      
-      // Update shift with closing details
-      const closedShift = {
-        ...shift,
-        status: 'closed',
-        ended_at: new Date().toISOString(),
-        final_amount: finalAmount
-      };
-      
-      // For a real implementation, we would store the closed shift in a database
-      // For this demo, we'll just remove it from localStorage
-      localStorage.removeItem(STORAGE_KEY);
-      console.log("[shiftService] Shift closed successfully:", closedShift);
-      
-      return true;
-    } catch (e) {
-      console.error("[shiftService] Error parsing stored shift during close:", e);
+    if (storedShift.id !== shiftId) {
+      console.error("[shiftService] Shift ID mismatch when closing. Expected:", shiftId, "Got:", storedShift.id);
       return false;
     }
+    
+    // Update shift with closing details
+    const closedShift = {
+      ...storedShift,
+      status: 'closed',
+      ended_at: new Date().toISOString(),
+      final_amount: finalAmount
+    };
+    
+    console.log("[shiftService] Shift closed successfully:", closedShift);
+    
+    // Remove from localStorage since it's no longer active
+    removeShiftFromStorage();
+    
+    return true;
   } catch (error) {
     console.error('[shiftService] Error ending shift:', error);
     return false;

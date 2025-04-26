@@ -6,21 +6,21 @@ import {
   startShift, 
   endShift, 
   CashRegisterShift,
-  loadActiveShiftFromStorage 
+  loadActiveShiftFromStorage,
+  saveShiftToStorage,
+  removeShiftFromStorage 
 } from '@/services/cashier';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 export const useCashRegister = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [activeShift, setActiveShift] = useState<CashRegisterShift | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStartingShift, setIsStartingShift] = useState(false);
   const [isEndingShift, setIsEndingShift] = useState(false);
   
-  // Load active shift from storage or API on initial load
+  // Load active shift from storage on initial load
   useEffect(() => {
     const loadShift = async () => {
       if (!user) return;
@@ -58,6 +58,21 @@ export const useCashRegister = () => {
   const startNewShift = async (initialAmount: number) => {
     if (!user) {
       console.log("[useCashRegister] Cannot start shift: No user");
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para iniciar un turno",
+        variant: "destructive"
+      });
+      return null;
+    }
+    
+    if (isNaN(initialAmount) || initialAmount <= 0) {
+      console.log("[useCashRegister] Invalid initial amount:", initialAmount);
+      toast({
+        title: "Error",
+        description: "El monto inicial debe ser mayor a cero",
+        variant: "destructive"
+      });
       return null;
     }
     
@@ -77,11 +92,8 @@ export const useCashRegister = () => {
           description: `Turno iniciado con $${initialAmount.toLocaleString('es-ES')} en caja`
         });
         
-        // Force reload to update UI with new shift state
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-        
+        // Recarga la página para mostrar la interfaz actualizada
+        window.location.reload();
         return newShift;
       } else {
         console.log("[useCashRegister] Failed to create new shift");
@@ -109,12 +121,18 @@ export const useCashRegister = () => {
   const closeCurrentShift = async (finalAmount?: number) => {
     if (!activeShift || !activeShift.id) {
       console.log("[useCashRegister] Cannot close shift: No active shift");
+      toast({
+        title: "Error",
+        description: "No hay un turno activo para cerrar",
+        variant: "destructive"
+      });
       return false;
     }
     
     setIsEndingShift(true);
     try {
-      const calculatedAmount = finalAmount || 
+      const calculatedAmount = finalAmount !== undefined ? 
+                              finalAmount : 
                               activeShift.initial_amount + 
                               (activeShift.total_cash_sales || 0);
       
@@ -128,6 +146,12 @@ export const useCashRegister = () => {
           title: "Turno cerrado",
           description: "El turno ha sido cerrado exitosamente"
         });
+        
+        // Recarga la página para mostrar la interfaz actualizada
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        
         return true;
       } else {
         console.log("[useCashRegister] Failed to close shift");

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +36,42 @@ const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) =>
       title: "Reporte generado",
       description: `El reporte "${reportType}" ha sido enviado a la impresora`
     });
+  };
+
+  const handleCloseShift = async (finalAmountValue: string) => {
+    console.log("[CashRegisterControls] Attempting to close shift with amount:", finalAmountValue);
+    
+    if (!finalAmountValue) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa el monto final en caja",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const amount = parseFloat(finalAmountValue);
+      console.log("[CashRegisterControls] Parsed amount:", amount);
+      
+      const success = await closeCurrentShift(amount);
+      console.log("[CashRegisterControls] Shift close result:", success);
+      
+      if (success) {
+        setIsCloseDialogOpen(false);
+        toast({
+          title: "Éxito",
+          description: "El turno ha sido cerrado correctamente",
+        });
+      }
+    } catch (error) {
+      console.error('[CashRegisterControls] Error closing shift:', error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al cerrar el turno",
+        variant: "destructive"
+      });
+    }
   };
 
   if (!shift) {
@@ -101,21 +138,7 @@ const CashRegisterControls: React.FC<CashRegisterControlsProps> = ({ shift }) =>
       <CloseShiftDialog 
         isOpen={isCloseDialogOpen}
         onOpenChange={setIsCloseDialogOpen}
-        onClose={async (finalAmountValue: string) => {
-          if (!finalAmountValue) {
-            toast({
-              title: "Error",
-              description: "Por favor ingresa el monto final en caja",
-              variant: "destructive"
-            });
-            return;
-          }
-      
-          const success = await closeCurrentShift(parseFloat(finalAmountValue));
-          if (success) {
-            setIsCloseDialogOpen(false);
-          }
-        }}
+        onClose={handleCloseShift}
         isClosing={isEndingShift}
         shift={shift}
         finalAmount={finalAmount}

@@ -41,6 +41,7 @@ export const useShiftLoader = (userId: string | undefined) => {
     
     loadShift();
     
+    // Add safety timeout to prevent UI from being stuck in loading state indefinitely
     const timeout = setTimeout(() => {
       setIsLoading(false);
     }, 3000);

@@ -1,18 +1,15 @@
-
-import React, { useEffect } from 'react';
+import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DollarSign, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { DollarSign, Loader2 } from 'lucide-react';
 import { CashRegisterShift } from '@/services/cashier';
 import { formatCurrency } from '@/utils/formatters';
 
 interface CloseShiftDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onClose: (finalAmount: string) => Promise<void>;
+  onClose: () => void;
   isClosing: boolean;
   shift: CashRegisterShift;
   finalAmount: string;
@@ -28,108 +25,86 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
   finalAmount,
   onFinalAmountChange,
 }) => {
-  const expectedAmount = shift.initial_amount + (shift.total_cash_sales || 0);
-  const [displayValue, setDisplayValue] = React.useState('');
+  // Calculate expected amount
+  const expectedAmount = shift?.initial_amount + (shift?.total_cash_sales || 0);
   
-  // Format value when component mounts or finalAmount changes
-  useEffect(() => {
-    console.log("[CloseShiftDialog] Initial amount set:", finalAmount);
-    if (finalAmount) {
-      setDisplayValue(formatCurrency(parseFloat(finalAmount)));
-    } else {
-      setDisplayValue('');
-    }
-  }, [finalAmount]);
+  // Format the amount for display
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow numbers and decimals
+    const value = e.target.value.replace(/[^\d.]/g, '');
+    onFinalAmountChange(value);
+  };
 
   // Handle input focus to show raw value
-  const handleFocus = () => {
-    console.log("[CloseShiftDialog] Input focused, showing raw value:", finalAmount);
-    setDisplayValue(finalAmount);
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Show raw number without formatting when focused
+    onFinalAmountChange(finalAmount);
   };
 
-  // Handle input blur to format value
-  const handleBlur = () => {
-    console.log("[CloseShiftDialog] Input blurred, formatting value");
-    if (finalAmount) {
-      const numericValue = parseFloat(finalAmount);
-      if (!isNaN(numericValue)) {
-        setDisplayValue(formatCurrency(numericValue));
-      }
+  // Handle input blur to format with thousand separators
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const numValue = parseFloat(finalAmount);
+    if (!isNaN(numValue)) {
+      // Keep the raw value in state but display formatted
+      e.target.value = formatCurrency(numValue);
     }
-  };
-
-  // Handle input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Remove any non-numeric characters except decimal point
-    const inputVal = e.target.value;
-    console.log("[CloseShiftDialog] Raw input value:", inputVal);
-    
-    // Accept only digits and decimal point
-    const rawValue = inputVal.replace(/[^\d.]/g, '');
-    
-    // Ensure only one decimal point
-    const parts = rawValue.split('.');
-    let cleanValue = parts[0];
-    if (parts.length > 1) {
-      cleanValue += '.' + parts[1];
-    }
-    
-    console.log("[CloseShiftDialog] Clean value after processing:", cleanValue);
-    
-    // Update both the internal state and display value
-    onFinalAmountChange(cleanValue);
-    setDisplayValue(cleanValue);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Cerrar Turno de Caja</DialogTitle>
-          <DialogDescription>
-            Para cerrar el turno, ingresa el monto final de efectivo en caja.
-          </DialogDescription>
+          <DialogTitle>Cierre de Turno</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="finalCashAmount">Monto Final en Efectivo</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                id="finalCashAmount"
-                type="text" 
-                min="0" 
-                className="pl-8"
-                value={displayValue}
-                onChange={handleInputChange}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                inputMode="decimal"
-                placeholder={formatCurrency(expectedAmount)}
-              />
+        <div className="py-4">
+          <div className="space-y-4">
+            <div className="bg-muted/30 p-3 rounded-md space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Monto Inicial:</span>
+                <span className="text-sm">{formatCurrency(shift?.initial_amount || 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Ventas en Efectivo:</span>
+                <span className="text-sm">{formatCurrency(shift?.total_cash_sales || 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Monto Esperado:</span>
+                <span className="text-sm font-semibold">{formatCurrency(expectedAmount)}</span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Monto esperado en caja: {formatCurrency(expectedAmount)}
-            </p>
+            
+            <div className="space-y-2">
+              <label htmlFor="finalAmount" className="text-sm font-medium">
+                Monto Final en Caja
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="finalAmount"
+                  type="text"
+                  className="pl-8"
+                  value={finalAmount}
+                  onChange={handleInputChange}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  placeholder={formatCurrency(expectedAmount)}
+                />
+              </div>
+            </div>
           </div>
-          
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Importante</AlertTitle>
-            <AlertDescription>
-              Al cerrar el turno se generará un reporte final y no podrás procesar más ventas hasta iniciar un nuevo turno.
-            </AlertDescription>
-          </Alert>
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isClosing}
+          >
             Cancelar
           </Button>
           <Button 
-            variant="destructive" 
-            onClick={() => onClose(finalAmount)}
+            onClick={onClose}
             disabled={isClosing}
           >
             {isClosing ? (
@@ -138,10 +113,7 @@ export const CloseShiftDialog: React.FC<CloseShiftDialogProps> = ({
                 Cerrando...
               </>
             ) : (
-              <>
-                <Lock className="mr-2 h-4 w-4" />
-                Cerrar Turno
-              </>
+              'Cerrar Turno'
             )}
           </Button>
         </DialogFooter>

@@ -1,53 +1,79 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
- * Subscribe to order changes in the database
+ * Subscribe to order changes in the database with improved error handling and reconnection
  * @param callback Function to call when changes occur
  * @returns Unsubscribe function
  */
 export const subscribeToOrders = (callback: (payload: any) => void): (() => void) => {
   console.log('🔄 [orderSubscriptions] Setting up realtime subscription to orders table...');
   
-  try {
-    // Create channel for realtime updates
-    const channel = supabase
-      .channel('orders-changes')
-      .on('postgres_changes', {
-        event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-        schema: 'public',
-        table: 'orders'
-      }, (payload) => {
-        console.log('🔄 [orderSubscriptions] Realtime update received:', payload.eventType);
-        console.log('🔄 [orderSubscriptions] Order data:', payload.new || payload.old);
-        
-        // Pass payload to callback
-        callback(payload);
-      })
-      .subscribe((status) => {
-        console.log(`🔄 [orderSubscriptions] Supabase realtime subscription status: ${status}`);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [orderSubscriptions] Successfully subscribed to orders table!');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [orderSubscriptions] Error with realtime subscription');
-        }
-      });
+  let channel: RealtimeChannel;
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 5;
+  const reconnectDelay = 2000; // 2 seconds
+  
+  const setupSubscription = () => {
+    try {
+      // Create channel for realtime updates
+      channel = supabase
+        .channel('orders-changes')
+        .on('postgres_changes', {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'orders'
+        }, (payload) => {
+          console.log('🔄 [orderSubscriptions] Realtime update received:', payload.eventType);
+          console.log('🔄 [orderSubscriptions] Order data:', payload.new || payload.old);
+          
+          // Reset reconnection attempts on successful data
+          reconnectAttempts = 0;
+          
+          // Pass payload to callback
+          callback(payload);
+        })
+        .subscribe((status) => {
+          console.log(`🔄 [orderSubscriptions] Supabase realtime subscription status: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ [orderSubscriptions] Successfully subscribed to orders table!');
+            reconnectAttempts = 0; // Reset reconnection attempts on successful subscription
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ [orderSubscriptions] Error with realtime subscription');
+            
+            // Attempt to reconnect if we haven't exceeded max attempts
+            if (reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              console.log(`🔄 [orderSubscriptions] Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+              
+              setTimeout(() => {
+                // Clean up the current channel before reconnecting
+                supabase.removeChannel(channel);
+                setupSubscription();
+              }, reconnectDelay * reconnectAttempts); // Exponential backoff
+            }
+          }
+        });
+    } catch (error) {
+      console.error('❌ [orderSubscriptions] Error setting up realtime subscription:', error);
+    }
+  };
+  
+  // Initial setup
+  setupSubscription();
       
-    // Return unsubscribe function
-    return () => {
-      console.log('🔄 [orderSubscriptions] Cleaning up subscription');
+  // Return unsubscribe function
+  return () => {
+    console.log('🔄 [orderSubscriptions] Cleaning up subscription');
+    if (channel) {
       supabase.removeChannel(channel);
-    };
-  } catch (error) {
-    console.error('❌ [orderSubscriptions] Error setting up realtime subscription:', error);
-    return () => {}; // Return empty function in case of error
-  }
+    }
+  };
 };
 
 /**
- * Subscribe to order items changes
+ * Subscribe to order items changes with improved error handling
  * @param callback Function to call when changes occur
  * @returns Unsubscribe function
  */
@@ -82,7 +108,7 @@ export const subscribeToOrderItems = (callback: (payload: any) => void): (() => 
 };
 
 /**
- * Subscribe to orders with a specific filter
+ * Subscribe to orders with a specific filter and improved caching
  * @param filter The status to filter by (optional)
  * @param callback Function to call when changes occur
  * @returns Unsubscribe function
@@ -92,6 +118,10 @@ export const subscribeToFilteredOrders = (
   callback: (payload: any) => void
 ): (() => void) => {
   console.log(`🔄 [orderSubscriptions] Setting up filtered subscription with filter: ${filter || 'none'}`);
+  
+  // Keep a simple cache of the last 10 events to prevent duplicate processing
+  const eventCache: Set<string> = new Set();
+  const MAX_CACHE_SIZE = 10;
   
   try {
     let channel: RealtimeChannel;
@@ -106,10 +136,26 @@ export const subscribeToFilteredOrders = (
           table: 'orders',
           filter: `status=eq.${filter}`
         }, (payload) => {
+          const eventId = `${payload.eventType}-${payload.new?.id || payload.old?.id}-${Date.now()}`;
+          
+          // Check if we've already processed this event
+          if (eventCache.has(eventId)) {
+            return;
+          }
+          
+          // Add to cache and trim if needed
+          eventCache.add(eventId);
+          if (eventCache.size > MAX_CACHE_SIZE) {
+            const firstItem = eventCache.values().next().value;
+            eventCache.delete(firstItem);
+          }
+          
           console.log(`🔄 [orderSubscriptions] Filtered order update (${filter}):`, payload.eventType);
           callback(payload);
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`🔄 [orderSubscriptions] Filtered subscription status (${filter}): ${status}`);
+        });
     } else {
       // Subscribe to all orders (no filter)
       channel = supabase
@@ -119,10 +165,26 @@ export const subscribeToFilteredOrders = (
           schema: 'public',
           table: 'orders'
         }, (payload) => {
+          const eventId = `${payload.eventType}-${payload.new?.id || payload.old?.id}-${Date.now()}`;
+          
+          // Check if we've already processed this event
+          if (eventCache.has(eventId)) {
+            return;
+          }
+          
+          // Add to cache and trim if needed
+          eventCache.add(eventId);
+          if (eventCache.size > MAX_CACHE_SIZE) {
+            const firstItem = eventCache.values().next().value;
+            eventCache.delete(firstItem);
+          }
+          
           console.log('🔄 [orderSubscriptions] All orders update:', payload.eventType);
           callback(payload);
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`🔄 [orderSubscriptions] All orders subscription status: ${status}`);
+        });
     }
     
     return () => {

@@ -7,6 +7,8 @@ import { PaymentState, OrderPaymentDetails } from './payment/types';
 import PaymentSuccess from './payment/components/PaymentSuccess';
 import PaymentForm from './payment/components/PaymentForm';
 import usePaymentCalculations from './payment/hooks/usePaymentCalculations';
+import { useDailySummary } from '@/hooks/cashier/use-daily-summary';
+import { registerPayment } from '@/services/cashier/paymentService';
 
 interface PaymentPanelProps {
   orderDetails: OrderPaymentDetails | null;
@@ -25,10 +27,13 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   const [currentPayment, setCurrentPayment] = useState<PaymentState>({
     method: 'cash',
     amount: 0,
-    cashReceived: 0
+    cashReceived: 0,
+    tipAmount: 0,
+    tipPercentage: 0
   });
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { updateDailySummary } = useDailySummary();
 
   const {
     subtotal,
@@ -37,22 +42,49 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     tipValue,
     total,
     change,
-    pendingAmount
+    pendingAmount,
+    calculatedTip,
   } = usePaymentCalculations({
     items,
     discount: order?.discount || 0,
     discountType: 'percent',
-    tipAmount: 0,
-    tipType: 'percent',
+    tipAmount: currentPayment.tipAmount || 0,
+    tipPercentage: currentPayment.tipPercentage || 0,
     currentPayment,
     payments
   });
 
+  const [paymentHistory, setPaymentHistory] = useState<PaymentState[]>([]);
+
   useEffect(() => {
     if (order) {
-      setCurrentPayment(prev => ({ ...prev, amount: pendingAmount }));
+      setCurrentPayment(prev => ({ 
+        ...prev, 
+        amount: pendingAmount,
+        tipAmount: 0,
+        tipPercentage: 0
+      }));
     }
   }, [order, payments, pendingAmount]);
+
+  const addPayment = (payment: PaymentState) => {
+    const newPayments = [...payments, payment];
+    setPayments(newPayments);
+    setPaymentHistory(prev => [...prev, payment]);
+    
+    setCurrentPayment({
+      method: 'cash',
+      amount: pendingAmount - payment.amount,
+      cashReceived: 0,
+      tipAmount: 0,
+      tipPercentage: 0
+    });
+    
+    toast({
+      title: "Pago parcial registrado",
+      description: `${payment.method === 'cash' ? 'Efectivo' : payment.method === 'card' ? 'Tarjeta' : 'Transferencia'}: $${payment.amount.toFixed(2)}`,
+    });
+  };
 
   const handlePayment = async () => {
     if (!order?.id) {
@@ -64,21 +96,9 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       return;
     }
 
-    const isValid = pendingAmount === 0 || 
-                    (currentPayment.amount > 0 && currentPayment.amount === pendingAmount);
-    
-    if (!isValid) {
-      toast({
-        title: "Error",
-        description: "El monto total no coincide con el monto pendiente",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (currentPayment.amount > 0) {
+    if (currentPayment.amount > 0 && pendingAmount > 0) {
       if (currentPayment.method === 'cash' && 
-          (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
+        (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
         toast({
           title: "Error",
           description: "El efectivo recibido debe ser igual o mayor al monto a pagar",
@@ -86,13 +106,42 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         });
         return;
       }
+
+      addPayment(currentPayment);
       
-      setPayments([...payments, currentPayment]);
+      if (pendingAmount - currentPayment.amount > 0) {
+        return;
+      }
     }
     
     try {
       setIsProcessing(true);
+
+      const allPayments = [...payments];
+      if (currentPayment.amount > 0) {
+        allPayments.push(currentPayment);
+      }
+
+      const paymentData = {
+        orderId: order.id,
+        payments: allPayments,
+        total: total,
+        subtotal: subtotal,
+        discount: discountValue,
+        tax: tax,
+        tip: calculatedTip,
+        paymentDate: new Date().toISOString()
+      };
+
+      await registerPayment(paymentData);
+      
       const success = await updateOrderStatus(order.id, 'delivered');
+      
+      await updateDailySummary({
+        sales: total,
+        orderCount: 1,
+        payments: allPayments
+      });
       
       if (success) {
         setPaymentStep('success');
@@ -130,7 +179,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         order={order}
         total={total}
         onComplete={onPaymentComplete}
-        // The print and email handlers are now optional and have default implementations
+        payments={paymentHistory.length > 0 ? paymentHistory : payments}
       />
     );
   }
@@ -141,17 +190,19 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       onPaymentChange={setCurrentPayment}
       onCancel={onCancel}
       onSubmit={handlePayment}
+      onPartialPayment={() => currentPayment.amount > 0 && addPayment(currentPayment)}
       isProcessing={isProcessing}
       subtotal={subtotal}
       discount={order.discount || 0}
       discountType="percent"
       tax={tax}
-      tipAmount={0}
-      tipType="percent"
+      tipAmount={currentPayment.tipAmount || 0}
+      tipPercentage={currentPayment.tipPercentage || 0}
       total={total}
       change={change}
       pendingAmount={pendingAmount}
       payments={payments}
+      allowPartialPayments={true}
     />
   );
 };

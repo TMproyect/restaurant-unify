@@ -14,7 +14,7 @@ interface UsePaymentCalculationsProps {
   discount: number;
   discountType: 'percent' | 'amount';
   tipAmount: number;
-  tipType: 'percent' | 'amount';
+  tipPercentage: number;
   currentPayment: PaymentState;
   payments: PaymentState[];
 }
@@ -24,7 +24,7 @@ const usePaymentCalculations = ({
   discount,
   discountType,
   tipAmount,
-  tipType,
+  tipPercentage,
   currentPayment,
   payments
 }: UsePaymentCalculationsProps) => {
@@ -33,13 +33,30 @@ const usePaymentCalculations = ({
   const subtotal = calculateSubtotal(items);
   const discountValue = calculateDiscount(subtotal, discountType, discount);
   const tax = calculateTax(subtotal, discountValue);
-  const tipValue = calculateTip(subtotal, tipType, tipAmount);
+  
+  // Calculate tip based on tipAmount and tipPercentage
+  let calculatedTip = 0;
+  if (tipAmount > 0) {
+    calculatedTip = tipAmount;
+  } else if (tipPercentage > 0) {
+    calculatedTip = (subtotal * tipPercentage) / 100;
+  }
+
+  // Add tips from all previous payments
+  const previousTips = payments.reduce((sum, payment) => {
+    return sum + (payment.tipAmount || 0);
+  }, 0);
+  
+  const tipValue = calculatedTip + previousTips;
+  
   const total = calculateTotal(subtotal, discountValue, tax, tipValue);
 
   const calculatePendingAmount = () => {
     const paidAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
     return Math.max(0, total - paidAmount);
   };
+
+  const pendingAmount = calculatePendingAmount();
 
   useEffect(() => {
     if (currentPayment.method === 'cash' && currentPayment.cashReceived) {
@@ -56,9 +73,10 @@ const usePaymentCalculations = ({
     discountValue,
     tax,
     tipValue,
+    calculatedTip,
     total,
     change,
-    pendingAmount: calculatePendingAmount()
+    pendingAmount
   };
 };
 

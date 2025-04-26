@@ -1,84 +1,100 @@
 
 import React from 'react';
-import { Check, Printer, FileText, Mail } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Order } from '@/services/orderService';
+import { CheckCircle2, Printer, Home, Receipt } from 'lucide-react';
+import { Order } from '@/types/order.types';
+import { PaymentState } from '../types';
+import { formatCurrency } from '@/lib/utils';
 
 interface PaymentSuccessProps {
   order: Order;
   total: number;
+  payments?: PaymentState[];
   onComplete: () => void;
-  onPrintReceipt?: () => void;
-  onPrintInvoice?: () => void;
-  onSendEmail?: () => void;
+  onPrint?: () => void;
+  onEmail?: () => void;
 }
 
-const PaymentSuccess = ({
+const PaymentSuccess: React.FC<PaymentSuccessProps> = ({
   order,
   total,
-  onPrintReceipt = () => console.log('Print receipt functionality not implemented'),
-  onPrintInvoice = () => console.log('Print invoice functionality not implemented'),
-  onSendEmail = () => console.log('Send email functionality not implemented'),
-  onComplete
-}: PaymentSuccessProps) => {
+  payments = [],
+  onComplete,
+  onPrint = () => console.log('Print receipt'),
+  onEmail = () => console.log('Email receipt')
+}) => {
+  const getPaymentMethodName = (method: string) => {
+    switch (method) {
+      case 'cash': return 'Efectivo';
+      case 'card': return 'Tarjeta';
+      case 'transfer': return 'Transferencia';
+      default: return method;
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-green-600">Pago Registrado Exitosamente</h2>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-          {order.is_delivery ? 'Delivery' : `Mesa ${order.table_number}`} • #{order.id?.substring(0, 6)}
-        </Badge>
-      </div>
-      
-      <div className="bg-green-50 p-4 rounded-md mb-6 border border-green-200">
-        <div className="text-center mb-2">
-          <Check className="h-12 w-12 text-green-500 mx-auto mb-2" />
-          <p className="text-lg font-medium">Total Cobrado: ${total.toFixed(2)}</p>
-        </div>
-      </div>
-      
-      <div className="space-y-4 mb-6">
-        <h3 className="font-medium text-lg">¿Qué desea hacer ahora?</h3>
+    <div className="flex flex-col items-center justify-center h-full text-center p-6">
+      <div className="w-full max-w-md bg-white rounded-lg p-6 shadow-sm border">
+        <CheckCircle2 className="mx-auto h-16 w-16 text-green-500 mb-4" />
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <h2 className="text-2xl font-bold mb-2">¡Pago Exitoso!</h2>
+        <p className="text-muted-foreground mb-6">
+          La orden #{order.id?.substring(0, 6) || 'N/A'} ha sido pagada correctamente
+        </p>
+        
+        <div className="bg-muted/30 p-4 rounded-lg mb-6">
+          <div className="flex justify-between mb-2">
+            <span>Cliente:</span>
+            <span className="font-medium">{order.customer_name}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+            <span>Mesa:</span>
+            <span className="font-medium">{order.table_number || 'Delivery'}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+            <span>Monto Total:</span>
+            <span className="font-bold">{formatCurrency(total)}</span>
+          </div>
+        </div>
+
+        {payments && payments.length > 0 && (
+          <div className="mb-6">
+            <h3 className="font-medium mb-2 text-left">Detalles del Pago:</h3>
+            <div className="space-y-2">
+              {payments.map((payment, index) => (
+                <div key={index} className="flex justify-between items-center p-2 bg-secondary/20 rounded">
+                  <span>{getPaymentMethodName(payment.method)}</span>
+                  <span className="font-medium">{formatCurrency(payment.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <Button 
             variant="outline" 
-            className="flex items-center gap-2" 
-            onClick={onPrintReceipt}
+            onClick={onPrint}
+            className="flex items-center justify-center gap-2"
           >
             <Printer className="h-4 w-4" />
-            Imprimir Ticket
+            Imprimir
           </Button>
-          
           <Button 
             variant="outline" 
-            className="flex items-center gap-2" 
-            onClick={onPrintInvoice}
+            onClick={onEmail}
+            className="flex items-center justify-center gap-2"
           >
-            <FileText className="h-4 w-4" />
-            Imprimir Factura Fiscal
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2" 
-            onClick={onSendEmail}
-          >
-            <Mail className="h-4 w-4" />
-            Enviar Recibo por Email
+            <Receipt className="h-4 w-4" />
+            Enviar email
           </Button>
         </div>
+        
+        <Button onClick={onComplete} className="w-full">
+          <Home className="mr-2 h-4 w-4" />
+          Volver al inicio
+        </Button>
       </div>
-      
-      <div className="flex-grow"></div>
-      <Button 
-        size="lg" 
-        className="w-full mt-4" 
-        onClick={onComplete}
-      >
-        Finalizar / Nueva Venta
-      </Button>
     </div>
   );
 };

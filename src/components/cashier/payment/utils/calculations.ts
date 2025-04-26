@@ -29,3 +29,25 @@ export const calculateTotal = (
 ) => {
   return subtotal - discountValue + tax + tipValue;
 };
+
+// Calculate the correct denomination for returning change
+export const calculateChangeDenominations = (changeAmount: number): Record<number, number> => {
+  const denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5];
+  let remainingChange = changeAmount;
+  const result: Record<number, number> = {};
+
+  denominations.forEach(denom => {
+    if (remainingChange >= denom) {
+      const count = Math.floor(remainingChange / denom);
+      result[denom] = count;
+      remainingChange = parseFloat((remainingChange - count * denom).toFixed(2));
+    }
+  });
+
+  return result;
+};
+
+// Format currency with proper decimal places
+export const formatCurrencyValue = (value: number): string => {
+  return value.toFixed(2);
+};

@@ -11,9 +11,32 @@ export interface PaymentState {
   method: string;
   amount: number;
   cashReceived?: number;
+  tipAmount?: number;
+  tipPercentage?: number;
+  timestamp?: string;
 }
 
 export interface OrderPaymentDetails {
   order: Order | null;
   items: OrderItem[];
+}
+
+export interface PaymentData {
+  orderId: string;
+  payments: PaymentState[];
+  total: number;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  tip: number;
+  paymentDate: string;
+}
+
+export interface DailySummaryData {
+  date: string;
+  totalSales: number;
+  cashSales: number;
+  cardSales: number;
+  transferSales: number;
+  orderCount: number;
 }

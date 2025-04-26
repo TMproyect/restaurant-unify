@@ -3,22 +3,23 @@ import React from 'react';
 import { Check, Printer, FileText, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Order } from '@/services/orderService';
 
 interface PaymentSuccessProps {
-  order: any;
+  order: Order;
   total: number;
-  onPrintReceipt: () => void;
-  onPrintInvoice: () => void;
-  onSendEmail: () => void;
   onComplete: () => void;
+  onPrintReceipt?: () => void;
+  onPrintInvoice?: () => void;
+  onSendEmail?: () => void;
 }
 
 const PaymentSuccess = ({
   order,
   total,
-  onPrintReceipt,
-  onPrintInvoice,
-  onSendEmail,
+  onPrintReceipt = () => console.log('Print receipt functionality not implemented'),
+  onPrintInvoice = () => console.log('Print invoice functionality not implemented'),
+  onSendEmail = () => console.log('Send email functionality not implemented'),
   onComplete
 }: PaymentSuccessProps) => {
   return (

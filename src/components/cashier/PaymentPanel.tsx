@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -130,6 +131,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         order={order}
         total={total}
         onComplete={onPaymentComplete}
+        // The print and email handlers are now optional and have default implementations
       />
     );
   }

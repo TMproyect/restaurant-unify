@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOrdersData } from './orders/useOrdersData';
 import OrdersListHeader from './orders/OrdersListHeader';
 import OrderTableRow from './orders/OrderTableRow';
@@ -44,17 +44,24 @@ const OrdersList: React.FC<OrdersListProps> = ({
   
   // If user doesn't have permission to view archived orders and showArchived is true,
   // reset to showing active orders
-  React.useEffect(() => {
+  useEffect(() => {
     if (showArchived && !canViewArchived) {
       setShowArchived(false);
     }
   }, [canViewArchived, showArchived]);
   
+  const handleTabChange = (value: string) => {
+    setShowArchived(value === "archived");
+  };
+  
   return (
     <div className="overflow-hidden">
       {canViewArchived && (
         <div className="p-2 border-b">
-          <Tabs value={showArchived ? "archived" : "active"} onValueChange={(value) => setShowArchived(value === "archived")}>
+          <Tabs 
+            value={showArchived ? "archived" : "active"} 
+            onValueChange={handleTabChange}
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="active">Órdenes Activas</TabsTrigger>
               <TabsTrigger value="archived">Órdenes Archivadas</TabsTrigger>

@@ -178,6 +178,7 @@ export function useOrdersData({
     }
   }, [filter, loadOrders, effectiveIncludeArchived]);
 
+  // Apply filters to orders
   const filteredOrders = orders
     .filter(order => {
       console.log(`🔍 [useOrdersData] Filtering order ${order.id} with status ${order.status}, comparing to filter ${filter}`);
@@ -199,10 +200,10 @@ export function useOrdersData({
       
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
-        const orderIdMatch = order.id?.toLowerCase().includes(searchLower);
+        const orderIdMatch = order.id?.toString().toLowerCase().includes(searchLower);
         const tableMatch = order.table_number?.toString().includes(searchLower);
-        const customerMatch = order.customer_name.toLowerCase().includes(searchLower);
-        const externalIdMatch = order.external_id?.toLowerCase().includes(searchLower);
+        const customerMatch = order.customer_name?.toLowerCase().includes(searchLower) || false;
+        const externalIdMatch = order.external_id?.toLowerCase().includes(searchLower) || false;
         const match = orderIdMatch || tableMatch || customerMatch || externalIdMatch;
         
         console.log(`🔍 [useOrdersData] Order ${order.id} search match: ${match}`);

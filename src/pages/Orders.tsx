@@ -26,6 +26,7 @@ const Orders = () => {
   // Check permissions
   const canViewTables = hasPermission('tables.view');
   const canCreateOrders = hasPermission('orders.create');
+  const canViewArchived = hasPermission('orders.view_archived');
   
   console.log('🔍 [Orders] Comprobando permisos del usuario:', { 
     role: user?.role, 
@@ -33,7 +34,8 @@ const Orders = () => {
     isAdmin,
     isManager,
     canViewTables,
-    canCreateOrders
+    canCreateOrders,
+    canViewArchived
   });
   
   const handleOrderComplete = () => {

@@ -17,11 +17,47 @@ serve(async (req) => {
     // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-
+    
     // Initialize Supabase client with the service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('🔄 Starting order archiving process...');
+    
+    // Parse request body
+    let action = 'run-now';
+    try {
+      const body = await req.json();
+      action = body.action || 'run-now';
+    } catch (e) {
+      // If no valid JSON body or no action specified, default to run-now
+    }
+    
+    // If this is just a status check
+    if (action === 'check-status') {
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', [
+          'auto_archive_enabled', 
+          'completed_hours',
+          'cancelled_hours', 
+          'test_orders_hours',
+          'last_archive_run'
+        ]);
+      
+      if (settingsError) {
+        throw new Error(`Error fetching archive settings: ${settingsError.message}`);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          status: 'active',
+          settings: settingsData,
+          message: 'Archive function is active'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Fetch user archiving settings
     const { data: settingsData, error: settingsError } = await supabase
@@ -62,7 +98,7 @@ serve(async (req) => {
     }
     
     // If auto archive is disabled and this isn't a manual invocation, exit
-    const isManualInvocation = req.method === 'POST';
+    const isManualInvocation = action === 'run-now' || req.method === 'POST';
     if (!settings.auto_archive_enabled && !isManualInvocation) {
       return new Response(
         JSON.stringify({ message: 'Auto-archiving is disabled', processed: 0 }),
@@ -138,88 +174,27 @@ serve(async (req) => {
       );
     }
 
-    // 2. Move orders to historical_orders table and get their IDs
-    const orderIds = ordersToArchive.map(order => order.id);
-    const batchSize = 50; // Process in batches to avoid timeouts
-    
+    // Process each order to archive
     let processedCount = 0;
     let errorCount = 0;
     
-    // Process orders in batches
-    for (let i = 0; i < orderIds.length; i += batchSize) {
-      const batchIds = orderIds.slice(i, i + batchSize);
-      
-      // Insert orders into historical_orders 
-      const { error: insertError } = await supabase.rpc('archive_orders', {
-        order_ids: batchIds
-      });
-      
-      if (insertError) {
-        console.error(`❌ Error archiving orders batch ${i}:`, insertError);
-        errorCount += batchIds.length;
-      } else {
-        console.log(`✅ Successfully archived batch ${i} with ${batchIds.length} orders`);
-        processedCount += batchIds.length;
-      }
-    }
-    
-    // 3. If auto-delete is enabled, delete old archived orders
-    let deletedCount = 0;
-    
-    if (settings.auto_delete_enabled) {
+    for (const order of ordersToArchive) {
       try {
-        const deleteThreshold = new Date(now.getTime() - (settings.delete_archived_days * 24 * 60 * 60 * 1000));
-        
-        console.log(`🔄 Deleting archived orders before: ${deleteThreshold.toISOString()}`);
-        
-        // First delete historical order items
-        const { data: itemsToDelete, error: itemsQueryError } = await supabase
-          .from('historical_order_items')
-          .select('id, order_id')
-          .lt('archived_at', deleteThreshold.toISOString());
+        // Update the order status to 'archived'
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ status: 'archived', updated_at: now.toISOString() })
+          .eq('id', order.id);
           
-        if (itemsQueryError) {
-          throw new Error(`Error querying old historical items: ${itemsQueryError.message}`);
+        if (updateError) {
+          console.error(`❌ Error archiving order ${order.id}:`, updateError);
+          errorCount++;
+        } else {
+          processedCount++;
         }
-        
-        if (itemsToDelete && itemsToDelete.length > 0) {
-          const itemIds = itemsToDelete.map(item => item.id);
-          const orderIdsToDelete = [...new Set(itemsToDelete.map(item => item.order_id))];
-          
-          console.log(`🔄 Deleting ${itemIds.length} historical order items`);
-          
-          // Delete items in batches
-          for (let i = 0; i < itemIds.length; i += batchSize) {
-            const batchItemIds = itemIds.slice(i, i + batchSize);
-            const { error: deleteItemsError } = await supabase
-              .from('historical_order_items')
-              .delete()
-              .in('id', batchItemIds);
-              
-            if (deleteItemsError) {
-              console.error(`❌ Error deleting historical items batch:`, deleteItemsError);
-            }
-          }
-          
-          console.log(`🔄 Deleting ${orderIdsToDelete.length} historical orders`);
-          
-          // Delete orders in batches
-          for (let i = 0; i < orderIdsToDelete.length; i += batchSize) {
-            const batchOrderIds = orderIdsToDelete.slice(i, i + batchSize);
-            const { error: deleteOrdersError } = await supabase
-              .from('historical_orders')
-              .delete()
-              .in('id', batchOrderIds);
-              
-            if (deleteOrdersError) {
-              console.error(`❌ Error deleting historical orders batch:`, deleteOrdersError);
-            } else {
-              deletedCount += batchOrderIds.length;
-            }
-          }
-        }
-      } catch (deleteError) {
-        console.error(`❌ Error in auto-delete process:`, deleteError);
+      } catch (error) {
+        console.error(`❌ Error processing order ${order.id}:`, error);
+        errorCount++;
       }
     }
     
@@ -233,7 +208,6 @@ serve(async (req) => {
       JSON.stringify({ 
         message: 'Archive process completed', 
         processed: processedCount,
-        deleted: deletedCount,
         errors: errorCount,
         last_run: lastRunTime
       }),

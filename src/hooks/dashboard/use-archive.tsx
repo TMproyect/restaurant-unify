@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { runManualArchiving } from '@/services/dashboardService/activity/autoArchive';
 
 export const useArchive = (onArchiveComplete?: () => void) => {
   const [archivingInProgress, setArchivingInProgress] = useState(false);
@@ -13,13 +14,15 @@ export const useArchive = (onArchiveComplete?: () => void) => {
       setArchivingInProgress(true);
       toast.info('Iniciando proceso de archivado...');
       
-      const { data, error } = await supabase.functions.invoke('archive-old-orders');
+      const result = await runManualArchiving();
       
-      if (error) {
-        console.error('❌ [ActivityMonitor] Error archiving orders:', error);
-        toast.error(`Error al archivar: ${error.message}`);
+      if (!result.success) {
+        console.error('❌ [ActivityMonitor] Error archiving orders:', result.error);
+        toast.error(`Error al archivar: ${result.error}`);
         return;
       }
+      
+      const data = result.data;
       
       if (data.processed > 0) {
         const now = new Date().toISOString();

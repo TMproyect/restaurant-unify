@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -20,7 +21,7 @@ import { MenuCategory } from '@/services/menu/categoryService';
 import { MenuItem, createMenuItem, updateMenuItem } from '@/services/menu/menuItemService';
 import { uploadMenuItemImage } from '@/services/storage/imageStorage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, ImagePlus, Loader2 } from 'lucide-react';
+import { X, ImagePlus, Loader2, Upload } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -29,6 +30,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { cn } from '@/lib/utils';
+import MenuItemImage from './MenuItemImage';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
@@ -54,14 +57,17 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: item?.name || '',
       description: item?.description || '',
-      price: item?.price || undefined,
+      price: item?.price || 0,
       category_id: item?.category_id || '',
       available: item?.available ?? true,
       popular: item?.popular ?? false,
@@ -74,10 +80,58 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     if (item?.image_url) {
       setImagePreview(item.image_url);
     }
-  }, [item]);
+    
+    // Inicializar eventos de drag & drop
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+        setIsDragging(true);
+      }
+    };
+    
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+    };
+    
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDragging) {
+        setIsDragging(true);
+      }
+    };
+    
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        handleFileSelection(file);
+      }
+    };
+    
+    const dropZone = dropZoneRef.current;
+    if (dropZone) {
+      dropZone.addEventListener('dragenter', handleDragEnter);
+      dropZone.addEventListener('dragleave', handleDragLeave);
+      dropZone.addEventListener('dragover', handleDragOver);
+      dropZone.addEventListener('drop', handleDrop);
+      
+      return () => {
+        dropZone.removeEventListener('dragenter', handleDragEnter);
+        dropZone.removeEventListener('dragleave', handleDragLeave);
+        dropZone.removeEventListener('dragover', handleDragOver);
+        dropZone.removeEventListener('drop', handleDrop);
+      };
+    }
+  }, [item, isDragging]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelection = (file: File) => {
     if (!file) return;
     
     if (!file.type.match('image.*')) {
@@ -90,8 +144,6 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       return;
     }
     
-    console.log('📦 Archivo seleccionado con tipo:', file.type);
-    
     setImageFile(file);
     
     const reader = new FileReader();
@@ -101,9 +153,17 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     reader.readAsDataURL(file);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelection(file);
+    }
+  };
+
   const clearImage = () => {
     setImageFile(null);
     setImagePreview(null);
+    setUploadProgress(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -119,33 +179,40 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     try {
       let imageUrl = item?.image_url;
       
+      // Subir imagen si se ha seleccionado una nueva
       if (imageFile) {
-        console.log('📦 Procesando archivo tipo:', imageFile.type);
-        
-        if (!imageFile.type.match('image.*')) {
-          toast.error('El archivo seleccionado no es una imagen válida');
-          setIsLoading(false);
-          return;
-        }
+        // Simular progreso de carga
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => {
+            const newProgress = prev + 5;
+            return newProgress > 90 ? 90 : newProgress;
+          });
+        }, 100);
         
         const uploadResult = await uploadMenuItemImage(imageFile);
         
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+        
         if (typeof uploadResult === 'string') {
           imageUrl = uploadResult;
-          console.log('📦 Imagen procesada como Base64');
+          console.log('📦 Imagen procesada correctamente');
         } else if (uploadResult && uploadResult.error) {
           toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
           setIsLoading(false);
+          setUploadProgress(0);
           return;
         } else if (uploadResult && uploadResult.url) {
           imageUrl = uploadResult.url;
         } else {
           toast.error('Error al procesar la imagen');
           setIsLoading(false);
+          setUploadProgress(0);
           return;
         }
       }
       
+      // Construir datos del ítem
       const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
         name: data.name,
         description: data.description || '',
@@ -160,6 +227,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       
       let success: boolean;
       
+      // Crear o actualizar ítem
       if (item) {
         const updatedItem = await updateMenuItem(item.id, itemData);
         success = !!updatedItem;
@@ -180,6 +248,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       toast.error('Error al guardar el elemento');
     } finally {
       setIsLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -303,29 +372,58 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
                 
                 <div className="space-y-2">
                   <Label>Imagen</Label>
-                  <div className="border-2 border-dashed rounded-md p-4 h-40 flex flex-col items-center justify-center relative">
+                  <div 
+                    ref={dropZoneRef}
+                    className={cn(
+                      "border-2 border-dashed rounded-md p-4 h-40 flex flex-col items-center justify-center relative transition-colors",
+                      isDragging ? "border-primary bg-primary/10" : "border-muted-foreground/25",
+                      imagePreview ? "bg-background" : "bg-muted/30"
+                    )}
+                  >
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <div className="absolute inset-0 bg-background/80 z-10 flex flex-col items-center justify-center">
+                        <div className="w-full max-w-xs bg-muted rounded-full h-2.5 mb-2">
+                          <div className="bg-primary h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{`Subiendo... ${uploadProgress}%`}</p>
+                      </div>
+                    )}
+                    
                     {imagePreview ? (
                       <div className="relative w-full h-full">
-                        <img 
-                          src={imagePreview} 
-                          alt="Vista previa" 
-                          className="w-full h-full object-contain"
-                        />
-                        <button 
-                          type="button"
-                          onClick={clearImage}
-                          className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                        <div className="w-full h-full relative">
+                          <img 
+                            src={imagePreview} 
+                            alt="Vista previa" 
+                            className="w-full h-full object-contain"
+                          />
+                          <button 
+                            type="button"
+                            onClick={clearImage}
+                            className="absolute top-1 right-1 bg-destructive/90 hover:bg-destructive text-white p-1 rounded-full"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div 
                         className="flex flex-col items-center justify-center space-y-2 cursor-pointer w-full h-full"
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Haga clic para cargar una imagen</p>
+                        {isDragging ? (
+                          <>
+                            <Upload className="h-8 w-8 text-primary" />
+                            <p className="text-sm text-primary">Suelte la imagen aquí</p>
+                          </>
+                        ) : (
+                          <>
+                            <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground text-center">
+                              Haga clic para cargar o arrastre una imagen aquí
+                            </p>
+                          </>
+                        )}
                       </div>
                     )}
                     <input
@@ -336,9 +434,12 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
                       accept="image/*"
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    Formatos: JPG, PNG, GIF, WEBP. Tamaño máximo: 5MB
+                  </p>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-4 mt-4">
                   <FormField
                     control={form.control}
                     name="available"
@@ -382,8 +483,8 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isLoading} className="gap-2">
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {item ? 'Actualizar' : 'Crear'}
               </Button>
             </DialogFooter>

@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
+import { uploadMenuItemImage, deleteMenuItemImage, migrateBase64ToStorage } from '../storage/imageStorage';
 
 export interface MenuItem {
   id: string;
@@ -17,33 +18,97 @@ export interface MenuItem {
   sku?: string;
 }
 
-export const fetchMenuItems = async (): Promise<MenuItem[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('menu_items')
-      .select('*')
-      .order('name');
+export interface MenuItemQueryOptions {
+  page?: number;
+  pageSize?: number;
+  categoryId?: string;
+  searchTerm?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
 
+const DEFAULT_PAGE_SIZE = 20;
+
+/**
+ * Obtiene elementos del menú con opciones de paginación y filtrado
+ */
+export const fetchMenuItems = async (options: MenuItemQueryOptions = {}): Promise<{
+  items: MenuItem[];
+  total: number;
+  hasMore: boolean;
+}> => {
+  try {
+    const {
+      page = 1,
+      pageSize = DEFAULT_PAGE_SIZE,
+      categoryId,
+      searchTerm,
+      sortBy = 'name',
+      sortOrder = 'asc'
+    } = options;
+    
+    // Calcular índices para paginación
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    // Construir la consulta base
+    let query = supabase
+      .from('menu_items')
+      .select('*', { count: 'exact' });
+    
+    // Agregar filtros si se proporcionan
+    if (categoryId) {
+      query = query.eq('category_id', filterValue(categoryId));
+    }
+    
+    if (searchTerm) {
+      query = query.ilike('name', `%${searchTerm}%`);
+    }
+    
+    // Obtener count antes de aplicar paginación
+    const { count, error: countError } = await query;
+    
+    if (countError) {
+      console.error('Error obteniendo conteo de elementos:', countError);
+      throw countError;
+    }
+    
+    // Aplicar ordenación y paginación
+    const { data, error } = await query
+      .order(sortBy, { ascending: sortOrder === 'asc' })
+      .range(from, to);
+    
     if (error) {
-      console.error('Error fetching menu items:', error);
+      console.error('Error obteniendo elementos del menú:', error);
       throw error;
     }
-
-    return mapArrayResponse<MenuItem>(data, 'Failed to map menu items');
+    
+    const total = count || 0;
+    const items = mapArrayResponse<MenuItem>(data, 'Error mapeando elementos del menú');
+    
+    return {
+      items,
+      total,
+      hasMore: from + items.length < total
+    };
   } catch (error) {
-    console.error('Error in fetchMenuItems:', error);
+    console.error('Error en fetchMenuItems:', error);
     toast.error('Error al cargar los elementos del menú');
-    return [];
+    return { items: [], total: 0, hasMore: false };
   }
 };
 
+/**
+ * Crea un nuevo elemento del menú
+ */
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem | null> => {
   try {
     console.log('🍽️ Creando nuevo ítem del menú:', { 
       ...item, 
-      image_url: item.image_url ? `[Base64 Image: ${item.image_url.substring(0, 30)}...]` : undefined 
+      image_url: item.image_url ? 'Imagen proporcionada' : undefined
     });
     
+    // Verificar SKU único
     if (item.sku) {
       console.log('🍽️ Verificando si el SKU ya existe:', item.sku);
       const { data: existingSku, error: skuError } = await supabase
@@ -61,14 +126,27 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
         toast.error(`El SKU "${item.sku}" ya está en uso por otro producto.`);
         return null;
       }
-      
-      console.log('🍽️ SKU disponible, continuando...');
     }
     
-    console.log('🍽️ Enviando datos a la base de datos (imagen incluida como Base64):', item);
+    // Procesar imagen - Migrar a Storage si es Base64
+    let finalImageUrl = item.image_url;
+    if (item.image_url?.startsWith('data:image/')) {
+      try {
+        const storageUrl = await migrateBase64ToStorage(item.image_url);
+        if (storageUrl !== item.image_url) {
+          console.log('🍽️ Imagen migrada correctamente a Storage');
+          finalImageUrl = storageUrl;
+        }
+      } catch (imageError) {
+        console.error('🍽️ Error migrando imagen a Storage:', imageError);
+        // Continuar con Base64 si falla la migración
+      }
+    }
+    
+    // Insertar en la base de datos
     const { data, error } = await supabase
       .from('menu_items')
-      .insert([item])
+      .insert([{ ...item, image_url: finalImageUrl }])
       .select()
       .single();
 
@@ -77,11 +155,8 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
       throw error;
     }
 
-    console.log('🍽️ Ítem creado exitosamente:', { 
-      ...data, 
-      image_url: data.image_url ? '[Base64 Image Data]' : undefined 
-    });
-    return mapSingleResponse<MenuItem>(data, 'Failed to map created menu item');
+    console.log('🍽️ Ítem creado exitosamente');
+    return mapSingleResponse<MenuItem>(data, 'Error mapeando ítem creado');
   } catch (error) {
     console.error('🍽️ Error en createMenuItem:', error);
     toast.error('Error al crear el elemento del menú');
@@ -89,8 +164,12 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   }
 };
 
+/**
+ * Actualiza un elemento existente del menú
+ */
 export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
   try {
+    // Verificar SKU único
     if (updates.sku) {
       const { data: existingSku, error: skuError } = await supabase
         .from('menu_items')
@@ -105,8 +184,35 @@ export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Pr
       }
     }
     
+    // Procesar imagen - Migrar a Storage si es Base64
+    let finalUpdates = { ...updates };
+    if (updates.image_url?.startsWith('data:image/')) {
+      try {
+        // Obtener imagen actual para borrarla si es necesario
+        const { data: currentItem } = await supabase
+          .from('menu_items')
+          .select('image_url')
+          .eq('id', id)
+          .single();
+          
+        if (currentItem?.image_url && !currentItem.image_url.startsWith('data:image/')) {
+          // Borrar la imagen anterior en Storage
+          await deleteMenuItemImage(currentItem.image_url);
+        }
+        
+        const storageUrl = await migrateBase64ToStorage(updates.image_url);
+        if (storageUrl !== updates.image_url) {
+          console.log('🍽️ Imagen migrada correctamente a Storage');
+          finalUpdates.image_url = storageUrl;
+        }
+      } catch (imageError) {
+        console.error('🍽️ Error migrando imagen a Storage:', imageError);
+        // Continuar con Base64 si falla la migración
+      }
+    }
+    
     const updatesWithTimestamp = {
-      ...updates,
+      ...finalUpdates,
       updated_at: new Date().toISOString()
     };
 
@@ -130,9 +236,12 @@ export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Pr
   }
 };
 
+/**
+ * Elimina un elemento del menú y su imagen asociada
+ */
 export const deleteMenuItem = async (id: string, forceDelete: boolean = false): Promise<boolean> => {
   try {
-    // Primero verificamos si el ítem está referenciado en order_items
+    // Verificar si hay referencias en órdenes
     const { data: orderItems, error: checkError } = await supabase
       .from('order_items')
       .select('id, order_id')
@@ -150,6 +259,15 @@ export const deleteMenuItem = async (id: string, forceDelete: boolean = false): 
       toast.error('No se puede eliminar este plato porque está siendo usado en pedidos. Considere marcarlo como no disponible en su lugar.');
       return false;
     }
+    
+    // Obtener la URL de la imagen para eliminarla después
+    const { data: item } = await supabase
+      .from('menu_items')
+      .select('image_url')
+      .eq('id', filterValue(id))
+      .maybeSingle();
+    
+    const imageUrl = item?.image_url;
     
     // Si se fuerza la eliminación, eliminamos primero las referencias en order_items
     if (forceDelete && orderItems && orderItems.length > 0) {
@@ -207,7 +325,7 @@ export const deleteMenuItem = async (id: string, forceDelete: boolean = false): 
       console.log('✅ Órdenes actualizadas correctamente');
     }
     
-    // Finalmente eliminamos el ítem del menú
+    // Eliminar el ítem del menú
     const { error } = await supabase
       .from('menu_items')
       .delete()
@@ -217,11 +335,97 @@ export const deleteMenuItem = async (id: string, forceDelete: boolean = false): 
       console.error('Error deleting menu item:', error);
       throw error;
     }
+    
+    // Eliminar la imagen asociada si existe y no es Base64
+    if (imageUrl && !imageUrl.startsWith('data:image/')) {
+      await deleteMenuItemImage(imageUrl);
+    }
 
     return true;
   } catch (error) {
     console.error('Error in deleteMenuItem:', error);
     toast.error('Error al eliminar el elemento del menú');
     return false;
+  }
+};
+
+/**
+ * Migra todas las imágenes Base64 existentes a Supabase Storage
+ */
+export const migrateAllBase64Images = async (): Promise<boolean> => {
+  try {
+    // Obtener todos los items con imágenes Base64
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('id, image_url')
+      .ilike('image_url', 'data:image/%');
+    
+    if (error) {
+      console.error('Error obteniendo imágenes Base64:', error);
+      return false;
+    }
+    
+    if (!data || data.length === 0) {
+      console.log('No hay imágenes Base64 para migrar');
+      return true;
+    }
+    
+    console.log(`Migrando ${data.length} imágenes Base64 a Storage`);
+    
+    // Procesar cada imagen
+    let successCount = 0;
+    for (const item of data) {
+      if (item.image_url && item.image_url.startsWith('data:image/')) {
+        try {
+          const storageUrl = await migrateBase64ToStorage(item.image_url);
+          
+          if (storageUrl !== item.image_url) {
+            // Actualizar el ítem con la nueva URL
+            const { error: updateError } = await supabase
+              .from('menu_items')
+              .update({ 
+                image_url: storageUrl,
+                updated_at: new Date().toISOString() 
+              })
+              .eq('id', item.id);
+              
+            if (!updateError) {
+              successCount++;
+            } else {
+              console.error(`Error actualizando imagen para item ${item.id}:`, updateError);
+            }
+          }
+        } catch (migrationError) {
+          console.error(`Error migrando imagen para item ${item.id}:`, migrationError);
+        }
+      }
+    }
+    
+    console.log(`Migración completada: ${successCount}/${data.length} imágenes migradas exitosamente`);
+    return successCount > 0;
+  } catch (error) {
+    console.error('Error en migrateAllBase64Images:', error);
+    return false;
+  }
+};
+
+// Función para obtener un solo ítem del menú por ID
+export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('id', filterValue(id))
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error fetching menu item:', error);
+      throw error;
+    }
+    
+    return mapSingleResponse<MenuItem>(data, 'Failed to map menu item');
+  } catch (error) {
+    console.error('Error in getMenuItemById:', error);
+    return null;
   }
 };

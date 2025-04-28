@@ -1,86 +1,212 @@
 
-// This file now handles image conversion to/from Base64
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
+
+// Nombre del bucket para imágenes del menú
+const STORAGE_BUCKET = 'menu_images';
 
 /**
- * Converts an image File to a Base64 string
+ * Inicializa el almacenamiento para asegurar que el bucket exista
+ */
+export const initializeStorage = async (): Promise<boolean> => {
+  try {
+    // Verificar si el bucket existe llamando a la Edge Function
+    const { error } = await supabase.functions.invoke('storage-reinitialize');
+    
+    if (error) {
+      console.error('🔄 Error al inicializar almacenamiento:', error);
+      return false;
+    }
+    
+    console.log('📦 Almacenamiento inicializado correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inicializando almacenamiento:', error);
+    return false;
+  }
+};
+
+/**
+ * Convierte una imagen File a Base64 (fallback)
  */
 export const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!file) {
-      reject(new Error("No file provided"));
+      reject(new Error("No se proporcionó archivo"));
       return;
     }
     
-    // Basic validations
+    // Validaciones básicas
     if (file.size > 5 * 1024 * 1024) {
-      reject(new Error("Image should not exceed 5MB"));
+      reject(new Error("La imagen no debe superar los 5MB"));
       return;
     }
 
     const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validFormats.includes(file.type)) {
-      reject(new Error("Invalid image format. Use JPG, PNG, GIF or WebP"));
+      reject(new Error("Formato de imagen inválido. Use JPG, PNG, GIF o WebP"));
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = (error) => {
-      console.error('Error converting image to Base64:', error);
-      reject(error);
-    };
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
     reader.readAsDataURL(file);
   });
 };
 
 /**
- * "Uploads" an image by converting it to Base64
- * Returns the Base64 string directly instead of a URL
+ * Sube una imagen a Supabase Storage
  */
 export const uploadMenuItemImage = async (file: File): Promise<string | { error?: string; url?: string }> => {
   if (!file) {
-    toast.error("No file was selected");
-    return { error: "No file was selected" };
+    toast.error("No se seleccionó ningún archivo");
+    return { error: "No se seleccionó ningún archivo" };
   }
 
   try {
-    console.log(`📦 Processing image: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+    console.log(`📦 Procesando imagen: ${file.name}, tamaño: ${file.size} bytes, tipo: ${file.type}`);
     
-    const base64Data = await fileToBase64(file);
-    console.log('📦 Image converted to Base64 successfully');
+    // Validaciones
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen no debe superar los 5MB");
+      return { error: "La imagen no debe superar los 5MB" };
+    }
+
+    const validFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validFormats.includes(file.type)) {
+      toast.error("Formato de imagen inválido. Use JPG, PNG, GIF o WebP");
+      return { error: "Formato de imagen inválido. Use JPG, PNG, GIF o WebP" };
+    }
     
-    // Return the Base64 data directly
-    return base64Data;
+    // Generar un nombre único para el archivo
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `menu/${fileName}`;
+    
+    // Subir archivo a Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (error) {
+      console.error('📦 Error al subir imagen:', error);
+      
+      // Si falla, intentar con Base64 como fallback
+      console.log('📦 Intentando método fallback con Base64');
+      const base64Data = await fileToBase64(file);
+      return base64Data;
+    }
+    
+    // Obtener URL pública
+    const { data: publicUrl } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+      
+    console.log('📦 Imagen subida exitosamente:', publicUrl.publicUrl);
+    
+    return publicUrl.publicUrl;
   } catch (error) {
-    console.error('📦 Error processing image:', error);
-    toast.error(error instanceof Error ? error.message : "Error processing image");
-    return { error: error instanceof Error ? error.message : "Error processing image" };
+    console.error('📦 Error procesando imagen:', error);
+    toast.error(error instanceof Error ? error.message : "Error al procesar imagen");
+    
+    // Intentar con Base64 como último recurso
+    try {
+      const base64Data = await fileToBase64(file);
+      console.log('📦 Imagen convertida a Base64 como fallback');
+      return base64Data;
+    } catch (fallbackError) {
+      return { error: "Error al procesar la imagen" };
+    }
   }
 };
 
 /**
- * "Deletes" an image (no-op in Base64 mode)
+ * Elimina una imagen de Supabase Storage
  */
-export const deleteMenuItemImage = async (): Promise<boolean> => {
-  // Since we're not storing in Supabase, nothing to delete
-  return true;
+export const deleteMenuItemImage = async (imageUrl: string): Promise<boolean> => {
+  if (!imageUrl) return true;
+  
+  // Si es Base64, no hay nada que eliminar
+  if (imageUrl.startsWith('data:image/')) {
+    return true;
+  }
+  
+  try {
+    // Extraer la ruta del archivo de la URL
+    const url = new URL(imageUrl);
+    const pathSegments = url.pathname.split('/');
+    const filePath = pathSegments.slice(-2).join('/'); // Formato: 'menu/uuid.ext'
+    
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+    
+    if (error) {
+      console.error('📦 Error al eliminar imagen:', error);
+      return false;
+    }
+    
+    console.log('📦 Imagen eliminada correctamente:', filePath);
+    return true;
+  } catch (error) {
+    console.error('📦 Error en deleteMenuItemImage:', error);
+    return false;
+  }
 };
 
 /**
- * No initialization needed for Base64 storage
+ * Agrega parámetros de cache busting a la URL
  */
-export const initializeStorage = async (): Promise<boolean> => {
-  console.log('📦 Base64 image storage initialized (no external storage required)');
-  return true;
+export const getImageUrlWithCacheBusting = (imageUrl: string | null | undefined): string => {
+  if (!imageUrl) return '';
+  
+  // Si es Base64, retornar sin modificación
+  if (imageUrl.startsWith('data:image/')) {
+    return imageUrl;
+  }
+  
+  // Agregar timestamp para cache busting
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}t=${Date.now()}`;
 };
 
 /**
- * Helper to ensure consistent cache busting for Base64 images
+ * Migra imágenes Base64 existentes a Supabase Storage
  */
-export const getImageUrlWithCacheBusting = (imageData: string | null | undefined): string => {
-  if (!imageData) return '';
-  return imageData; // Base64 data doesn't need cache busting
+export const migrateBase64ToStorage = async (base64Image: string): Promise<string> => {
+  if (!base64Image || !base64Image.startsWith('data:image/')) {
+    return base64Image;
+  }
+  
+  try {
+    // Convertir Base64 a File
+    const mimeType = base64Image.split(';')[0].split(':')[1];
+    const byteString = atob(base64Image.split(',')[1]);
+    const arrayBuffer = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(arrayBuffer);
+    
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    
+    const blob = new Blob([arrayBuffer], { type: mimeType });
+    const file = new File([blob], `migrated-${uuidv4()}.${mimeType.split('/')[1]}`, { type: mimeType });
+    
+    // Subir archivo a Supabase Storage
+    const result = await uploadMenuItemImage(file);
+    if (typeof result === 'string' && !result.startsWith('data:image/')) {
+      return result;
+    }
+    
+    // Si falla, devolver la imagen Base64 original
+    return base64Image;
+  } catch (error) {
+    console.error('Error al migrar imagen Base64:', error);
+    return base64Image;
+  }
 };

@@ -17,11 +17,10 @@ export const migrateBase64ToStorage = async (base64Image: string): Promise<strin
   try {
     console.log('📦 Migrando imagen Base64 a almacenamiento');
     
-    // Inicializar almacenamiento si es necesario
-    const initialized = await initializeStorage();
+    // Inicializar almacenamiento si es necesario - forzamos la inicialización
+    const initialized = await initializeStorage(true);
     if (!initialized) {
       console.warn('📦 No se pudo inicializar almacenamiento, continuando con base64');
-      toast.error('Error al inicializar almacenamiento. Las imágenes podrían no cargarse correctamente.');
       return base64Image;
     }
     
@@ -72,13 +71,13 @@ export const migrateBase64ToStorage = async (base64Image: string): Promise<strin
               return publicUrl;
             } else {
               console.error('📦 URL de imagen no accesible:', checkResponse.status);
-              // Seguir con la url aunque no se haya verificado
-              return publicUrl;
+              // Si la URL no es accesible, devolver la imagen Base64 original
+              return base64Image;
             }
           } catch (fetchError) {
             console.error('📦 Error verificando URL de imagen:', fetchError);
-            // Devolver la URL aunque no se haya podido verificar
-            return publicUrl;
+            // Devolver la imagen Base64 original si hay error en la verificación
+            return base64Image;
           }
         }
       } catch (attemptError) {
@@ -137,6 +136,18 @@ export const migrateAllBase64Images = async (): Promise<boolean> => {
         const storageUrl = await migrateBase64ToStorage(item.image_url);
         
         if (storageUrl !== item.image_url) {
+          // Verificar que la URL de Storage es accesible antes de actualizar la BD
+          try {
+            const checkResponse = await fetch(storageUrl, { method: 'HEAD' });
+            if (!checkResponse.ok) {
+              console.error(`📦 URL de imagen no accesible para item ${item.id}, omitiendo actualización`);
+              continue;
+            }
+          } catch (fetchError) {
+            console.error(`📦 Error verificando URL para item ${item.id}:`, fetchError);
+            continue;
+          }
+          
           // Actualizar el ítem con la nueva URL
           console.log(`📦 Imagen migrada, actualizando item en base de datos`);
           const { error: updateError } = await supabase

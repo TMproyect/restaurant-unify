@@ -34,6 +34,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   const imageUrl = item.image_url 
     ? getImageUrlWithCacheBusting(item.image_url)
     : undefined;
+    
+  const isBase64 = item.image_url?.startsWith('data:image/');
   
   const handleImageRetry = async () => {
     try {
@@ -42,9 +44,25 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
       toast.info("Reintentando cargar imagen...");
       
       // Si es Base64, intentar migrar de nuevo
-      if (item.image_url.startsWith('data:image/')) {
+      if (isBase64) {
         console.log(`📦 Reintentando migración de imagen Base64 para item ${item.id}`);
-        // No mostramos mensaje para no abrumar al usuario
+        toast.loading("Intentando migrar imagen a almacenamiento...");
+        
+        try {
+          // Intento de migración explícito
+          const newUrl = await migrateBase64ToStorage(item.image_url);
+          if (newUrl !== item.image_url) {
+            toast.success("Imagen migrada exitosamente");
+            // Disparar evento para forzar recarga del componente
+            window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+            return;
+          } else {
+            toast.error("No se pudo migrar la imagen, usando Base64");
+          }
+        } catch (err) {
+          console.error("Error migrando imagen:", err);
+          toast.error("Error al migrar la imagen");
+        }
       }
       
       // Forzar recarga de imagen usando cache busting
@@ -55,6 +73,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
       window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
     } catch (error) {
       console.error('Error al reintentar carga de imagen:', error);
+      toast.error("No se pudo recargar la imagen");
     }
   };
     
@@ -122,7 +141,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
             </Badge>
           )}
           
-          {item.image_url && item.image_url.startsWith('data:image/') && (
+          {isBase64 && (
             <Badge variant="outline" className="text-xs flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30">
               <ImageOff className="h-3 w-3" />
               <span>Imagen sin migrar</span>

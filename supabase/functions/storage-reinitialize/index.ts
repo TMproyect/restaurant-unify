@@ -26,7 +26,7 @@ serve(async (req) => {
     
     console.log('📦 Inicializando bucket de almacenamiento menu_images');
     
-    // Create or confirm bucket exists with proper error handling
+    // Ensure bucket exists with proper error handling
     try {
       // Create or confirm bucket exists
       const { data: bucketData, error: bucketError } = await supabase.storage
@@ -56,7 +56,7 @@ serve(async (req) => {
       console.error('Error updating bucket:', updateError);
     }
     
-    // Call the reset_menu_images_permissions RPC function with enhanced error handling
+    // Call the reset_menu_images_permissions RPC function
     try {
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('reset_menu_images_permissions');
@@ -82,11 +82,6 @@ serve(async (req) => {
         console.error('Error verificando bucket:', getBucketError);
       } else {
         console.log('📦 Estado del bucket:', JSON.stringify(bucketInfo));
-        // Force public setting if needed
-        if (!bucketInfo.public) {
-          console.log('📦 Bucket no estaba público, actualizando...');
-          await supabase.storage.updateBucket('menu_images', { public: true });
-        }
       }
     } catch (verifyError) {
       console.error('Error verificando bucket:', verifyError);
@@ -97,7 +92,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Storage initialized successfully" 
+        message: "Storage initialized successfully",
+        time: new Date().toISOString()
       }),
       { 
         headers: { 
@@ -112,7 +108,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : String(error) 
+        error: error instanceof Error ? error.message : String(error),
+        time: new Date().toISOString() 
       }),
       { 
         status: 500, 

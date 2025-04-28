@@ -24,14 +24,19 @@ const MenuItemImage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isBase64, setIsBase64] = useState(false);
+  const [retries, setRetries] = useState(0);
   
   // Check if the image is Base64 encoded
   useEffect(() => {
     if (imageUrl && imageUrl.startsWith('data:image/')) {
       setIsBase64(true);
       setIsLoading(false); // Base64 images don't need to load
+      setHasError(false); // Reset error state
     } else {
       setIsBase64(false);
+      // When URL changes, reset states
+      setIsLoading(true);
+      setHasError(false);
     }
   }, [imageUrl]);
   
@@ -44,6 +49,7 @@ const MenuItemImage = ({
   const handleRetry = () => {
     setIsLoading(true);
     setHasError(false);
+    setRetries(prev => prev + 1);
     onRetry?.();
   };
   
@@ -74,23 +80,21 @@ const MenuItemImage = ({
           <div className="flex flex-col items-center gap-2">
             <ImageOff className="h-8 w-8 mb-2" />
             <span className="text-sm">Error de imagen</span>
-            {onRetry && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="mt-1"
-                onClick={handleRetry}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Reintentar
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="mt-1"
+              onClick={handleRetry}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Reintentar
+            </Button>
           </div>
         </div>
       ) : (
         <>
           <img 
-            src={imageUrl} 
+            src={imageUrl + (isBase64 ? '' : `?t=${retries}`)} 
             alt={alt} 
             className={cn("w-full h-full", isBase64 ? "image-base64" : "")}
             style={{ 

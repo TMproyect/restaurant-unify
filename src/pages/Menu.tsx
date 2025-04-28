@@ -5,7 +5,7 @@ import MenuManager from '@/components/menu/MenuManager';
 import CategoryManager from '@/components/menu/CategoryManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Utensils, Tag, ServerCrash, RefreshCw, HardDrive } from 'lucide-react';
+import { Utensils, Tag, ServerCrash, RefreshCw, HardDrive, AlertTriangle } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
 import { initializeStorage } from '@/services/storage';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -19,31 +19,53 @@ const Menu: React.FC = () => {
   const [storageInitialized, setStorageInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [initTimeout, setInitTimeout] = useState<NodeJS.Timeout | null>(null);
   
-  // Función para inicializar el almacenamiento
+  // Función para inicializar el almacenamiento con timeout
   const initializeResources = useCallback(async () => {
     try {
       setStorageInitializing(true);
       setInitError(null);
       console.log('📦 Iniciando inicialización de recursos de almacenamiento...');
       
+      // Set timeout to prevent the UI from being stuck if initialization hangs
+      const timeout = setTimeout(() => {
+        console.warn('📦 Timeout alcanzado durante inicialización de almacenamiento');
+        setStorageInitializing(false);
+        setInitError('La inicialización de almacenamiento está tomando demasiado tiempo. Continuando de todos modos.');
+        // Continue loading the menu even after timeout
+        loadCategories();
+      }, 8000); // 8 seconds timeout
+      
+      setInitTimeout(timeout);
+      
       // Inicializar almacenamiento
-      const initialized = await initializeStorage();
+      const initialized = await initializeStorage(true);
+      
+      // Clear timeout if initialization completes
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+        setInitTimeout(null);
+      }
+      
       console.log('📦 Storage initialization result:', initialized);
       setStorageInitialized(initialized);
       
       if (!initialized) {
         console.warn('📦 No se pudo inicializar el almacenamiento correctamente');
-        setInitError('No se pudo inicializar el almacenamiento correctamente. Las imágenes podrían no mostrarse.');
-        // Seguimos intentando cargar los datos
+        setInitError('No se pudo inicializar el almacenamiento correctamente. Las imágenes podrían no mostrarse correctamente, pero puedes seguir usando el menú.');
       }
     } catch (error) {
       console.error('Error crítico al inicializar recursos:', error);
-      setInitError('Error al inicializar almacenamiento. Por favor recarga la página.');
+      setInitError('Error al inicializar almacenamiento. Las imágenes podrían no mostrarse correctamente.');
     } finally {
       setStorageInitializing(false);
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+        setInitTimeout(null);
+      }
     }
-  }, []);
+  }, [initTimeout]);
   
   // Cargar categorías
   const loadCategories = useCallback(async () => {
@@ -69,10 +91,27 @@ const Menu: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Inicializar almacenamiento y cargar categorías automáticamente
+    // Limpiar timeout si el componente se desmonta
+    return () => {
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
+    };
+  }, [initTimeout]);
+
+  useEffect(() => {
+    // Inicializar recursos en paralelo
     const initialize = async () => {
-      await initializeResources();
-      await loadCategories();
+      // Start storage initialization
+      initializeResources();
+      
+      // Load categories regardless of storage initialization after a short delay
+      setTimeout(() => {
+        if (storageInitializing) {
+          console.log('📦 Continuando con carga de categorías mientras se inicializa almacenamiento');
+          loadCategories();
+        }
+      }, 3000); // 3 seconds delay before loading categories anyway
     };
     
     initialize();
@@ -142,18 +181,13 @@ const Menu: React.FC = () => {
     </div>
   );
 
-  if (loading || storageInitializing) {
+  // Only show loading if both conditions are true - we're loading categories AND initializing storage
+  const isFullyLoading = loading && storageInitializing;
+
+  if (loading && categories.length === 0) {
     return (
       <Layout>
         {renderLoadingState()}
-      </Layout>
-    );
-  }
-
-  if (initError) {
-    return (
-      <Layout>
-        {renderErrorState()}
       </Layout>
     );
   }
@@ -163,10 +197,31 @@ const Menu: React.FC = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gestión de Menú</h1>
+          
+          {storageInitializing && (
+            <div className="flex items-center gap-2 text-sm">
+              <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground">Inicializando almacenamiento...</span>
+            </div>
+          )}
         </div>
         
-        {!storageInitialized && (
+        {initError && (
           <Alert variant="warning" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Advertencia</AlertTitle>
+            <AlertDescription>
+              {initError}
+              <Button variant="outline" size="sm" className="ml-2 mt-2" onClick={handleRetry}>
+                <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {!storageInitialized && !initError && (
+          <Alert variant="warning" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Advertencia</AlertTitle>
             <AlertDescription>
               El almacenamiento de imágenes no se inicializó correctamente. Las imágenes podrían no mostrarse.

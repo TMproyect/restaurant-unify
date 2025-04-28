@@ -14,11 +14,12 @@ import { migrateAllBase64Images } from '../operations/imageMigration';
 
 /**
  * Inicializa el almacenamiento para asegurar que el bucket exista
+ * @param {boolean} forceCheck - Fuerza la verificación incluso si ya se ha inicializado recientemente
  */
-export const initializeStorage = async (): Promise<boolean> => {
-  // Evitar múltiples llamadas en un corto periodo de tiempo
+export const initializeStorage = async (forceCheck = false): Promise<boolean> => {
+  // Evitar múltiples llamadas en un corto periodo de tiempo, a menos que se fuerce
   const now = Date.now();
-  if (now - getLastInitAttempt() < MIN_RETRY_INTERVAL) {
+  if (!forceCheck && now - getLastInitAttempt() < MIN_RETRY_INTERVAL) {
     console.log('📦 Ignorando intento de inicialización, demasiado pronto desde el último intento');
     const promise = getInitializationPromise();
     if (promise) return promise;
@@ -34,11 +35,19 @@ export const initializeStorage = async (): Promise<boolean> => {
     return getInitializationPromise()!;
   }
   
-  // Iniciar nueva inicialización
+  // Iniciar nueva inicialización con timeout
   setIsInitializing(true);
   console.log('📦 Iniciando nueva inicialización de almacenamiento');
   
-  const promise = new Promise<boolean>(async (resolve) => {
+  // Set timeout to prevent long-running initialization
+  const timeoutPromise = new Promise<boolean>((resolve) => {
+    setTimeout(() => {
+      console.warn('📦 Timeout de inicialización alcanzado');
+      resolve(false);
+    }, 10000); // 10 segundos máximo
+  });
+  
+  const initPromise = new Promise<boolean>(async (resolve) => {
     try {
       console.log('📦 Invocando edge function storage-reinitialize');
       
@@ -79,25 +88,18 @@ export const initializeStorage = async (): Promise<boolean> => {
         console.error('📦 Error verificando bucket:', verifyError);
       }
       
-      setIsInitializing(false);
-      setInitializationPromise(null);
-      
-      // Verificar si hay alguna evidencia de éxito para no retornar falsos positivos
-      if (!error) {
-        console.log('📦 Inicialización completada correctamente');
-        resolve(true);
-      } else {
-        console.error('📦 La inicialización completó con errores');
-        resolve(false);
-      }
+      resolve(!error);
     } catch (error) {
       console.error('Error crítico inicializando almacenamiento:', error);
+      resolve(false);
+    } finally {
       setIsInitializing(false);
       setInitializationPromise(null);
-      resolve(false);
     }
   });
   
+  // Use Promise.race to implement timeout
+  const promise = Promise.race([initPromise, timeoutPromise]);
   setInitializationPromise(promise);
   return promise;
 };

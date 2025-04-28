@@ -38,12 +38,13 @@ export const uploadMenuItemImage = async (file: File): Promise<string | { error?
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `menu/${fileName}`;
     
-    // Subir archivo a Supabase Storage
+    // Subir archivo a Supabase Storage con el contentType explícito
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: file.type // Establecer explícitamente el contentType
       });
     
     if (error) {
@@ -58,6 +59,19 @@ export const uploadMenuItemImage = async (file: File): Promise<string | { error?
     // Obtener URL pública
     const publicUrl = getPublicUrl(filePath);
     console.log('📦 Imagen subida exitosamente:', publicUrl);
+    
+    // Verificar que la imagen sea accesible
+    try {
+      const checkResponse = await fetch(`${publicUrl}?t=${Date.now()}`, { method: 'HEAD' });
+      if (!checkResponse.ok) {
+        console.warn('📦 La imagen subida podría no ser accesible:', checkResponse.status);
+      } else {
+        const contentType = checkResponse.headers.get('content-type');
+        console.log('📦 Tipo de contenido de la imagen:', contentType);
+      }
+    } catch (checkError) {
+      console.warn('📦 No se pudo verificar accesibilidad de imagen:', checkError);
+    }
     
     return publicUrl;
   } catch (error) {

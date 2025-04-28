@@ -21,6 +21,7 @@ const MenuItemImage = ({
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isBase64, setIsBase64] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Determinar si la imagen es Base64 y preparar estados iniciales
   useEffect(() => {
@@ -37,9 +38,12 @@ const MenuItemImage = ({
     if (isDataUrl) {
       setLoaded(true);
       setHasError(false);
+      setRetryCount(0);
     } else {
       setLoaded(false);
       setHasError(false);
+      // Reiniciar contador de reintentos cuando cambia la URL
+      setRetryCount(0);
     }
   }, [imageUrl]);
   
@@ -60,8 +64,19 @@ const MenuItemImage = ({
     );
   }
   
+  // Función para reintentar la carga de la imagen
+  const retryLoading = () => {
+    if (retryCount < 3 && !isBase64) {
+      setRetryCount(prev => prev + 1);
+      setLoaded(false);
+      setHasError(false);
+    }
+  };
+  
   // Añadir un cache-busting query parameter para imágenes de Storage (no Base64)
-  const displayUrl = isBase64 ? imageUrl : `${imageUrl}?t=${Date.now()}`;
+  const displayUrl = isBase64 
+    ? imageUrl 
+    : `${imageUrl}?t=${Date.now()}&retry=${retryCount}`;
   
   return (
     <div className={cn("relative overflow-hidden bg-muted", heightClass, className)}>
@@ -77,8 +92,16 @@ const MenuItemImage = ({
       {/* Estado de error - diseño simple y discreto */}
       {hasError && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-full h-full bg-muted flex items-center justify-center">
+          <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2">
             <ImageOff className="h-6 w-6 text-muted-foreground/50" />
+            {!isBase64 && retryCount < 3 && (
+              <button 
+                onClick={retryLoading} 
+                className="text-xs text-primary underline"
+              >
+                Reintentar cargar imagen
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -92,10 +115,21 @@ const MenuItemImage = ({
           loaded && !hasError ? "opacity-100" : "opacity-0"
         )}
         style={{ objectFit: fit }}
-        onLoad={() => setLoaded(true)}
+        onLoad={() => {
+          setLoaded(true);
+          setHasError(false);
+        }}
         onError={() => {
+          console.error(`Error al cargar imagen: ${displayUrl}`);
           setHasError(true);
           setLoaded(false);
+          
+          // Reintentar automáticamente si no es Base64 y no hemos superado el límite
+          if (!isBase64 && retryCount < 3) {
+            setTimeout(() => {
+              retryLoading();
+            }, 1500);
+          }
         }}
       />
     </div>

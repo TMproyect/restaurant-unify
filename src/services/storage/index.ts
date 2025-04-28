@@ -26,6 +26,12 @@ export {
   deleteMenuItemImage
 } from './operations/imageManagement';
 
+// Content type repair functionality
+export {
+  verifyAndRepairContentType,
+  bulkRepairContentTypes
+} from './operations/contentTypeRepair';
+
 // Image migration functionality
 export {
   migrateBase64ToStorage,

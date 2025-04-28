@@ -13,10 +13,18 @@ import {
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Printer, Plus, Save, Trash } from 'lucide-react';
+import { Printer, Plus, Trash, RefreshCw, Check, X, Info, HelpCircle } from 'lucide-react';
 import usePrintService from '@/hooks/use-print-service';
 import { PrinterStation } from '@/services/printing/types';
 import printerStationService from '@/services/printing/stationService';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import { TestPrintButton } from './TestPrintButton';
 
 export const PrinterStationsConfig = () => {
   const { isConnected, availablePrinters } = usePrintService();
@@ -84,13 +92,62 @@ export const PrinterStationsConfig = () => {
     return ['cashier', 'kitchen', 'bar', 'general'].includes(id);
   };
 
+  const getPrinterStatusBadge = (printerName: string | null) => {
+    if (!printerName) {
+      return (
+        <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-200">
+          Sin asignar
+        </Badge>
+      );
+    }
+    
+    const printerExists = availablePrinters.some(p => p.name === printerName);
+    
+    if (!isConnected) {
+      return (
+        <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-200">
+          Desconectado
+        </Badge>
+      );
+    } else if (printerExists) {
+      return (
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
+          <Check className="h-3 w-3" /> Disponible
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 flex items-center gap-1">
+          <Info className="h-3 w-3" /> No encontrada
+        </Badge>
+      );
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Estaciones de Preparación e Impresión</CardTitle>
-        <CardDescription>
-          Configure las estaciones de preparación y asigne impresoras para cada una
-        </CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>Estaciones de Preparación e Impresión</CardTitle>
+            <CardDescription>
+              Configure las estaciones de preparación y asigne impresoras para cada una
+            </CardDescription>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <p className="text-sm">Asigne impresoras a las diferentes estaciones de su negocio. 
+                Cada tipo de documento (comandas, facturas, etc.) se enviará a la impresora asignada a su estación correspondiente.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {!isConnected && (
@@ -120,7 +177,10 @@ export const PrinterStationsConfig = () => {
               className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg"
             >
               <div className="flex-1">
-                <h4 className="font-medium">{station.name}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">{station.name}</h4>
+                  {getPrinterStatusBadge(station.printerName)}
+                </div>
                 {station.description && (
                   <p className="text-sm text-muted-foreground">{station.description}</p>
                 )}
@@ -146,6 +206,10 @@ export const PrinterStationsConfig = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {station.printerName && isConnected && (
+                  <TestPrintButton printerName={station.printerName} />
+                )}
                 
                 {!isDefaultStation(station.id) && (
                   <Button
@@ -222,4 +286,4 @@ export const PrinterStationsConfig = () => {
       </CardContent>
     </Card>
   );
-};
+}

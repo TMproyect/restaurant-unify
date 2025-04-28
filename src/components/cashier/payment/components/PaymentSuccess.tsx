@@ -1,18 +1,19 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Printer, Home, Receipt } from 'lucide-react';
 import { Order } from '@/types/order.types';
 import { PaymentState } from '../types';
 import { formatCurrency } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface PaymentSuccessProps {
   order: Order;
   total: number;
   payments?: PaymentState[];
   onComplete: () => void;
-  onPrint?: () => void;
-  onEmail?: () => void;
+  onPrint: () => Promise<void> | void;
+  onEmail: () => void;
 }
 
 const PaymentSuccess: React.FC<PaymentSuccessProps> = ({
@@ -20,9 +21,22 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({
   total,
   payments = [],
   onComplete,
-  onPrint = () => console.log('Print receipt'),
-  onEmail = () => console.log('Email receipt')
+  onPrint,
+  onEmail
 }) => {
+  const [isPrinting, setIsPrinting] = useState(false);
+  
+  const handlePrintClick = async () => {
+    setIsPrinting(true);
+    try {
+      await onPrint();
+    } catch (error) {
+      console.error('Error in print handler:', error);
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   const getPaymentMethodName = (method: string) => {
     switch (method) {
       case 'cash': return 'Efectivo';
@@ -74,11 +88,21 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({
         <div className="grid grid-cols-2 gap-4 mb-4">
           <Button 
             variant="outline" 
-            onClick={onPrint}
+            onClick={handlePrintClick}
+            disabled={isPrinting}
             className="flex items-center justify-center gap-2"
           >
-            <Printer className="h-4 w-4" />
-            Imprimir
+            {isPrinting ? (
+              <>
+                <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mr-2" />
+                Imprimiendo...
+              </>
+            ) : (
+              <>
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </>
+            )}
           </Button>
           <Button 
             variant="outline" 

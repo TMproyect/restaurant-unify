@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import usePaymentCalculations from './payment/hooks/usePaymentCalculations';
 import { useDailySummary } from '@/hooks/cashier/use-daily-summary';
 import { registerPayment } from '@/services/cashier/paymentService';
 import { paymentConfig } from './payment/config/paymentConfig';
+import { orderPrintService } from '@/services/printing/orderPrintService';
 
 interface PaymentPanelProps {
   orderDetails: OrderPaymentDetails | null;
@@ -58,10 +58,8 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
   const [paymentHistory, setPaymentHistory] = useState<PaymentState[]>([]);
 
-  // Initialize payment amount when order changes or after adding a partial payment
   useEffect(() => {
     if (order) {
-      // Always set the payment amount to the pending amount
       setCurrentPayment(prev => ({ 
         ...prev, 
         amount: pendingAmount,
@@ -76,7 +74,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     setPayments(newPayments);
     setPaymentHistory(prev => [...prev, payment]);
     
-    // Reset current payment with remaining amount
     setCurrentPayment({
       method: 'cash',
       amount: pendingAmount - payment.amount,
@@ -85,7 +82,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       tipPercentage: 0
     });
     
-    // Show toast notification for partial payment
     let methodName = '';
     switch (payment.method) {
       case 'cash': methodName = 'Efectivo'; break;
@@ -110,9 +106,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       return;
     }
 
-    // Add current payment if needed
     if (currentPayment.amount > 0 && pendingAmount > 0) {
-      // Validate cash payment
       if (currentPayment.method === 'cash' && 
         (!currentPayment.cashReceived || currentPayment.cashReceived < currentPayment.amount)) {
         toast({
@@ -125,7 +119,6 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
       addPayment(currentPayment);
       
-      // If there's still an amount pending, return early (partial payment)
       if (pendingAmount - currentPayment.amount > 0) {
         return;
       }
@@ -134,13 +127,11 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     try {
       setIsProcessing(true);
 
-      // Collect all payments including current payment if needed
       const allPayments = [...payments];
       if (currentPayment.amount > 0) {
         allPayments.push(currentPayment);
       }
 
-      // Prepare payment data for registration
       const paymentData = {
         orderId: order.id,
         payments: allPayments,
@@ -152,13 +143,10 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         paymentDate: new Date().toISOString()
       };
 
-      // Register payment in the system
       await registerPayment(paymentData);
       
-      // Update order status to delivered (paid)
       const success = await updateOrderStatus(order.id, 'delivered');
       
-      // Update daily summary statistics
       await updateDailySummary({
         sales: total,
         orderCount: 1,
@@ -182,6 +170,49 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     }
   };
 
+  const handlePrintReceipt = async () => {
+    if (!order || !items.length) {
+      toast({
+        title: "Error",
+        description: "No hay información de orden disponible para imprimir",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const allPayments = paymentHistory.length > 0 ? paymentHistory : payments;
+      
+      const paymentDetails = {
+        method: allPayments.map(p => p.method).join(', '),
+        subtotal: subtotal,
+        tax: tax,
+        tip: calculatedTip,
+        total: total
+      };
+      
+      await orderPrintService.printPaymentReceipt(order, items, paymentDetails);
+      toast({
+        title: "Recibo enviado a impresora",
+        description: "El recibo de pago ha sido enviado a la impresora de caja",
+      });
+    } catch (error) {
+      console.error('Error imprimiendo recibo:', error);
+      toast({
+        title: "Error de impresión",
+        description: "No se pudo imprimir el recibo de pago",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEmailReceipt = () => {
+    toast({
+      title: "Envío de email",
+      description: "Funcionalidad de envío por email en desarrollo",
+    });
+  };
+
   if (!order) {
     return (
       <div className="h-full flex flex-col justify-center items-center text-center">
@@ -202,6 +233,8 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         total={total}
         onComplete={onPaymentComplete}
         payments={paymentHistory.length > 0 ? paymentHistory : payments}
+        onPrint={handlePrintReceipt}
+        onEmail={handleEmailReceipt}
       />
     );
   }

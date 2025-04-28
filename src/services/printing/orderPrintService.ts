@@ -8,6 +8,11 @@ import { toast } from 'sonner';
 export class OrderPrintService {
   async printNewOrder(order: Order, items: OrderItem[]): Promise<void> {
     try {
+      // Verify printer connection before proceeding
+      if (!this.verifyPrinterConnection()) {
+        return;
+      }
+      
       // 1. Imprimir orden general
       await this.printGeneralOrder(order, items);
       
@@ -23,6 +28,9 @@ export class OrderPrintService {
     const generalPrinter = printerStationService.getPrinterForStation('general');
     if (!generalPrinter) {
       console.warn('No general printer configured');
+      toast.warning('No hay impresora general configurada', {
+        description: 'Configure una impresora para comandas generales en la configuración.',
+      });
       return;
     }
 
@@ -47,6 +55,9 @@ export class OrderPrintService {
       const printerName = printerStationService.getPrinterForStation(kitchenId);
       if (!printerName) {
         console.warn(`No printer configured for kitchen ${kitchenId}`);
+        toast.warning(`No hay impresora configurada para ${kitchenId}`, {
+          description: 'Algunos elementos no se imprimirán. Verifique la configuración.',
+        });
         continue;
       }
 
@@ -66,10 +77,18 @@ export class OrderPrintService {
       total: number;
     }
   ): Promise<void> {
+    // Verify printer connection before proceeding
+    if (!this.verifyPrinterConnection()) {
+      return;
+    }
+
     try {
       const cashierPrinter = printerStationService.getPrinterForStation('cashier');
       if (!cashierPrinter) {
         console.warn('No cashier printer configured');
+        toast.warning('No hay impresora de caja configurada', {
+          description: 'Configure una impresora para recibos de pago en la configuración.',
+        });
         return;
       }
 
@@ -77,8 +96,34 @@ export class OrderPrintService {
       await printService.printRaw(cashierPrinter, content);
     } catch (error) {
       console.error('Error printing payment receipt:', error);
-      toast.error('Error al imprimir el recibo de pago');
+      toast.error('Error al imprimir el recibo de pago', {
+        description: error instanceof Error ? error.message : 'Error desconocido',
+      });
+      throw error; // Re-throw to allow handling in the UI
     }
+  }
+
+  // Utility method to verify printer connection and handle reconnection if needed
+  private verifyPrinterConnection(): boolean {
+    if (!printService.isConnected()) {
+      toast.error('Sistema de impresión no conectado', {
+        description: 'Intente reconectar el sistema de impresión antes de imprimir',
+        action: {
+          label: "Conectar",
+          onClick: () => {
+            printService.connect().then((connected) => {
+              if (connected) {
+                toast.success('Sistema de impresión conectado');
+              } else {
+                toast.error('No se pudo conectar al sistema de impresión');
+              }
+            });
+          }
+        }
+      });
+      return false;
+    }
+    return true;
   }
 }
 

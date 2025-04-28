@@ -1,6 +1,7 @@
 
-import { Button } from "@/components/ui/button";
-import { RefreshCw, FileCode, ExternalLink } from 'lucide-react';
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, FileText } from 'lucide-react';
 
 interface ActionButtonsProps {
   checking: boolean;
@@ -10,43 +11,24 @@ interface ActionButtonsProps {
 
 export function ActionButtons({ checking, onReload, onInspect }: ActionButtonsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={onReload}
-        disabled={checking}
-        className="flex items-center"
-      >
-        <RefreshCw className="h-3 w-3 mr-1" />
-        Reload QZ Tray Script
-      </Button>
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
+    <div className="flex justify-end space-x-2">
+      <Button
+        variant="outline"
+        size="sm"
         onClick={onInspect}
         disabled={checking}
-        className="flex items-center"
       >
-        <FileCode className="h-3 w-3 mr-1" />
+        <FileText className="h-3.5 w-3.5 mr-1" />
         Inspect Script
       </Button>
-      
       <Button
-        variant="ghost" 
+        variant="default"
         size="sm"
-        asChild
+        onClick={onReload}
+        disabled={checking}
       >
-        <a 
-          href="https://qz.io/download/" 
-          target="_blank" 
-          rel="noreferrer"
-          className="inline-flex items-center"
-        >
-          <ExternalLink className="h-3 w-3 mr-1" />
-          QZ Tray Download
-        </a>
+        <RefreshCw className={`h-3.5 w-3.5 mr-1 ${checking ? 'animate-spin' : ''}`} />
+        {checking ? 'Reloading...' : 'Reload Script'}
       </Button>
     </div>
   );

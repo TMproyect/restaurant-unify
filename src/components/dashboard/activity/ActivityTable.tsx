@@ -8,7 +8,7 @@ import StatusBadge from './StatusBadge';
 import { ActivityTableProps } from './types';
 import OrderSourceBadge from '@/components/kitchen/OrderSourceBadge';
 import { Clock, Zap, AlertCircle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionClick }) => {
   return (
@@ -99,39 +99,41 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                   )}
                 </td>
                 <td className="py-2 px-3 text-center">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        {timeStatus.status === 'normal' && (
-                          <span className="text-xs text-green-600 flex items-center justify-center">
-                            <Clock className="h-3 w-3 mr-1" />
-                            A tiempo
-                          </span>
-                        )}
-                        {timeStatus.status === 'warning' && (
-                          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-200 flex items-center">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Por vencer
-                          </Badge>
-                        )}
-                        {timeStatus.status === 'critical' && (
-                          <Badge variant="destructive" className="flex items-center">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Atrasado
-                          </Badge>
-                        )}
-                        {timeStatus.status === 'archive-soon' && (
-                          <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 flex items-center">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Por archivar
-                          </Badge>
-                        )}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">{timeStatus.message}</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          {timeStatus.status === 'normal' && (
+                            <span className="text-xs text-green-600 flex items-center justify-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              A tiempo
+                            </span>
+                          )}
+                          {timeStatus.status === 'warning' && (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-200 flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Por vencer
+                            </Badge>
+                          )}
+                          {timeStatus.status === 'critical' && (
+                            <Badge variant="destructive" className="flex items-center">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Atrasado
+                            </Badge>
+                          )}
+                          {timeStatus.status === 'archive-soon' && (
+                            <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Por archivar
+                            </Badge>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">{timeStatus.message}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </td>
                 <td className="py-2 px-3 text-right">
                   <div className="font-medium text-sm">{formatCurrency(item.total)}</div>

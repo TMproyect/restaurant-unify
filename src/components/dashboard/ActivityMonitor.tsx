@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Clock, AlertCircle, DollarSign, ChefHat, Archive } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { ActivityMonitorProps } from './activity/types';
 import { filterItems, calculateItemsCount } from './activity/utils/filterUtils';
 import ActivityHeader from './activity/ActivityHeader';
@@ -85,47 +86,49 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
   };
   
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="space-y-2">
-          <ActivityHeader 
-            activeFilter={activeFilter} 
-            setActiveFilter={setActiveFilter} 
-            filters={filters}
-          />
-          <div className="flex justify-end">
-            <DateRangeFilter onRangeChange={handleDateRangeChange} />
-          </div>
-        </div>
-      </CardHeader>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="px-6">
-          <ActivityTabs itemsCount={itemsCount} />
-        </div>
-        
-        <TabsContent value={activeTab}>
-          <ActivityContent 
-            isLoading={isLoading}
-            items={items}
-            filteredItems={paginatedItems}
-            onActionClick={onActionClick}
-            activeFilter={activeFilter}
-          />
-          
-          {/* Componente de paginación */}
-          {filteredItems.length > ITEMS_PER_PAGE && (
-            <div className="px-6 py-4">
-              <ActivityPagination 
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
+    <TooltipProvider>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="space-y-2">
+            <ActivityHeader 
+              activeFilter={activeFilter} 
+              setActiveFilter={setActiveFilter} 
+              filters={filters}
+            />
+            <div className="flex justify-end">
+              <DateRangeFilter onRangeChange={handleDateRangeChange} />
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </Card>
+          </div>
+        </CardHeader>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="px-6">
+            <ActivityTabs itemsCount={itemsCount} />
+          </div>
+          
+          <TabsContent value={activeTab}>
+            <ActivityContent 
+              isLoading={isLoading}
+              items={items}
+              filteredItems={paginatedItems}
+              onActionClick={onActionClick}
+              activeFilter={activeFilter}
+            />
+            
+            {/* Componente de paginación */}
+            {filteredItems.length > ITEMS_PER_PAGE && (
+              <div className="px-6 py-4">
+                <ActivityPagination 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </Card>
+    </TooltipProvider>
   );
 };
 

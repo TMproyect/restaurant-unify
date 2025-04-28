@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useDashboardInit } from '@/hooks/use-dashboard-init';
@@ -6,6 +5,7 @@ import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Archive } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import EnhancedDashboardCard from '@/components/dashboard/EnhancedDashboardCard';
 import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
 import OrderDetailsDialog from '@/components/dashboard/activity/OrderDetailsDialog';
@@ -18,13 +18,11 @@ import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 
 export default function Dashboard() {
-  // Track if component is mounted to prevent state updates after unmount
   const [isMounted, setIsMounted] = useState(false);
   const { error: initError, isReady } = useDashboardInit();
   const { isAdmin } = usePermissions();
   const [isArchiving, setIsArchiving] = useState(false);
   
-  // Use the optimized dashboard data hook
   const { 
     dashboardCards, 
     activityItems,
@@ -33,7 +31,6 @@ export default function Dashboard() {
     error: dataError, 
     refreshAllData,
     handleActionClick,
-    // Dialog state and handlers
     selectedOrder,
     isOrderDetailsOpen,
     isCancellationReviewOpen,
@@ -46,7 +43,6 @@ export default function Dashboard() {
     handleSubmitCancellationReason
   } = useDashboardData();
   
-  // Set mounted state
   useEffect(() => {
     console.log('🔄 [Dashboard] Component mounted');
     setIsMounted(true);
@@ -56,15 +52,12 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Handle connection errors with a more conservative approach
   useEffect(() => {
     if (!dataError || !isMounted) return;
     
     console.error('❌ [Dashboard] Data loading error:', dataError);
     toast.error('Error al cargar datos del dashboard. Intentando reconectar...');
     
-    // Attempt to reconnect after a longer delay (10 seconds)
-    // This prevents error cascades with too many rapid reconnection attempts
     const reconnectTimer = setTimeout(() => {
       if (isMounted) {
         console.log('🔄 [Dashboard] Attempting reconnection...');
@@ -75,7 +68,6 @@ export default function Dashboard() {
     return () => clearTimeout(reconnectTimer);
   }, [dataError, isMounted, refreshAllData]);
   
-  // Function to trigger manual archiving
   const handleManualArchive = async () => {
     try {
       setIsArchiving(true);
@@ -96,7 +88,6 @@ export default function Dashboard() {
         toast.info('No hay órdenes para archivar en este momento');
       }
       
-      // Refresh the dashboard data
       refreshAllData();
     } catch (error) {
       console.error('❌ [Dashboard] Error in manual archive:', error);
@@ -106,7 +97,6 @@ export default function Dashboard() {
     }
   };
   
-  // If not initialized, show loading state
   if (!isReady && !initError) {
     return (
       <Layout>
@@ -127,7 +117,6 @@ export default function Dashboard() {
     );
   }
   
-  // Handle initialization error
   if (initError) {
     console.error('❌ [Dashboard] Dashboard initialization error:', initError);
     return (
@@ -150,92 +139,86 @@ export default function Dashboard() {
   
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
-          
-          {/* Archive button (admin only) */}
-          {isAdmin && (
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2"
-              onClick={handleManualArchive}
-              disabled={isArchiving}
-            >
-              <Archive className="h-4 w-4" />
-              {isArchiving ? 'Archivando...' : 'Archivar Órdenes Antiguas'}
-            </Button>
-          )}
-        </div>
-        
-        {/* Error display if any */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-red-700">Error al cargar datos</h3>
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
+      <TooltipProvider>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
+            
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                onClick={handleManualArchive}
+                disabled={isArchiving}
+              >
+                <Archive className="h-4 w-4" />
+                {isArchiving ? 'Archivando...' : 'Archivar Órdenes Antiguas'}
+              </Button>
+            )}
           </div>
-        )}
-        
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {isLoadingStats ? (
-            // Loading skeleton for cards
-            Array(4).fill(0).map((_, i) => (
-              <Card key={i} className="overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <Skeleton className="h-6 w-24" />
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                  </div>
-                  <Skeleton className="h-8 w-full mt-4" />
-                  <Skeleton className="h-4 w-3/4 mt-2" />
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            // Actual dashboard cards
-            dashboardCards.map((card, i) => (
-              <EnhancedDashboardCard key={i} {...card} />
-            ))
+          
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-red-700">Error al cargar datos</h3>
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            </div>
           )}
-        </div>
-        
-        {/* Activity Monitor */}
-        <ActivityMonitor
-          items={activityItems}
-          isLoading={isLoadingActivity}
-          onActionClick={handleActionClick}
-        />
-        
-        {/* Dialogs */}
-        <OrderDetailsDialog 
-          order={selectedOrder}
-          isOpen={isOrderDetailsOpen}
-          onClose={handleCloseOrderDetails}
-        />
-        
-        <CancellationReviewDialog
-          order={selectedOrder}
-          isOpen={isCancellationReviewOpen}
-          onClose={handleCloseCancellationReview}
-        />
-        
-        <DiscountReviewDialog
-          order={selectedOrder}
-          isOpen={isDiscountReviewOpen}
-          onClose={handleCloseDiscountReview}
-        />
+          
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {isLoadingStats ? (
+              Array(4).fill(0).map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start">
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                    </div>
+                    <Skeleton className="h-8 w-full mt-4" />
+                    <Skeleton className="h-4 w-3/4 mt-2" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              dashboardCards.map((card, i) => (
+                <EnhancedDashboardCard key={i} {...card} />
+              ))
+            )}
+          </div>
+          
+          <ActivityMonitor
+            items={activityItems}
+            isLoading={isLoadingActivity}
+            onActionClick={handleActionClick}
+          />
+          
+          <OrderDetailsDialog 
+            order={selectedOrder}
+            isOpen={isOrderDetailsOpen}
+            onClose={handleCloseOrderDetails}
+          />
+          
+          <CancellationReviewDialog
+            order={selectedOrder}
+            isOpen={isCancellationReviewOpen}
+            onClose={handleCloseCancellationReview}
+          />
+          
+          <DiscountReviewDialog
+            order={selectedOrder}
+            isOpen={isDiscountReviewOpen}
+            onClose={handleCloseDiscountReview}
+          />
 
-        <CancellationReasonDialog
-          isOpen={isCancellationReasonOpen}
-          onClose={handleCloseCancellationReason}
-          onSubmit={handleSubmitCancellationReason}
-        />
-      </div>
+          <CancellationReasonDialog
+            isOpen={isCancellationReasonOpen}
+            onClose={handleCloseCancellationReason}
+            onSubmit={handleSubmitCancellationReason}
+          />
+        </div>
+      </TooltipProvider>
     </Layout>
   );
 }

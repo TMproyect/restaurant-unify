@@ -12,7 +12,8 @@ import {
   Store,
   ShoppingCart,
   Clock,
-  LayoutGrid
+  LayoutGrid,
+  ChefHat
 } from 'lucide-react';
 import { NavList } from './NavList';
 import { NavItem } from './NavItem';
@@ -43,6 +44,12 @@ const Sidebar = () => {
       title: "Mesas",
       icon: <Utensils className="h-4 w-4" />,
       href: "/tables",
+    },
+    {
+      title: "Cocina",
+      icon: <ChefHat className="h-4 w-4" />,
+      href: "/kitchen",
+      permission: "kitchen.view"
     },
     {
       title: "Notificaciones",
@@ -80,7 +87,9 @@ const Sidebar = () => {
     }
   ].filter(item => {
     if (item.permission) {
-      return user?.role === 'admin' || user?.role === 'propietario' || (isManager && item.permission !== 'settings.roles');
+      return user?.role === 'admin' || user?.role === 'propietario' || 
+             (isManager && item.permission !== 'settings.roles') ||
+             item.permission === 'kitchen.view'; // Allow kitchen view for kitchen staff
     }
     return true;
   });

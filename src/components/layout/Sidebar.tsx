@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Home,
@@ -10,7 +11,8 @@ import {
   BarChart,
   Store,
   ShoppingCart,
-  Clock
+  Clock,
+  LayoutGrid // Import LayoutGrid instead of LayoutDashboard
 } from 'lucide-react';
 import { NavList } from './NavList';
 import { NavItem } from './NavItem';
@@ -67,7 +69,7 @@ const Sidebar = () => {
     },
     {
       title: "Integraciones",
-      icon: <LayoutDashboard className="h-4 w-4" />,
+      icon: <LayoutGrid className="h-4 w-4" />, // Use LayoutGrid icon instead of LayoutDashboard
       href: "/integrations",
     },
     {

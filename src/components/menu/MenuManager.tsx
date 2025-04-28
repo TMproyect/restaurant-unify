@@ -4,7 +4,7 @@ import { MenuCategory } from '@/services/menu';
 import { MenuItem } from '@/services/menu/menuItemService';
 import MenuFilters from './components/MenuFilters';
 import MenuPagination from './components/MenuPagination';
-import MenuItemForm from './MenuItemForm';
+import { MenuItemForm } from './form/MenuItemForm';
 import MenuItemDeleteDialog from './components/MenuItemDeleteDialog';
 import MenuContent from './components/MenuContent';
 import MenuActions from './components/MenuActions';

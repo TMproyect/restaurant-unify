@@ -28,7 +28,6 @@ export const setupAutoArchiving = async () => {
 export const runManualArchiving = async () => {
   try {
     console.log('🔄 [DashboardService] Starting manual archive process...');
-    toast.info('Iniciando proceso de archivado...');
     
     const { data, error } = await supabase.functions.invoke('archive-old-orders', {
       body: { action: 'run-now' }
@@ -36,13 +35,11 @@ export const runManualArchiving = async () => {
     
     if (error) {
       console.error('❌ [DashboardService] Error triggering manual archive:', error);
-      toast.error(`Error al archivar: ${error.message}`);
       return { success: false, error: error.message };
     }
     
     if (!data) {
       console.error('❌ [DashboardService] No response data from archive function');
-      toast.error('No se recibió respuesta del servicio de archivado');
       return { success: false, error: 'No response data' };
     }
     
@@ -50,21 +47,12 @@ export const runManualArchiving = async () => {
     
     // Check if there were any errors during archiving
     if (data.errors && data.errors > 0) {
-      toast.warning(`Archivado completado con ${data.errors} errores. ${data.processed} órdenes archivadas.`);
       return { success: true, data, hasErrors: true };
-    }
-    
-    // Check if any orders were processed
-    if (data.processed === 0) {
-      toast.info('No hay órdenes para archivar en este momento');
-    } else {
-      toast.success(`Se archivaron ${data.processed} órdenes antiguas correctamente`);
     }
     
     return { success: true, data };
   } catch (error) {
     console.error('❌ [DashboardService] Exception during manual archive:', error);
-    toast.error('Error inesperado al archivar órdenes');
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 };

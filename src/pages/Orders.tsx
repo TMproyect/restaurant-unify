@@ -18,14 +18,16 @@ import { useArchive } from '@/hooks/dashboard/use-archive';
 
 const Orders = () => {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  // Get the showArchived parameter from URL or default to false
+  
+  // Get archived parameter from URL and convert to boolean
   const [showArchived, setShowArchived] = useState(() => searchParams.get('archived') === 'true');
+  
   const { user } = useAuth();
   const { hasPermission, isWaiter, isAdmin, isManager } = usePermissions();
-  const navigate = useNavigate();
   const { archivingInProgress, handleManualArchive } = useArchive(() => handleRefresh());
   
   // Check permissions
@@ -35,18 +37,19 @@ const Orders = () => {
   const canArchiveOrders = hasPermission('orders.archive');
   
   // Update URL when showArchived changes
-  useEffect(() => {
-    if (showArchived) {
-      searchParams.set('archived', 'true');
-    } else {
-      searchParams.delete('archived');
-    }
-    setSearchParams(searchParams);
-  }, [showArchived, searchParams, setSearchParams]);
-  
   const handleToggleArchived = (value: boolean) => {
     console.log('Toggling archived view:', value);
     setShowArchived(value);
+    
+    // Update URL using navigate instead of setSearchParams
+    const newUrl = value 
+      ? '/orders?archived=true'
+      : '/orders';
+      
+    navigate(newUrl, { replace: true });
+    
+    // Force refresh the order list
+    setRefreshKey(prev => prev + 1);
   };
   
   const handleOrderComplete = () => {
@@ -60,7 +63,7 @@ const Orders = () => {
     setRefreshKey(prev => prev + 1);
   };
   
-  // Verificar si hay un ID de orden en los parámetros de búsqueda
+  // Check for order ID in URL params
   useEffect(() => {
     const orderId = searchParams.get('id');
     if (orderId) {
@@ -77,7 +80,7 @@ const Orders = () => {
               action: {
                 label: "Ver",
                 onClick: () => {
-                  window.location.href = `/orders?id=${order.id}`;
+                  navigate(`/orders?id=${order.id}`);
                 }
               }
             });
@@ -94,9 +97,9 @@ const Orders = () => {
           setIsLoading(false);
         });
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
-  // Renderizar vista específica para meseros si el usuario tiene ese rol
+  // Render specific view for waiters
   if (isWaiter && canViewTables) {
     return (
       <Layout>
@@ -142,7 +145,7 @@ const Orders = () => {
     );
   }
 
-  // Si no es mesero, mostrar la vista estándar de órdenes
+  // Standard orders view for other roles
   return (
     <Layout>
       <OrderPrintController>
@@ -195,7 +198,7 @@ const Orders = () => {
               <h2 className="text-lg font-medium">Órdenes Recientes</h2>
             </div>
             <OrdersList 
-              key={refreshKey} 
+              key={`orders-list-${refreshKey}-${showArchived ? 'archived' : 'active'}`}
               limit={20} 
               onRefresh={handleRefresh}
               showArchived={showArchived}

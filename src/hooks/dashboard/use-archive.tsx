@@ -39,10 +39,12 @@ export const useArchive = (onArchiveComplete?: () => void) => {
   const handleManualArchive = async () => {
     try {
       setArchivingInProgress(true);
+      toast.info('Iniciando proceso de archivado...', { duration: 3000 });
       
       const result = await runManualArchiving();
       
       if (!result.success) {
+        toast.error(`Error al archivar: ${result.error || 'Error desconocido'}`);
         return;
       }
       
@@ -56,9 +58,17 @@ export const useArchive = (onArchiveComplete?: () => void) => {
         
         setLastArchiveRun(now);
         
+        toast.success(`Se archivaron ${data.processed} órdenes antiguas`, {
+          description: data.details 
+            ? `Completadas: ${data.details.completed || 0}, Canceladas: ${data.details.cancelled || 0}, Prueba: ${data.details.pending + data.details.preparing || 0}`
+            : undefined
+        });
+        
         if (onArchiveComplete) {
           onArchiveComplete();
         }
+      } else {
+        toast.info('No hay órdenes para archivar en este momento');
       }
     } catch (error) {
       console.error('❌ [ActivityMonitor] Error in manual archive:', error);

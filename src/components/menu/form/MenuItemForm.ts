@@ -1,3 +1,3 @@
 
-import { MenuItemForm } from './MenuItemForm';
-export { MenuItemForm };
+// Re-export the MenuItemForm component from the tsx file
+export { MenuItemForm } from './MenuItemForm.tsx';

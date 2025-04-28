@@ -24,7 +24,7 @@ interface MenuItemFormProps {
   onClose: (saved: boolean) => void;
 }
 
-const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }) => {
+export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }) => {
   const [isOpen, setIsOpen] = useState(true);
   
   const {
@@ -92,5 +92,3 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     </Dialog>
   );
 };
-
-export { MenuItemForm };

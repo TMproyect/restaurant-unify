@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { mapSingleResponse } from '@/utils/supabaseHelpers';
 import { createNotification } from '../notificationService';
@@ -84,12 +85,15 @@ export const createOrder = async (
     // After successful order creation, print tickets
     if (orderResult && items.length > 0) {
       console.log('Printing order tickets...');
-      await orderPrintService.printNewOrder(orderResult, orderItems.map(item => ({
+      // FIX: Using the correct variable name. We had 'orderItems' but we need to create itemsWithIds
+      const itemsWithIds = orderItems.map(item => ({
         ...item,
         id: crypto.randomUUID(), // Temporary ID for printing
         order_id: orderResult.id,
         created_at: new Date().toISOString()
-      })));
+      }));
+      
+      await orderPrintService.printNewOrder(orderResult, itemsWithIds);
     }
 
     return orderResult;

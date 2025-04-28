@@ -29,9 +29,8 @@ export function TestPrintButton({
     try {
       // Check connection first
       if (!printService.isConnected()) {
-        toast({
-          title: "Sistema de impresión desconectado",
-          description: "Intentando reconectar...",
+        toast.error("Sistema de impresión desconectado", {
+          description: "Intentando reconectar..."
         });
         
         const connected = await printService.connect();

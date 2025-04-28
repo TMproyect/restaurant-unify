@@ -39,8 +39,10 @@ export function ScriptTags({ scriptTags }: ScriptTagsProps) {
 }
 
 function ScriptStatusBadge({ tag }: { tag: HTMLScriptElement }) {
-  // Simple check to determine if script is loaded
-  const isLoaded = tag.readyState === 'complete' || tag.readyState === 'loaded' || !tag.readyState;
+  // Use a simpler check that doesn't rely on readyState
+  // Instead, check if the script has an error attribute or has completed loading
+  const hasError = tag.hasAttribute('data-error');
+  const isLoaded = !hasError && tag.hasAttribute('data-loaded') || tag.complete;
   
   if (isLoaded) {
     return <Badge className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">

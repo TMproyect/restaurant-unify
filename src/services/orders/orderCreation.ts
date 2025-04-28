@@ -1,8 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { mapSingleResponse } from '@/utils/supabaseHelpers';
 import { createNotification } from '../notificationService';
 import { Order, OrderItem } from '@/types/order.types';
+import orderPrintService from '../printing/orderPrintService';
 
 // Create a new order with items
 export const createOrder = async (
@@ -79,6 +79,17 @@ export const createOrder = async (
       }
     } catch (notifError) {
       console.error('Failed to create notification for new order:', notifError);
+    }
+
+    // After successful order creation, print tickets
+    if (orderResult && items.length > 0) {
+      console.log('Printing order tickets...');
+      await orderPrintService.printNewOrder(orderResult, orderItems.map(item => ({
+        ...item,
+        id: crypto.randomUUID(), // Temporary ID for printing
+        order_id: orderResult.id,
+        created_at: new Date().toISOString()
+      })));
     }
 
     return orderResult;

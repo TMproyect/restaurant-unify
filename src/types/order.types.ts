@@ -1,4 +1,3 @@
-
 // Definición de tipos para órdenes
 
 export interface Order {
@@ -26,6 +25,7 @@ export interface OrderItem {
   quantity: number;
   notes?: string | null;
   created_at: string;
+  kitchen_id?: string | null;
 }
 
 export interface OrderWithItems {

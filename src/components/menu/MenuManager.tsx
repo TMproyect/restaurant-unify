@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,7 +61,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
   const [forceDelete, setForceDelete] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [isDeleting, setIsDeleting] = useState(isDeleting);
+  const [isDeleting, setIsDeleting] = useState(false); // Fixed: initialize with false instead of isDeleting
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [pageSize] = useState(12);

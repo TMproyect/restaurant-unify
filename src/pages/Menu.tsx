@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { Utensils, Tag, Cloud, RefreshCw } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
 import { Button } from '@/components/ui/button';
-import { initializeStorage, migrateAllBase64Images } from '@/services/storage/imageStorage';
+import { initializeStorage } from '@/services/storage/imageStorage';
+import { migrateAllBase64Images } from '@/services/menu/menuItemService';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const Menu: React.FC = () => {

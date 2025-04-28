@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
@@ -45,7 +44,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fetch menu items and categories from Supabase
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -55,8 +53,7 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
           fetchMenuCategories()
         ]);
         
-        // Add mock options data for testing
-        const itemsWithOptions = itemsData.map((item: MenuItem) => {
+        const itemsWithOptions = itemsData.items.map((item: MenuItem) => {
           return {
             ...item,
             options: []
@@ -79,7 +76,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
     
     loadData();
     
-    // Listen for menu updates from other components
     const handleMenuUpdated = () => {
       loadData();
     };
@@ -90,15 +86,11 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
     };
   }, [toast]);
 
-  // Filtrar items del menú
   const filteredItems = menuItems.filter(item => {
-    // Filtro por disponibilidad
     if (!item.available) return false;
 
-    // Filtro por categoría
     if (selectedCategory && item.category_id !== selectedCategory) return false;
     
-    // Filtro por término de búsqueda
     if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
         !item.description.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
@@ -154,12 +146,10 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
   };
 
   const handleAddToCart = (item: ExtendedMenuItem) => {
-    // Si el ítem está activo y tiene opciones, verificar que todas estén seleccionadas
     if (activeItemId === item.id && item.options && item.options.length > 0) {
       const allOptionsSelected = item.options.every(option => selectedOptions[option.name]);
       
       if (!allOptionsSelected) {
-        // Alerta: seleccionar todas las opciones
         toast({
           title: "Opciones incompletas",
           description: "Por favor selecciona todas las opciones requeridas",
@@ -169,27 +159,24 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       }
     }
 
-    // Preparar las opciones seleccionadas
     const itemOptions = item.options ? item.options.map(option => {
       const selectedOptionId = selectedOptions[option.name];
       const selectedChoice = option.choices.find(choice => choice.id === selectedOptionId);
       
       return {
         name: option.name,
-        choice: selectedChoice || option.choices[0] // Si no hay selección, usar la primera opción
+        choice: selectedChoice || option.choices[0]
       };
     }) : [];
 
-    // Preparar las notas con elementos adicionales
     let notes = itemNotes.trim();
     if (additionalItems.length > 0) {
       notes += notes ? '\n' : '';
       notes += 'Adicionales: ' + additionalItems.join(', ');
     }
 
-    // Crear el ítem para el carrito
     const cartItem: CartItem = {
-      id: `${item.id}-${Date.now()}`, // ID único para el carrito
+      id: `${item.id}-${Date.now()}`,
       menuItemId: item.id,
       name: item.name,
       price: item.price,
@@ -198,10 +185,8 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
       notes: notes || undefined
     };
 
-    // Añadir al carrito
     onAddToCart(cartItem);
 
-    // Reiniciar estados
     setActiveItemId(null);
     setSelectedOptions({});
     setItemNotes('');
@@ -219,7 +204,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
 
   return (
     <div className="space-y-4">
-      {/* Buscador */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
@@ -231,7 +215,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
         />
       </div>
 
-      {/* Categorías */}
       <div className="flex flex-wrap gap-2 pb-2">
         {categories.map(category => (
           <Button
@@ -246,7 +229,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
         ))}
       </div>
 
-      {/* Lista de Platos */}
       <div className="space-y-3">
         {filteredItems.length > 0 ? (
           filteredItems.map(item => (
@@ -256,7 +238,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
                 activeItemId === item.id ? 'border-primary ring-1 ring-primary' : 'border-border'
               }`}
             >
-              {/* Cabecera del ítem */}
               <div
                 className="p-3 bg-white dark:bg-gray-900 cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => handleItemClick(item.id)}
@@ -298,7 +279,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
                 </div>
               </div>
 
-              {/* Opciones y detalles cuando está expandido */}
               {activeItemId === item.id && (
                 <div className="p-3 border-t border-border bg-muted/20">
                   {item.options && item.options.length > 0 && (
@@ -327,7 +307,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
                     </div>
                   )}
 
-                  {/* Adicionales */}
                   <div className="mt-3">
                     <h4 className="text-sm font-medium mb-2">Adicionales</h4>
                     <div className="flex gap-2 mb-2">
@@ -374,7 +353,6 @@ const MenuItems: React.FC<MenuItemsProps> = ({ onAddToCart }) => {
                     )}
                   </div>
 
-                  {/* Notas */}
                   <div className="mt-3">
                     <h4 className="text-sm font-medium mb-2">Notas especiales</h4>
                     <Input

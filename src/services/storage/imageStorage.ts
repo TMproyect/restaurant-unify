@@ -1,7 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import { migrateAllBase64Images } from '@/services/menu/menuItemService';
 
 // Nombre del bucket para imágenes del menú
 const STORAGE_BUCKET = 'menu_images';
@@ -210,3 +210,6 @@ export const migrateBase64ToStorage = async (base64Image: string): Promise<strin
     return base64Image;
   }
 };
+
+// Re-export migrateAllBase64Images for backward compatibility
+export { migrateAllBase64Images };

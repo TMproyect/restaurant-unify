@@ -40,13 +40,13 @@ export const initializeStorage = async (): Promise<boolean> => {
       console.log('📦 Iniciando inicialización de almacenamiento');
       
       // Verificar si el bucket existe llamando a la Edge Function
-      const { error } = await supabase.functions.invoke('storage-reinitialize');
+      const { data, error } = await supabase.functions.invoke('storage-reinitialize');
       
       if (error) {
         console.error('📦 Error al inicializar almacenamiento:', error);
         // No fallamos inmediatamente, seguimos intentando migrar imágenes
       } else {
-        console.log('📦 Almacenamiento inicializado correctamente');
+        console.log('📦 Almacenamiento inicializado correctamente', data);
       }
       
       // Intentar migrar imágenes Base64 automáticamente - incluso si hubo error en la inicialización
@@ -61,11 +61,14 @@ export const initializeStorage = async (): Promise<boolean> => {
       }
       
       setIsInitializing(false);
+      setInitializationPromise(null);
+      
       // Consideramos exitosa la inicialización incluso si solo uno de los pasos funciona
       resolve(true);
     } catch (error) {
       console.error('Error inicializando almacenamiento:', error);
       setIsInitializing(false);
+      setInitializationPromise(null);
       resolve(false);
     }
   });

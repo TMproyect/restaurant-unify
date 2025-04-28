@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
@@ -6,39 +7,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
-import { initializeStorage, migrateAllBase64Images } from '@/services/storage';
+import { initializeStorage } from '@/services/storage';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [storageInitialized, setStorageInitialized] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   
-  // Función para inicializar el almacenamiento y migrar imágenes automáticamente
+  // Función para inicializar el almacenamiento
   const initializeResources = useCallback(async () => {
     try {
+      setLoading(true);
       // Inicializar almacenamiento
-      await initializeStorage();
+      const initialized = await initializeStorage();
+      console.log('📦 Storage initialization result:', initialized);
+      setStorageInitialized(initialized);
       
-      // Intentar migrar todas las imágenes Base64 a Storage
-      await migrateAllBase64Images();
-      
-      console.log('📦 Recursos inicializados correctamente');
+      if (!initialized) {
+        console.warn('📦 No se pudo inicializar el almacenamiento correctamente');
+        // No mostrar error al usuario aún, seguimos intentando cargar datos
+      }
     } catch (error) {
       console.error('Error al inicializar recursos:', error);
-      // Intento automático de reinicio después de 3 segundos en caso de error
-      setTimeout(() => initializeResources(), 3000);
+      setInitError('Error al inicializar almacenamiento. Por favor recarga la página.');
+    } finally {
+      // No terminamos de cargar aquí, esperamos a que se carguen las categorías
     }
   }, []);
   
   // Cargar categorías
   const loadCategories = useCallback(async () => {
     try {
-      setLoading(true);
       const categoriesData = await fetchMenuCategories();
       setCategories(categoriesData);
+      console.log('📦 Categorías cargadas:', categoriesData.length);
     } catch (error) {
       console.error('Error al cargar categorías:', error);
       toast.error("No se pudieron cargar las categorías");
+      setInitError('Error al cargar categorías del menú');
     } finally {
       setLoading(false);
     }
@@ -59,6 +69,30 @@ const Menu: React.FC = () => {
     loadCategories();
     window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
   }, [loadCategories]);
+
+  if (initError) {
+    return (
+      <Layout>
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{initError}</AlertDescription>
+        </Alert>
+        <div className="flex justify-center">
+          <button 
+            onClick={() => {
+              setInitError(null);
+              setLoading(true);
+              initializeResources().then(loadCategories);
+            }}
+            className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+          >
+            Reintentar
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

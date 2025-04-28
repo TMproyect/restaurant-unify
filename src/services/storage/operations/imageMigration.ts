@@ -15,7 +15,11 @@ export const migrateBase64ToStorage = async (base64Image: string): Promise<strin
   
   try {
     // Inicializar almacenamiento si es necesario
-    await initializeStorage();
+    const initialized = await initializeStorage();
+    if (!initialized) {
+      console.warn('📦 No se pudo inicializar almacenamiento, continuando con base64');
+      return base64Image;
+    }
     
     // Convertir Base64 a File/Blob
     const { blob, mimeType, fileExt } = base64ToFile(base64Image);
@@ -54,6 +58,8 @@ export const migrateBase64ToStorage = async (base64Image: string): Promise<strin
  */
 export const migrateAllBase64Images = async (): Promise<boolean> => {
   try {
+    console.log('📦 Buscando imágenes Base64 para migrar...');
+    
     // Obtener todos los items con imágenes Base64
     const { data, error } = await supabase
       .from('menu_items')
@@ -91,6 +97,7 @@ export const migrateAllBase64Images = async (): Promise<boolean> => {
               
             if (!updateError) {
               successCount++;
+              console.log(`📦 Imagen para item ${item.id} migrada correctamente`);
             } else {
               console.error(`Error actualizando imagen para item ${item.id}:`, updateError);
             }

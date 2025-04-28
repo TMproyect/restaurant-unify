@@ -49,14 +49,15 @@ serve(async (req) => {
     }
     
     // Llamamos a la función RPC de PostgreSQL para verificar y actualizar permisos
+    // Usamos reset_menu_images_permissions en lugar de verify_menu_images_bucket
     try {
       const { error: rpcError } = await supabase
-        .rpc('verify_menu_images_bucket');
+        .rpc('reset_menu_images_permissions');
         
       if (rpcError) {
-        console.error('Error en verify_menu_images_bucket RPC:', rpcError);
+        console.error('Error en reset_menu_images_permissions RPC:', rpcError);
       } else {
-        console.log('📦 Permisos de bucket verificados por RPC');
+        console.log('📦 Permisos de bucket actualizados correctamente por RPC');
       }
     } catch (rpcError) {
       console.log('RPC no disponible o error:', rpcError);

@@ -26,6 +26,7 @@ serve(async (req) => {
     
     console.log('📦 Inicializando bucket de almacenamiento menu_images');
     
+    // Create or confirm bucket exists with proper error handling
     try {
       // Create or confirm bucket exists
       const { data: bucketData, error: bucketError } = await supabase.storage
@@ -33,35 +34,62 @@ serve(async (req) => {
         
       if (bucketError && !bucketError.message.includes('already exists')) {
         console.error('Error creating bucket:', bucketError);
-        // No lanzamos error aquí, intentamos continuar con la actualización
+      } else {
+        console.log('📦 Bucket creado o ya existente');
       }
     } catch (createError) {
       console.log('📦 Error al crear bucket, probablemente ya existe:', createError);
-      // Ignoramos este error y continuamos
+      // Continue despite this error
     }
     
-    // Update bucket to ensure it's public - incluso si la creación falló
+    // Update bucket to ensure it's public
     try {
-      await supabase.storage.updateBucket('menu_images', { public: true });
-      console.log('📦 Bucket configurado como público');
+      const { error: updateError } = await supabase.storage
+        .updateBucket('menu_images', { public: true });
+      
+      if (updateError) {
+        console.error('Error updating bucket:', updateError);
+      } else {
+        console.log('📦 Bucket configurado como público');
+      }
     } catch (updateError) {
       console.error('Error updating bucket:', updateError);
     }
     
-    // Llamamos a la función RPC de PostgreSQL para verificar y actualizar permisos
-    // Usamos reset_menu_images_permissions en lugar de verify_menu_images_bucket
+    // Call the reset_menu_images_permissions RPC function with enhanced error handling
     try {
-      const { error: rpcError } = await supabase
+      const { data: rpcData, error: rpcError } = await supabase
         .rpc('reset_menu_images_permissions');
         
       if (rpcError) {
         console.error('Error en reset_menu_images_permissions RPC:', rpcError);
+        // Don't throw, try to continue
       } else {
         console.log('📦 Permisos de bucket actualizados correctamente por RPC');
       }
     } catch (rpcError) {
-      console.log('RPC no disponible o error:', rpcError);
-      // Continuamos sin depender del resultado de la RPC
+      console.error('Error grave en RPC:', rpcError);
+      // Continue despite error
+    }
+    
+    // Verify bucket is public by fetching its metadata
+    try {
+      const { data: bucketInfo, error: getBucketError } = await supabase
+        .storage
+        .getBucket('menu_images');
+      
+      if (getBucketError) {
+        console.error('Error verificando bucket:', getBucketError);
+      } else {
+        console.log('📦 Estado del bucket:', JSON.stringify(bucketInfo));
+        // Force public setting if needed
+        if (!bucketInfo.public) {
+          console.log('📦 Bucket no estaba público, actualizando...');
+          await supabase.storage.updateBucket('menu_images', { public: true });
+        }
+      }
+    } catch (verifyError) {
+      console.error('Error verificando bucket:', verifyError);
     }
     
     console.log('📦 Almacenamiento inicializado correctamente');

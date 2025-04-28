@@ -3,11 +3,13 @@ import React from 'react';
 import { MenuItem } from '@/services/menu/menuItemService';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ImageOff } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { getImageUrlWithCacheBusting } from '@/services/storage';
 import MenuItemImage from '@/components/menu/MenuItemImage';
+import { toast } from 'sonner';
+import { migrateBase64ToStorage } from '@/services/storage';
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -32,6 +34,29 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   const imageUrl = item.image_url 
     ? getImageUrlWithCacheBusting(item.image_url)
     : undefined;
+  
+  const handleImageRetry = async () => {
+    try {
+      if (!item.image_url) return;
+      
+      toast.info("Reintentando cargar imagen...");
+      
+      // Si es Base64, intentar migrar de nuevo
+      if (item.image_url.startsWith('data:image/')) {
+        console.log(`📦 Reintentando migración de imagen Base64 para item ${item.id}`);
+        // No mostramos mensaje para no abrumar al usuario
+      }
+      
+      // Forzar recarga de imagen usando cache busting
+      const refreshedUrl = getImageUrlWithCacheBusting(item.image_url + '?t=' + Date.now());
+      console.log('📦 URL actualizada con cache busting:', refreshedUrl);
+      
+      // Disparar evento para forzar recarga del componente
+      window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+    } catch (error) {
+      console.error('Error al reintentar carga de imagen:', error);
+    }
+  };
     
   return (
     <Card className="overflow-hidden">
@@ -39,7 +64,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         imageUrl={imageUrl || ''} 
         alt={item.name}
         size="md"
-        onRetry={() => console.log('Retrying image load for', item.name)}
+        onRetry={handleImageRetry}
+        fit="cover"
       />
       
       <CardHeader className="pb-2">
@@ -79,7 +105,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           </p>
         )}
         
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {categoryName}
           </Badge>
@@ -93,6 +119,13 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           {item.popular && (
             <Badge variant="secondary" className="text-xs">
               Popular
+            </Badge>
+          )}
+          
+          {item.image_url && item.image_url.startsWith('data:image/') && (
+            <Badge variant="outline" className="text-xs flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30">
+              <ImageOff className="h-3 w-3" />
+              <span>Imagen sin migrar</span>
             </Badge>
           )}
         </div>

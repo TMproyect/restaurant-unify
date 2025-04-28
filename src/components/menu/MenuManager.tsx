@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, AlertCircle, Info } from 'lucide-react';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { MenuItem, fetchMenuItems } from '@/services/menu/menuItemService';
 import MenuFilters from './components/MenuFilters';
@@ -11,13 +11,19 @@ import MenuItemDeleteDialog from './components/MenuItemDeleteDialog';
 import MenuLoadingSkeleton from './components/MenuLoadingSkeleton';
 import MenuEmptyState from './components/MenuEmptyState';
 import MenuPagination from './components/MenuPagination';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
+  storageInitialized?: boolean;
 }
 
-const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
+const MenuManager: React.FC<MenuManagerProps> = ({ 
+  categories, 
+  isLoading,
+  storageInitialized = true
+}) => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -33,6 +39,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   
   const loadMenuItems = useCallback(async (resetPage = false) => {
     try {
+      console.log('📦 Cargando elementos del menú...');
       setLoading(true);
       
       const currentPage = resetPage ? 1 : page;
@@ -47,12 +54,23 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         searchTerm: searchTerm || undefined
       });
       
-      setItems(result.items);
-      setTotalItems(result.total);
-      setHasMore(result.hasMore);
+      if (result && result.items) {
+        console.log(`📦 Cargados ${result.items.length} elementos del menú (total: ${result.total})`);
+        setItems(result.items);
+        setTotalItems(result.total);
+        setHasMore(result.hasMore);
+      } else {
+        console.warn('📦 Respuesta vacía al cargar elementos del menú');
+        setItems([]);
+        setTotalItems(0);
+        setHasMore(false);
+      }
     } catch (error) {
       console.error('Error al cargar elementos del menú:', error);
       toast.error('No se pudieron cargar los elementos del menú');
+      setItems([]);
+      setTotalItems(0);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -143,6 +161,16 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
           categories={categories}
         />
       </div>
+      
+      {!storageInitialized && (
+        <Alert className="mb-4">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Problemas con las imágenes</AlertTitle>
+          <AlertDescription>
+            El sistema de almacenamiento no se inicializó correctamente. Las imágenes podrían no mostrarse o visualizarse incorrectamente.
+          </AlertDescription>
+        </Alert>
+      )}
       
       {loading || isLoading ? (
         <MenuLoadingSkeleton />

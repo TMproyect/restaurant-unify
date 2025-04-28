@@ -5,7 +5,7 @@
  */
 import { MenuItem, MenuItemQueryOptions } from './menuItemTypes';
 import { fetchMenuItems, getMenuItemById } from './menuItemQueries';
-import { createMenuItem, updateMenuItem, deleteMenuItem } from './menuItemMutations';
+import { createMenuItem, updateMenuItem, deleteMenuItem } from './mutations';
 import { migrateBase64ToStorage, migrateAllBase64Images } from '../storage/operations/imageMigration';
 
 // Re-export all types and functions for backward compatibility

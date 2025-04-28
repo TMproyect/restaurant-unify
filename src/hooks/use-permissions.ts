@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { defaultPermissions } from '@/data/permissionsData';
@@ -9,6 +8,7 @@ import {
   isRoleEqualOrInheritsFrom
 } from '@/utils/permissionsCache';
 import { Permission } from '@/contexts/auth/types';
+import { getTemporaryRole, hasTemporaryRole } from '@/utils/temporaryRolesCache';
 
 /**
  * Custom hook for checking user permissions with caching for performance
@@ -47,30 +47,51 @@ export const usePermissions = () => {
     }
   }, [user?.id, user?.role]);
   
+  // Check for temporary role
+  const temporaryRole = user?.id ? getTemporaryRole(user.id) : null;
+  const effectiveRole = temporaryRole || user?.role;
+  
   // Callback for checking if user has permission
   const hasPermission = useCallback((
     permissionId: string,
     customPermissions?: Record<string, boolean>
   ): boolean => {
-    if (!user?.id || !user?.role) return false;
+    if (!user?.id || !effectiveRole) return false;
     
+    // First check if the user has a temporary role with this permission
+    if (temporaryRole) {
+      // Find the permission
+      const permission = defaultPermissions.find(p => p.id === permissionId);
+      if (permission && permission.default[temporaryRole]) {
+        return true;
+      }
+      
+      // Check if any parent role of the temporary role has this permission
+      for (const [role, value] of Object.entries(permission?.default || {})) {
+        if (value && isRoleEqualOrInheritsFrom(temporaryRole, role)) {
+          return true;
+        }
+      }
+    }
+    
+    // Fall back to regular permission check
     return checkPermission(
       user.id,
       user.role,
       permissionId,
       customPermissions
     );
-  }, [user?.id, user?.role]);
+  }, [user?.id, user?.role, temporaryRole, effectiveRole]);
   
   // Get all permissions for current role
   const rolePermissions = useMemo(() => {
-    if (!user?.role) return {};
+    if (!effectiveRole) return {};
     
     return defaultPermissions.reduce((acc, permission) => {
-      acc[permission.id] = !!permission.default[user.role];
+      acc[permission.id] = !!permission.default[effectiveRole];
       return acc;
     }, {} as Record<string, boolean>);
-  }, [user?.role]);
+  }, [effectiveRole]);
   
   // Group permissions by category
   const permissionsByCategory = useMemo(() => {
@@ -87,14 +108,22 @@ export const usePermissions = () => {
     hasPermission,
     rolePermissions,
     permissionsByCategory,
-    isAdmin: user?.role === 'admin' || user?.role === 'propietario',
-    isManager: user?.role === 'gerente' || isRoleEqualOrInheritsFrom(user?.role || '', 'gerente'),
-    isCashier: user?.role === 'cajero' || isRoleEqualOrInheritsFrom(user?.role || '', 'cajero'),
-    isKitchen: user?.role === 'cocina' || user?.role === 'kitchen' || 
-              isRoleEqualOrInheritsFrom(user?.role || '', 'cocina'),
-    isWaiter: user?.role === 'mesero' || isRoleEqualOrInheritsFrom(user?.role || '', 'mesero'),
-    isDelivery: user?.role === 'repartidor' || user?.role === 'delivery' || 
-               isRoleEqualOrInheritsFrom(user?.role || '', 'repartidor'),
+    isAdmin: effectiveRole === 'admin' || effectiveRole === 'propietario' || 
+             hasTemporaryRole(user?.id || '', 'admin'),
+    isManager: effectiveRole === 'gerente' || isRoleEqualOrInheritsFrom(effectiveRole || '', 'gerente') ||
+               hasTemporaryRole(user?.id || '', 'gerente'),
+    isCashier: effectiveRole === 'cajero' || isRoleEqualOrInheritsFrom(effectiveRole || '', 'cajero') ||
+               hasTemporaryRole(user?.id || '', 'cajero'),
+    isKitchen: effectiveRole === 'cocina' || effectiveRole === 'kitchen' || 
+              isRoleEqualOrInheritsFrom(effectiveRole || '', 'cocina') ||
+              hasTemporaryRole(user?.id || '', 'cocina'),
+    isWaiter: effectiveRole === 'mesero' || isRoleEqualOrInheritsFrom(effectiveRole || '', 'mesero') ||
+              hasTemporaryRole(user?.id || '', 'mesero'),
+    isDelivery: effectiveRole === 'repartidor' || effectiveRole === 'delivery' || 
+               isRoleEqualOrInheritsFrom(effectiveRole || '', 'repartidor') ||
+               hasTemporaryRole(user?.id || '', 'repartidor'),
+    effectiveRole,
+    temporaryRole,
   };
 };
 

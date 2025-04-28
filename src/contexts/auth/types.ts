@@ -61,6 +61,15 @@ export interface AuthUser {
   created_at?: string;
 }
 
+// Define temporary role assignment type
+export interface TemporaryRoleAssignment {
+  userId: string;
+  role: UserRole;
+  assignedAt: Date;
+  expiresAt: Date;
+  assignedBy: string;
+}
+
 // Define auth context type
 export interface AuthContextType {
   user: AuthUser | null;

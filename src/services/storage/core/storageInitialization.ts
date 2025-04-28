@@ -38,8 +38,9 @@ export const initializeStorage = async (forceCheck = false): Promise<boolean> =>
     try {
       // 1. Intentar usar la función RPC de verificación directa primero (más rápido)
       try {
+        // Corregido: llamamos a la función RPC usando el nombre correcto que existe en la base de datos
         const { data: rpcData, error: rpcError } = await supabase
-          .rpc('verify_menu_images_bucket');
+          .rpc('reset_menu_images_permissions');
           
         if (!rpcError) {
           // La verificación RPC fue exitosa, continuar con migración en segundo plano

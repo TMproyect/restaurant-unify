@@ -1,18 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader } from '@/components/ui/card';
-import { Clock, AlertCircle, DollarSign, ChefHat, Archive, Info, Loader2 } from 'lucide-react';
+import { Clock, AlertCircle, DollarSign, ChefHat, Archive } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { ActivityMonitorProps } from './activity/types';
 import { filterItems, calculateItemsCount } from './activity/utils/filterUtils';
 import ActivityHeader from './activity/ActivityHeader';
 import ActivityTabs from './activity/ActivityTabs';
 import ActivityContent from './activity/ActivityContent';
-import DateRangeFilter from './activity/DateRangeFilter';
+import { useArchive } from '@/hooks/dashboard/use-archive';
+import ArchiveInfo from './activity/ArchiveInfo';
+import DateFilterSection from './activity/DateFilterSection';
 import ActivityPagination from './activity/ActivityPagination';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -37,18 +38,16 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
   });
   
   const [currentPage, setCurrentPage] = useState(1);
-  const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(true);
-  const [lastArchiveRun, setLastArchiveRun] = useState<string | null>(null);
-  const [archivingInProgress, setArchivingInProgress] = useState(false);
   
-  const filters = [
-    { id: 'delayed', label: 'Órdenes con Retraso', icon: <Clock className="h-4 w-4 mr-2" /> },
-    { id: 'cancelled', label: 'Cancelaciones', icon: <AlertCircle className="h-4 w-4 mr-2" /> },
-    { id: 'discounts', label: 'Con Descuentos', icon: <DollarSign className="h-4 w-4 mr-2" /> },
-    { id: 'kitchen', label: 'Cocina', icon: <ChefHat className="h-4 w-4 mr-2" /> },
-    { id: 'archivable', label: 'Por Archivar', icon: <Archive className="h-4 w-4 mr-2" /> }
-  ];
-  
+  const { 
+    archivingInProgress,
+    lastArchiveRun,
+    autoArchiveEnabled,
+    handleManualArchive,
+    setLastArchiveRun,
+    setAutoArchiveEnabled
+  } = useArchive(onActionClick ? () => onActionClick('refresh-data') : undefined);
+
   useEffect(() => {
     const fetchArchiveSettings = async () => {
       try {
@@ -77,18 +76,16 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     };
     
     fetchArchiveSettings();
-  }, []);
+  }, [setAutoArchiveEnabled, setLastArchiveRun]);
   
   useEffect(() => {
     if (items && items.length > 0) {
       const counts = calculateItemsCount(items, dateRange);
       setItemsCount(counts);
-      console.log('📊 [ActivityMonitor] Item counts updated:', counts);
     }
   }, [items, dateRange]);
   
   const filteredItems = filterItems(items, activeTab, activeFilter, dateRange);
-  
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
   
   useEffect(() => {
@@ -109,62 +106,16 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
   };
   
   const handleDateRangeChange = (range: { start: Date | null; end: Date | null }) => {
-    console.log('📊 [ActivityMonitor] Date range changed:', range);
     setDateRange(range);
   };
-  
-  const handleManualArchive = async () => {
-    try {
-      setArchivingInProgress(true);
-      toast.info('Iniciando proceso de archivado...');
-      
-      const { data, error } = await supabase.functions.invoke('archive-old-orders');
-      
-      if (error) {
-        console.error('❌ [ActivityMonitor] Error archiving orders:', error);
-        toast.error(`Error al archivar: ${error.message}`);
-        return;
-      }
-      
-      if (data.processed > 0) {
-        const now = new Date().toISOString();
-        await supabase
-          .from('system_settings')
-          .upsert({ key: 'last_archive_run', value: now });
-        
-        setLastArchiveRun(now);
-        toast.success(`Se archivaron ${data.processed} órdenes antiguas correctamente`);
-        
-        if (onActionClick) {
-          onActionClick('refresh-data');
-        }
-      } else {
-        toast.info('No hay órdenes para archivar en este momento');
-      }
-    } catch (error) {
-      console.error('❌ [ActivityMonitor] Error in manual archive:', error);
-      toast.error('Error al archivar órdenes');
-    } finally {
-      setArchivingInProgress(false);
-    }
-  };
-  
-  const getLastArchiveText = () => {
-    if (!lastArchiveRun) return 'Nunca';
-    
-    try {
-      const date = new Date(lastArchiveRun);
-      return date.toLocaleString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return 'Fecha desconocida';
-    }
-  };
+
+  const filters = [
+    { id: 'delayed', label: 'Órdenes con Retraso', icon: <Clock className="h-4 w-4 mr-2" /> },
+    { id: 'cancelled', label: 'Cancelaciones', icon: <AlertCircle className="h-4 w-4 mr-2" /> },
+    { id: 'discounts', label: 'Con Descuentos', icon: <DollarSign className="h-4 w-4 mr-2" /> },
+    { id: 'kitchen', label: 'Cocina', icon: <ChefHat className="h-4 w-4 mr-2" /> },
+    { id: 'archivable', label: 'Por Archivar', icon: <Archive className="h-4 w-4 mr-2" /> }
+  ];
   
   return (
     <TooltipProvider>
@@ -178,48 +129,15 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
                 filters={filters}
               />
               
-              <div className="flex items-center gap-3">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Info className="h-4 w-4" />
-                      <span>Último archivado: {getLastArchiveText()}</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    <p className="text-xs">
-                      {autoArchiveEnabled 
-                        ? 'El archivado automático está habilitado. Las órdenes antiguas se archivarán automáticamente.' 
-                        : 'El archivado automático está deshabilitado. Puede archivar órdenes manualmente.'}
-                    </p>
-                    <p className="text-xs mt-1">
-                      Configurar en: Ajustes &gt; Archivado
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-                
-                <Badge
-                  variant="outline" 
-                  className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 cursor-pointer hover:bg-purple-100 transition-colors"
-                  onClick={handleManualArchive}
-                >
-                  {archivingInProgress ? (
-                    <span className="flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Archivando...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1">
-                      <Archive className="h-3 w-3" />
-                      Archivar ({itemsCount.archivable})
-                    </span>
-                  )}
-                </Badge>
-              </div>
+              <ArchiveInfo
+                lastArchiveRun={lastArchiveRun}
+                autoArchiveEnabled={autoArchiveEnabled}
+                archivingInProgress={archivingInProgress}
+                archivableCount={itemsCount.archivable}
+                onArchiveClick={handleManualArchive}
+              />
             </div>
-            <div className="flex justify-end">
-              <DateRangeFilter onRangeChange={handleDateRangeChange} />
-            </div>
+            <DateFilterSection onRangeChange={handleDateRangeChange} />
           </div>
         </CardHeader>
         

@@ -1,26 +1,26 @@
 
 import { ActivityMonitorItem } from '@/types/dashboard.types';
-import { ReactNode } from 'react';
-
-export interface ActivityMonitorProps {
-  items: ActivityMonitorItem[];
-  isLoading: boolean;
-  onActionClick?: (action: string) => void;
-}
-
-export interface ActivityTableProps {
-  filteredItems: ActivityMonitorItem[];
-  onActionClick?: (action: string) => void;
-}
 
 export interface ActivityHeaderProps {
   activeFilter: string | null;
   setActiveFilter: (filter: string | null) => void;
-  filters: FilterType[];
+  filters: { id: string; label: string; icon: JSX.Element }[];
 }
 
-export interface ActionButtonsProps {
-  actions: string[];
+export interface ActivityTabsProps {
+  itemsCount: Record<string, number>;
+}
+
+export interface ActivityContentProps {
+  isLoading: boolean;
+  items: ActivityMonitorItem[];
+  filteredItems: ActivityMonitorItem[];
+  onActionClick?: (action: string) => void;
+  activeFilter?: string | null;
+}
+
+export interface ActivityTableProps {
+  filteredItems: ActivityMonitorItem[];
   onActionClick?: (action: string) => void;
 }
 
@@ -29,18 +29,23 @@ export interface StatusBadgeProps {
   isDelayed?: boolean;
 }
 
-export interface EmptyStateProps {
-  filter: string | null;
+export interface ActionButtonsProps {
+  actions: string[];
+  onActionClick?: (action: string) => void;
 }
 
-export interface FilterDropdownProps {
-  activeFilter: string | null;
-  setActiveFilter: (filter: string | null) => void;
-  filters: FilterType[];
+export interface ActivityMonitorProps {
+  items: ActivityMonitorItem[];
+  isLoading: boolean;
+  onActionClick?: (action: string) => void;
 }
 
-export interface FilterType {
-  id: string;
-  label: string;
-  icon: ReactNode;
+export interface ActivityPaginationProps {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+export interface DateRangeFilterProps {
+  onRangeChange: (range: { start: Date | null; end: Date | null }) => void;
 }

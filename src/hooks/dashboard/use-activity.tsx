@@ -67,3 +67,31 @@ export function prioritizeOrderAction(orderId: string, callback?: () => void) {
     }
   });
 }
+
+// Add function to check if orders are eligible for archiving
+export function getArchivableOrdersCount(items: ActivityMonitorItem[]): number {
+  if (!items || items.length === 0) return 0;
+  
+  return items.filter(item => {
+    const itemDate = new Date(item.timestamp);
+    const now = new Date();
+    const hoursElapsed = (now.getTime() - itemDate.getTime()) / (1000 * 60 * 60);
+    
+    // Completed orders older than 24 hours
+    if ((item.status === 'completed' || item.status === 'delivered') && hoursElapsed >= 24) {
+      return true;
+    }
+    
+    // Cancelled orders older than 48 hours
+    if (item.status === 'cancelled' && hoursElapsed >= 48) {
+      return true;
+    }
+    
+    // Pending/preparing orders older than 12 hours (likely test orders)
+    if ((item.status === 'pending' || item.status === 'preparing') && hoursElapsed >= 12) {
+      return true;
+    }
+    
+    return false;
+  }).length;
+}

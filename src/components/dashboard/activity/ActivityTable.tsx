@@ -7,8 +7,9 @@ import ActionButtons from './ActionButtons';
 import StatusBadge from './StatusBadge';
 import { ActivityTableProps } from './types';
 import OrderSourceBadge from '@/components/kitchen/OrderSourceBadge';
-import { Clock, Zap, AlertCircle } from 'lucide-react';
+import { Clock, Zap, AlertCircle, Archive } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { isOrderArchivable } from './utils/filterUtils';
 
 const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionClick }) => {
   return (
@@ -34,6 +35,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
             const isDelayed = item.isDelayed;
             const hasCancellation = item.hasCancellation;
             const hasHighDiscount = item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15;
+            const isArchivable = isOrderArchivable(item);
             const isException = isDelayed || hasCancellation || hasHighDiscount;
             
             // Enhanced time status calculation
@@ -41,6 +43,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
             
             // Determine row styling based on exceptions
             const rowClassName = `border-b hover:bg-muted/30 ${
+              isArchivable ? 'bg-purple-50/50' :
               isDelayed ? 'bg-amber-50' : 
               hasCancellation ? 'bg-red-50' : 
               hasHighDiscount ? 'bg-green-50' : 
@@ -123,7 +126,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                           )}
                           {timeStatus.status === 'archive-soon' && (
                             <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 flex items-center">
-                              <Clock className="h-3 w-3 mr-1" />
+                              <Archive className="h-3 w-3 mr-1" />
                               Por archivar
                             </Badge>
                           )}
@@ -131,6 +134,9 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ filteredItems, onActionCl
                       </TooltipTrigger>
                       <TooltipContent>
                         <p className="text-xs">{timeStatus.message}</p>
+                        {isArchivable && (
+                          <p className="text-xs mt-1 text-purple-600">Esta orden será archivada automáticamente pronto.</p>
+                        )}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -163,6 +169,14 @@ function getTimeStatus(item: ActivityMonitorItem): { status: 'normal' | 'warning
   const minutesElapsed = item.timeElapsed / (1000 * 60);
   const hoursElapsed = minutesElapsed / 60;
   const status = item.status.toLowerCase();
+  
+  // Check if the order is archivable
+  if (isOrderArchivable(item)) {
+    return { 
+      status: 'archive-soon', 
+      message: getArchiveMessage(item) 
+    };
+  }
   
   // Define thresholds based on order status
   if (status === 'pending' || status === 'pendiente' || status === 'priority-pending') {
@@ -216,15 +230,29 @@ function getTimeStatus(item: ActivityMonitorItem): { status: 'normal' | 'warning
     }
   }
   
-  // Handle test orders (orders older than 8 hours with status pending/preparing)
-  if ((status.includes('pend') || status.includes('prepar')) && hoursElapsed > 8) {
-    return { 
-      status: 'archive-soon', 
-      message: `Posible pedido de prueba. Será archivado en ${(12 - hoursElapsed).toFixed(1)} horas si no se procesa.` 
-    };
+  return { status: 'normal', message: `Tiempo de procesamiento normal.` };
+}
+
+// Helper function to generate archive message
+function getArchiveMessage(item: ActivityMonitorItem): string {
+  const hoursElapsed = item.timeElapsed / (1000 * 60 * 60);
+  const status = item.status.toLowerCase();
+  
+  if (status === 'completed' || status === 'completado' || status === 'entregado' || status === 'delivered') {
+    return `Este pedido completado será archivado pronto (superó las 24 horas)`;
   }
   
-  return { status: 'normal', message: `Tiempo de procesamiento normal.` };
+  if (status === 'cancelled' || status === 'cancelado' || status === 'cancelada') {
+    return `Este pedido cancelado será archivado pronto (superó las 48 horas)`;
+  }
+  
+  if ((status === 'pending' || status === 'pendiente' || 
+      status === 'preparing' || status === 'preparando' || 
+      status === 'en preparación') && hoursElapsed > 12) {
+    return `Este pedido inactivo será archivado pronto (posible pedido de prueba)`;
+  }
+  
+  return `Este pedido será archivado pronto`;
 }
 
 // Helper to get contextual actions based on order state

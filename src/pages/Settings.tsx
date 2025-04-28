@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,6 +18,7 @@ import PaymentConfiguration from '@/components/settings/PaymentConfiguration';
 import { PrintJobMonitor } from '@/components/ui/printing/PrintJobMonitor';
 import { TestPrintButton } from '@/components/ui/printing/TestPrintButton';
 import { Separator } from '@/components/ui/separator';
+import ArchiveSettings from '@/components/settings/ArchiveSettings';
 
 const QZ_DOWNLOAD_LINK = "https://qz.io/download/";
 
@@ -38,7 +38,6 @@ const Settings = () => {
     status
   } = usePrintService();
 
-  // Efecto para detectar cuando cambia el estado de conexión
   useEffect(() => {
     if (status === 'connected') {
       setIsConnecting(false);
@@ -66,7 +65,6 @@ const Settings = () => {
     try {
       const result = await connect();
       console.log("Settings: Resultado de conexión:", result ? "Exitoso" : "Fallido");
-      // La desactivación del estado de conexión se maneja en el useEffect
     } catch (error) {
       console.error("Settings: Error al conectar", error);
       setIsConnecting(false);
@@ -80,8 +78,9 @@ const Settings = () => {
           <h1 className="text-2xl font-bold">Configuración</h1>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8">
+            <TabsList className="grid w-full grid-cols-6 mb-8">
               <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="archives">Archivado</TabsTrigger>
               <TabsTrigger value="printers">Impresión</TabsTrigger>
               <TabsTrigger value="payments">Pagos</TabsTrigger>
               <TabsTrigger value="roles">Roles y Permisos</TabsTrigger>
@@ -100,6 +99,10 @@ const Settings = () => {
                   <p>Configuraciones generales del sistema como idioma, moneda, etc.</p>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="archives" className="space-y-4">
+              <ArchiveSettings />
             </TabsContent>
 
             <TabsContent value="printers" className="space-y-4">
@@ -262,7 +265,6 @@ const Settings = () => {
                     </TabsContent>
                     
                     <TabsContent value="stations">
-                      {/* Printer Stations Configuration */}
                       {isConnected ? (
                         <PrinterStationsConfig />
                       ) : (
@@ -302,7 +304,6 @@ const Settings = () => {
               </Card>
             </TabsContent>
 
-            {/* Nueva pestaña de configuración de pagos */}
             <TabsContent value="payments" className="space-y-4">
               <PaymentConfiguration />
             </TabsContent>

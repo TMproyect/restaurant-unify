@@ -4,7 +4,7 @@ import { useDashboardInit } from '@/hooks/use-dashboard-init';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Archive } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import EnhancedDashboardCard from '@/components/dashboard/EnhancedDashboardCard';
 import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
@@ -13,15 +13,12 @@ import { CancellationReviewDialog } from '@/components/dashboard/activity';
 import DiscountReviewDialog from '@/components/dashboard/activity/DiscountReviewDialog';
 import CancellationReasonDialog from '@/components/dashboard/activity/CancellationReasonDialog';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 
 export default function Dashboard() {
   const [isMounted, setIsMounted] = useState(false);
   const { error: initError, isReady } = useDashboardInit();
   const { isAdmin } = usePermissions();
-  const [isArchiving, setIsArchiving] = useState(false);
   
   const { 
     dashboardCards, 
@@ -68,33 +65,13 @@ export default function Dashboard() {
     return () => clearTimeout(reconnectTimer);
   }, [dataError, isMounted, refreshAllData]);
   
-  const handleManualArchive = async () => {
-    try {
-      setIsArchiving(true);
-      
-      toast.info('Iniciando proceso de archivado...');
-      
-      const { data, error } = await supabase.functions.invoke('archive-old-orders');
-      
-      if (error) {
-        console.error('❌ [Dashboard] Error archiving orders:', error);
-        toast.error(`Error al archivar: ${error.message}`);
-        return;
-      }
-      
-      if (data.processed > 0) {
-        toast.success(`Se archivaron ${data.processed} órdenes antiguas correctamente`);
-      } else {
-        toast.info('No hay órdenes para archivar en este momento');
-      }
-      
+  const handleActivityAction = (action: string) => {
+    if (action === 'refresh-data') {
       refreshAllData();
-    } catch (error) {
-      console.error('❌ [Dashboard] Error in manual archive:', error);
-      toast.error('Error al archivar órdenes');
-    } finally {
-      setIsArchiving(false);
+      return;
     }
+    
+    handleActionClick(action);
   };
   
   if (!isReady && !initError) {
@@ -141,20 +118,8 @@ export default function Dashboard() {
     <Layout>
       <TooltipProvider>
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div>
             <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
-            
-            {isAdmin && (
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={handleManualArchive}
-                disabled={isArchiving}
-              >
-                <Archive className="h-4 w-4" />
-                {isArchiving ? 'Archivando...' : 'Archivar Órdenes Antiguas'}
-              </Button>
-            )}
           </div>
           
           {error && (
@@ -191,7 +156,7 @@ export default function Dashboard() {
           <ActivityMonitor
             items={activityItems}
             isLoading={isLoadingActivity}
-            onActionClick={handleActionClick}
+            onActionClick={handleActivityAction}
           />
           
           <OrderDetailsDialog 

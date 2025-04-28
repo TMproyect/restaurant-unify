@@ -7,7 +7,7 @@ import {
   deleteMenuItemImage, 
   initializeStorage,
   getImageUrlWithCacheBusting
-} from '../storage/imageStorage';
+} from '../storage/index';
 
 // Re-exportar para compatibilidad con código existente
 export { 

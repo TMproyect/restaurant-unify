@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -19,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { MenuItem, createMenuItem, updateMenuItem } from '@/services/menu/menuItemService';
-import { uploadMenuItemImage, initializeStorage } from '@/services/storage/imageStorage';
+import { uploadMenuItemImage, initializeStorage } from '@/services/storage/index';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, ImagePlus, Loader2, Upload } from 'lucide-react';
 import {

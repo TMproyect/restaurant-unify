@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
-import { initializeStorage } from '@/services/storage/imageStorage';
+import { initializeStorage } from '@/services/storage/index';
 import { migrateAllBase64Images } from '@/services/menu/menuItemService';
 
 const Menu: React.FC = () => {

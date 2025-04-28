@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface OrderActionMenuProps {
   orderId: string;
@@ -25,6 +26,12 @@ const OrderActionMenu: React.FC<OrderActionMenuProps> = ({
 }) => {
   console.log(`🔄 [OrderActionMenu] Rendering for order ${orderId} with status ${status}`);
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  
+  // Check for specific permissions
+  const canChangeStatus = hasPermission('orders.manage');
+  const canArchiveOrders = hasPermission('orders.archive');
+  const canRestoreArchived = hasPermission('orders.restore_archived');
   
   return (
     <DropdownMenu>
@@ -35,35 +42,44 @@ const OrderActionMenu: React.FC<OrderActionMenuProps> = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {isArchived ? (
-          // Acciones para órdenes archivadas
-          <DropdownMenuItem onClick={() => onStatusChange(orderId, 'pending')}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Restaurar orden
-          </DropdownMenuItem>
-        ) : (
-          // Acciones para órdenes no archivadas
+          // Actions for archived orders
           <>
-            {status === 'pending' && (
-              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'preparing')}>
-                Iniciar preparación
+            {canRestoreArchived && (
+              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'pending')}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Restaurar orden
               </DropdownMenuItem>
             )}
-            {status === 'preparing' && (
-              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'ready')}>
-                Marcar como listo
-              </DropdownMenuItem>
+          </>
+        ) : (
+          // Actions for non-archived orders
+          <>
+            {canChangeStatus && (
+              <>
+                {status === 'pending' && (
+                  <DropdownMenuItem onClick={() => onStatusChange(orderId, 'preparing')}>
+                    Iniciar preparación
+                  </DropdownMenuItem>
+                )}
+                {status === 'preparing' && (
+                  <DropdownMenuItem onClick={() => onStatusChange(orderId, 'ready')}>
+                    Marcar como listo
+                  </DropdownMenuItem>
+                )}
+                {status === 'ready' && (
+                  <DropdownMenuItem onClick={() => onStatusChange(orderId, 'delivered')}>
+                    Marcar como entregado
+                  </DropdownMenuItem>
+                )}
+                {(status === 'pending' || status === 'preparing') && (
+                  <DropdownMenuItem onClick={() => onStatusChange(orderId, 'cancelled')}>
+                    Cancelar pedido
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
-            {status === 'ready' && (
-              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'delivered')}>
-                Marcar como entregado
-              </DropdownMenuItem>
-            )}
-            {(status === 'pending' || status === 'preparing') && (
-              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'cancelled')}>
-                Cancelar pedido
-              </DropdownMenuItem>
-            )}
-            {(status === 'delivered' || status === 'cancelled') && (
+            
+            {canArchiveOrders && (status === 'delivered' || status === 'cancelled') && (
               <DropdownMenuItem onClick={() => onStatusChange(orderId, 'archived')}>
                 <Archive className="mr-2 h-4 w-4" />
                 Archivar orden

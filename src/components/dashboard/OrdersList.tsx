@@ -6,6 +6,7 @@ import OrderTableRow from './orders/OrderTableRow';
 import LoadingState from './orders/LoadingState';
 import EmptyOrdersState from './orders/EmptyOrdersState';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePermissions } from '@/hooks/use-permissions';
 
 type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'archived' | 'all';
 
@@ -24,6 +25,10 @@ const OrdersList: React.FC<OrdersListProps> = ({
 }) => {
   console.log('🔄 [OrdersList] Component rendering with filter:', filter, 'and limit:', limit);
   const [showArchived, setShowArchived] = useState(false);
+  const { hasPermission } = usePermissions();
+  
+  // Check if user has permission to view archived orders
+  const canViewArchived = hasPermission('orders.view_archived');
   
   const { 
     orders: filteredOrders,
@@ -34,19 +39,29 @@ const OrdersList: React.FC<OrdersListProps> = ({
     searchQuery,
     limit,
     onRefresh,
-    includeArchived: showArchived
+    includeArchived: showArchived && canViewArchived
   });
+  
+  // If user doesn't have permission to view archived orders and showArchived is true,
+  // reset to showing active orders
+  React.useEffect(() => {
+    if (showArchived && !canViewArchived) {
+      setShowArchived(false);
+    }
+  }, [canViewArchived, showArchived]);
   
   return (
     <div className="overflow-hidden">
-      <div className="p-2 border-b">
-        <Tabs value={showArchived ? "archived" : "active"} onValueChange={(value) => setShowArchived(value === "archived")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="active">Órdenes Activas</TabsTrigger>
-            <TabsTrigger value="archived">Órdenes Archivadas</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {canViewArchived && (
+        <div className="p-2 border-b">
+          <Tabs value={showArchived ? "archived" : "active"} onValueChange={(value) => setShowArchived(value === "archived")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="active">Órdenes Activas</TabsTrigger>
+              <TabsTrigger value="archived">Órdenes Archivadas</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
       
       {loading ? (
         <LoadingState />

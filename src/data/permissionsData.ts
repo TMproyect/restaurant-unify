@@ -1,3 +1,4 @@
+
 import { Permission, UserRole } from "@/contexts/auth/types";
 
 // Helper function to create default permissions record with all roles
@@ -94,6 +95,54 @@ export const defaultPermissions: Permission[] = [
     id: "orders.cancel",
     name: "Cancelar pedidos completos o ítems individuales",
     description: "Acción sensible, usualmente requiere permiso de Gerente",
+    category: "orders",
+    default: createDefaultPermissions({
+      admin: true,
+      gerente: true,
+      propietario: true
+    })
+  },
+  {
+    id: "orders.manage",
+    name: "Cambiar estado de los pedidos",
+    description: "Marcar como en preparación, listo, entregado, etc.",
+    category: "orders",
+    default: createDefaultPermissions({
+      admin: true,
+      gerente: true,
+      mesero: true,
+      cocina: true,
+      kitchen: true,
+      propietario: true
+    })
+  },
+  {
+    id: "orders.archive",
+    name: "Archivar órdenes completadas o canceladas",
+    description: "Mover pedidos al archivo histórico",
+    category: "orders",
+    default: createDefaultPermissions({
+      admin: true,
+      gerente: true,
+      propietario: true
+    })
+  },
+  {
+    id: "orders.view_archived",
+    name: "Ver órdenes archivadas",
+    description: "Acceder al historial de pedidos archivados",
+    category: "orders",
+    default: createDefaultPermissions({
+      admin: true,
+      gerente: true,
+      propietario: true,
+      cajero: true
+    })
+  },
+  {
+    id: "orders.restore_archived",
+    name: "Restaurar órdenes archivadas",
+    description: "Devolver órdenes archivadas al flujo activo",
     category: "orders",
     default: createDefaultPermissions({
       admin: true,

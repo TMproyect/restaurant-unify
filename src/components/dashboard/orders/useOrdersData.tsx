@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Order } from '@/types/order.types';
 import { getOrders, subscribeToOrders, subscribeToFilteredOrders, updateOrderStatus } from '@/services/orderService';
@@ -5,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { safeArray } from '@/utils/safetyUtils';
 import { toast } from 'sonner';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
+import { usePermissions } from '@/hooks/use-permissions';
 
 type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'archived' | 'all';
 
@@ -26,13 +28,23 @@ export function useOrdersData({
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast: uiToast } = useToast();
+  const { hasPermission } = usePermissions();
+  
+  // Check permissions
+  const canViewArchived = hasPermission('orders.view_archived');
+  const canManageOrders = hasPermission('orders.manage');
+  const canArchiveOrders = hasPermission('orders.archive');
+  const canRestoreArchived = hasPermission('orders.restore_archived');
+  
+  // Force includeArchived to false if user doesn't have permission
+  const effectiveIncludeArchived = includeArchived && canViewArchived;
 
   const loadOrders = useCallback(async () => {
     console.log('🔍 [useOrdersData] Starting to load orders...');
     setLoading(true);
     try {
-      console.log(`🔍 [useOrdersData] Calling getOrders with filter: ${filter}, includeArchived: ${includeArchived}`);
-      const data = await getOrders(includeArchived);
+      console.log(`🔍 [useOrdersData] Calling getOrders with filter: ${filter}, includeArchived: ${effectiveIncludeArchived}`);
+      const data = await getOrders(effectiveIncludeArchived);
       console.log(`✅ [useOrdersData] Received orders data, length:`, data?.length || 0);
       if (data && data.length > 0) {
         console.log(`✅ [useOrdersData] Sample order:`, data[0]);
@@ -53,11 +65,40 @@ export function useOrdersData({
       console.log('✅ [useOrdersData] Setting loading state to false');
       setLoading(false);
     }
-  }, [filter, uiToast, includeArchived]);
+  }, [filter, uiToast, effectiveIncludeArchived]);
 
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
     try {
       console.log(`🔄 [useOrdersData] Updating order ${orderId} status to ${newStatus}`);
+      
+      // Check permissions first
+      if (newStatus === 'archived' && !canArchiveOrders) {
+        uiToast({
+          title: "Permiso denegado",
+          description: "No tienes permisos para archivar órdenes",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (orders.find(o => o.id === orderId)?.status === 'archived' && !canRestoreArchived) {
+        uiToast({
+          title: "Permiso denegado",
+          description: "No tienes permisos para restaurar órdenes archivadas",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (newStatus !== 'archived' && orders.find(o => o.id === orderId)?.status !== 'archived' && !canManageOrders) {
+        uiToast({
+          title: "Permiso denegado",
+          description: "No tienes permisos para cambiar el estado de las órdenes",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setLoading(true);
       // Convert the string status to a valid NormalizedOrderStatus
       const normalizedStatus = newStatus as NormalizedOrderStatus;
@@ -135,19 +176,19 @@ export function useOrdersData({
       console.error('❌ [useOrdersData] Error setting up realtime subscription:', error);
       toast.error("Error al conectar con actualizaciones en tiempo real");
     }
-  }, [filter, loadOrders, includeArchived]);
+  }, [filter, loadOrders, effectiveIncludeArchived]);
 
   const filteredOrders = orders
     .filter(order => {
       console.log(`🔍 [useOrdersData] Filtering order ${order.id} with status ${order.status}, comparing to filter ${filter}`);
       
       // Si estamos mostrando órdenes archivadas, solo mostrar las que tienen status 'archived'
-      if (includeArchived && order.status !== 'archived') {
+      if (effectiveIncludeArchived && order.status !== 'archived') {
         return false;
       }
       
       // Si NO estamos mostrando órdenes archivadas, excluir las que tienen status 'archived'
-      if (!includeArchived && order.status === 'archived') {
+      if (!effectiveIncludeArchived && order.status === 'archived') {
         return false;
       }
       
@@ -178,6 +219,10 @@ export function useOrdersData({
     orders: filteredOrders,
     loading,
     handleOrderStatusChange,
-    loadOrders
+    loadOrders,
+    canViewArchived,
+    canArchiveOrders,
+    canRestoreArchived,
+    canManageOrders
   };
 }

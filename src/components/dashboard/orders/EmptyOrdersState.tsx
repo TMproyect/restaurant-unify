@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Archive, Search } from 'lucide-react';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface EmptyOrdersStateProps {
   searchQuery?: string;
@@ -13,12 +14,15 @@ const EmptyOrdersState: React.FC<EmptyOrdersStateProps> = ({
   filter = 'all',
   isArchived = false
 }) => {
+  const { hasPermission } = usePermissions();
+  const canViewArchived = hasPermission('orders.view_archived');
+  
   const getEmptyMessage = () => {
     if (searchQuery) {
       return `No se encontraron órdenes que coincidan con "${searchQuery}"`;
     }
     
-    if (isArchived) {
+    if (isArchived && canViewArchived) {
       return "No hay órdenes archivadas actualmente";
     }
     
@@ -33,7 +37,7 @@ const EmptyOrdersState: React.FC<EmptyOrdersStateProps> = ({
     <tr>
       <td colSpan={7} className="px-3 py-16">
         <div className="flex flex-col items-center justify-center text-center">
-          {isArchived ? (
+          {isArchived && canViewArchived ? (
             <Archive className="h-12 w-12 text-muted-foreground/30 mb-4" />
           ) : (
             <Search className="h-12 w-12 text-muted-foreground/30 mb-4" />

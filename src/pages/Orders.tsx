@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
 import { getOrderWithItems } from '@/services/orderService';
 import { useAuth } from '@/contexts/auth/AuthContext';
+import { usePermissions } from '@/hooks/use-permissions';
 import WaiterTableView from '@/components/order/WaiterTableView';
 
 const Orders = () => {
@@ -20,22 +21,17 @@ const Orders = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const { hasPermission, isWaiter, isAdmin, isManager } = usePermissions();
   
-  // Verificar permisos del usuario
-  const isWaiter = user?.role === 'mesero';
-  const canViewTables = user?.role === 'admin' || 
-                       user?.role === 'propietario' || 
-                       user?.role === 'gerente' || 
-                       user?.role === 'mesero';
-  
-  const canCreateOrders = user?.role === 'admin' || 
-                          user?.role === 'propietario' || 
-                          user?.role === 'gerente' || 
-                          user?.role === 'mesero';
+  // Check permissions
+  const canViewTables = hasPermission('tables.view');
+  const canCreateOrders = hasPermission('orders.create');
   
   console.log('🔍 [Orders] Comprobando permisos del usuario:', { 
     role: user?.role, 
     isWaiter,
+    isAdmin,
+    isManager,
     canViewTables,
     canCreateOrders
   });

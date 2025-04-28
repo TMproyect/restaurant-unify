@@ -28,6 +28,10 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       label: 'Cancelado',
       classes: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     },
+    archived: {
+      label: 'Archivado',
+      classes: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    },
   };
 
   const { label, classes } = statusConfig[status] || {

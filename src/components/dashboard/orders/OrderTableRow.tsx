@@ -8,15 +8,20 @@ import OrderActionMenu from './OrderActionMenu';
 interface OrderTableRowProps {
   order: Order;
   onStatusChange: (orderId: string, newStatus: string) => Promise<void>;
+  isArchived?: boolean;
 }
 
-const OrderTableRow: React.FC<OrderTableRowProps> = ({ order, onStatusChange }) => {
+const OrderTableRow: React.FC<OrderTableRowProps> = ({ 
+  order, 
+  onStatusChange,
+  isArchived = false
+}) => {
   console.log(`🔄 [OrderTableRow] Rendering row for order ${order.id}`);
   
   return (
     <tr 
       key={order.id}
-      className="hover:bg-muted/50 transition-colors"
+      className={`hover:bg-muted/50 transition-colors ${isArchived ? 'bg-gray-50 dark:bg-gray-900/30' : ''}`}
     >
       <td className="whitespace-nowrap px-3 py-4 text-sm">
         <div className="font-medium">#{order.id?.substring(0, 4)}</div>
@@ -69,6 +74,7 @@ const OrderTableRow: React.FC<OrderTableRowProps> = ({ order, onStatusChange }) 
           orderId={order.id!} 
           status={order.status}
           onStatusChange={onStatusChange}
+          isArchived={isArchived}
         />
       </td>
     </tr>

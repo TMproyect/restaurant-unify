@@ -3,14 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem } from '@/types/order.types';
 import { filterValue, mapArrayResponse, mapSingleResponse } from '@/utils/supabaseHelpers';
 
-export const getOrders = async (): Promise<Order[]> => {
-  console.log('🔍 [orderQueries] Fetching all orders');
+export const getOrders = async (includeArchived: boolean = false): Promise<Order[]> => {
+  console.log(`🔍 [orderQueries] Fetching ${includeArchived ? 'all' : 'active'} orders`);
   
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('orders')
       .select('*')
-      .order('created_at', { ascending: false });
+
+    // Si no se solicitan órdenes archivadas, excluirlas de la consulta
+    if (!includeArchived) {
+      query = query.neq('status', 'archived');
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('❌ [orderQueries] Error fetching orders:', error);

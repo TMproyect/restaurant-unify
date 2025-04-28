@@ -1,32 +1,46 @@
 
 import React from 'react';
-import { Search } from 'lucide-react';
+import { Archive, Search } from 'lucide-react';
 
 interface EmptyOrdersStateProps {
   searchQuery?: string;
   filter?: string;
+  isArchived?: boolean;
 }
 
-const EmptyOrdersState: React.FC<EmptyOrdersStateProps> = ({ searchQuery, filter }) => {
-  console.log('🔄 [EmptyOrdersState] Rendering empty state. Search:', searchQuery, 'Filter:', filter);
-  
+const EmptyOrdersState: React.FC<EmptyOrdersStateProps> = ({ 
+  searchQuery = '',
+  filter = 'all',
+  isArchived = false
+}) => {
+  const getEmptyMessage = () => {
+    if (searchQuery) {
+      return `No se encontraron órdenes que coincidan con "${searchQuery}"`;
+    }
+    
+    if (isArchived) {
+      return "No hay órdenes archivadas actualmente";
+    }
+    
+    if (filter !== 'all') {
+      return `No hay órdenes con estado "${filter}"`;
+    }
+    
+    return "No hay órdenes para mostrar";
+  };
+
   return (
     <tr>
-      <td colSpan={7} className="text-center py-10 text-muted-foreground">
-        {searchQuery ? (
-          <div className="flex flex-col items-center">
-            <Search className="h-8 w-8 text-muted-foreground/60 mb-2" />
-            <p>No se encontraron órdenes para <strong>"{searchQuery}"</strong></p>
-            <p className="text-sm mt-1">Intenta con otra búsqueda</p>
-          </div>
-        ) : (
-          <div>
-            <p>No hay órdenes para mostrar.</p>
-            {filter !== 'all' && (
-              <p className="text-sm mt-1">No hay órdenes con estado "{filter}"</p>
-            )}
-          </div>
-        )}
+      <td colSpan={7} className="px-3 py-16">
+        <div className="flex flex-col items-center justify-center text-center">
+          {isArchived ? (
+            <Archive className="h-12 w-12 text-muted-foreground/30 mb-4" />
+          ) : (
+            <Search className="h-12 w-12 text-muted-foreground/30 mb-4" />
+          )}
+          <h3 className="text-lg font-medium mb-1">No hay órdenes disponibles</h3>
+          <p className="text-muted-foreground">{getEmptyMessage()}</p>
+        </div>
       </td>
     </tr>
   );

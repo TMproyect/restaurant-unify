@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Order } from '@/types/order.types';
 import { getOrders, subscribeToOrders, subscribeToFilteredOrders, updateOrderStatus } from '@/services/orderService';
@@ -7,20 +6,22 @@ import { safeArray } from '@/utils/safetyUtils';
 import { toast } from 'sonner';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 
-type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'all';
+type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'archived' | 'all';
 
 interface UseOrdersDataProps {
   filter?: OrderStatusUI;
   searchQuery?: string;
   limit?: number;
   onRefresh?: () => void;
+  includeArchived?: boolean;
 }
 
 export function useOrdersData({
   filter = 'all',
   searchQuery = '',
   limit = 10,
-  onRefresh
+  onRefresh,
+  includeArchived = false
 }: UseOrdersDataProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +31,8 @@ export function useOrdersData({
     console.log('🔍 [useOrdersData] Starting to load orders...');
     setLoading(true);
     try {
-      console.log(`🔍 [useOrdersData] Calling getOrders with filter: ${filter}`);
-      const data = await getOrders();
+      console.log(`🔍 [useOrdersData] Calling getOrders with filter: ${filter}, includeArchived: ${includeArchived}`);
+      const data = await getOrders(includeArchived);
       console.log(`✅ [useOrdersData] Received orders data, length:`, data?.length || 0);
       if (data && data.length > 0) {
         console.log(`✅ [useOrdersData] Sample order:`, data[0]);
@@ -52,7 +53,7 @@ export function useOrdersData({
       console.log('✅ [useOrdersData] Setting loading state to false');
       setLoading(false);
     }
-  }, [filter, uiToast]);
+  }, [filter, uiToast, includeArchived]);
 
   const handleOrderStatusChange = async (orderId: string, newStatus: string) => {
     try {
@@ -71,7 +72,8 @@ export function useOrdersData({
             newStatus === 'preparing' ? 'En preparación' :
             newStatus === 'ready' ? 'Lista' :
             newStatus === 'delivered' ? 'Entregada' :
-            newStatus === 'cancelled' ? 'Cancelada' : newStatus
+            newStatus === 'cancelled' ? 'Cancelada' :
+            newStatus === 'archived' ? 'Archivada' : newStatus
           }"`
         });
       } else {
@@ -100,7 +102,6 @@ export function useOrdersData({
     }
   };
 
-  // Efecto para carga inicial y suscripción a tiempo real
   useEffect(() => {
     console.log('🔄 [useOrdersData] useEffect triggered, loading orders...');
     loadOrders();
@@ -134,11 +135,21 @@ export function useOrdersData({
       console.error('❌ [useOrdersData] Error setting up realtime subscription:', error);
       toast.error("Error al conectar con actualizaciones en tiempo real");
     }
-  }, [filter, loadOrders]);
+  }, [filter, loadOrders, includeArchived]);
 
   const filteredOrders = orders
     .filter(order => {
       console.log(`🔍 [useOrdersData] Filtering order ${order.id} with status ${order.status}, comparing to filter ${filter}`);
+      
+      // Si estamos mostrando órdenes archivadas, solo mostrar las que tienen status 'archived'
+      if (includeArchived && order.status !== 'archived') {
+        return false;
+      }
+      
+      // Si NO estamos mostrando órdenes archivadas, excluir las que tienen status 'archived'
+      if (!includeArchived && order.status === 'archived') {
+        return false;
+      }
       
       if (filter !== 'all' && order.status !== filter) {
         console.log(`🔍 [useOrdersData] Order ${order.id} filtered out due to status mismatch`);

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Archive, RotateCcw } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -14,12 +14,14 @@ interface OrderActionMenuProps {
   orderId: string;
   status: string;
   onStatusChange: (orderId: string, newStatus: string) => Promise<void>;
+  isArchived?: boolean;
 }
 
 const OrderActionMenu: React.FC<OrderActionMenuProps> = ({ 
   orderId, 
   status,
-  onStatusChange
+  onStatusChange,
+  isArchived = false
 }) => {
   console.log(`🔄 [OrderActionMenu] Rendering for order ${orderId} with status ${status}`);
   const { toast } = useToast();
@@ -32,25 +34,42 @@ const OrderActionMenu: React.FC<OrderActionMenuProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {status === 'pending' && (
-          <DropdownMenuItem onClick={() => onStatusChange(orderId, 'preparing')}>
-            Iniciar preparación
+        {isArchived ? (
+          // Acciones para órdenes archivadas
+          <DropdownMenuItem onClick={() => onStatusChange(orderId, 'pending')}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Restaurar orden
           </DropdownMenuItem>
-        )}
-        {status === 'preparing' && (
-          <DropdownMenuItem onClick={() => onStatusChange(orderId, 'ready')}>
-            Marcar como listo
-          </DropdownMenuItem>
-        )}
-        {status === 'ready' && (
-          <DropdownMenuItem onClick={() => onStatusChange(orderId, 'delivered')}>
-            Marcar como entregado
-          </DropdownMenuItem>
-        )}
-        {(status === 'pending' || status === 'preparing') && (
-          <DropdownMenuItem onClick={() => onStatusChange(orderId, 'cancelled')}>
-            Cancelar pedido
-          </DropdownMenuItem>
+        ) : (
+          // Acciones para órdenes no archivadas
+          <>
+            {status === 'pending' && (
+              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'preparing')}>
+                Iniciar preparación
+              </DropdownMenuItem>
+            )}
+            {status === 'preparing' && (
+              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'ready')}>
+                Marcar como listo
+              </DropdownMenuItem>
+            )}
+            {status === 'ready' && (
+              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'delivered')}>
+                Marcar como entregado
+              </DropdownMenuItem>
+            )}
+            {(status === 'pending' || status === 'preparing') && (
+              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'cancelled')}>
+                Cancelar pedido
+              </DropdownMenuItem>
+            )}
+            {(status === 'delivered' || status === 'cancelled') && (
+              <DropdownMenuItem onClick={() => onStatusChange(orderId, 'archived')}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archivar orden
+              </DropdownMenuItem>
+            )}
+          </>
         )}
         <DropdownMenuItem onClick={() => {
           console.log('View order details for:', orderId);

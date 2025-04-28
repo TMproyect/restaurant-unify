@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -52,7 +51,6 @@ interface CategoryManagerProps {
   onCategoriesUpdated: () => void;
 }
 
-// Objeto de mapeo de iconos por nombre
 const categoryIcons: Record<string, React.ReactNode> = {
   bebidas: <Coffee className="h-5 w-5" />,
   platos: <Utensils className="h-5 w-5" />,
@@ -69,7 +67,6 @@ const categoryIcons: Record<string, React.ReactNode> = {
   panaderia: <Croissant className="h-5 w-5" />
 };
 
-// Opciones de iconos para seleccionar
 const iconOptions = [
   { value: 'bebidas', label: 'Bebidas', icon: <Coffee className="h-5 w-5" /> },
   { value: 'platos', label: 'Platos', icon: <Utensils className="h-5 w-5" /> },

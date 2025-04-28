@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +60,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
   const [forceDelete, setForceDelete] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(isDeleting);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [pageSize] = useState(12);
@@ -80,7 +79,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
       const result = await fetchMenuItems({
         page: currentPage,
         pageSize,
-        categoryId: filterCategory || undefined,
+        categoryId: filterCategory === "all" ? undefined : filterCategory || undefined,
         searchTerm: searchTerm || undefined
       });
       
@@ -267,7 +266,7 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
                 <SelectValue placeholder="Filtrar por categoría" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas las categorías</SelectItem>
+                <SelectItem value="all">Todas las categorías</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}

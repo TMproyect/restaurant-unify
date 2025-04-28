@@ -33,6 +33,104 @@ export type Database = {
         }
         Relationships: []
       }
+      historical_order_items: {
+        Row: {
+          archived_at: string
+          created_at: string
+          id: string
+          menu_item_id: string | null
+          name: string
+          notes: string | null
+          order_id: string
+          price: number
+          quantity: number
+        }
+        Insert: {
+          archived_at?: string
+          created_at: string
+          id: string
+          menu_item_id?: string | null
+          name: string
+          notes?: string | null
+          order_id: string
+          price: number
+          quantity?: number
+        }
+        Update: {
+          archived_at?: string
+          created_at?: string
+          id?: string
+          menu_item_id?: string | null
+          name?: string
+          notes?: string | null
+          order_id?: string
+          price?: number
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "historical_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_orders: {
+        Row: {
+          archived_at: string
+          created_at: string
+          customer_name: string
+          discount: number | null
+          external_id: string | null
+          id: string
+          is_delivery: boolean
+          items_count: number
+          kitchen_id: string | null
+          order_source: string | null
+          status: string
+          table_id: string | null
+          table_number: number | null
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string
+          created_at: string
+          customer_name: string
+          discount?: number | null
+          external_id?: string | null
+          id: string
+          is_delivery?: boolean
+          items_count?: number
+          kitchen_id?: string | null
+          order_source?: string | null
+          status: string
+          table_id?: string | null
+          table_number?: number | null
+          total?: number
+          updated_at: string
+        }
+        Update: {
+          archived_at?: string
+          created_at?: string
+          customer_name?: string
+          discount?: number | null
+          external_id?: string | null
+          id?: string
+          is_delivery?: boolean
+          items_count?: number
+          kitchen_id?: string | null
+          order_source?: string | null
+          status?: string
+          table_id?: string | null
+          table_number?: number | null
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_categories: {
         Row: {
           created_at: string

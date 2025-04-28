@@ -22,9 +22,11 @@ const Orders = () => {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isViewChanging, setIsViewChanging] = useState(false);
   
   // Get archived parameter from URL and convert to boolean
-  const [showArchived, setShowArchived] = useState(() => searchParams.get('archived') === 'true');
+  const archivedParam = searchParams.get('archived');
+  const [showArchived, setShowArchived] = useState(archivedParam === 'true');
   
   const { user } = useAuth();
   const { hasPermission, isWaiter, isAdmin, isManager } = usePermissions();
@@ -36,30 +38,43 @@ const Orders = () => {
   const canViewArchived = hasPermission('orders.view_archived');
   const canArchiveOrders = hasPermission('orders.archive');
   
+  // Update state when URL parameters change
+  useEffect(() => {
+    const archived = searchParams.get('archived') === 'true';
+    if (showArchived !== archived) {
+      setShowArchived(archived);
+    }
+  }, [searchParams]);
+  
   // Update URL when showArchived changes
   const handleToggleArchived = (value: boolean) => {
-    console.log('Toggling archived view:', value);
-    setShowArchived(value);
+    console.log('🔄 [Orders] Toggling archived view:', value);
+    setIsViewChanging(true);
     
-    // Update URL using navigate instead of setSearchParams
+    // Update URL using navigate
     const newUrl = value 
       ? '/orders?archived=true'
       : '/orders';
       
     navigate(newUrl, { replace: true });
+    setShowArchived(value);
     
-    // Force refresh the order list
-    setRefreshKey(prev => prev + 1);
+    // Add a small delay to show loading state
+    setTimeout(() => {
+      setIsViewChanging(false);
+      // Force refresh the order list
+      setRefreshKey(prev => prev + 1);
+    }, 300);
   };
   
   const handleOrderComplete = () => {
-    console.log('Order completed in Orders page');
+    console.log('✅ [Orders] Order completed');
     handleRefresh();
     toast.success('Orden creada exitosamente');
   };
   
   const handleRefresh = () => {
-    console.log('Refreshing orders list');
+    console.log('🔄 [Orders] Refreshing orders list');
     setRefreshKey(prev => prev + 1);
   };
   
@@ -67,14 +82,14 @@ const Orders = () => {
   useEffect(() => {
     const orderId = searchParams.get('id');
     if (orderId) {
-      console.log('Order ID found in URL:', orderId);
+      console.log('🔍 [Orders] Order ID found in URL:', orderId);
       setIsLoading(true);
       
       getOrderWithItems(orderId)
         .then(({ order, items }) => {
           if (order) {
-            console.log('Order details loaded:', order);
-            console.log('Order items:', items);
+            console.log('✅ [Orders] Order details loaded:', order);
+            console.log('Items:', items);
             
             toast.success(`Orden cargada: Cliente: ${order.customer_name} - Mesa: ${order.table_number || 'Delivery'}`, {
               action: {
@@ -85,12 +100,12 @@ const Orders = () => {
               }
             });
           } else {
-            console.log('Order not found');
+            console.log('❌ [Orders] Order not found');
             toast.error(`No se encontró la orden con ID: ${orderId}`);
           }
         })
         .catch(error => {
-          console.error('Error loading order:', error);
+          console.error('❌ [Orders] Error loading order:', error);
           toast.error('Error al cargar los detalles de la orden');
         })
         .finally(() => {
@@ -157,9 +172,9 @@ const Orders = () => {
                 variant="outline" 
                 size="icon" 
                 onClick={handleRefresh}
-                disabled={isLoading}
+                disabled={isLoading || isViewChanging}
               >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${(isLoading || isViewChanging) ? 'animate-spin' : ''}`} />
               </Button>
 
               {canArchiveOrders && (
@@ -167,10 +182,10 @@ const Orders = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleManualArchive}
-                  disabled={archivingInProgress}
+                  disabled={archivingInProgress || isViewChanging}
                   className="gap-2"
                 >
-                  <Archive className="h-4 w-4" />
+                  <Archive className={`h-4 w-4 ${archivingInProgress ? 'animate-spin' : ''}`} />
                   {archivingInProgress ? 'Archivando...' : 'Archivar antiguas'}
                 </Button>
               )}
@@ -203,6 +218,7 @@ const Orders = () => {
               onRefresh={handleRefresh}
               showArchived={showArchived}
               onToggleArchived={handleToggleArchived}
+              isViewChanging={isViewChanging}
             />
           </div>
         </div>

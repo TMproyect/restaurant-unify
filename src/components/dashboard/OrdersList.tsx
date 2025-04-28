@@ -17,6 +17,7 @@ interface OrdersListProps {
   searchQuery?: string;
   showArchived?: boolean;
   onToggleArchived?: (value: boolean) => void;
+  isViewChanging?: boolean;
 }
 
 const OrdersList: React.FC<OrdersListProps> = ({ 
@@ -25,11 +26,11 @@ const OrdersList: React.FC<OrdersListProps> = ({
   onRefresh,
   searchQuery = '',
   showArchived = false,
-  onToggleArchived
+  onToggleArchived,
+  isViewChanging = false
 }) => {
-  console.log('🔄 [OrdersList] Component rendering with filter:', filter, 'and limit:', limit, 'showArchived:', showArchived);
+  console.log('🔄 [OrdersList] Component rendering with filter:', filter, 'showArchived:', showArchived, 'isViewChanging:', isViewChanging);
   const { hasPermission } = usePermissions();
-  const [isViewChanging, setIsViewChanging] = useState(false);
   
   // Check if user has permission to view archived orders
   const canViewArchived = hasPermission('orders.view_archived');
@@ -56,16 +57,11 @@ const OrdersList: React.FC<OrdersListProps> = ({
   
   const handleTabChange = (value: string) => {
     if (onToggleArchived) {
-      setIsViewChanging(true);
-      // Small delay to show loading state during tab change
-      setTimeout(() => {
-        onToggleArchived(value === "archived");
-        setIsViewChanging(false);
-      }, 100);
+      onToggleArchived(value === "archived");
     }
   };
   
-  // Use loading state from data hook or local view changing state
+  // Use loading state from data hook or parent's changing view state
   const isLoading = loading || isViewChanging;
   
   return (

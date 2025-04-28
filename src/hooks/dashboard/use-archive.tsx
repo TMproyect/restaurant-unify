@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -21,22 +21,26 @@ export const useArchive = (onArchiveComplete?: () => void) => {
   // Load archive settings when component mounts
   useEffect(() => {
     const loadSettings = async () => {
-      const { success, settings } = await getArchiveSettings();
-      if (success && settings) {
-        setAutoArchiveEnabled(settings.autoArchiveEnabled);
-        setLastArchiveRun(settings.lastArchiveRun);
-        setArchiveSettings({
-          completedHours: settings.completedHours,
-          cancelledHours: settings.cancelledHours,
-          testOrdersHours: settings.testOrdersHours
-        });
+      try {
+        const { success, settings } = await getArchiveSettings();
+        if (success && settings) {
+          setAutoArchiveEnabled(settings.autoArchiveEnabled);
+          setLastArchiveRun(settings.lastArchiveRun);
+          setArchiveSettings({
+            completedHours: settings.completedHours,
+            cancelledHours: settings.cancelledHours,
+            testOrdersHours: settings.testOrdersHours
+          });
+        }
+      } catch (error) {
+        console.error('❌ [use-archive] Error loading archive settings:', error);
       }
     };
     
     loadSettings();
   }, []);
 
-  const handleManualArchive = async () => {
+  const handleManualArchive = useCallback(async () => {
     try {
       setArchivingInProgress(true);
       toast.info('Iniciando proceso de archivado...', { duration: 3000 });
@@ -61,8 +65,24 @@ export const useArchive = (onArchiveComplete?: () => void) => {
         toast.success(`Se archivaron ${data.processed} órdenes antiguas`, {
           description: data.details 
             ? `Completadas: ${data.details.completed || 0}, Canceladas: ${data.details.cancelled || 0}, Prueba: ${data.details.pending + data.details.preparing || 0}`
-            : undefined
+            : undefined,
+          duration: 5000
         });
+        
+        // Create a notification in the system
+        try {
+          await supabase.from('notifications').insert({
+            title: 'Archivado manual',
+            description: `Se archivaron ${data.processed} órdenes antiguas`,
+            type: 'system',
+            user_id: '00000000-0000-0000-0000-000000000000', // System notification
+            read: false,
+            action_text: 'Ver órdenes archivadas',
+            link: '/orders?archived=true'
+          });
+        } catch (notifError) {
+          console.error('❌ [use-archive] Error creating notification:', notifError);
+        }
         
         if (onArchiveComplete) {
           onArchiveComplete();
@@ -71,12 +91,12 @@ export const useArchive = (onArchiveComplete?: () => void) => {
         toast.info('No hay órdenes para archivar en este momento');
       }
     } catch (error) {
-      console.error('❌ [ActivityMonitor] Error in manual archive:', error);
+      console.error('❌ [use-archive] Error in manual archive:', error);
       toast.error('Error al archivar órdenes');
     } finally {
       setArchivingInProgress(false);
     }
-  };
+  }, [onArchiveComplete]);
   
   const updateSettings = async (newSettings: {
     autoArchiveEnabled?: boolean;
@@ -84,24 +104,32 @@ export const useArchive = (onArchiveComplete?: () => void) => {
     cancelledHours?: number;
     testOrdersHours?: number;
   }) => {
-    const result = await updateArchiveSettings(newSettings);
-    
-    if (result.success) {
-      // Update local state
-      if (newSettings.autoArchiveEnabled !== undefined) {
-        setAutoArchiveEnabled(newSettings.autoArchiveEnabled);
+    try {
+      const result = await updateArchiveSettings(newSettings);
+      
+      if (result.success) {
+        // Update local state
+        if (newSettings.autoArchiveEnabled !== undefined) {
+          setAutoArchiveEnabled(newSettings.autoArchiveEnabled);
+        }
+        
+        setArchiveSettings(prev => ({
+          completedHours: newSettings.completedHours ?? prev.completedHours,
+          cancelledHours: newSettings.cancelledHours ?? prev.cancelledHours,
+          testOrdersHours: newSettings.testOrdersHours ?? prev.testOrdersHours
+        }));
+        
+        toast.success('Configuración de archivado actualizada');
+        return true;
       }
       
-      setArchiveSettings(prev => ({
-        completedHours: newSettings.completedHours ?? prev.completedHours,
-        cancelledHours: newSettings.cancelledHours ?? prev.cancelledHours,
-        testOrdersHours: newSettings.testOrdersHours ?? prev.testOrdersHours
-      }));
-      
-      return true;
+      toast.error('Error al actualizar la configuración de archivado');
+      return false;
+    } catch (error) {
+      console.error('❌ [use-archive] Error updating settings:', error);
+      toast.error('Error al actualizar la configuración de archivado');
+      return false;
     }
-    
-    return false;
   };
 
   return {

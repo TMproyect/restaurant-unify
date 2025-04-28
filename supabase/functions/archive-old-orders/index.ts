@@ -28,6 +28,7 @@ serve(async (req) => {
     try {
       const body = await req.json();
       action = body.action || 'run-now';
+      console.log(`📌 Action requested: ${action}`);
     } catch (e) {
       // If no valid JSON body or no action specified, default to run-now
       console.log('⚠️ No valid JSON body in request, using default action run-now');
@@ -100,9 +101,13 @@ serve(async (req) => {
       });
     }
     
+    console.log(`📊 Archive settings:`, settings);
+    
     // If auto archive is disabled and this isn't a manual invocation, exit
-    const isManualInvocation = action === 'run-now' || req.method === 'POST';
-    if (!settings.auto_archive_enabled && !isManualInvocation) {
+    const isManualInvocation = action === 'run-now';
+    const isScheduledInvocation = action === 'run-scheduled';
+    
+    if (!settings.auto_archive_enabled && isScheduledInvocation) {
       console.log('🔍 Auto-archiving is disabled, exiting early');
       return new Response(
         JSON.stringify({ message: 'Auto-archiving is disabled', processed: 0 }),
@@ -218,6 +223,68 @@ serve(async (req) => {
           statusCounts.preparing++;
         }
         
+        // Get order items
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', order.id);
+          
+        if (itemsError) {
+          console.error(`❌ Error fetching items for order ${order.id}:`, itemsError);
+          errorCount++;
+          continue;
+        }
+        
+        // Insert to historical_orders
+        const { error: histOrderError } = await supabase
+          .from('historical_orders')
+          .insert({
+            id: order.id,
+            customer_name: order.customer_name,
+            table_number: order.table_number,
+            table_id: order.table_id,
+            status: order.status,
+            total: order.total,
+            items_count: order.items_count,
+            is_delivery: order.is_delivery,
+            kitchen_id: order.kitchen_id,
+            created_at: order.created_at,
+            updated_at: order.updated_at,
+            external_id: order.external_id,
+            discount: order.discount,
+            order_source: order.order_source
+          });
+          
+        if (histOrderError) {
+          console.error(`❌ Error inserting historical order ${order.id}:`, histOrderError);
+          errorCount++;
+          continue;
+        }
+        
+        // Insert order items to historical_order_items
+        if (orderItems && orderItems.length > 0) {
+          const historicalItems = orderItems.map(item => ({
+            id: item.id,
+            order_id: item.order_id,
+            menu_item_id: item.menu_item_id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            notes: item.notes,
+            created_at: item.created_at
+          }));
+          
+          const { error: histItemsError } = await supabase
+            .from('historical_order_items')
+            .insert(historicalItems);
+            
+          if (histItemsError) {
+            console.error(`❌ Error inserting historical items for order ${order.id}:`, histItemsError);
+            errorCount++;
+            // Continue anyway, the order is more important than its items
+          }
+        }
+        
         // Update the order status to 'archived'
         const { error: updateError } = await supabase
           .from('orders')
@@ -247,7 +314,7 @@ serve(async (req) => {
     if (processedCount > 0) {
       try {
         await supabase.from('notifications').insert({
-          title: 'Archivado automático',
+          title: isManualInvocation ? 'Archivado manual' : 'Archivado automático',
           description: `Se archivaron ${processedCount} órdenes antiguas`,
           type: 'system',
           user_id: '00000000-0000-0000-0000-000000000000', // System notification
@@ -256,7 +323,7 @@ serve(async (req) => {
           link: '/orders?archived=true'
         });
       } catch (notifError) {
-        console.error('Error creating notification:', notifError);
+        console.error('❌ Error creating notification:', notifError);
       }
     }
 

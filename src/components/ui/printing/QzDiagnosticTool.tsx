@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Check, X, AlertTriangle, HelpCircle, RefreshCw, FileCode, ExternalLink } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { toast } from "sonner";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { StatusIndicator } from './diagnostic/StatusIndicators';
+import { ScriptContent } from './diagnostic/ScriptContent';
+import { ErrorDisplay } from './diagnostic/ErrorDisplay';
+import { ActionButtons } from './diagnostic/ActionButtons';
+import { ScriptTags } from './diagnostic/ScriptTags';
 
 interface QzDiagnosticToolProps {
   onClose: () => void;
@@ -30,76 +33,57 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
     setError(null);
     setErrorDetails(null);
     
-    // Check if script exists
-    const checkScriptExists = async () => {
-      try {
-        const response = await fetch('/qz-tray.js');
-        
-        if (response.ok) {
-          setScriptExists(true);
-          try {
-            const text = await response.text();
-            
-            // Store the first 100 characters for inspection
-            if (text.length > 100) {
-              setScriptFirstBytes(text.substring(0, 100) + '...');
-            } else {
-              setScriptFirstBytes(text);
-            }
-            
-            // Look for a specific string that should be in the version
-            const hasExpectedString = text.includes('var qz=function(){var r={VERSION:"2.2.4"');
-            if (!hasExpectedString) {
-              setError("Script doesn't match expected QZ Tray v2.2.4 content");
-            }
-            
-            // Save script content for debugging
-            setScriptContent(text);
-          } catch (err) {
-            console.error("Error reading script content:", err);
-            setScriptContent("Error reading script content");
-            setError("Failed to read script content");
-            setErrorDetails(err instanceof Error ? err.message : String(err));
-          }
-        } else {
-          setScriptExists(false);
-          setError(`Script not found: ${response.status} ${response.statusText}`);
-        }
-      } catch (err) {
-        console.error("Error checking script file:", err);
-        setScriptExists(false);
-        setError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
-        setErrorDetails(err instanceof Error ? err.stack || "No stack available" : "No detailed error information available");
-      }
-    };
-    
-    // Check if QZ object exists
-    const checkQzObject = () => {
-      if (window.qz) {
-        setQzObjectExists(true);
-        toast.success("QZ Tray object found in window!");
-      } else {
-        setQzObjectExists(false);
-        
-        // Check for script tags
-        const tags = document.querySelectorAll('script[src*="qz-tray.js"]');
-        setScriptTags(Array.from(tags as NodeListOf<HTMLScriptElement>));
-        
-        if (tags.length === 0) {
-          setError((prev) => `${prev ? prev + '. ' : ''}No QZ Tray script tags found in document`);
-        } else {
-          console.log(`Found ${tags.length} QZ Tray script tags`);
+    try {
+      const response = await fetch('/qz-tray.js');
+      
+      if (response.ok) {
+        setScriptExists(true);
+        try {
+          const text = await response.text();
           
-          // Check if any have errors
-          tags.forEach((tag, index) => {
-            console.log(`Script tag ${index}:`, tag);
-          });
+          if (text.length > 100) {
+            setScriptFirstBytes(text.substring(0, 100) + '...');
+          } else {
+            setScriptFirstBytes(text);
+          }
+          
+          const hasExpectedString = text.includes('var qz=function(){var r={VERSION:"2.2.4"');
+          if (!hasExpectedString) {
+            setError("Script doesn't match expected QZ Tray v2.2.4 content");
+          }
+          
+          setScriptContent(text);
+        } catch (err) {
+          console.error("Error reading script content:", err);
+          setScriptContent("Error reading script content");
+          setError("Failed to read script content");
+          setErrorDetails(err instanceof Error ? err.message : String(err));
         }
+      } else {
+        setScriptExists(false);
+        setError(`Script not found: ${response.status} ${response.statusText}`);
       }
-    };
+    } catch (err) {
+      console.error("Error checking script file:", err);
+      setScriptExists(false);
+      setError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
+      setErrorDetails(err instanceof Error ? err.stack || "No stack available" : "No detailed error information available");
+    }
     
-    await checkScriptExists();
-    checkQzObject();
+    // Check QZ object
+    if (window.qz) {
+      setQzObjectExists(true);
+      toast.success("QZ Tray object found in window!");
+    } else {
+      setQzObjectExists(false);
+      
+      const tags = document.querySelectorAll('script[src*="qz-tray.js"]');
+      setScriptTags(Array.from(tags as NodeListOf<HTMLScriptElement>));
+      
+      if (tags.length === 0) {
+        setError((prev) => `${prev ? prev + '. ' : ''}No QZ Tray script tags found in document`);
+      }
+    }
     
     setChecking(false);
   };
@@ -107,16 +91,14 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
   const reloadScript = () => {
     setChecking(true);
     
-    // Create a fresh script element with timestamp to avoid cache
     const script = document.createElement('script');
-    script.src = `/qz-tray.js?t=${new Date().getTime()}`; // Add timestamp to bypass cache
+    script.src = `/qz-tray.js?t=${new Date().getTime()}`;
     script.async = false;
     
     script.onload = () => {
       console.log("QZ Tray script reloaded dynamically");
       toast.success("QZ Tray script reloaded!");
       
-      // Wait a bit and check for the object
       setTimeout(() => {
         if (window.qz) {
           setQzObjectExists(true);
@@ -138,7 +120,6 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
       setChecking(false);
     };
     
-    // Remove any existing QZ Tray scripts
     const existingScripts = document.querySelectorAll('script[src*="qz-tray.js"]');
     existingScripts.forEach(script => script.remove());
     
@@ -153,9 +134,7 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
         const text = await response.text();
         console.log("QZ Tray script content:", text);
         
-        // Look for syntax errors by trying to evaluate without executing
         try {
-          // This is a simple syntax check, not execution
           new Function(text);
           toast.success("Script syntax check passed");
         } catch (syntaxError) {
@@ -185,167 +164,30 @@ export function QzDiagnosticTool({ onClose }: QzDiagnosticToolProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-sm">QZ Tray Script File:</span>
-            {checking ? (
-              <Badge variant="outline" className="bg-slate-100">
-                Checking...
-              </Badge>
-            ) : (
-              <Badge 
-                variant="outline" 
-                className={scriptExists ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-              >
-                {scriptExists ? (
-                  <Check className="h-3 w-3 mr-1" />
-                ) : (
-                  <X className="h-3 w-3 mr-1" />
-                )}
-                {scriptExists ? "Found" : "Not Found"}
-              </Badge>
-            )}
-          </div>
+          <StatusIndicator 
+            isChecking={checking}
+            exists={scriptExists}
+            label="QZ Tray Script File:"
+          />
           
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-sm">QZ Tray Object:</span>
-            {checking ? (
-              <Badge variant="outline" className="bg-slate-100">
-                Checking...
-              </Badge>
-            ) : (
-              <Badge 
-                variant="outline" 
-                className={qzObjectExists ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-              >
-                {qzObjectExists ? (
-                  <Check className="h-3 w-3 mr-1" />
-                ) : (
-                  <X className="h-3 w-3 mr-1" />
-                )}
-                {qzObjectExists ? "Available" : "Not Available"}
-              </Badge>
-            )}
-          </div>
+          <StatusIndicator 
+            isChecking={checking}
+            exists={qzObjectExists}
+            label="QZ Tray Object:"
+          />
           
-          {/* Script tags information */}
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-sm">Script Tags Found:</span>
-            <Badge 
-              variant="outline" 
-              className={scriptTags.length > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-            >
-              {scriptTags.length}
-            </Badge>
-          </div>
+          <ScriptTags scriptTags={scriptTags} />
           
-          {scriptTags.length > 0 && (
-            <Accordion type="single" collapsible>
-              <AccordionItem value="script-tags">
-                <AccordionTrigger className="text-xs">
-                  View Script Tag Details
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-2">
-                    {scriptTags.map((tag, index) => (
-                      <div key={index} className="bg-white p-2 rounded border text-xs">
-                        <p><strong>src:</strong> {tag.src}</p>
-                        <p><strong>async:</strong> {tag.async ? "true" : "false"}</p>
-                        <p><strong>defer:</strong> {tag.defer ? "true" : "false"}</p>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+          <ErrorDisplay error={error} errorDetails={errorDetails} />
           
-          {error && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
-              <p className="font-medium text-red-800">Error Detected</p>
-              <p className="text-red-700 mt-1">{error}</p>
-              {errorDetails && (
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="error-details">
-                    <AccordionTrigger className="text-xs text-red-600">
-                      View Error Details
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <pre className="bg-red-50 p-2 rounded text-xs overflow-x-auto whitespace-pre-wrap">
-                        {errorDetails}
-                      </pre>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-            </div>
-          )}
-          
-          {scriptFirstBytes && (
-            <Accordion type="single" collapsible>
-              <AccordionItem value="script-content">
-                <AccordionTrigger className="text-xs">
-                  View Script Beginning
-                </AccordionTrigger>
-                <AccordionContent>
-                  <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
-                    {scriptFirstBytes}
-                  </pre>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+          <ScriptContent scriptFirstBytes={scriptFirstBytes} />
         </div>
         
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={reloadScript}
-            disabled={checking}
-            className="flex items-center"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Reload QZ Tray Script
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={checkQzTray}
-            disabled={checking}
-            className="flex items-center"
-          >
-            <HelpCircle className="h-3 w-3 mr-1" />
-            Check Status
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={inspectScript}
-            disabled={checking}
-            className="flex items-center"
-          >
-            <FileCode className="h-3 w-3 mr-1" />
-            Inspect Script
-          </Button>
-          
-          <Button
-            variant="ghost" 
-            size="sm"
-            asChild
-          >
-            <a 
-              href="https://qz.io/download/" 
-              target="_blank" 
-              rel="noreferrer"
-              className="inline-flex items-center"
-            >
-              <ExternalLink className="h-3 w-3 mr-1" />
-              QZ Tray Download
-            </a>
-          </Button>
-        </div>
+        <ActionButtons 
+          checking={checking}
+          onReload={reloadScript}
+          onInspect={inspectScript}
+        />
         
         <div className="text-xs text-gray-500 italic">
           Note: If you still see syntax errors after these changes, please try opening in a private/incognito window

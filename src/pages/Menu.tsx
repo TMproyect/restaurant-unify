@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuManager from '@/components/menu/MenuManager';
@@ -7,8 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
-import { initializeStorage } from '@/services/storage/index';
-import { migrateAllBase64Images } from '@/services/menu/menuItemService';
+import { initializeStorage, migrateAllBase64Images } from '@/services/storage';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');

@@ -1,7 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { isInitializing, initializationPromise, lastInitAttempt, MIN_RETRY_INTERVAL } from './storageConfig';
-import { migrateAllBase64Images } from '@/services/menu/menuItemMigration';
+import { 
+  getIsInitializing, 
+  setIsInitializing, 
+  getInitializationPromise, 
+  setInitializationPromise,
+  getLastInitAttempt,
+  setLastInitAttempt,
+  MIN_RETRY_INTERVAL
+} from './storageConfig';
+import { migrateAllBase64Images } from '../operations/imageMigration';
 
 /**
  * Inicializa el almacenamiento para asegurar que el bucket exista
@@ -9,27 +17,25 @@ import { migrateAllBase64Images } from '@/services/menu/menuItemMigration';
 export const initializeStorage = async (): Promise<boolean> => {
   // Evitar múltiples llamadas en un corto periodo de tiempo
   const now = Date.now();
-  if (now - lastInitAttempt < MIN_RETRY_INTERVAL) {
+  if (now - getLastInitAttempt() < MIN_RETRY_INTERVAL) {
     console.log('📦 Ignorando intento de inicialización, demasiado pronto desde el último intento');
-    if (initializationPromise) return initializationPromise;
+    const promise = getInitializationPromise();
+    if (promise) return promise;
     return false;
   }
   
   // Update last attempt time
-  // @ts-ignore - We'll modify the imported const, which is fine in this controlled context
-  lastInitAttempt = now;
+  setLastInitAttempt(now);
   
   // Si ya hay una inicialización en progreso, devolver la promesa existente
-  if (isInitializing && initializationPromise) {
-    return initializationPromise;
+  if (getIsInitializing() && getInitializationPromise()) {
+    return getInitializationPromise()!;
   }
   
   // Iniciar nueva inicialización
-  // @ts-ignore - We'll modify the imported const, which is fine in this controlled context
-  isInitializing = true;
+  setIsInitializing(true);
   
-  // @ts-ignore - We'll modify the imported const, which is fine in this controlled context
-  initializationPromise = new Promise(async (resolve) => {
+  const promise = new Promise<boolean>(async (resolve) => {
     try {
       console.log('📦 Iniciando inicialización de almacenamiento');
       
@@ -54,17 +60,16 @@ export const initializeStorage = async (): Promise<boolean> => {
         // No fallamos el proceso completo si la migración falla
       }
       
-      // @ts-ignore - We'll modify the imported const, which is fine in this controlled context
-      isInitializing = false;
+      setIsInitializing(false);
       // Consideramos exitosa la inicialización incluso si solo uno de los pasos funciona
       resolve(true);
     } catch (error) {
       console.error('Error inicializando almacenamiento:', error);
-      // @ts-ignore - We'll modify the imported const, which is fine in this controlled context
-      isInitializing = false;
+      setIsInitializing(false);
       resolve(false);
     }
   });
   
-  return initializationPromise;
+  setInitializationPromise(promise);
+  return promise;
 };

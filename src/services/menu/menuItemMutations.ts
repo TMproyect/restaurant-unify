@@ -1,10 +1,9 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapSingleResponse } from '@/utils/supabaseHelpers';
 import { MenuItem } from './menuItemTypes';
-import { deleteMenuItemImage } from '../storage/imageStorage';
-import { migrateBase64ToStorage } from './menuItemMigration';
+import { deleteMenuItemImage } from '../storage/operations/imageManagement';
+import { migrateBase64ToStorage } from '../storage/operations/imageMigration';
 
 /**
  * Crea un nuevo elemento del menú

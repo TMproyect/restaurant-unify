@@ -26,8 +26,8 @@ export {
   deleteMenuItemImage
 } from './operations/imageManagement';
 
-// Re-export from menu item migration for backward compatibility
-export { 
+// Image migration functionality
+export {
   migrateBase64ToStorage,
-  migrateAllBase64Images 
-} from '@/services/menu/menuItemMigration';
+  migrateAllBase64Images
+} from './operations/imageMigration';

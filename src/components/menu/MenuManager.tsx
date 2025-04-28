@@ -16,10 +16,10 @@ import MenuPagination from './components/MenuPagination';
 interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
-  storageInitialized?: boolean;
+  storageInitialized?: boolean; // Kept for backward compatibility but not used anymore
 }
 
-const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storageInitialized = false }) => {
+const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -137,7 +137,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading, storag
           <Button 
             onClick={handleAddItem} 
             className="gap-2"
-            disabled={!storageInitialized}
           >
             <Plus className="h-4 w-4" /> Añadir plato
           </Button>

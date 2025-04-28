@@ -6,25 +6,57 @@ import { migrateAllBase64Images } from '@/services/menu/menuItemService';
 // Nombre del bucket para imágenes del menú
 const STORAGE_BUCKET = 'menu_images';
 
+// Variable para evitar múltiples inicializaciones simultáneas
+let isInitializing = false;
+let initializationPromise: Promise<boolean> | null = null;
+
 /**
  * Inicializa el almacenamiento para asegurar que el bucket exista
  */
 export const initializeStorage = async (): Promise<boolean> => {
-  try {
-    // Verificar si el bucket existe llamando a la Edge Function
-    const { error } = await supabase.functions.invoke('storage-reinitialize');
-    
-    if (error) {
-      console.error('🔄 Error al inicializar almacenamiento:', error);
-      return false;
-    }
-    
-    console.log('📦 Almacenamiento inicializado correctamente');
-    return true;
-  } catch (error) {
-    console.error('Error inicializando almacenamiento:', error);
-    return false;
+  // Si ya hay una inicialización en progreso, devolver la promesa existente
+  if (isInitializing && initializationPromise) {
+    return initializationPromise;
   }
+  
+  // Iniciar nueva inicialización
+  isInitializing = true;
+  
+  initializationPromise = new Promise(async (resolve) => {
+    try {
+      // Verificar si el bucket existe llamando a la Edge Function
+      const { error } = await supabase.functions.invoke('storage-reinitialize');
+      
+      if (error) {
+        console.error('📦 Error al inicializar almacenamiento:', error);
+        isInitializing = false;
+        resolve(false);
+        return;
+      }
+      
+      console.log('📦 Almacenamiento inicializado correctamente');
+      
+      // Intentar migrar imágenes Base64 automáticamente
+      try {
+        const result = await migrateAllBase64Images();
+        if (result) {
+          console.log('📦 Imágenes migradas correctamente');
+        }
+      } catch (migrationError) {
+        console.error('📦 Error en migración automática:', migrationError);
+        // No fallar el proceso completo si la migración falla
+      }
+      
+      isInitializing = false;
+      resolve(true);
+    } catch (error) {
+      console.error('Error inicializando almacenamiento:', error);
+      isInitializing = false;
+      resolve(false);
+    }
+  });
+  
+  return initializationPromise;
 };
 
 /**
@@ -80,6 +112,14 @@ export const uploadMenuItemImage = async (file: File): Promise<string | { error?
       return { error: "Formato de imagen inválido. Use JPG, PNG, GIF o WebP" };
     }
     
+    // Asegurar que el almacenamiento está inicializado antes de subir
+    const storageReady = await initializeStorage();
+    if (!storageReady) {
+      console.log('📦 No se pudo inicializar el almacenamiento, intentando con Base64 como fallback');
+      const base64Data = await fileToBase64(file);
+      return base64Data;
+    }
+    
     // Generar un nombre único para el archivo
     const fileExt = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExt}`;
@@ -112,7 +152,6 @@ export const uploadMenuItemImage = async (file: File): Promise<string | { error?
     return publicUrl.publicUrl;
   } catch (error) {
     console.error('📦 Error procesando imagen:', error);
-    toast.error(error instanceof Error ? error.message : "Error al procesar imagen");
     
     // Intentar con Base64 como último recurso
     try {

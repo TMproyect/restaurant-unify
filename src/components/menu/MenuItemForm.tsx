@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { MenuItem, createMenuItem, updateMenuItem } from '@/services/menu/menuItemService';
-import { uploadMenuItemImage } from '@/services/storage/imageStorage';
+import { uploadMenuItemImage, initializeStorage } from '@/services/storage/imageStorage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, ImagePlus, Loader2, Upload } from 'lucide-react';
 import {
@@ -131,6 +131,19 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
     }
   }, [item, isDragging]);
 
+  // Inicializar almacenamiento automáticamente al abrir el formulario
+  useEffect(() => {
+    const ensureStorageInitialized = async () => {
+      try {
+        await initializeStorage();
+      } catch (error) {
+        console.error("Error al inicializar almacenamiento:", error);
+      }
+    };
+    
+    ensureStorageInitialized();
+  }, []);
+
   const handleFileSelection = (file: File) => {
     if (!file) return;
     
@@ -177,6 +190,9 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
     try {
+      // Asegurar que el almacenamiento está inicializado antes de subir imágenes
+      await initializeStorage();
+      
       let imageUrl = item?.image_url;
       
       // Subir imagen si se ha seleccionado una nueva
@@ -238,6 +254,10 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       
       if (success) {
         toast.success(item ? 'Elemento actualizado con éxito' : 'Elemento creado con éxito');
+        
+        // Notificar a otros componentes sobre la actualización de items
+        window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+        
         setIsOpen(false);
         onClose(true);
       } else {

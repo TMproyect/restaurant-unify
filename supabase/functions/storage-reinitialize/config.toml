@@ -1,6 +1,3 @@
 
-# Esta función Edge para reinicializar el bucket de almacenamiento menu_images
-# Se ejecuta con permisos elevados para gestionar buckets y políticas
-
 [functions.storage-reinitialize]
 verify_jwt = false

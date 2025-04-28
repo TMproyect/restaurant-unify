@@ -30,6 +30,7 @@ serve(async (req) => {
       action = body.action || 'run-now';
     } catch (e) {
       // If no valid JSON body or no action specified, default to run-now
+      console.log('⚠️ No valid JSON body in request, using default action run-now');
     }
     
     // If this is just a status check
@@ -46,6 +47,7 @@ serve(async (req) => {
         ]);
       
       if (settingsError) {
+        console.error(`❌ Error fetching archive settings: ${settingsError.message}`);
         throw new Error(`Error fetching archive settings: ${settingsError.message}`);
       }
       
@@ -59,7 +61,7 @@ serve(async (req) => {
       );
     }
     
-    // Fetch user archiving settings
+    // Fetch archiving settings
     const { data: settingsData, error: settingsError } = await supabase
       .from('system_settings')
       .select('key, value')
@@ -73,6 +75,7 @@ serve(async (req) => {
       ]);
       
     if (settingsError) {
+      console.error(`❌ Error fetching archive settings: ${settingsError.message}`);
       throw new Error(`Error fetching archive settings: ${settingsError.message}`);
     }
     
@@ -100,6 +103,7 @@ serve(async (req) => {
     // If auto archive is disabled and this isn't a manual invocation, exit
     const isManualInvocation = action === 'run-now' || req.method === 'POST';
     if (!settings.auto_archive_enabled && !isManualInvocation) {
+      console.log('🔍 Auto-archiving is disabled, exiting early');
       return new Response(
         JSON.stringify({ message: 'Auto-archiving is disabled', processed: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -118,39 +122,50 @@ serve(async (req) => {
     console.log(`🔄 Archiving cancelled orders before: ${cancelledThreshold.toISOString()}`);
     console.log(`🔄 Archiving test orders before: ${testOrdersThreshold.toISOString()}`);
 
-    // 1. Find orders to archive based on configured rules
-    // Archive completed orders older than configured hours
+    // 1. Find completed orders to archive
     const { data: completedOrders, error: completedError } = await supabase
       .from('orders')
       .select('*')
       .or('status.eq.completed,status.eq.delivered,status.eq.entregado,status.eq.completado')
-      .lt('updated_at', completedThreshold.toISOString());
+      .lt('updated_at', completedThreshold.toISOString())
+      .not('status', 'eq', 'archived');
 
     if (completedError) {
+      console.error(`❌ Error fetching completed orders: ${completedError.message}`);
       throw new Error(`Error fetching completed orders: ${completedError.message}`);
     }
     
-    // Archive cancelled orders older than configured hours
+    console.log(`🔍 Found ${completedOrders?.length || 0} completed orders to archive`);
+    
+    // 2. Find cancelled orders to archive
     const { data: cancelledOrders, error: cancelledError } = await supabase
       .from('orders')
       .select('*')
       .or('status.eq.cancelled,status.eq.cancelado,status.eq.cancelada')
-      .lt('updated_at', cancelledThreshold.toISOString());
+      .lt('updated_at', cancelledThreshold.toISOString())
+      .not('status', 'eq', 'archived');
       
     if (cancelledError) {
+      console.error(`❌ Error fetching cancelled orders: ${cancelledError.message}`);
       throw new Error(`Error fetching cancelled orders: ${cancelledError.message}`);
     }
     
-    // Archive test orders (pending/preparing orders older than configured hours, likely test data)
+    console.log(`🔍 Found ${cancelledOrders?.length || 0} cancelled orders to archive`);
+    
+    // 3. Find test orders to archive (pending/preparing orders older than configured hours)
     const { data: testOrders, error: testError } = await supabase
       .from('orders')
       .select('*')
       .or('status.eq.pending,status.eq.pendiente,status.eq.preparing,status.eq.preparando,status.eq.en preparación')
-      .lt('created_at', testOrdersThreshold.toISOString());
+      .lt('created_at', testOrdersThreshold.toISOString())
+      .not('status', 'eq', 'archived');
       
     if (testError) {
+      console.error(`❌ Error fetching test orders: ${testError.message}`);
       throw new Error(`Error fetching test orders: ${testError.message}`);
     }
+    
+    console.log(`🔍 Found ${testOrders?.length || 0} abandoned test orders to archive`);
 
     // Combine all orders to archive
     const ordersToArchive = [
@@ -159,7 +174,7 @@ serve(async (req) => {
       ...(testOrders || [])
     ];
     
-    console.log(`🔄 Found ${ordersToArchive.length} orders to archive`);
+    console.log(`🔄 Found total of ${ordersToArchive.length} orders to archive`);
 
     if (ordersToArchive.length === 0) {
       // Update last run time even if no orders were archived
@@ -177,9 +192,32 @@ serve(async (req) => {
     // Process each order to archive
     let processedCount = 0;
     let errorCount = 0;
+    let details = {};
+    
+    // Group orders by status for detailed reporting
+    const statusCounts = {
+      completed: 0,
+      delivered: 0,
+      cancelled: 0,
+      pending: 0,
+      preparing: 0
+    };
     
     for (const order of ordersToArchive) {
       try {
+        // Track order status for reporting
+        if (['completed', 'completado'].includes(order.status)) {
+          statusCounts.completed++;
+        } else if (['delivered', 'entregado'].includes(order.status)) {
+          statusCounts.delivered++;
+        } else if (['cancelled', 'cancelado', 'cancelada'].includes(order.status)) {
+          statusCounts.cancelled++;
+        } else if (['pending', 'pendiente'].includes(order.status)) {
+          statusCounts.pending++;
+        } else if (['preparing', 'preparando', 'en preparación'].includes(order.status)) {
+          statusCounts.preparing++;
+        }
+        
         // Update the order status to 'archived'
         const { error: updateError } = await supabase
           .from('orders')
@@ -191,6 +229,7 @@ serve(async (req) => {
           errorCount++;
         } else {
           processedCount++;
+          console.log(`✅ Successfully archived order ${order.id}`);
         }
       } catch (error) {
         console.error(`❌ Error processing order ${order.id}:`, error);
@@ -203,13 +242,36 @@ serve(async (req) => {
     await supabase
       .from('system_settings')
       .upsert({ key: 'last_archive_run', value: lastRunTime });
+      
+    // Create a notification about the archiving
+    if (processedCount > 0) {
+      try {
+        await supabase.from('notifications').insert({
+          title: 'Archivado automático',
+          description: `Se archivaron ${processedCount} órdenes antiguas`,
+          type: 'system',
+          user_id: '00000000-0000-0000-0000-000000000000', // System notification
+          read: false,
+          action_text: 'Ver órdenes archivadas',
+          link: '/orders?archived=true'
+        });
+      } catch (notifError) {
+        console.error('Error creating notification:', notifError);
+      }
+    }
+
+    details = {
+      ...statusCounts,
+      total: processedCount
+    };
 
     return new Response(
       JSON.stringify({ 
         message: 'Archive process completed', 
         processed: processedCount,
         errors: errorCount,
-        last_run: lastRunTime
+        last_run: lastRunTime,
+        details: details
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -5,38 +5,49 @@ import OrderTaking from '@/components/order/OrderTaking';
 import OrderPrintController from '@/components/OrderPrintController';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, RefreshCw, AlertCircle, Archive } from 'lucide-react';
 import NewOrderModal from '@/components/order/NewOrderModal';
 import OrdersList from '@/components/dashboard/OrdersList';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getOrderWithItems } from '@/services/orderService';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { usePermissions } from '@/hooks/use-permissions';
 import WaiterTableView from '@/components/order/WaiterTableView';
+import { useArchive } from '@/hooks/dashboard/use-archive';
 
 const Orders = () => {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  // Get the showArchived parameter from URL or default to false
+  const [showArchived, setShowArchived] = useState(() => searchParams.get('archived') === 'true');
   const { user } = useAuth();
   const { hasPermission, isWaiter, isAdmin, isManager } = usePermissions();
+  const navigate = useNavigate();
+  const { archivingInProgress, handleManualArchive } = useArchive(() => handleRefresh());
   
   // Check permissions
   const canViewTables = hasPermission('tables.view');
   const canCreateOrders = hasPermission('orders.create');
   const canViewArchived = hasPermission('orders.view_archived');
+  const canArchiveOrders = hasPermission('orders.archive');
   
-  console.log('🔍 [Orders] Comprobando permisos del usuario:', { 
-    role: user?.role, 
-    isWaiter,
-    isAdmin,
-    isManager,
-    canViewTables,
-    canCreateOrders,
-    canViewArchived
-  });
+  // Update URL when showArchived changes
+  useEffect(() => {
+    if (showArchived) {
+      searchParams.set('archived', 'true');
+    } else {
+      searchParams.delete('archived');
+    }
+    setSearchParams(searchParams);
+  }, [showArchived, searchParams, setSearchParams]);
+  
+  const handleToggleArchived = (value: boolean) => {
+    console.log('Toggling archived view:', value);
+    setShowArchived(value);
+  };
   
   const handleOrderComplete = () => {
     console.log('Order completed in Orders page');
@@ -147,6 +158,20 @@ const Orders = () => {
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
+
+              {canArchiveOrders && (
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualArchive}
+                  disabled={archivingInProgress}
+                  className="gap-2"
+                >
+                  <Archive className="h-4 w-4" />
+                  {archivingInProgress ? 'Archivando...' : 'Archivar antiguas'}
+                </Button>
+              )}
+
               <PrinterStatus compact />
               {canCreateOrders && (
                 <Button onClick={() => setShowNewOrderModal(true)}>
@@ -173,6 +198,8 @@ const Orders = () => {
               key={refreshKey} 
               limit={20} 
               onRefresh={handleRefresh}
+              showArchived={showArchived}
+              onToggleArchived={handleToggleArchived}
             />
           </div>
         </div>

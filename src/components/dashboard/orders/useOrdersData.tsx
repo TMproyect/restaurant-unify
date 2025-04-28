@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Order } from '@/types/order.types';
 import { getOrders, subscribeToOrders, subscribeToFilteredOrders, updateOrderStatus } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import { safeArray } from '@/utils/safetyUtils';
 import { toast } from 'sonner';
 import { NormalizedOrderStatus } from '@/utils/orderStatusUtils';
 import { usePermissions } from '@/hooks/use-permissions';
+import { setupAutoArchiving } from '@/services/dashboardService/activity/autoArchive';
 
 type OrderStatusUI = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'archived' | 'all';
 
@@ -29,6 +30,7 @@ export function useOrdersData({
   const [loading, setLoading] = useState(true);
   const { toast: uiToast } = useToast();
   const { hasPermission } = usePermissions();
+  const archiveCheckRef = useRef<boolean>(false);
   
   // Check permissions
   const canViewArchived = hasPermission('orders.view_archived');
@@ -38,6 +40,32 @@ export function useOrdersData({
   
   // Force includeArchived to false if user doesn't have permission
   const effectiveIncludeArchived = includeArchived && canViewArchived;
+
+  // Check auto-archiving status when component mounts
+  useEffect(() => {
+    const checkAutoArchive = async () => {
+      // Only check once per session
+      if (archiveCheckRef.current) return;
+      
+      try {
+        const result = await setupAutoArchiving();
+        archiveCheckRef.current = true;
+        
+        if (!result.success) {
+          console.warn('Auto-archiving setup check failed:', result.error);
+        } else if (result.settings) {
+          console.log('Auto-archive settings loaded:', result.settings);
+        }
+      } catch (error) {
+        console.error('Error checking auto-archive status:', error);
+      }
+    };
+    
+    // Only run this if user has archive permissions
+    if (canArchiveOrders) {
+      checkAutoArchive();
+    }
+  }, [canArchiveOrders]);
 
   const loadOrders = useCallback(async () => {
     console.log('🔍 [useOrdersData] Starting to load orders...');

@@ -15,16 +15,19 @@ interface OrdersListProps {
   limit?: number;
   onRefresh?: () => void;
   searchQuery?: string;
+  showArchived?: boolean;
+  onToggleArchived?: (value: boolean) => void;
 }
 
 const OrdersList: React.FC<OrdersListProps> = ({ 
   filter = 'all',
   limit = 10,
   onRefresh,
-  searchQuery = ''
+  searchQuery = '',
+  showArchived = false,
+  onToggleArchived
 }) => {
-  console.log('🔄 [OrdersList] Component rendering with filter:', filter, 'and limit:', limit);
-  const [showArchived, setShowArchived] = useState(false);
+  console.log('🔄 [OrdersList] Component rendering with filter:', filter, 'and limit:', limit, 'showArchived:', showArchived);
   const { hasPermission } = usePermissions();
   
   // Check if user has permission to view archived orders
@@ -45,13 +48,15 @@ const OrdersList: React.FC<OrdersListProps> = ({
   // If user doesn't have permission to view archived orders and showArchived is true,
   // reset to showing active orders
   useEffect(() => {
-    if (showArchived && !canViewArchived) {
-      setShowArchived(false);
+    if (showArchived && !canViewArchived && onToggleArchived) {
+      onToggleArchived(false);
     }
-  }, [canViewArchived, showArchived]);
+  }, [canViewArchived, showArchived, onToggleArchived]);
   
   const handleTabChange = (value: string) => {
-    setShowArchived(value === "archived");
+    if (onToggleArchived) {
+      onToggleArchived(value === "archived");
+    }
   };
   
   return (
@@ -61,6 +66,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
           <Tabs 
             value={showArchived ? "archived" : "active"} 
             onValueChange={handleTabChange}
+            defaultValue={showArchived ? "archived" : "active"}
           >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="active">Órdenes Activas</TabsTrigger>

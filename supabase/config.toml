@@ -29,4 +29,3 @@ enabled = true
 
 [functions.archive-old-orders]
 verify_jwt = false
-

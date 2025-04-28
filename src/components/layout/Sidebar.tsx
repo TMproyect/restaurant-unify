@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Home,
-  LayoutDashboard,
   Settings,
   Menu,
   Utensils,
@@ -85,7 +84,7 @@ const Sidebar = () => {
           title: "Roles Temporales",
           icon: <Clock className="h-4 w-4" />,
           href: "/settings/temporary-roles",
-          permission: "settings.roles" // Use the same permission as the regular roles page
+          permission: "settings.roles"
         },
       ],
       permission: "settings.access"

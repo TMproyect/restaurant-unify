@@ -24,55 +24,72 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    console.log('📦 Inicializando bucket de almacenamiento menu_images');
-    
-    // Ensure bucket exists with proper error handling
+    // Primero verificar que la función RPC existe
+    let rpcExists = false;
     try {
-      // Create or confirm bucket exists
+      const { data: rpcCheck, error: rpcCheckError } = await supabase
+        .rpc('verify_menu_images_bucket');
+        
+      rpcExists = !rpcCheckError;
+    } catch (rpcCheckError) {
+      console.log('Función RPC no disponible, usando enfoque directo');
+    }
+    
+    if (rpcExists) {
+      // Usar la función RPC si existe
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('verify_menu_images_bucket');
+        
+      if (rpcError) {
+        console.error('Error en RPC verify_menu_images_bucket:', rpcError);
+        // Continuar con enfoque directo si RPC falla
+      } else {
+        console.log('📦 Verificación RPC exitosa');
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Storage initialized via RPC",
+            method: "rpc",
+            time: new Date().toISOString()
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
+    // Enfoque directo si RPC no está disponible o falló
+    
+    // 1. Verificar y crear/actualizar el bucket
+    let bucketCreated = false;
+    try {
       const { data: bucketData, error: bucketError } = await supabase.storage
         .createBucket('menu_images', { public: true });
         
       if (bucketError && !bucketError.message.includes('already exists')) {
         console.error('Error creating bucket:', bucketError);
       } else {
-        console.log('📦 Bucket creado o ya existente');
+        bucketCreated = true;
       }
     } catch (createError) {
-      console.log('📦 Error al crear bucket, probablemente ya existe:', createError);
-      // Continue despite this error
+      console.log('Error al crear bucket:', createError);
+      // Intentar actualizar si no se pudo crear
     }
     
-    // Update bucket to ensure it's public
+    // 2. Actualizar el bucket para asegurarnos que es público
     try {
       const { error: updateError } = await supabase.storage
         .updateBucket('menu_images', { public: true });
       
       if (updateError) {
         console.error('Error updating bucket:', updateError);
-      } else {
-        console.log('📦 Bucket configurado como público');
       }
     } catch (updateError) {
       console.error('Error updating bucket:', updateError);
     }
     
-    // Call the reset_menu_images_permissions RPC function
-    try {
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('reset_menu_images_permissions');
-        
-      if (rpcError) {
-        console.error('Error en reset_menu_images_permissions RPC:', rpcError);
-        // Don't throw, try to continue
-      } else {
-        console.log('📦 Permisos de bucket actualizados correctamente por RPC');
-      }
-    } catch (rpcError) {
-      console.error('Error grave en RPC:', rpcError);
-      // Continue despite error
-    }
-    
-    // Verify bucket is public by fetching its metadata
+    // 3. Verificar que el bucket existe y es público
+    let bucketExists = false;
+    let isPublic = false;
     try {
       const { data: bucketInfo, error: getBucketError } = await supabase
         .storage
@@ -81,29 +98,60 @@ serve(async (req) => {
       if (getBucketError) {
         console.error('Error verificando bucket:', getBucketError);
       } else {
-        console.log('📦 Estado del bucket:', JSON.stringify(bucketInfo));
+        bucketExists = true;
+        isPublic = bucketInfo.public === true;
       }
     } catch (verifyError) {
       console.error('Error verificando bucket:', verifyError);
     }
     
-    console.log('📦 Almacenamiento inicializado correctamente');
+    // 4. Verificar el tipo MIME de algunos objetos para diagnóstico
+    const mimeTypeCheck = [];
+    try {
+      const { data: objects, error: objectsError } = await supabase.storage
+        .from('menu_images')
+        .list('menu', { limit: 5 });
+        
+      if (!objectsError && objects && objects.length > 0) {
+        for (const obj of objects.slice(0, 3)) {
+          try {
+            const { data: metadata } = await supabase.storage
+              .from('menu_images')
+              .getPublicUrl(`menu/${obj.name}`);
+              
+            // Intentar obtener info de MIME type
+            const headCheck = await fetch(metadata.publicUrl, { method: 'HEAD' })
+              .catch(e => null);
+            
+            const contentType = headCheck?.headers?.get('content-type') || 'desconocido';
+            mimeTypeCheck.push({ name: obj.name, contentType });
+          } catch (e) {
+            // Ignorar errores individuales
+          }
+        }
+      }
+    } catch (metadataError) {
+      // Ignorar errores de metadata
+    }
     
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: "Storage initialized successfully",
+        success: bucketExists && isPublic,
+        message: bucketExists 
+          ? (isPublic ? "Storage bucket exists and is public" : "Storage bucket exists but is not public")
+          : "Failed to verify storage bucket",
+        diagnostics: {
+          bucketCreated,
+          bucketExists,
+          isPublic,
+          mimeTypeCheck: mimeTypeCheck.length > 0 ? mimeTypeCheck : undefined
+        },
         time: new Date().toISOString()
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('📦 Error en storage-reinitialize:', error);
+    console.error('Error en storage-reinitialize:', error);
     
     return new Response(
       JSON.stringify({ 
@@ -111,13 +159,7 @@ serve(async (req) => {
         error: error instanceof Error ? error.message : String(error),
         time: new Date().toISOString() 
       }),
-      { 
-        status: 500, 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

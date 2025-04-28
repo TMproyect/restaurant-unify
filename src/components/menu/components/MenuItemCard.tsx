@@ -3,13 +3,11 @@ import React from 'react';
 import { MenuItem } from '@/services/menu/menuItemService';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2, ImageOff } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { getImageUrlWithCacheBusting } from '@/services/storage';
 import MenuItemImage from '@/components/menu/MenuItemImage';
-import { toast } from 'sonner';
-import { migrateBase64ToStorage } from '@/services/storage';
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -35,55 +33,12 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
     ? getImageUrlWithCacheBusting(item.image_url)
     : undefined;
     
-  const isBase64 = item.image_url?.startsWith('data:image/');
-  
-  const handleImageRetry = async () => {
-    try {
-      if (!item.image_url) return;
-      
-      toast.info("Reintentando cargar imagen...");
-      
-      // Si es Base64, intentar migrar de nuevo
-      if (isBase64) {
-        console.log(`📦 Reintentando migración de imagen Base64 para item ${item.id}`);
-        toast.loading("Intentando migrar imagen a almacenamiento...");
-        
-        try {
-          // Intento de migración explícito
-          const newUrl = await migrateBase64ToStorage(item.image_url);
-          if (newUrl !== item.image_url) {
-            toast.success("Imagen migrada exitosamente");
-            // Disparar evento para forzar recarga del componente
-            window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
-            return;
-          } else {
-            toast.error("No se pudo migrar la imagen, usando Base64");
-          }
-        } catch (err) {
-          console.error("Error migrando imagen:", err);
-          toast.error("Error al migrar la imagen");
-        }
-      }
-      
-      // Forzar recarga de imagen usando cache busting
-      const refreshedUrl = getImageUrlWithCacheBusting(item.image_url + '?t=' + Date.now());
-      console.log('📦 URL actualizada con cache busting:', refreshedUrl);
-      
-      // Disparar evento para forzar recarga del componente
-      window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
-    } catch (error) {
-      console.error('Error al reintentar carga de imagen:', error);
-      toast.error("No se pudo recargar la imagen");
-    }
-  };
-    
   return (
     <Card className="overflow-hidden">
       <MenuItemImage 
         imageUrl={imageUrl || ''} 
         alt={item.name}
         size="md"
-        onRetry={handleImageRetry}
         fit="cover"
       />
       
@@ -138,13 +93,6 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           {item.popular && (
             <Badge variant="secondary" className="text-xs">
               Popular
-            </Badge>
-          )}
-          
-          {isBase64 && (
-            <Badge variant="outline" className="text-xs flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30">
-              <ImageOff className="h-3 w-3" />
-              <span>Imagen sin migrar</span>
             </Badge>
           )}
         </div>

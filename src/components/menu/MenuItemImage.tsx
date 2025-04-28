@@ -1,15 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { ImageOff, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImageOff } from 'lucide-react';
 
 interface MenuItemImageProps {
   imageUrl: string;
   alt: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
-  onRetry?: () => void;
   fit?: 'cover' | 'contain';
 }
 
@@ -18,24 +16,29 @@ const MenuItemImage = ({
   alt, 
   className = "", 
   size = 'md',
-  fit = 'contain',
-  onRetry
+  fit = 'contain'
 }: MenuItemImageProps) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isBase64, setIsBase64] = useState(false);
-  const [retries, setRetries] = useState(0);
   
-  // Check if the image is Base64 encoded
+  // Determinar si la imagen es Base64 y preparar estados iniciales
   useEffect(() => {
-    if (imageUrl && imageUrl.startsWith('data:image/')) {
-      setIsBase64(true);
-      setIsLoading(false); // Base64 images don't need to load
-      setHasError(false); // Reset error state
+    if (!imageUrl) {
+      setHasError(true);
+      setLoaded(false);
+      return;
+    }
+    
+    const isDataUrl = imageUrl.startsWith('data:image/');
+    setIsBase64(isDataUrl);
+    
+    // Las imágenes Base64 no necesitan cargarse
+    if (isDataUrl) {
+      setLoaded(true);
+      setHasError(false);
     } else {
-      setIsBase64(false);
-      // When URL changes, reset states
-      setIsLoading(true);
+      setLoaded(false);
       setHasError(false);
     }
   }, [imageUrl]);
@@ -46,81 +49,55 @@ const MenuItemImage = ({
     'lg': 'h-56'
   }[size];
   
-  const handleRetry = () => {
-    setIsLoading(true);
-    setHasError(false);
-    setRetries(prev => prev + 1);
-    onRetry?.();
-  };
-  
-  // If there's no image URL, show placeholder
+  // Si no hay imagen, mostrar un placeholder elegante
   if (!imageUrl) {
     return (
       <div className={cn("relative overflow-hidden bg-muted flex items-center justify-center", heightClass, className)}>
-        <div className="flex flex-col items-center gap-1 text-muted-foreground">
-          <ImageIcon className="h-8 w-8" />
-          <span className="text-xs">Sin imagen</span>
+        <div className="flex flex-col items-center text-muted-foreground">
+          <ImageOff className="h-6 w-6 opacity-40" />
         </div>
       </div>
     );
   }
   
+  // Añadir un cache-busting query parameter para imágenes de Storage (no Base64)
+  const displayUrl = isBase64 ? imageUrl : `${imageUrl}?t=${Date.now()}`;
+  
   return (
     <div className={cn("relative overflow-hidden bg-muted", heightClass, className)}>
-      {isLoading && !isBase64 && !hasError && (
+      {/* Placeholder mientras carga - solo para imágenes no Base64 que están cargando */}
+      {!loaded && !hasError && !isBase64 && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="animate-pulse bg-muted/80 w-full h-full rounded-t-lg flex items-center justify-center">
-            <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
           </div>
         </div>
       )}
       
-      {hasError ? (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          <div className="flex flex-col items-center gap-2">
-            <ImageOff className="h-8 w-8 mb-2" />
-            <span className="text-sm">Error de imagen</span>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="mt-1"
-              onClick={handleRetry}
-            >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Reintentar
-            </Button>
+      {/* Estado de error - diseño simple y discreto */}
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <ImageOff className="h-6 w-6 text-muted-foreground/50" />
           </div>
         </div>
-      ) : (
-        <>
-          <img 
-            src={imageUrl + (isBase64 ? '' : `?t=${retries}`)} 
-            alt={alt} 
-            className={cn("w-full h-full", isBase64 ? "image-base64" : "")}
-            style={{ 
-              display: (isLoading && !isBase64) ? 'none' : 'block',
-              objectFit: fit
-            }}
-            onLoad={() => {
-              if (!isBase64) {
-                setIsLoading(false);
-              }
-            }}
-            onError={() => {
-              if (!isBase64) {
-                setIsLoading(false);
-                setHasError(true);
-                console.error(`📦 Error cargando imagen: ${imageUrl}`);
-              }
-            }}
-          />
-          {isBase64 && (
-            <div className="absolute bottom-0 right-0 bg-amber-500 text-white text-xs px-1 py-0.5 rounded-tl">
-              Base64
-            </div>
-          )}
-        </>
       )}
+      
+      {/* La imagen real */}
+      <img 
+        src={displayUrl}
+        alt={alt} 
+        className={cn(
+          "w-full h-full transition-opacity duration-200", 
+          loaded && !hasError ? "opacity-100" : "opacity-0"
+        )}
+        style={{ objectFit: fit }}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setHasError(true);
+          setLoaded(false);
+        }}
+      />
     </div>
   );
 };

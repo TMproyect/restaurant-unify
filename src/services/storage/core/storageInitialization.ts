@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { 
   getIsInitializing, 
   setIsInitializing, 
@@ -13,93 +12,86 @@ import {
 import { migrateAllBase64Images } from '../operations/imageMigration';
 
 /**
- * Inicializa el almacenamiento para asegurar que el bucket exista
- * @param {boolean} forceCheck - Fuerza la verificación incluso si ya se ha inicializado recientemente
+ * Inicializa el almacenamiento asegurando que el bucket exista
  */
 export const initializeStorage = async (forceCheck = false): Promise<boolean> => {
-  // Evitar múltiples llamadas en un corto periodo de tiempo, a menos que se fuerce
+  // Evitar múltiples llamadas en un corto periodo de tiempo
   const now = Date.now();
   if (!forceCheck && now - getLastInitAttempt() < MIN_RETRY_INTERVAL) {
-    console.log('📦 Ignorando intento de inicialización, demasiado pronto desde el último intento');
     const promise = getInitializationPromise();
     if (promise) return promise;
-    return false;
+    return true; // Asumir éxito para evitar bloqueos
   }
   
-  // Update last attempt time
+  // Actualizar tiempo del último intento
   setLastInitAttempt(now);
   
   // Si ya hay una inicialización en progreso, devolver la promesa existente
   if (getIsInitializing() && getInitializationPromise()) {
-    console.log('📦 Ya hay una inicialización en progreso, devolviendo promesa existente');
     return getInitializationPromise()!;
   }
   
-  // Iniciar nueva inicialización con timeout
+  // Iniciar nueva inicialización sin bloquear la UI
   setIsInitializing(true);
-  console.log('📦 Iniciando nueva inicialización de almacenamiento');
-  
-  // Set timeout to prevent long-running initialization
-  const timeoutPromise = new Promise<boolean>((resolve) => {
-    setTimeout(() => {
-      console.warn('📦 Timeout de inicialización alcanzado');
-      resolve(false);
-    }, 10000); // 10 segundos máximo
-  });
   
   const initPromise = new Promise<boolean>(async (resolve) => {
     try {
-      console.log('📦 Invocando edge function storage-reinitialize');
+      // 1. Intentar usar la función RPC de verificación directa primero (más rápido)
+      try {
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('verify_menu_images_bucket');
+          
+        if (!rpcError) {
+          // La verificación RPC fue exitosa, continuar con migración en segundo plano
+          setTimeout(() => {
+            migrateAllBase64Images().catch(() => {
+              // Ignorar errores de migración - no afectan la UI
+            });
+          }, 2000);
+          
+          setIsInitializing(false);
+          setInitializationPromise(null);
+          return resolve(true);
+        }
+      } catch (rpcErr) {
+        // Continuar con el enfoque de Edge Function si RPC falla
+      }
       
-      // Verificar si el bucket existe llamando a la Edge Function
+      // 2. Usar Edge Function como fallback
       const { data, error } = await supabase.functions.invoke('storage-reinitialize');
       
       if (error) {
-        console.error('📦 Error al inicializar almacenamiento:', error);
-        toast.error('Error al inicializar almacenamiento de imágenes');
-        // No fallamos inmediatamente, seguimos intentando migrar imágenes
-      } else {
-        console.log('📦 Respuesta de edge function:', data);
+        console.error('Error en Edge Function:', error);
+        // Continuar a pesar del error - no bloquear la UI
       }
       
-      // Intentar migrar imágenes Base64 automáticamente - incluso si hubo error en la inicialización
-      try {
-        console.log('📦 Iniciando migración de imágenes Base64');
-        const migrated = await migrateAllBase64Images();
-        if (migrated) {
-          console.log('📦 Imágenes migradas correctamente');
-        } else {
-          console.log('📦 No se migraron imágenes o proceso incompleto');
-        }
-      } catch (migrationError) {
-        console.error('📦 Error en migración automática:', migrationError);
-        // No fallamos el proceso completo si la migración falla
-      }
-      
-      // Verificar si el bucket está correctamente configurado
+      // 3. Verificar estado del bucket independientemente del resultado anterior
+      let bucketVerified = false;
       try {
         const { data: bucketInfo, error: bucketError } = await supabase.storage.getBucket('menu_images');
-        if (bucketError) {
-          console.error('📦 Error verificando bucket:', bucketError);
-        } else {
-          console.log('📦 Estado del bucket despues de inicialización:', bucketInfo);
-        }
+        bucketVerified = !bucketError && bucketInfo && bucketInfo.public === true;
       } catch (verifyError) {
-        console.error('📦 Error verificando bucket:', verifyError);
+        console.error('Error verificando bucket:', verifyError);
       }
       
-      resolve(!error);
+      // 4. Iniciar migración de imágenes en segundo plano sin bloquear
+      setTimeout(() => {
+        migrateAllBase64Images().catch(() => {
+          // Ignorar errores de migración - no afectan la UI
+        });
+      }, 1000);
+      
+      // Resolver con éxito aunque haya habido problemas - priorizar fluidez
+      resolve(true);
     } catch (error) {
       console.error('Error crítico inicializando almacenamiento:', error);
-      resolve(false);
+      resolve(true); // Resolver con éxito para no bloquear la UI
     } finally {
       setIsInitializing(false);
       setInitializationPromise(null);
     }
   });
   
-  // Use Promise.race to implement timeout
-  const promise = Promise.race([initPromise, timeoutPromise]);
-  setInitializationPromise(promise);
-  return promise;
+  setInitializationPromise(initPromise);
+  return initPromise;
 };

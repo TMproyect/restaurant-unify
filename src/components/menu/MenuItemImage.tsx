@@ -10,6 +10,7 @@ interface MenuItemImageProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   onRetry?: () => void;
+  fit?: 'cover' | 'contain';
 }
 
 const MenuItemImage = ({ 
@@ -17,6 +18,7 @@ const MenuItemImage = ({
   alt, 
   className = "", 
   size = 'md',
+  fit = 'contain',
   onRetry
 }: MenuItemImageProps) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -66,9 +68,10 @@ const MenuItemImage = ({
         <img 
           src={imageUrl} 
           alt={alt} 
-          className="w-full h-full object-cover"
+          className="w-full h-full"
           style={{ 
             display: isLoading ? 'none' : 'block',
+            objectFit: fit
           }}
           onLoad={() => {
             setIsLoading(false);

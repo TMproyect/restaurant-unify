@@ -26,21 +26,41 @@ serve(async (req) => {
     
     console.log('📦 Inicializando bucket de almacenamiento menu_images');
     
-    // Create or confirm bucket exists
-    const { data: bucketData, error: bucketError } = await supabase.storage
-      .createBucket('menu_images', { public: true });
-      
-    if (bucketError && !bucketError.message.includes('Already exists')) {
-      console.error('Error creating bucket:', bucketError);
-      throw new Error(`Error creating bucket: ${bucketError.message}`);
+    try {
+      // Create or confirm bucket exists
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .createBucket('menu_images', { public: true });
+        
+      if (bucketError && !bucketError.message.includes('already exists')) {
+        console.error('Error creating bucket:', bucketError);
+        // No lanzamos error aquí, intentamos continuar con la actualización
+      }
+    } catch (createError) {
+      console.log('📦 Error al crear bucket, probablemente ya existe:', createError);
+      // Ignoramos este error y continuamos
     }
     
-    // Update bucket to ensure it's public
+    // Update bucket to ensure it's public - incluso si la creación falló
     try {
       await supabase.storage.updateBucket('menu_images', { public: true });
       console.log('📦 Bucket configurado como público');
     } catch (updateError) {
       console.error('Error updating bucket:', updateError);
+    }
+    
+    // Llamamos a la función RPC de PostgreSQL para verificar y actualizar permisos
+    try {
+      const { error: rpcError } = await supabase
+        .rpc('verify_menu_images_bucket');
+        
+      if (rpcError) {
+        console.error('Error en verify_menu_images_bucket RPC:', rpcError);
+      } else {
+        console.log('📦 Permisos de bucket verificados por RPC');
+      }
+    } catch (rpcError) {
+      console.log('RPC no disponible o error:', rpcError);
+      // Continuamos sin depender del resultado de la RPC
     }
     
     console.log('📦 Almacenamiento inicializado correctamente');

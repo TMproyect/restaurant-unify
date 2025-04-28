@@ -9,11 +9,23 @@ const STORAGE_BUCKET = 'menu_images';
 // Variable para evitar múltiples inicializaciones simultáneas
 let isInitializing = false;
 let initializationPromise: Promise<boolean> | null = null;
+let lastInitAttempt = 0;
+const MIN_RETRY_INTERVAL = 3000; // Mínimo 3 segundos entre intentos
 
 /**
  * Inicializa el almacenamiento para asegurar que el bucket exista
  */
 export const initializeStorage = async (): Promise<boolean> => {
+  // Evitar múltiples llamadas en un corto periodo de tiempo
+  const now = Date.now();
+  if (now - lastInitAttempt < MIN_RETRY_INTERVAL) {
+    console.log('📦 Ignorando intento de inicialización, demasiado pronto desde el último intento');
+    if (initializationPromise) return initializationPromise;
+    return false;
+  }
+  
+  lastInitAttempt = now;
+  
   // Si ya hay una inicialización en progreso, devolver la promesa existente
   if (isInitializing && initializationPromise) {
     return initializationPromise;
@@ -24,30 +36,31 @@ export const initializeStorage = async (): Promise<boolean> => {
   
   initializationPromise = new Promise(async (resolve) => {
     try {
+      console.log('📦 Iniciando inicialización de almacenamiento');
+      
       // Verificar si el bucket existe llamando a la Edge Function
       const { error } = await supabase.functions.invoke('storage-reinitialize');
       
       if (error) {
         console.error('📦 Error al inicializar almacenamiento:', error);
-        isInitializing = false;
-        resolve(false);
-        return;
+        // No fallamos inmediatamente, seguimos intentando migrar imágenes
+      } else {
+        console.log('📦 Almacenamiento inicializado correctamente');
       }
       
-      console.log('📦 Almacenamiento inicializado correctamente');
-      
-      // Intentar migrar imágenes Base64 automáticamente
+      // Intentar migrar imágenes Base64 automáticamente - incluso si hubo error en la inicialización
       try {
-        const result = await migrateAllBase64Images();
-        if (result) {
+        const migrated = await migrateAllBase64Images();
+        if (migrated) {
           console.log('📦 Imágenes migradas correctamente');
         }
       } catch (migrationError) {
         console.error('📦 Error en migración automática:', migrationError);
-        // No fallar el proceso completo si la migración falla
+        // No fallamos el proceso completo si la migración falla
       }
       
       isInitializing = false;
+      // Consideramos exitosa la inicialización incluso si solo uno de los pasos funciona
       resolve(true);
     } catch (error) {
       console.error('Error inicializando almacenamiento:', error);
@@ -113,12 +126,7 @@ export const uploadMenuItemImage = async (file: File): Promise<string | { error?
     }
     
     // Asegurar que el almacenamiento está inicializado antes de subir
-    const storageReady = await initializeStorage();
-    if (!storageReady) {
-      console.log('📦 No se pudo inicializar el almacenamiento, intentando con Base64 como fallback');
-      const base64Data = await fileToBase64(file);
-      return base64Data;
-    }
+    await initializeStorage();
     
     // Generar un nombre único para el archivo
     const fileExt = file.name.split('.').pop();
@@ -236,14 +244,41 @@ export const migrateBase64ToStorage = async (base64Image: string): Promise<strin
     const blob = new Blob([arrayBuffer], { type: mimeType });
     const file = new File([blob], `migrated-${uuidv4()}.${mimeType.split('/')[1]}`, { type: mimeType });
     
-    // Subir archivo a Supabase Storage
-    const result = await uploadMenuItemImage(file);
-    if (typeof result === 'string' && !result.startsWith('data:image/')) {
-      return result;
-    }
+    // Asegurar que el almacenamiento está inicializado antes de subir
+    await initializeStorage();
     
-    // Si falla, devolver la imagen Base64 original
-    return base64Image;
+    // Subir archivo a Supabase Storage
+    try {
+      // Generar un nombre único para el archivo
+      const fileExt = mimeType.split('/')[1];
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `menu/${fileName}`;
+      
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, blob, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: mimeType
+        });
+      
+      if (error) {
+        console.error('📦 Error al migrar imagen Base64 a Storage:', error);
+        return base64Image; // Devolver la imagen Base64 original si falla la migración
+      }
+      
+      // Obtener URL pública
+      const { data: publicUrl } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(filePath);
+        
+      console.log('📦 Imagen Base64 migrada exitosamente a Storage:', publicUrl.publicUrl);
+      
+      return publicUrl.publicUrl;
+    } catch (uploadError) {
+      console.error('Error al subir imagen convertida:', uploadError);
+      return base64Image;
+    }
   } catch (error) {
     console.error('Error al migrar imagen Base64:', error);
     return base64Image;

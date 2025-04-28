@@ -8,30 +8,27 @@ import { toast } from 'sonner';
 import { Utensils, Tag } from 'lucide-react';
 import { fetchMenuCategories } from '@/services/menu';
 import { initializeStorage } from '@/services/storage/imageStorage';
+import { migrateAllBase64Images } from '@/services/menu/menuItemService';
 
 const Menu: React.FC = () => {
   const [activeTab, setActiveTab] = useState('menu');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [storageInitialized, setStorageInitialized] = useState(false);
   
-  // Función para inicializar el almacenamiento automáticamente
-  const initStorage = useCallback(async () => {
+  // Función para inicializar el almacenamiento y migrar imágenes automáticamente
+  const initializeResources = useCallback(async () => {
     try {
-      const success = await initializeStorage();
-      setStorageInitialized(success);
+      // Inicializar almacenamiento
+      await initializeStorage();
       
-      if (!success) {
-        console.error("No se pudo inicializar el almacenamiento de imágenes");
-        // Intento de reinicialización automática después de 2 segundos
-        setTimeout(() => initStorage(), 2000);
-      } else {
-        console.log('📦 Almacenamiento inicializado correctamente');
-      }
+      // Intentar migrar todas las imágenes Base64 a Storage
+      await migrateAllBase64Images();
+      
+      console.log('📦 Recursos inicializados correctamente');
     } catch (error) {
-      console.error('Error al inicializar almacenamiento:', error);
-      // Intento de reinicialización automática después de 3 segundos
-      setTimeout(() => initStorage(), 3000);
+      console.error('Error al inicializar recursos:', error);
+      // Intento automático de reinicio después de 3 segundos en caso de error
+      setTimeout(() => initializeResources(), 3000);
     }
   }, []);
   
@@ -52,13 +49,13 @@ const Menu: React.FC = () => {
   useEffect(() => {
     // Inicializar almacenamiento y cargar categorías automáticamente
     const initialize = async () => {
-      await initStorage();
+      await initializeResources();
       await loadCategories();
     };
     
     initialize();
     console.log('🔄 Menu cargado correctamente');
-  }, [initStorage, loadCategories]);
+  }, [initializeResources, loadCategories]);
 
   const handleCategoriesUpdated = useCallback(() => {
     loadCategories();
@@ -88,7 +85,6 @@ const Menu: React.FC = () => {
             <MenuManager 
               categories={categories} 
               isLoading={loading}
-              storageInitialized={storageInitialized}
             />
           </TabsContent>
           

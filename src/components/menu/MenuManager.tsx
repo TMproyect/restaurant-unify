@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -16,7 +15,6 @@ import MenuPagination from './components/MenuPagination';
 interface MenuManagerProps {
   categories: MenuCategory[];
   isLoading: boolean;
-  storageInitialized?: boolean; // Kept for backward compatibility but not used anymore
 }
 
 const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
@@ -33,7 +31,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
   const [pageSize] = useState(12);
   const [refreshKey, setRefreshKey] = useState(0);
   
-  // Función para obtener los elementos del menú con paginación
   const loadMenuItems = useCallback(async (resetPage = false) => {
     try {
       setLoading(true);
@@ -61,12 +58,10 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   }, [page, pageSize, filterCategory, searchTerm]);
 
-  // Cargar elementos cuando cambien los filtros o la página
   useEffect(() => {
     loadMenuItems();
   }, [loadMenuItems, page, refreshKey]);
 
-  // Escuchar evento de actualización
   useEffect(() => {
     const handleMenuUpdate = () => {
       setRefreshKey(prev => prev + 1);
@@ -79,7 +74,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     };
   }, []);
 
-  // Aplicar filtros
   const handleSearch = useCallback(() => {
     loadMenuItems(true);
   }, [loadMenuItems]);
@@ -90,7 +84,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     setTimeout(() => loadMenuItems(true), 0);
   };
 
-  // Paginación
   const handleNextPage = useCallback(() => {
     if (hasMore) {
       setPage(prev => prev + 1);
@@ -103,7 +96,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   }, [page]);
 
-  // Formulario de ítem
   const handleAddItem = () => {
     setSelectedItem(null);
     setShowItemForm(true);
@@ -121,7 +113,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
     }
   };
 
-  // Eliminación de ítem
   const confirmDelete = (item: MenuItem) => {
     setItemToDelete(item);
   };
@@ -185,7 +176,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         </>
       )}
 
-      {/* Formulario para crear/editar platos */}
       {showItemForm && (
         <MenuItemForm
           item={selectedItem}
@@ -194,7 +184,6 @@ const MenuManager: React.FC<MenuManagerProps> = ({ categories, isLoading }) => {
         />
       )}
 
-      {/* Confirmación para eliminar plato */}
       <MenuItemDeleteDialog
         item={itemToDelete}
         onCancel={handleDeleteCancel}

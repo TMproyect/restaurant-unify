@@ -35,6 +35,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, categoryName, onEdit,
         <MenuItemImage 
           imageUrl={item.image_url || ''} 
           alt={item.name}
+          fit="contain"
+          className="bg-white"
         />
         {item.popular && (
           <Badge className="absolute top-2 right-2 bg-yellow-500 hover:bg-yellow-600">

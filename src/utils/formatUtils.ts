@@ -1,44 +1,62 @@
-export const normalizeRoleName = (role: string | null | undefined): string => {
+
+import { UserRole } from '@/contexts/auth/types';
+import { systemRoles } from '@/data/permissionsData';
+
+/**
+ * Normalize a role name from English to Spanish if needed
+ */
+export const normalizeRoleName = (role?: string): string => {
   if (!role) return 'admin';
   
-  const roleMap: Record<string, string> = {
-    // English to Spanish mappings
-    'waiter': 'mesero',
+  const normalizedRole = role.toLowerCase();
+  
+  // Role translation mapping
+  const roleMapping: Record<string, string> = {
     'kitchen': 'cocina',
     'delivery': 'repartidor',
     'manager': 'gerente',
     'owner': 'propietario',
     'cashier': 'cajero',
-    
-    // Ensure Spanish roles are preserved
-    'admin': 'admin',
-    'gerente': 'gerente',
-    'mesero': 'mesero',
-    'cocina': 'cocina',
-    'repartidor': 'repartidor',
-    'propietario': 'propietario',
-    'cajero': 'cajero'
+    'waiter': 'mesero'
   };
   
-  return roleMap[role.toLowerCase()] || 'admin';
+  // Check if it needs to be translated
+  if (roleMapping[normalizedRole]) {
+    return roleMapping[normalizedRole];
+  }
+  
+  return normalizedRole;
 };
 
-// Add or update the getRoleDisplayName function to display the cajero role properly
-export const getRoleDisplayName = (role: string | null | undefined): string => {
-  if (!role) return 'Administrador';
+/**
+ * Get a display-friendly name for a role
+ */
+export const getRoleDisplayName = (role: string): string => {
+  const normalizedRole = normalizeRoleName(role);
   
-  const displayNames: Record<string, string> = {
-    'admin': 'Administrador',
-    'gerente': 'Gerente',
-    'mesero': 'Mesero',
-    'cocina': 'Cocina',
-    'kitchen': 'Cocina',
-    'repartidor': 'Repartidor',
-    'delivery': 'Repartidor',
-    'propietario': 'Propietario',
-    'cajero': 'Cajero',
-    'cashier': 'Cajero'
-  };
+  // Use the system roles display name mapping
+  if (systemRoles[normalizedRole]) {
+    return systemRoles[normalizedRole];
+  }
   
-  return displayNames[role.toLowerCase()] || 'Usuario';
+  // If not found, capitalize first letter
+  return normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1);
+};
+
+/**
+ * Format a value as currency
+ */
+export const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0
+  }).format(value);
+};
+
+/**
+ * Create a consistent class name string
+ */
+export const cn = (...classes: (string | boolean | undefined | null)[]): string => {
+  return classes.filter(Boolean).join(' ');
 };

@@ -1,21 +1,12 @@
 
-import { useAuth } from '@/contexts/auth/AuthContext';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export const useKitchenPermissions = () => {
-  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   
-  // Verificar permisos del usuario
-  const hasViewPermission = user?.role === 'admin' || 
-                            user?.role === 'propietario' ||
-                            user?.role === 'gerente' ||
-                            user?.role === 'cocina' || 
-                            user?.role === 'kitchen';
-  
-  const hasManagePermission = user?.role === 'admin' || 
-                             user?.role === 'propietario' ||
-                             user?.role === 'gerente' ||
-                             user?.role === 'cocina' || 
-                             user?.role === 'kitchen';
+  // Using the cached permission system for better performance
+  const hasViewPermission = hasPermission('kitchen.view');
+  const hasManagePermission = hasPermission('kitchen.manage');
   
   return {
     hasViewPermission,

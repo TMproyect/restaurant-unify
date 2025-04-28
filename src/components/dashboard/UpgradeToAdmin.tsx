@@ -4,13 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/auth/AuthContext';
+import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from 'sonner';
+import { getRoleDisplayName } from '@/utils/formatUtils';
 
 const UpgradeToAdmin = () => {
   const { user, updateUserRole } = useAuth();
+  const { isAdmin } = usePermissions();
 
-  // Don't render the component if user is admin or not logged in
-  if (!user || user.role === 'admin') {
+  // Don't render if user is already admin or not logged in
+  if (!user || isAdmin) {
     return null;
   }
 
@@ -32,7 +35,7 @@ const UpgradeToAdmin = () => {
           Actualizar permisos
         </CardTitle>
         <CardDescription>
-          Actualmente tienes el rol de <strong className="capitalize">{user.role}</strong>.
+          Actualmente tienes el rol de <strong className="capitalize">{getRoleDisplayName(user.role)}</strong>.
         </CardDescription>
       </CardHeader>
       <CardContent>

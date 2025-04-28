@@ -12,7 +12,7 @@ import {
   Store,
   ShoppingCart,
   Clock,
-  LayoutGrid // Import LayoutGrid instead of LayoutDashboard
+  LayoutGrid
 } from 'lucide-react';
 import { NavList } from './NavList';
 import { NavItem } from './NavItem';
@@ -69,26 +69,13 @@ const Sidebar = () => {
     },
     {
       title: "Integraciones",
-      icon: <LayoutGrid className="h-4 w-4" />, // Use LayoutGrid icon instead of LayoutDashboard
+      icon: <LayoutGrid className="h-4 w-4" />,
       href: "/integrations",
     },
     {
       title: "Ajustes",
       icon: <Settings className="h-4 w-4" />,
-      items: [
-        {
-          title: "Roles y Permisos",
-          icon: <Shield className="h-4 w-4" />,
-          href: "/roles-permissions",
-          permission: "settings.roles"
-        },
-        {
-          title: "Roles Temporales",
-          icon: <Clock className="h-4 w-4" />,
-          href: "/settings/temporary-roles",
-          permission: "settings.roles"
-        },
-      ],
+      href: "/settings",
       permission: "settings.access"
     }
   ].filter(item => {
@@ -105,25 +92,14 @@ const Sidebar = () => {
       </div>
       <NavList className="mt-6">
         {navigationItems.map((item) => (
-          item.items ? (
-            <NavList key={item.title} title={item.title}>
-              {item.items.map((subItem) => (
-                <NavItem
-                  key={subItem.title}
-                  href={subItem.href}
-                  icon={subItem.icon}
-                  permission={subItem.permission}
-                />
-              ))}
-            </NavList>
-          ) : (
-            <NavItem
-              key={item.title}
-              href={item.href}
-              icon={item.icon}
-              permission={item.permission}
-            />
-          )
+          <NavItem
+            key={item.title}
+            href={item.href}
+            icon={item.icon}
+            permission={item.permission}
+          >
+            {item.title}
+          </NavItem>
         ))}
       </NavList>
     </div>

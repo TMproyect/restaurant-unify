@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ import Reports from '@/pages/Reports';
 import Integrations from '@/pages/Integrations';
 import Integration from '@/pages/Integration';
 import TemporaryRolesPage from '@/pages/TemporaryRolesPage';
+import Inventory from '@/pages/Inventory';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -55,7 +57,7 @@ function App() {
               <Route path="/kitchen" element={<Kitchen />} />
               <Route path="/tables" element={<Tables />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/roles" element={<RolesAndPermissions />} />
+              <Route path="/roles-permissions" element={<RolesAndPermissions />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/delivery" element={<Delivery />} />
               <Route path="/staff" element={<Staff />} />
@@ -66,6 +68,7 @@ function App() {
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/integration/:id" element={<Integration />} />
               <Route path="/settings/temporary-roles" element={<TemporaryRolesPage />} />
+              <Route path="/inventory" element={<Inventory />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <Toaster />

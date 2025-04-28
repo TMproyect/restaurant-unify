@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader } from '@/components/ui/card';
-import { Clock, AlertCircle, DollarSign, ChefHat, Archive, Info } from 'lucide-react';
+import { Clock, AlertCircle, DollarSign, ChefHat, Archive, Info, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ActivityMonitorProps } from './activity/types';
@@ -15,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const ITEMS_PER_PAGE = 50; // Límite de 50 elementos por página
+const ITEMS_PER_PAGE = 50;
 
 const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ 
   items, 
@@ -37,10 +36,7 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     archivable: 0
   });
   
-  // Añadir estado para la paginación
   const [currentPage, setCurrentPage] = useState(1);
-  
-  // Estado para el arquivado automático
   const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(true);
   const [lastArchiveRun, setLastArchiveRun] = useState<string | null>(null);
   const [archivingInProgress, setArchivingInProgress] = useState(false);
@@ -53,7 +49,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     { id: 'archivable', label: 'Por Archivar', icon: <Archive className="h-4 w-4 mr-2" /> }
   ];
   
-  // Cargar la configuración de archivado automático
   useEffect(() => {
     const fetchArchiveSettings = async () => {
       try {
@@ -84,7 +79,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     fetchArchiveSettings();
   }, []);
   
-  // Update counts whenever items or date range change
   useEffect(() => {
     if (items && items.length > 0) {
       const counts = calculateItemsCount(items, dateRange);
@@ -93,27 +87,21 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
     }
   }, [items, dateRange]);
   
-  // Filtrar los items según los criterios actuales
   const filteredItems = filterItems(items, activeTab, activeFilter, dateRange);
   
-  // Calcular el número total de páginas
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
   
-  // Resetear a página 1 cuando cambie el filtrado
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, activeFilter, dateRange]);
   
-  // Aplicar paginación a los items filtrados
   const paginatedItems = filteredItems.slice(
     (currentPage - 1) * ITEMS_PER_PAGE, 
     currentPage * ITEMS_PER_PAGE
   );
   
-  // Manejar cambio de página
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Scroll al inicio de la tabla
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
@@ -138,7 +126,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
         return;
       }
       
-      // Guardar la fecha de último archivado
       if (data.processed > 0) {
         const now = new Date().toISOString();
         await supabase
@@ -148,9 +135,7 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
         setLastArchiveRun(now);
         toast.success(`Se archivaron ${data.processed} órdenes antiguas correctamente`);
         
-        // Actualizar el monitoreo de actividad para mostrar los cambios
         if (onActionClick) {
-          // Llamar a la función refreshAllData del hook useDashboardData
           onActionClick('refresh-data');
         }
       } else {
@@ -215,17 +200,19 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
                 
                 <Badge
                   variant="outline" 
-                  className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 cursor-pointer"
+                  className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 cursor-pointer hover:bg-purple-100 transition-colors"
                   onClick={handleManualArchive}
                 >
-                  <Archive className="h-3 w-3" />
                   {archivingInProgress ? (
-                    <span className="flex items-center">
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    <span className="flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
                       Archivando...
                     </span>
                   ) : (
-                    <span>Archivar Órdenes ({itemsCount.archivable})</span>
+                    <span className="flex items-center gap-1">
+                      <Archive className="h-3 w-3" />
+                      Archivar ({itemsCount.archivable})
+                    </span>
                   )}
                 </Badge>
               </div>
@@ -250,7 +237,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({
               activeFilter={activeFilter}
             />
             
-            {/* Componente de paginación */}
             {filteredItems.length > ITEMS_PER_PAGE && (
               <div className="px-6 py-4">
                 <ActivityPagination 

@@ -1,5 +1,5 @@
-
 import { ActivityMonitorItem } from '@/types/dashboard.types';
+import { ReactNode } from 'react';
 
 export interface ActivityHeaderProps {
   activeFilter: string | null;
@@ -48,4 +48,33 @@ export interface ActivityPaginationProps {
 
 export interface DateRangeFilterProps {
   onRangeChange: (range: { start: Date | null; end: Date | null }) => void;
+}
+
+export interface EmptyStateProps {
+  filter: string | null;
+}
+
+export interface FilterType {
+  id: string;
+  label: string;
+  icon: ReactNode;
+}
+
+export interface FilterDropdownProps {
+  activeFilter: string | null;
+  setActiveFilter: (filter: string | null) => void;
+  filters: FilterType[];
+}
+
+export interface ArchiveSettingsFormData {
+  autoArchiveEnabled: boolean;
+  completedOrdersHours: number;
+  cancelledOrdersHours: number;
+  testOrdersHours: number;
+  deleteArchivedAfterDays: number;
+}
+
+export interface ArchiveConfigContextProps {
+  settings: ArchiveSettingsFormData;
+  updateSettings: (newSettings: Partial<ArchiveSettingsFormData>) => Promise<void>;
 }

@@ -5,7 +5,7 @@ import { useDashboardInit } from '@/hooks/use-dashboard-init';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Archive } from 'lucide-react';
 import EnhancedDashboardCard from '@/components/dashboard/EnhancedDashboardCard';
 import ActivityMonitor from '@/components/dashboard/ActivityMonitor';
 import OrderDetailsDialog from '@/components/dashboard/activity/OrderDetailsDialog';
@@ -13,11 +13,16 @@ import { CancellationReviewDialog } from '@/components/dashboard/activity';
 import DiscountReviewDialog from '@/components/dashboard/activity/DiscountReviewDialog';
 import CancellationReasonDialog from '@/components/dashboard/activity/CancellationReasonDialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function Dashboard() {
   // Track if component is mounted to prevent state updates after unmount
   const [isMounted, setIsMounted] = useState(false);
   const { error: initError, isReady } = useDashboardInit();
+  const { isAdmin } = usePermissions();
+  const [isArchiving, setIsArchiving] = useState(false);
   
   // Use the optimized dashboard data hook
   const { 
@@ -70,6 +75,37 @@ export default function Dashboard() {
     return () => clearTimeout(reconnectTimer);
   }, [dataError, isMounted, refreshAllData]);
   
+  // Function to trigger manual archiving
+  const handleManualArchive = async () => {
+    try {
+      setIsArchiving(true);
+      
+      toast.info('Iniciando proceso de archivado...');
+      
+      const { data, error } = await supabase.functions.invoke('archive-old-orders');
+      
+      if (error) {
+        console.error('❌ [Dashboard] Error archiving orders:', error);
+        toast.error(`Error al archivar: ${error.message}`);
+        return;
+      }
+      
+      if (data.processed > 0) {
+        toast.success(`Se archivaron ${data.processed} órdenes antiguas correctamente`);
+      } else {
+        toast.info('No hay órdenes para archivar en este momento');
+      }
+      
+      // Refresh the dashboard data
+      refreshAllData();
+    } catch (error) {
+      console.error('❌ [Dashboard] Error in manual archive:', error);
+      toast.error('Error al archivar órdenes');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+  
   // If not initialized, show loading state
   if (!isReady && !initError) {
     return (
@@ -118,6 +154,19 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-800">Dashboard</h1>
+          
+          {/* Archive button (admin only) */}
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={handleManualArchive}
+              disabled={isArchiving}
+            >
+              <Archive className="h-4 w-4" />
+              {isArchiving ? 'Archivando...' : 'Archivar Órdenes Antiguas'}
+            </Button>
+          )}
         </div>
         
         {/* Error display if any */}

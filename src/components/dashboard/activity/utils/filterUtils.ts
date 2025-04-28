@@ -78,7 +78,8 @@ export const filterItems = (
       // Orders with any exception
       filteredItems = filteredItems.filter(item => 
         item.isDelayed || item.hasCancellation || 
-        (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
+        (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15) ||
+        isArchivable(item)
       );
       break;
     // 'all' - no filtering needed
@@ -100,6 +101,9 @@ export const filterItems = (
         break;
       case 'kitchen':
         filteredItems = filteredItems.filter(item => !!item.kitchenId);
+        break;
+      case 'archivable':
+        filteredItems = filteredItems.filter(item => isArchivable(item));
         break;
     }
   }
@@ -172,7 +176,8 @@ export const calculateItemsCount = (
   const exceptions = filteredItems.filter(item => 
     item.isDelayed || 
     item.hasCancellation || 
-    (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15)
+    (item.hasDiscount && item.discountPercentage && item.discountPercentage >= 15) ||
+    isArchivable(item)
   ).length;
   
   return {
@@ -183,6 +188,34 @@ export const calculateItemsCount = (
     exceptions
   };
 };
+
+/**
+ * Determines if an order should be archived soon based on its status and age
+ */
+function isArchivable(item: ActivityMonitorItem): boolean {
+  const milliseconds = item.timeElapsed;
+  const minutes = milliseconds / (1000 * 60);
+  const hours = minutes / 60;
+  
+  const status = item.status.toLowerCase();
+  
+  // Completed orders older than 20 hours
+  if ((completedStatuses.includes(status) || readyStatuses.includes(status)) && hours > 20) {
+    return true;
+  }
+  
+  // Cancelled orders older than 40 hours
+  if (cancelledStatuses.includes(status) && hours > 40) {
+    return true;
+  }
+  
+  // Test orders (pending/preparing older than 8 hours)
+  if ((pendingStatuses.includes(status) || preparingStatuses.includes(status)) && hours > 8) {
+    return true;
+  }
+  
+  return false;
+}
 
 // Export constants for reuse
 export {

@@ -47,6 +47,29 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       const now = new Date();
       const timeElapsedMs = now.getTime() - createdAt.getTime();
       
+      // Enhanced thresholds by status
+      const status = order.status.toLowerCase();
+      
+      // Check if it's a pending order
+      const isPendingStatus = status === 'pending' || 
+                             status === 'priority-pending' || 
+                             status === 'pendiente';
+      
+      // Check if it's a preparing order                       
+      const isPreparingStatus = status === 'preparing' || 
+                               status === 'priority-preparing' || 
+                               status === 'preparando' || 
+                               status === 'en preparación';
+                               
+      // Determine delay thresholds based on status
+      let delayThreshold = 15 * 60 * 1000; // Default 15 minutes
+      
+      if (isPendingStatus) {
+        delayThreshold = 10 * 60 * 1000; // 10 minutes for pending
+      } else if (isPreparingStatus) {
+        delayThreshold = 20 * 60 * 1000; // 20 minutes for preparing
+      }
+      
       // Determine status flags locally
       const pendingStatuses = ['pending', 'priority-pending', 'pendiente'];
       const preparingStatuses = ['preparing', 'priority-preparing', 'preparando', 'en preparación'];
@@ -54,19 +77,14 @@ export const getActivityMonitor = async (): Promise<ActivityMonitorItem[]> => {
       const completedStatuses = ['completed', 'delivered', 'completado', 'entregado', 'paid'];
       const cancelledStatuses = ['cancelled', 'cancelado', 'cancelada'];
       
-      const status = order.status.toLowerCase();
-      
       // Check if the order has a priority prefix
       const isPrioritized = status.startsWith('priority-');
       
       // CORRECCIÓN: Considerar pedidos 'ready' como 'completed' para el monitor de actividad
       const normalizedStatus = readyStatuses.includes(status) ? 'completed' : status;
       
-      // Log para depuración
-      console.log(`📊 [DashboardService] Orden ${order.id.substring(0, 6)}, status original: ${status}, normalizado: ${normalizedStatus}, priorizado: ${isPrioritized}`);
-      
-      // Use local calculations instead of additional API calls
-      const isDelayed = timeElapsedMs > 15 * 60 * 1000 && 
+      // Use enhanced delay thresholds
+      const isDelayed = timeElapsedMs > delayThreshold && 
         (pendingStatuses.includes(status) || preparingStatuses.includes(status));
       
       const hasCancellation = cancelledStatuses.includes(status);
@@ -188,6 +206,19 @@ export const prioritizeOrder = async (orderId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('❌ [DashboardService] Error prioritizing order:', error);
+    return false;
+  }
+};
+
+// Add a scheduled task to check for outdated orders
+export const setupAutoArchiving = async () => {
+  try {
+    // This function can be used to set up a recurring task using setInterval
+    // However, it's better to use the edge function with a cron job
+    console.log('📊 [DashboardService] Auto-archiving setup is managed through Supabase Edge Function');
+    return true;
+  } catch (error) {
+    console.error('❌ [DashboardService] Error setting up auto-archiving:', error);
     return false;
   }
 };

@@ -38,7 +38,7 @@ export function loadQzScript(): Promise<void> {
     
     try {
       const script = document.createElement('script');
-      script.src = '/qz-tray.js';
+      script.src = `/qz-tray.js?v=${new Date().getTime()}`; // Cache busting
       script.defer = true;
       
       script.onload = () => {

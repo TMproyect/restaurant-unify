@@ -9,14 +9,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info, ExternalLink, RefreshCw, HelpCircle } from 'lucide-react';
+import { Info, ExternalLink, RefreshCw, HelpCircle, Printer, Settings } from 'lucide-react';
 import { QzDiagnosticTool } from './QzDiagnosticTool';
+import { PrinterDiagnosticTool } from './diagnostic/PrinterDiagnosticTool';
 import printService from '@/services/printing/printService';
 import { toast } from 'sonner';
 
 export function PrinterTroubleshooting() {
   const [isConnecting, setIsConnecting] = useState(false);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showQzDiagnostics, setShowQzDiagnostics] = useState(false);
+  const [showPrinterDiagnostics, setShowPrinterDiagnostics] = useState(false);
   
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -24,8 +26,17 @@ export function PrinterTroubleshooting() {
       const result = await printService.connect();
       if (result) {
         toast.success("Conexión exitosa al sistema de impresión");
+        
+        // Get printers after successful connection
+        const printerResult = await printService.refreshPrinters();
+        if (!printerResult) {
+          // Open printer diagnostics if connection succeeded but no printers found
+          setShowPrinterDiagnostics(true);
+        }
       } else {
         toast.error("No se pudo conectar al sistema de impresión");
+        // Show QZ diagnostics on connection error
+        setShowQzDiagnostics(true);
       }
     } catch (error) {
       console.error('Error connecting to print system:', error);
@@ -52,20 +63,36 @@ export function PrinterTroubleshooting() {
           </AlertDescription>
         </Alert>
         
-        {showDiagnostics && (
+        {showQzDiagnostics && (
           <div className="mb-4">
-            <QzDiagnosticTool onClose={() => setShowDiagnostics(false)} />
+            <QzDiagnosticTool onClose={() => setShowQzDiagnostics(false)} />
+          </div>
+        )}
+        
+        {showPrinterDiagnostics && (
+          <div className="mb-4">
+            <PrinterDiagnosticTool onClose={() => setShowPrinterDiagnostics(false)} />
           </div>
         )}
         
         <div className="flex justify-between">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowDiagnostics(!showDiagnostics)}
-          >
-            <HelpCircle className="mr-2 h-4 w-4" />
-            {showDiagnostics ? 'Ocultar Diagnóstico' : 'Ejecutar Diagnóstico'}
-          </Button>
+          <div className="space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowQzDiagnostics(!showQzDiagnostics)}
+            >
+              <HelpCircle className="mr-2 h-4 w-4" />
+              {showQzDiagnostics ? 'Ocultar Diagnóstico QZ' : 'Diagnóstico QZ'}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPrinterDiagnostics(!showPrinterDiagnostics)}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              {showPrinterDiagnostics ? 'Ocultar Diagnóstico Impresoras' : 'Diagnóstico Impresoras'}
+            </Button>
+          </div>
           
           <Button 
             variant="default"
@@ -122,12 +149,43 @@ export function PrinterTroubleshooting() {
                   Asegúrese de que la impresora esté encendida y conectada a su computadora.
                 </li>
                 <li>
+                  Reinicie el servicio de impresión de su sistema operativo:
+                  <ul className="list-disc pl-5 mt-1 text-sm">
+                    <li><strong>Windows:</strong> Ejecute <code>services.msc</code>, busque "Print Spooler", clic derecho y Reiniciar</li>
+                    <li><strong>Mac:</strong> Vaya a Preferencias del Sistema > Impresoras y escaners > Reiniciar Cola de Impresión</li>
+                    <li><strong>Linux:</strong> Ejecute <code>sudo systemctl restart cups</code></li>
+                  </ul>
+                </li>
+                <li>
                   Intente usar el botón "Buscar Impresoras" para refrescar la lista.
                 </li>
                 <li>
-                  Reinicie QZ Tray y actualice la página.
+                  Pruebe imprimir desde otras aplicaciones para verificar si la impresora funciona.
+                </li>
+                <li>
+                  Reinicie QZ Tray con privilegios de administrador.
+                </li>
+                <li>
+                  Utilice la herramienta de diagnóstico de impresoras para verificar su sistema.
                 </li>
               </ol>
+              
+              <Alert className="bg-blue-50 border-blue-200">
+                <Printer className="h-4 w-4 text-blue-500" />
+                <AlertDescription className="text-blue-700">
+                  <strong>Nota importante:</strong> QZ Tray solo puede detectar impresoras que estén instaladas en su sistema operativo.
+                  Si no hay impresoras configuradas, no se mostrará ninguna en la aplicación.
+                </AlertDescription>
+              </Alert>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowPrinterDiagnostics(true)}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Ejecutar diagnóstico de impresoras
+              </Button>
             </AccordionContent>
           </AccordionItem>
           

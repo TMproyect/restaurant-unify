@@ -13,6 +13,8 @@ export class PrinterManager {
   private lastRefresh: number = 0;
   private refreshInProgress: boolean = false;
   private refreshMinInterval: number = 2000; // Minimum 2 seconds between refreshes
+  private refreshRetries: number = 0;
+  private maxRefreshRetries: number = 3;
   
   /**
    * Refresh the list of available printers
@@ -46,6 +48,24 @@ export class PrinterManager {
       const printers = await window.qz.printers.find();
       console.log('Printers found:', printers);
       
+      this.refreshRetries = 0; // Reset retry counter on success
+      
+      if (!printers || printers.length === 0) {
+        console.warn('No printers found in the system');
+        this.availablePrinters = [];
+        this.defaultPrinter = null;
+        
+        // If this is the first search (not a retry), show message to user
+        toast.warning("No se encontraron impresoras en el sistema", {
+          description: "Verifique que tenga impresoras instaladas y configuradas",
+          duration: 6000
+        });
+        
+        this.lastRefresh = now;
+        this.refreshInProgress = false;
+        return true; // Return true because the operation itself succeeded
+      }
+      
       this.availablePrinters = printers.map((name: string) => ({
         name,
         isDefault: false
@@ -76,6 +96,21 @@ export class PrinterManager {
       console.error('Error refreshing printers:', error);
       this.refreshInProgress = false;
       
+      // Check if we should retry
+      if (this.refreshRetries < this.maxRefreshRetries) {
+        this.refreshRetries++;
+        console.log(`Retrying printer refresh (${this.refreshRetries}/${this.maxRefreshRetries})...`);
+        
+        // Wait a bit before retrying
+        setTimeout(() => {
+          this.refreshPrinters().catch(e => {
+            console.error('Error in printer refresh retry:', e);
+          });
+        }, 1000 * this.refreshRetries); // Increase delay with each retry
+        
+        return false;
+      }
+      
       // Add a more specific error message
       let errorMsg = "Error desconocido al buscar impresoras";
       
@@ -97,6 +132,13 @@ export class PrinterManager {
       
       return false;
     }
+  }
+  
+  /**
+   * Check if the system has any printers
+   */
+  public hasPrinters(): boolean {
+    return this.availablePrinters.length > 0;
   }
   
   /**

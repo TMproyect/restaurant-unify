@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RolesAndPermissions from '@/components/settings/RolesAndPermissions';
 import { PrinterStatus } from '@/components/ui/printing/PrinterStatus';
 import { QzDiagnosticTool } from '@/components/ui/printing/QzDiagnosticTool';
+import { PrinterDiagnosticTool } from '@/components/ui/printing/diagnostic/PrinterDiagnosticTool';
 import { PrinterTroubleshooting } from '@/components/ui/printing/PrinterTroubleshooting';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +29,8 @@ const Settings = () => {
   const [activePrinterTab, setActivePrinterTab] = useState('config');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showQzDiagnostics, setShowQzDiagnostics] = useState(false);
+  const [showPrinterDiagnostics, setShowPrinterDiagnostics] = useState(false);
   
   const { 
     availablePrinters, 
@@ -46,12 +49,30 @@ const Settings = () => {
     }
   }, [status, isConnecting]);
 
+  // If we're connected but no printers are found, automatically 
+  // show the printer diagnostics
+  useEffect(() => {
+    if (status === 'connected' && availablePrinters.length === 0 && activePrinterTab === 'config') {
+      // Wait a moment to ensure this isn't just initial loading
+      const timer = setTimeout(() => {
+        setShowPrinterDiagnostics(true);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [status, availablePrinters.length, activePrinterTab]);
+
   const handleRefreshPrinters = async () => {
     console.log("Settings: Iniciando escaneo de impresoras desde settings");
     setIsScanning(true);
     try {
       await scanForPrinters();
       console.log("Settings: Escaneo de impresoras completado");
+      
+      // If scan is successful but no printers, show diagnostics
+      if (availablePrinters.length === 0) {
+        setShowPrinterDiagnostics(true);
+      }
     } catch (error) {
       console.error("Settings: Error al escanear impresoras", error);
     } finally {
@@ -65,9 +86,24 @@ const Settings = () => {
     try {
       const result = await connect();
       console.log("Settings: Resultado de conexión:", result ? "Exitoso" : "Fallido");
+      
+      if (result) {
+        // If connection is successful but no printers are found
+        // after a short delay, show the printer diagnostics tool
+        if (availablePrinters.length === 0) {
+          setTimeout(() => {
+            setShowPrinterDiagnostics(true);
+          }, 1000);
+        }
+      } else {
+        // If connection failed, show the QZ diagnostics tool
+        setShowQzDiagnostics(true);
+      }
     } catch (error) {
       console.error("Settings: Error al conectar", error);
       setIsConnecting(false);
+      // Show diagnostics on error
+      setShowQzDiagnostics(true);
     }
   };
 
@@ -120,11 +156,22 @@ const Settings = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setShowDiagnostics(!showDiagnostics)}
+                        onClick={() => setShowQzDiagnostics(!showQzDiagnostics)}
                         className="text-amber-600 border-amber-300 hover:text-amber-700 hover:border-amber-400"
                       >
                         <AlertTriangle className="mr-2 h-3 w-3" />
-                        {showDiagnostics ? "Ocultar diagnóstico" : "Mostrar diagnóstico"}
+                        {showQzDiagnostics ? "Ocultar diagnóstico" : "Diagnóstico de conexión"}
+                      </Button>
+                    )}
+                    {isConnected && availablePrinters.length === 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowPrinterDiagnostics(!showPrinterDiagnostics)}
+                        className="text-amber-600 border-amber-300 hover:text-amber-700 hover:border-amber-400"
+                      >
+                        <Printer className="mr-2 h-3 w-3" />
+                        {showPrinterDiagnostics ? "Ocultar diagnóstico" : "Diagnóstico de impresoras"}
                       </Button>
                     )}
                   </div>
@@ -139,8 +186,12 @@ const Settings = () => {
                     </TabsList>
                     
                     <TabsContent value="config" className="space-y-6">
-                      {status === 'error' && showDiagnostics && (
-                        <QzDiagnosticTool onClose={() => setShowDiagnostics(false)} />
+                      {status === 'error' && showQzDiagnostics && (
+                        <QzDiagnosticTool onClose={() => setShowQzDiagnostics(false)} />
+                      )}
+                      
+                      {isConnected && availablePrinters.length === 0 && showPrinterDiagnostics && (
+                        <PrinterDiagnosticTool onClose={() => setShowPrinterDiagnostics(false)} />
                       )}
 
                       {status === 'error' && (
@@ -250,10 +301,33 @@ const Settings = () => {
                             ))}
                           </div>
                         ) : isConnected && availablePrinters.length === 0 ? (
-                          <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
-                            <p>No se encontraron impresoras instaladas en el sistema</p>
-                            <p className="text-sm mt-1">Verifica que tengas impresoras instaladas y configuradas en tu computadora</p>
-                          </div>
+                          <Alert className="border-amber-200 bg-amber-50 text-amber-800">
+                            <AlertTriangle className="h-4 w-4 text-amber-600" />
+                            <AlertDescription className="text-amber-800">
+                              <div className="mb-2">
+                                <span className="font-semibold">No se encontraron impresoras instaladas en el sistema</span>
+                              </div>
+                              <p className="text-sm">
+                                Esto puede ocurrir por los siguientes motivos:
+                              </p>
+                              <ul className="list-disc pl-5 text-sm mt-1 space-y-1">
+                                <li>No hay impresoras instaladas en su computadora</li>
+                                <li>El servicio de impresión del sistema está detenido</li>
+                                <li>QZ Tray no tiene permisos suficientes para acceder a las impresoras</li>
+                              </ul>
+                              <div className="mt-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowPrinterDiagnostics(true)}
+                                  className="text-amber-800 border-amber-300 bg-amber-100 hover:bg-amber-200"
+                                >
+                                  <Settings className="h-3.5 w-3.5 mr-1.5" />
+                                  Ejecutar Diagnóstico de Impresoras
+                                </Button>
+                              </div>
+                            </AlertDescription>
+                          </Alert>
                         ) : (
                           <p className="text-sm text-muted-foreground">
                             {isConnecting ? 

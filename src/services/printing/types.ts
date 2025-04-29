@@ -45,3 +45,20 @@ export interface PrintJobStatus {
   endTime?: number;
   error?: string;
 }
+
+/**
+ * Printer station for organization of printers by function
+ */
+export interface PrinterStation {
+  id: string;
+  name: string;
+  description?: string;
+  printerName: string | null;
+}
+
+/**
+ * Container for printer stations configuration
+ */
+export interface PrinterStationConfig {
+  stations: PrinterStation[];
+}

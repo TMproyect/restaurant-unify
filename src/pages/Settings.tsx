@@ -10,7 +10,7 @@ import { PrinterTroubleshooting } from '@/components/ui/printing/PrinterTroubles
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle, DollarSign } from 'lucide-react';
+import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle, Settings } from 'lucide-react';
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
@@ -397,3 +397,4 @@ const Settings = () => {
 };
 
 export default Settings;
+

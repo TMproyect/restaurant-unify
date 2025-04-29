@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,7 +9,7 @@ import { PrinterTroubleshooting } from '@/components/ui/printing/PrinterTroubles
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle, Settings } from 'lucide-react';
+import { Printer, RefreshCw, ExternalLink, Download, ArrowRight, Loader2, AlertTriangle, Settings as SettingsIcon } from 'lucide-react';
 import usePrintService from '@/hooks/use-print-service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrderPrintController from '@/components/OrderPrintController';
@@ -49,11 +48,8 @@ const Settings = () => {
     }
   }, [status, isConnecting]);
 
-  // If we're connected but no printers are found, automatically 
-  // show the printer diagnostics
   useEffect(() => {
     if (status === 'connected' && availablePrinters.length === 0 && activePrinterTab === 'config') {
-      // Wait a moment to ensure this isn't just initial loading
       const timer = setTimeout(() => {
         setShowPrinterDiagnostics(true);
       }, 1500);
@@ -69,7 +65,6 @@ const Settings = () => {
       await scanForPrinters();
       console.log("Settings: Escaneo de impresoras completado");
       
-      // If scan is successful but no printers, show diagnostics
       if (availablePrinters.length === 0) {
         setShowPrinterDiagnostics(true);
       }
@@ -88,21 +83,17 @@ const Settings = () => {
       console.log("Settings: Resultado de conexión:", result ? "Exitoso" : "Fallido");
       
       if (result) {
-        // If connection is successful but no printers are found
-        // after a short delay, show the printer diagnostics tool
         if (availablePrinters.length === 0) {
           setTimeout(() => {
             setShowPrinterDiagnostics(true);
           }, 1000);
         }
       } else {
-        // If connection failed, show the QZ diagnostics tool
         setShowQzDiagnostics(true);
       }
     } catch (error) {
       console.error("Settings: Error al conectar", error);
       setIsConnecting(false);
-      // Show diagnostics on error
       setShowQzDiagnostics(true);
     }
   };
@@ -322,7 +313,7 @@ const Settings = () => {
                                   onClick={() => setShowPrinterDiagnostics(true)}
                                   className="text-amber-800 border-amber-300 bg-amber-100 hover:bg-amber-200"
                                 >
-                                  <Settings className="h-3.5 w-3.5 mr-1.5" />
+                                  <SettingsIcon className="h-3.5 w-3.5 mr-1.5" />
                                   Ejecutar Diagnóstico de Impresoras
                                 </Button>
                               </div>
@@ -397,4 +388,3 @@ const Settings = () => {
 };
 
 export default Settings;
-

@@ -1,32 +1,47 @@
-// Type definitions for the print service
 
-// Connection status type
-export type PrinterConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error' | 'not-installed';
+/**
+ * Printer connection status types
+ * - 'connecting': Attempting to establish connection
+ * - 'connected': Successfully connected to QZ Tray
+ * - 'disconnected': No active connection to QZ Tray
+ * - 'error': Error occurred during connection or operation
+ * - 'not-installed': QZ Tray is not installed or not detected
+ */
+export type PrinterConnectionStatus = 
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'not-installed';
 
-// Printer configuration type
+/**
+ * Printer configuration object
+ */
 export interface PrinterConfig {
   name: string;
   isDefault: boolean;
+  capabilities?: {
+    color?: boolean;
+    duplex?: boolean;
+  };
 }
 
-// Define the global qz object
-declare global {
-  interface Window {
-    qz?: any; // Make sure qz is optional (with the ? modifier)
-    qzScriptLoaded?: boolean;
-  }
+/**
+ * Raw print job options
+ */
+export interface RawPrintOptions {
+  encoding?: string;
+  language?: string;
 }
 
-// Station types for printer configuration
-export interface PrinterStation {
+/**
+ * Print job status
+ */
+export interface PrintJobStatus {
   id: string;
-  name: string;
-  description?: string;
-  printerName: string | null;
-}
-
-export type StationTypes = 'kitchen' | 'bar' | 'cashier' | 'general';
-
-export interface PrinterStationConfig {
-  stations: PrinterStation[];
+  printerName: string;
+  status: 'pending' | 'printing' | 'complete' | 'failed';
+  startTime: number;
+  endTime?: number;
+  error?: string;
 }

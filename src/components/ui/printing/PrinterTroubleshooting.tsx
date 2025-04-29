@@ -152,7 +152,7 @@ export function PrinterTroubleshooting() {
                   Reinicie el servicio de impresión de su sistema operativo:
                   <ul className="list-disc pl-5 mt-1 text-sm">
                     <li><strong>Windows:</strong> Ejecute <code>services.msc</code>, busque "Print Spooler", clic derecho y Reiniciar</li>
-                    <li><strong>Mac:</strong> Vaya a Preferencias del Sistema > Impresoras y escaners > Reiniciar Cola de Impresión</li>
+                    <li><strong>Mac:</strong> Vaya a Preferencias del Sistema {'->'} Impresoras y escaners {'->'} Reiniciar Cola de Impresión</li>
                     <li><strong>Linux:</strong> Ejecute <code>sudo systemctl restart cups</code></li>
                   </ul>
                 </li>

@@ -73,17 +73,22 @@ const MenuItemImage = ({
     }
   };
   
-  // Añadir cache-busting query parameter solo para imágenes de Storage (no Base64)
-  // y verificar si ya tiene parámetros para evitar duplicados
+  // Solo aplicar cache-busting cuando hay reintentos (después de un error)
+  // Para la primera carga, confiar en la URL original
   const displayUrl = (() => {
     if (isBase64) {
       return imageUrl;
     }
     
-    // Verificar si la URL ya tiene parámetros
-    const hasExistingParams = imageUrl.includes('?');
-    const separator = hasExistingParams ? '&' : '?';
-    return `${imageUrl}${separator}t=${Date.now()}&retry=${retryCount}`;
+    // Solo agregar cache-busting si hay reintentos (después de errores)
+    if (retryCount > 0) {
+      const hasExistingParams = imageUrl.includes('?');
+      const separator = hasExistingParams ? '&' : '?';
+      return `${imageUrl}${separator}retry=${retryCount}&t=${Date.now()}`;
+    }
+    
+    // Primera carga: usar URL original sin modificar
+    return imageUrl;
   })();
   
   return (
@@ -124,16 +129,18 @@ const MenuItemImage = ({
         )}
         style={{ objectFit: fit }}
         onLoad={() => {
+          console.log(`✅ Imagen cargada exitosamente: ${displayUrl}`);
           setLoaded(true);
           setHasError(false);
         }}
         onError={() => {
-          console.error(`Error al cargar imagen: ${displayUrl}`);
+          console.error(`❌ Error al cargar imagen: ${displayUrl}`);
           setHasError(true);
           setLoaded(false);
           
           // Reintentar automáticamente si no es Base64 y no hemos superado el límite
           if (!isBase64 && retryCount < 3) {
+            console.log(`🔄 Reintentando carga automática en 1.5s (intento ${retryCount + 1}/3)`);
             setTimeout(() => {
               retryLoading();
             }, 1500);

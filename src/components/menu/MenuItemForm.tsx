@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -204,21 +205,21 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
           });
         }, 100);
         
-        const uploadResult = await uploadMenuItemImage(imageFile);
+        // Generate filename with timestamp
+        const fileName = `menu-item-${Date.now()}-${imageFile.name}`;
+        const uploadResult = await uploadMenuItemImage(imageFile, fileName);
         
         clearInterval(progressInterval);
         setUploadProgress(100);
         
-        if (typeof uploadResult === 'string') {
-          imageUrl = uploadResult;
+        if (uploadResult.success && uploadResult.imageUrl) {
+          imageUrl = uploadResult.imageUrl;
           console.log('📦 Imagen procesada correctamente');
-        } else if (uploadResult && uploadResult.error) {
+        } else if (uploadResult.error) {
           toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
           setIsLoading(false);
           setUploadProgress(0);
           return;
-        } else if (uploadResult && uploadResult.url) {
-          imageUrl = uploadResult.url;
         } else {
           toast.error('Error al procesar la imagen');
           setIsLoading(false);

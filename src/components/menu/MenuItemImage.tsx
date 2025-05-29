@@ -73,10 +73,18 @@ const MenuItemImage = ({
     }
   };
   
-  // Añadir un cache-busting query parameter para imágenes de Storage (no Base64)
-  const displayUrl = isBase64 
-    ? imageUrl 
-    : `${imageUrl}?t=${Date.now()}&retry=${retryCount}`;
+  // Añadir cache-busting query parameter solo para imágenes de Storage (no Base64)
+  // y verificar si ya tiene parámetros para evitar duplicados
+  const displayUrl = (() => {
+    if (isBase64) {
+      return imageUrl;
+    }
+    
+    // Verificar si la URL ya tiene parámetros
+    const hasExistingParams = imageUrl.includes('?');
+    const separator = hasExistingParams ? '&' : '?';
+    return `${imageUrl}${separator}t=${Date.now()}&retry=${retryCount}`;
+  })();
   
   return (
     <div className={cn("relative overflow-hidden bg-muted", heightClass, className)}>

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { getImageUrlWithCacheBusting } from '@/services/storage';
 import MenuItemImage from '@/components/menu/MenuItemImage';
 
 interface MenuItemCardProps {
@@ -29,14 +28,10 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
     minimumFractionDigits: 0,
   }).format(item.price);
   
-  const imageUrl = item.image_url 
-    ? getImageUrlWithCacheBusting(item.image_url)
-    : undefined;
-    
   return (
     <Card className="overflow-hidden">
       <MenuItemImage 
-        imageUrl={imageUrl || ''} 
+        imageUrl={item.image_url || ''} 
         alt={item.name}
         size="md"
         fit="cover"

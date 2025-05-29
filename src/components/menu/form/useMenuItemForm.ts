@@ -7,7 +7,7 @@ import { menuItemFormSchema, MenuItemFormValues } from './schemas/menuItemFormSc
 import { useImageHandler } from './hooks/useImageHandler';
 import { useMenuFormSubmission } from './hooks/useMenuFormSubmission';
 
-export { MenuItemFormValues } from './schemas/menuItemFormSchema';
+export type { MenuItemFormValues } from './schemas/menuItemFormSchema';
 
 export const useMenuItemForm = (
   item: MenuItem | null,

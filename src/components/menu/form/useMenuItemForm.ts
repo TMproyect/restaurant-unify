@@ -22,6 +22,15 @@ export const menuItemFormSchema = z.object({
 
 export type MenuItemFormValues = z.infer<typeof menuItemFormSchema>;
 
+// Función para generar UUID simple
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export const useMenuItemForm = (
   item: MenuItem | null,
   onClose: (saved: boolean) => void
@@ -115,9 +124,11 @@ export const useMenuItemForm = (
           });
         }, 100);
         
-        // Generate filename with timestamp
-        const fileName = `menu-item-${Date.now()}-${imageFile.name}`;
-        const uploadResult = await uploadMenuItemImage(imageFile, fileName);
+        // Generate unique filename with proper extension
+        const fileExtension = imageFile.name.split('.').pop();
+        const uniqueFileName = `${generateUUID()}.${fileExtension}`;
+        
+        const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
         
         clearInterval(progressInterval);
         setUploadProgress(100);
@@ -138,7 +149,7 @@ export const useMenuItemForm = (
         }
       }
       
-      // Build item data for submission - now with processed URL
+      // Build item data for submission
       const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
         name: data.name,
         description: data.description || '',
@@ -153,7 +164,7 @@ export const useMenuItemForm = (
       
       let success: boolean;
       
-      // Create or update the menu item - services no longer process images
+      // Create or update the menu item
       if (item) {
         const updatedItem = await updateMenuItem(item.id, itemData);
         success = !!updatedItem;

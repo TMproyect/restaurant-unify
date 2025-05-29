@@ -12,16 +12,16 @@ export const uploadMenuItemImage = async (
       size: file.size
     });
 
-    // Asegurar que el archivo tenga un contentType correcto
-    const contentType = file.type || 'image/jpeg';
+    // Crear la ruta completa dentro del bucket usando el prefijo 'menu/'
+    const filePath = `menu/${fileName}`;
     
+    // Subir el archivo usando el patrón correcto
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(fileName, file, {
+      .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: true,
-        contentType: contentType,
-        duplex: 'half'
+        upsert: false,
+        contentType: file.type
       });
 
     if (error) {
@@ -34,7 +34,7 @@ export const uploadMenuItemImage = async (
       return { success: false, error: 'No se pudo obtener la ruta del archivo' };
     }
 
-    // Obtener la URL pública
+    // Obtener la URL pública usando la ruta devuelta por la subida
     const { data: { publicUrl } } = supabase.storage
       .from(STORAGE_BUCKET)
       .getPublicUrl(data.path);

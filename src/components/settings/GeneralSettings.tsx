@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import MenuImagesRepair from '@/components/menu/storage/MenuImagesRepair';
 
 export const GeneralSettings = () => {
   return (
@@ -17,8 +16,6 @@ export const GeneralSettings = () => {
           <p>Configuraciones generales del sistema como idioma, moneda, etc.</p>
         </CardContent>
       </Card>
-      
-      <MenuImagesRepair />
     </div>
   );
 };

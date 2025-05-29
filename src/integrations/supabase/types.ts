@@ -632,6 +632,10 @@ export type Database = {
         Args: { api_key: string }
         Returns: boolean
       }
+      verify_menu_images_bucket_config: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

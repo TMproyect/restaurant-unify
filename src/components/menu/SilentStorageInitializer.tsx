@@ -7,9 +7,9 @@ const SilentStorageInitializer: React.FC = () => {
     const initStorage = async () => {
       try {
         await initializeStorage();
-        console.log('Storage initialized successfully');
+        console.log('✅ Storage initialized successfully');
       } catch (err) {
-        console.warn('Storage initialization failed silently:', err);
+        console.warn('⚠️ Storage initialization failed silently:', err);
       }
     };
     

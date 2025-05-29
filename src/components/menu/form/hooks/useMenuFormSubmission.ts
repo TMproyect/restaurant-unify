@@ -11,7 +11,15 @@ export const useMenuFormSubmission = () => {
     item: MenuItem | null,
     onClose: (saved: boolean) => void
   ): Promise<boolean> => {
-    console.log('📝 FormSubmission - Starting form submission...');
+    console.log('📝 FormSubmission - ⭐ STARTING DATABASE SUBMISSION');
+    console.log('📝 FormSubmission - Data received:', {
+      name: data.name,
+      price: data.price,
+      category_id: data.category_id,
+      imageUrl: imageUrl ? `${imageUrl.substring(0, 50)}...` : 'NO IMAGE URL',
+      hasImageUrl: !!imageUrl,
+      isUpdate: !!item
+    });
     
     // Build item data for submission
     const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
@@ -22,62 +30,59 @@ export const useMenuFormSubmission = () => {
       available: data.available,
       popular: data.popular,
       allergens: data.allergens || [],
-      sku: data.sku,
-      image_url: imageUrl,
+      sku: data.sku || '',
+      image_url: imageUrl, // 🔥 CRITICAL: This must be the URL from upload
     };
     
-    console.log('📝 FormSubmission - Final item data for save:', {
+    console.log('📝 FormSubmission - Final item data for database:', {
       ...itemData,
-      image_url: itemData.image_url ? 'URL presente' : 'Sin URL'
+      image_url: itemData.image_url ? `URL: ${itemData.image_url.substring(0, 50)}...` : '❌ NO IMAGE URL'
     });
     
-    let success: boolean;
-    
     try {
-      // Create or update the menu item
+      let result: MenuItem | null = null;
+      
       if (item) {
-        console.log('📝 FormSubmission - Updating existing item with ID:', item.id);
-        const updatedItem = await updateMenuItem(item.id, itemData);
-        success = !!updatedItem;
-        if (success) {
-          console.log('📝 FormSubmission - Item updated successfully:', {
-            id: updatedItem?.id,
-            name: updatedItem?.name,
-            hasImageUrl: !!updatedItem?.image_url
-          });
-        } else {
-          console.error('📝 FormSubmission - Failed to update item');
-        }
+        console.log('📝 FormSubmission - 🔄 UPDATING existing item with ID:', item.id);
+        result = await updateMenuItem(item.id, itemData);
       } else {
-        console.log('📝 FormSubmission - Creating new item...');
-        const newItem = await createMenuItem(itemData);
-        success = !!newItem;
-        if (success) {
-          console.log('📝 FormSubmission - Item created successfully:', {
-            id: newItem?.id,
-            name: newItem?.name,
-            hasImageUrl: !!newItem?.image_url
-          });
-        } else {
-          console.error('📝 FormSubmission - Failed to create item');
-        }
+        console.log('📝 FormSubmission - 🔄 CREATING new item...');
+        result = await createMenuItem(itemData);
       }
       
-      if (success) {
+      if (result) {
+        console.log('📝 FormSubmission - ✅ DATABASE OPERATION SUCCESSFUL:', {
+          id: result.id,
+          name: result.name,
+          savedImageUrl: result.image_url ? `${result.image_url.substring(0, 50)}...` : '❌ NO URL SAVED',
+          hasImageUrlInDb: !!result.image_url
+        });
+        
+        // Verify the URL was actually saved
+        if (imageUrl && !result.image_url) {
+          console.error('📝 FormSubmission - ⚠️ WARNING: Image URL was not saved to database!');
+          console.error('📝 FormSubmission - Expected URL:', imageUrl);
+          console.error('📝 FormSubmission - Saved URL:', result.image_url);
+        }
+        
         toast.success(item ? 'Elemento actualizado con éxito' : 'Elemento creado con éxito');
         
         // Notify other components about the update
-        console.log('📝 FormSubmission - Dispatching menuItemsUpdated event');
+        console.log('📝 FormSubmission - 🔄 Dispatching update event...');
         window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
         
+        console.log('📝 FormSubmission - 🔄 Calling onClose(true)...');
         onClose(true);
+        
+        return true;
       } else {
+        console.error('📝 FormSubmission - ❌ DATABASE OPERATION FAILED: No result returned');
         toast.error(item ? 'Error al actualizar el elemento' : 'Error al crear el elemento');
+        return false;
       }
       
-      return success;
     } catch (error) {
-      console.error('📝 FormSubmission - Error in form submission:', error);
+      console.error('📝 FormSubmission - ❌ EXCEPTION IN DATABASE OPERATION:', error);
       toast.error('Error al guardar el elemento');
       return false;
     }

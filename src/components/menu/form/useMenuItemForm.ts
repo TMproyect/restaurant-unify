@@ -45,28 +45,49 @@ export const useMenuItemForm = (
   // Use the form submission hook
   const { submitForm } = useMenuFormSubmission();
 
-  // Handle form submission
+  // Handle form submission - SIMPLIFIED AND SYNCHRONIZED
   const onSubmit = async (data: MenuItemFormValues) => {
-    console.log('📝 Form - Form submission started with data:', data);
-    console.log('📝 Form - Current imageFile state:', {
+    console.log('📝 Form - ⭐ STARTING FORM SUBMISSION');
+    console.log('📝 Form - Form data:', data);
+    console.log('📝 Form - Image state:', {
       hasFile: !!imageFile,
       fileName: imageFile?.name,
-      fileType: imageFile?.type,
-      fileSize: imageFile?.size
+      currentImageUrl: item?.image_url ? 'Present' : 'None'
     });
     
     setIsLoading(true);
+    
     try {
-      // Upload image if needed
-      const imageUrl = await uploadImage(item?.image_url);
+      // STEP 1: Upload image first and get URL
+      console.log('📝 Form - 🔄 STEP 1: Uploading image...');
+      const finalImageUrl = await uploadImage(item?.image_url);
       
-      // Submit the form
-      await submitForm(data, imageUrl, item, onClose);
+      console.log('📝 Form - ✅ STEP 1 COMPLETE: Image upload result:', {
+        url: finalImageUrl ? `${finalImageUrl.substring(0, 50)}...` : 'None',
+        hasUrl: !!finalImageUrl
+      });
+      
+      // STEP 2: Submit form with the final image URL
+      console.log('📝 Form - 🔄 STEP 2: Submitting form to database...');
+      const success = await submitForm(data, finalImageUrl, item, onClose);
+      
+      console.log('📝 Form - ✅ STEP 2 COMPLETE: Database submission result:', success);
+      
+      if (success) {
+        console.log('📝 Form - 🎉 SUBMISSION SUCCESSFUL');
+        // Reset states on success
+        setUploadProgress(0);
+        setImageFile(null);
+      } else {
+        console.log('📝 Form - ❌ SUBMISSION FAILED');
+      }
+      
     } catch (error) {
-      console.error('📝 Form - Error in form submission:', error);
+      console.error('📝 Form - ❌ ERROR IN FORM SUBMISSION:', error);
+      setUploadProgress(0);
     } finally {
       setIsLoading(false);
-      setUploadProgress(0);
+      console.log('📝 Form - 🏁 FORM SUBMISSION PROCESS COMPLETE');
     }
   };
 

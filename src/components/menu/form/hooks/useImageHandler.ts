@@ -84,66 +84,62 @@ export const useImageHandler = (itemImageUrl?: string) => {
     setUploadProgress(0);
   };
 
-  // Upload image if one is selected
+  // Upload image if one is selected - SIMPLIFIED VERSION
   const uploadImage = async (currentImageUrl?: string): Promise<string | undefined> => {
-    let imageUrl = currentImageUrl;
-    console.log('🖼️ ImageHandler - Current imageUrl:', imageUrl);
+    console.log('🖼️ ImageHandler - uploadImage called with:', {
+      hasImageFile: !!imageFile,
+      currentImageUrl: currentImageUrl ? 'Present' : 'None'
+    });
     
-    // Upload image if a new one has been selected
-    if (imageFile) {
-      console.log('🖼️ ImageHandler - Starting image upload process...');
+    // If no new image selected, return current URL
+    if (!imageFile) {
+      console.log('🖼️ ImageHandler - No new image to upload, returning current URL:', currentImageUrl);
+      return currentImageUrl;
+    }
+
+    console.log('🖼️ ImageHandler - Starting upload process for new image...');
+    
+    try {
+      // Ensure storage is initialized
+      await initializeStorage();
+      
+      // Generate unique filename with proper extension
+      const fileExtension = imageFile.name.split('.').pop() || 'jpg';
+      const uniqueFileName = `${generateUUID()}.${fileExtension}`;
+      
+      console.log('🖼️ ImageHandler - Generated filename:', uniqueFileName);
       console.log('🖼️ ImageHandler - File details before upload:', {
         name: imageFile.name,
         type: imageFile.type,
-        size: imageFile.size,
-        lastModified: imageFile.lastModified,
-        constructor: imageFile.constructor.name
+        size: imageFile.size
       });
       
-      // Simulate progress of upload
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          const newProgress = prev + 5;
-          return newProgress > 90 ? 90 : newProgress;
-        });
-      }, 100);
+      // Set progress to show upload started
+      setUploadProgress(50);
       
-      try {
-        // Ensure storage is initialized before uploading images
-        console.log('🖼️ ImageHandler - Ensuring storage is initialized...');
-        await initializeStorage();
-        
-        // Generate unique filename with proper extension
-        const fileExtension = imageFile.name.split('.').pop() || 'jpg';
-        const uniqueFileName = `${generateUUID()}.${fileExtension}`;
-        console.log('🖼️ ImageHandler - Generated filename:', uniqueFileName);
-        
-        console.log('🖼️ ImageHandler - Calling uploadMenuItemImage...');
-        const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
-        
-        clearInterval(progressInterval);
+      // Upload the image
+      const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
+      
+      console.log('🖼️ ImageHandler - Upload result:', uploadResult);
+      
+      if (uploadResult.success && uploadResult.imageUrl) {
         setUploadProgress(100);
-        
-        console.log('🖼️ ImageHandler - Upload result:', uploadResult);
-        
-        if (uploadResult.success && uploadResult.imageUrl) {
-          imageUrl = uploadResult.imageUrl;
-          console.log('🖼️ ImageHandler - Image uploaded successfully, new URL:', imageUrl);
-        } else {
-          console.error('🖼️ ImageHandler - Upload failed:', uploadResult.error);
-          toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
-          throw new Error(uploadResult.error);
-        }
-      } catch (error) {
-        clearInterval(progressInterval);
+        console.log('🖼️ ImageHandler - ✅ Upload successful, returning URL:', uploadResult.imageUrl);
+        return uploadResult.imageUrl;
+      } else {
         setUploadProgress(0);
-        throw error;
+        const errorMsg = uploadResult.error || 'Error desconocido en upload';
+        console.error('🖼️ ImageHandler - ❌ Upload failed:', errorMsg);
+        toast.error(`Error al subir imagen: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
-    } else {
-      console.log('🖼️ ImageHandler - No new image to upload, keeping existing URL');
+    } catch (error) {
+      setUploadProgress(0);
+      console.error('🖼️ ImageHandler - ❌ Exception during upload:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al procesar imagen: ${errorMsg}`);
+      throw error;
     }
-    
-    return imageUrl;
   };
 
   return {

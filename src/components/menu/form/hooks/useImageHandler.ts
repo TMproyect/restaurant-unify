@@ -84,61 +84,121 @@ export const useImageHandler = (itemImageUrl?: string) => {
     setUploadProgress(0);
   };
 
-  // Upload image if one is selected - SIMPLIFIED VERSION
+  // Verify URL is accessible with timeout
+  const verifyImageUrl = async (url: string): Promise<boolean> => {
+    try {
+      console.log('🖼️ ImageHandler - Verifying URL accessibility:', url);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      const isAccessible = response.ok;
+      console.log('🖼️ ImageHandler - URL verification result:', {
+        url: url.substring(0, 50) + '...',
+        status: response.status,
+        ok: response.ok,
+        accessible: isAccessible
+      });
+      
+      return isAccessible;
+    } catch (error) {
+      console.error('🖼️ ImageHandler - URL verification failed:', error);
+      return false;
+    }
+  };
+
+  // Upload image with robust error handling and URL verification
   const uploadImage = async (currentImageUrl?: string): Promise<string | undefined> => {
-    console.log('🖼️ ImageHandler - uploadImage called with:', {
-      hasImageFile: !!imageFile,
-      currentImageUrl: currentImageUrl ? 'Present' : 'None'
+    console.log('🖼️ ImageHandler - ⭐ STARTING UPLOAD PROCESS');
+    console.log('🖼️ ImageHandler - Upload state:', {
+      hasNewImage: !!imageFile,
+      currentUrl: currentImageUrl ? 'Present' : 'None',
+      fileName: imageFile?.name || 'N/A'
     });
     
     // If no new image selected, return current URL
     if (!imageFile) {
-      console.log('🖼️ ImageHandler - No new image to upload, returning current URL:', currentImageUrl);
+      console.log('🖼️ ImageHandler - No new image to upload, returning current URL');
       return currentImageUrl;
     }
 
-    console.log('🖼️ ImageHandler - Starting upload process for new image...');
+    console.log('🖼️ ImageHandler - 🔄 Processing new image upload...');
     
     try {
+      // Reset progress
+      setUploadProgress(0);
+      
       // Ensure storage is initialized
+      console.log('🖼️ ImageHandler - Ensuring storage initialization...');
       await initializeStorage();
       
       // Generate unique filename with proper extension
       const fileExtension = imageFile.name.split('.').pop() || 'jpg';
       const uniqueFileName = `${generateUUID()}.${fileExtension}`;
       
-      console.log('🖼️ ImageHandler - Generated filename:', uniqueFileName);
-      console.log('🖼️ ImageHandler - File details before upload:', {
-        name: imageFile.name,
+      console.log('🖼️ ImageHandler - Upload details:', {
+        originalName: imageFile.name,
+        generatedName: uniqueFileName,
         type: imageFile.type,
         size: imageFile.size
       });
       
-      // Set progress to show upload started
+      // Set progress to indicate upload started
       setUploadProgress(50);
       
       // Upload the image
+      console.log('🖼️ ImageHandler - 🚀 Starting upload to Supabase Storage...');
       const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
       
-      console.log('🖼️ ImageHandler - Upload result:', uploadResult);
+      console.log('🖼️ ImageHandler - Upload result received:', {
+        success: uploadResult.success,
+        hasUrl: !!uploadResult.imageUrl,
+        urlPreview: uploadResult.imageUrl ? uploadResult.imageUrl.substring(0, 50) + '...' : 'None',
+        error: uploadResult.error || 'None'
+      });
       
-      if (uploadResult.success && uploadResult.imageUrl) {
-        setUploadProgress(100);
-        console.log('🖼️ ImageHandler - ✅ Upload successful, returning URL:', uploadResult.imageUrl);
-        return uploadResult.imageUrl;
-      } else {
+      if (!uploadResult.success || !uploadResult.imageUrl) {
         setUploadProgress(0);
         const errorMsg = uploadResult.error || 'Error desconocido en upload';
         console.error('🖼️ ImageHandler - ❌ Upload failed:', errorMsg);
         toast.error(`Error al subir imagen: ${errorMsg}`);
         throw new Error(errorMsg);
       }
+      
+      // Verify the uploaded URL is accessible
+      console.log('🖼️ ImageHandler - 🔍 Verifying uploaded URL accessibility...');
+      const isUrlAccessible = await verifyImageUrl(uploadResult.imageUrl);
+      
+      if (!isUrlAccessible) {
+        setUploadProgress(0);
+        console.error('🖼️ ImageHandler - ❌ Uploaded URL is not accessible');
+        toast.error('La imagen se subió pero no es accesible. Intente de nuevo.');
+        throw new Error('URL no accesible después del upload');
+      }
+      
+      // Success - set progress to complete
+      setUploadProgress(100);
+      
+      console.log('🖼️ ImageHandler - ✅ UPLOAD PROCESS COMPLETED SUCCESSFULLY');
+      console.log('🖼️ ImageHandler - Final URL:', uploadResult.imageUrl);
+      
+      return uploadResult.imageUrl;
+      
     } catch (error) {
       setUploadProgress(0);
-      console.error('🖼️ ImageHandler - ❌ Exception during upload:', error);
+      console.error('🖼️ ImageHandler - ❌ EXCEPTION IN UPLOAD PROCESS:', error);
+      
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       toast.error(`Error al procesar imagen: ${errorMsg}`);
-      throw error;
+      
+      throw error; // Re-throw to be handled by the form submission
     }
   };
 

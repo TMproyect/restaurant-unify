@@ -45,36 +45,45 @@ export const useMenuItemForm = (
   // Use the form submission hook
   const { submitForm } = useMenuFormSubmission();
 
-  // Handle form submission - SIMPLIFIED AND SYNCHRONIZED
+  // Handle form submission with timeout protection
   const onSubmit = async (data: MenuItemFormValues) => {
-    console.log('📝 Form - ⭐ STARTING FORM SUBMISSION');
-    console.log('📝 Form - Form data:', data);
-    console.log('📝 Form - Image state:', {
-      hasFile: !!imageFile,
-      fileName: imageFile?.name,
-      currentImageUrl: item?.image_url ? 'Present' : 'None'
+    console.log('📝 Form - ⭐ STARTING COMPLETE FORM SUBMISSION PROCESS');
+    console.log('📝 Form - Form data:', {
+      name: data.name,
+      price: data.price,
+      category_id: data.category_id,
+      hasImage: !!imageFile,
+      isEdit: !!item
     });
     
     setIsLoading(true);
     
+    // Set up timeout protection
+    const timeoutId = setTimeout(() => {
+      console.error('📝 Form - ⏰ SUBMISSION TIMEOUT - Process taking too long');
+      setIsLoading(false);
+      toast.error('El proceso está tomando demasiado tiempo. Intente de nuevo.');
+    }, 60000); // 60 second timeout
+    
     try {
-      // STEP 1: Upload image first and get URL
-      console.log('📝 Form - 🔄 STEP 1: Uploading image...');
+      // STEP 1: Upload image and get verified URL
+      console.log('📝 Form - 🔄 STEP 1: Processing image upload...');
       const finalImageUrl = await uploadImage(item?.image_url);
       
-      console.log('📝 Form - ✅ STEP 1 COMPLETE: Image upload result:', {
-        url: finalImageUrl ? `${finalImageUrl.substring(0, 50)}...` : 'None',
-        hasUrl: !!finalImageUrl
+      console.log('📝 Form - ✅ STEP 1 COMPLETE: Image processing result:', {
+        hasUrl: !!finalImageUrl,
+        urlPreview: finalImageUrl ? finalImageUrl.substring(0, 50) + '...' : 'No URL',
+        previousUrl: item?.image_url ? 'Had previous' : 'No previous'
       });
       
-      // STEP 2: Submit form with the final image URL
-      console.log('📝 Form - 🔄 STEP 2: Submitting form to database...');
+      // STEP 2: Submit form with the verified image URL
+      console.log('📝 Form - 🔄 STEP 2: Submitting to database...');
       const success = await submitForm(data, finalImageUrl, item, onClose);
       
       console.log('📝 Form - ✅ STEP 2 COMPLETE: Database submission result:', success);
       
       if (success) {
-        console.log('📝 Form - 🎉 SUBMISSION SUCCESSFUL');
+        console.log('📝 Form - 🎉 COMPLETE SUBMISSION SUCCESSFUL');
         // Reset states on success
         setUploadProgress(0);
         setImageFile(null);
@@ -83,11 +92,12 @@ export const useMenuItemForm = (
       }
       
     } catch (error) {
-      console.error('📝 Form - ❌ ERROR IN FORM SUBMISSION:', error);
+      console.error('📝 Form - ❌ EXCEPTION IN COMPLETE SUBMISSION PROCESS:', error);
       setUploadProgress(0);
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
-      console.log('📝 Form - 🏁 FORM SUBMISSION PROCESS COMPLETE');
+      console.log('📝 Form - 🏁 FORM SUBMISSION PROCESS FINALIZED');
     }
   };
 

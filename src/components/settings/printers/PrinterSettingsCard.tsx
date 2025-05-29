@@ -9,22 +9,9 @@ import { PrinterStationsConfig } from '@/components/ui/printing/PrinterStationsC
 import { PrintJobMonitor } from '@/components/ui/printing/PrintJobMonitor';
 import { PrinterTroubleshooting } from '@/components/ui/printing/PrinterTroubleshooting';
 import PrinterConfigTab from './PrinterConfigTab';
+import { PrinterConfigProps } from '@/types/printer.types';
 
-interface PrinterSettingsCardProps {
-  status: string;
-  isConnected: boolean;
-  isConnecting: boolean;
-  isScanning: boolean;
-  availablePrinters: Array<{ name: string; isDefault?: boolean }>;
-  showQzDiagnostics: boolean;
-  showPrinterDiagnostics: boolean;
-  setShowQzDiagnostics: (show: boolean) => void;
-  setShowPrinterDiagnostics: (show: boolean) => void;
-  handleConnect: () => void;
-  handleRefreshPrinters: () => void;
-}
-
-export const PrinterSettingsCard = ({
+export const PrinterSettingsCard: React.FC<PrinterConfigProps> = ({
   status,
   isConnected,
   isConnecting,
@@ -36,7 +23,7 @@ export const PrinterSettingsCard = ({
   setShowPrinterDiagnostics,
   handleConnect,
   handleRefreshPrinters
-}: PrinterSettingsCardProps) => {
+}) => {
   const [activePrinterTab, setActivePrinterTab] = useState('config');
 
   return (

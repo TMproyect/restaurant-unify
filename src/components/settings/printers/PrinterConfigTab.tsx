@@ -6,22 +6,10 @@ import { QzDiagnosticTool } from '@/components/ui/printing/QzDiagnosticTool';
 import { PrinterDiagnosticTool } from '@/components/ui/printing/diagnostic/PrinterDiagnosticTool';
 import QzConnectionGuide from './QzConnectionGuide';
 import AvailablePrinters from './AvailablePrinters';
+import { PrinterConfigProps } from '@/types/printer.types';
+import { handleError } from '@/utils/errorHandling';
 
-interface PrinterConfigTabProps {
-  status: string;
-  isConnected: boolean;
-  isConnecting: boolean;
-  isScanning: boolean;
-  availablePrinters: Array<{ name: string; isDefault?: boolean }>;
-  showQzDiagnostics: boolean;
-  showPrinterDiagnostics: boolean;
-  setShowQzDiagnostics: (show: boolean) => void;
-  setShowPrinterDiagnostics: (show: boolean) => void;
-  handleConnect: () => void;
-  handleRefreshPrinters: () => void;
-}
-
-export const PrinterConfigTab = ({
+export const PrinterConfigTab: React.FC<PrinterConfigProps> = ({
   status,
   isConnected,
   isConnecting,
@@ -33,7 +21,23 @@ export const PrinterConfigTab = ({
   setShowPrinterDiagnostics,
   handleConnect,
   handleRefreshPrinters
-}: PrinterConfigTabProps) => {
+}) => {
+  const onRefreshPrinters = async () => {
+    try {
+      await handleRefreshPrinters();
+    } catch (error) {
+      handleError(error, 'PrinterConfigTab');
+    }
+  };
+
+  const onConnect = async () => {
+    try {
+      await handleConnect();
+    } catch (error) {
+      handleError(error, 'PrinterConfigTab');
+    }
+  };
+
   return (
     <>
       {status === 'error' && showQzDiagnostics && (
@@ -46,7 +50,7 @@ export const PrinterConfigTab = ({
 
       {status === 'error' && (
         <QzConnectionGuide 
-          handleConnect={handleConnect} 
+          handleConnect={onConnect} 
           isConnecting={isConnecting} 
         />
       )}
@@ -62,7 +66,7 @@ export const PrinterConfigTab = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={handleRefreshPrinters}
+            onClick={onRefreshPrinters}
             disabled={!isConnected || isScanning}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />

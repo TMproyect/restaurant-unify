@@ -3,15 +3,23 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, ExternalLink, ArrowRight, Loader2 } from 'lucide-react';
-
-interface QzConnectionGuideProps {
-  handleConnect: () => void;
-  isConnecting: boolean;
-}
+import { QzConnectionGuideProps } from '@/types/printer.types';
+import { handleError } from '@/utils/errorHandling';
 
 const QZ_DOWNLOAD_LINK = "https://qz.io/download/";
 
-export const QzConnectionGuide = ({ handleConnect, isConnecting }: QzConnectionGuideProps) => {
+export const QzConnectionGuide: React.FC<QzConnectionGuideProps> = ({ 
+  handleConnect, 
+  isConnecting 
+}) => {
+  const onConnect = async () => {
+    try {
+      await handleConnect();
+    } catch (error) {
+      handleError(error, 'QzConnectionGuide');
+    }
+  };
+
   return (
     <Card className="border-amber-200 bg-amber-50">
       <CardHeader className="pb-2">
@@ -51,7 +59,7 @@ export const QzConnectionGuide = ({ handleConnect, isConnecting }: QzConnectionG
               <Button 
                 variant="default" 
                 size="sm"
-                onClick={handleConnect}
+                onClick={onConnect}
                 disabled={isConnecting}
                 className="gap-1"
               >

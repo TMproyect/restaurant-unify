@@ -11,8 +11,9 @@ import ArchiveSettings from '@/components/settings/ArchiveSettings';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 import PrinterSettingsCard from '@/components/settings/printers/PrinterSettingsCard';
 import TemporaryRoleManager from '@/components/settings/TemporaryRoleManager';
+import { handleError } from '@/utils/errorHandling';
 
-const Settings = () => {
+const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -57,6 +58,7 @@ const Settings = () => {
       }
     } catch (error) {
       console.error("Settings: Error al escanear impresoras", error);
+      handleError(error, 'Settings - Refresh Printers');
     } finally {
       setIsScanning(false);
     }
@@ -80,6 +82,7 @@ const Settings = () => {
       }
     } catch (error) {
       console.error("Settings: Error al conectar", error);
+      handleError(error, 'Settings - Connect');
       setIsConnecting(false);
       setShowQzDiagnostics(true);
     }

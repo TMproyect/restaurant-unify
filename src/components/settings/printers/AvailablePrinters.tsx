@@ -3,7 +3,7 @@ import React from 'react';
 import { Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, SettingsIcon } from 'lucide-react';
+import { AlertTriangle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TestPrintButton } from '@/components/ui/printing/TestPrintButton';
 
@@ -72,7 +72,7 @@ export const AvailablePrinters = ({
                 onClick={onShowPrinterDiagnostics}
                 className="text-amber-800 border-amber-300 bg-amber-100 hover:bg-amber-200"
               >
-                <SettingsIcon className="h-3.5 w-3.5 mr-1.5" />
+                <Settings className="h-3.5 w-3.5 mr-1.5" />
                 Ejecutar Diagnóstico de Impresoras
               </Button>
             </div>

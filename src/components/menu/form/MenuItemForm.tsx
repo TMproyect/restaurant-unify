@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Loader2 } from 'lucide-react';
 import { MenuItem } from '@/services/menu/menuItemTypes';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { useMenuItemForm } from './useMenuItemForm';
+import { useMenuFormDialog } from './useMenuFormDialog';
 import { ImageUploader } from './ImageUploader';
 import { AvailabilityControls } from './AvailabilityControls';
 import { BasicFields, CategoryField } from './FormFields';
@@ -25,7 +26,7 @@ interface MenuItemFormProps {
 }
 
 export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const { isOpen, handleClose } = useMenuFormDialog(onClose);
   
   const {
     form,
@@ -36,11 +37,6 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     clearImage,
     onSubmit
   } = useMenuItemForm(item, onClose);
-
-  const handleClose = () => {
-    setIsOpen(false);
-    onClose(false);
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {

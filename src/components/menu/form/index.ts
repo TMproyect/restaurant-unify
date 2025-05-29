@@ -6,3 +6,4 @@ export * from './AvailabilityControls';
 export * from './FormFields';
 export * from './useMenuItemForm';
 export * from './useMenuFormDialog';
+export * from './schemas/menuItemFormSchema';

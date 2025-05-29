@@ -18,7 +18,8 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { MenuCategory } from '@/services/menu/categoryService';
-import { MenuItem, createMenuItem, updateMenuItem } from '@/services/menu/menuItemService';
+import { MenuItem } from '@/services/menu/menuItemTypes';
+import { createMenuItem, updateMenuItem } from '@/services/menu/menuItemMutations';
 import { uploadMenuItemImage, initializeStorage } from '@/services/storage/index';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, ImagePlus, Loader2, Upload } from 'lucide-react';
@@ -31,7 +32,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { cn } from '@/lib/utils';
-import MenuItemImage from './MenuItemImage';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
@@ -214,7 +214,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
         
         if (uploadResult.success && uploadResult.imageUrl) {
           imageUrl = uploadResult.imageUrl;
-          console.log('📦 Imagen procesada correctamente');
+          console.log('📦 Imagen procesada correctamente:', imageUrl);
         } else if (uploadResult.error) {
           toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
           setIsLoading(false);
@@ -228,7 +228,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
         }
       }
       
-      // Construir datos del ítem
+      // Construir datos del ítem - ahora con la URL ya procesada
       const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
         name: data.name,
         description: data.description || '',
@@ -243,13 +243,19 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }
       
       let success: boolean;
       
-      // Crear o actualizar ítem
+      // Crear o actualizar ítem - los servicios ya no procesan imágenes
       if (item) {
         const updatedItem = await updateMenuItem(item.id, itemData);
         success = !!updatedItem;
+        if (success) {
+          console.log('✅ Item actualizado exitosamente:', updatedItem);
+        }
       } else {
         const newItem = await createMenuItem(itemData);
         success = !!newItem;
+        if (success) {
+          console.log('✅ Item creado exitosamente:', newItem);
+        }
       }
       
       if (success) {

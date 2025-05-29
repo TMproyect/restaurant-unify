@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapSingleResponse } from '@/utils/supabaseHelpers';
 import { MenuItem } from '../menuItemTypes';
-import { migrateBase64ToStorage } from '../../storage/operations/imageMigration';
 
 /**
  * Crea un nuevo elemento del menú
@@ -35,25 +34,11 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
       }
     }
     
-    // Procesar imagen - Migrar a Storage si es Base64
-    let finalImageUrl = item.image_url;
-    if (item.image_url?.startsWith('data:image/')) {
-      try {
-        const storageUrl = await migrateBase64ToStorage(item.image_url);
-        if (storageUrl !== item.image_url) {
-          console.log('🍽️ Imagen migrada correctamente a Storage');
-          finalImageUrl = storageUrl;
-        }
-      } catch (imageError) {
-        console.error('🍽️ Error migrando imagen a Storage:', imageError);
-        // Continuar con Base64 si falla la migración
-      }
-    }
-    
-    // Insertar en la base de datos
+    // Insertar en la base de datos directamente con la URL proporcionada
+    // Los formularios ya manejan el upload de la imagen
     const { data, error } = await supabase
       .from('menu_items')
-      .insert([{ ...item, image_url: finalImageUrl }])
+      .insert([item])
       .select()
       .single();
 

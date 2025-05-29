@@ -3,8 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { filterValue, mapSingleResponse } from '@/utils/supabaseHelpers';
 import { MenuItem } from '../menuItemTypes';
-import { deleteMenuItemImage } from '../../storage/operations/imageManagement';
-import { migrateBase64ToStorage } from '../../storage/operations/imageMigration';
 
 /**
  * Actualiza un elemento existente del menú
@@ -26,35 +24,10 @@ export const updateMenuItem = async (id: string, updates: Partial<MenuItem>): Pr
       }
     }
     
-    // Procesar imagen - Migrar a Storage si es Base64
-    let finalUpdates = { ...updates };
-    if (updates.image_url?.startsWith('data:image/')) {
-      try {
-        // Obtener imagen actual para borrarla si es necesario
-        const { data: currentItem } = await supabase
-          .from('menu_items')
-          .select('image_url')
-          .eq('id', id)
-          .single();
-          
-        if (currentItem?.image_url && !currentItem.image_url.startsWith('data:image/')) {
-          // Borrar la imagen anterior en Storage
-          await deleteMenuItemImage(currentItem.image_url);
-        }
-        
-        const storageUrl = await migrateBase64ToStorage(updates.image_url);
-        if (storageUrl !== updates.image_url) {
-          console.log('🍽️ Imagen migrada correctamente a Storage');
-          finalUpdates.image_url = storageUrl;
-        }
-      } catch (imageError) {
-        console.error('🍽️ Error migrando imagen a Storage:', imageError);
-        // Continuar con Base64 si falla la migración
-      }
-    }
-    
+    // Actualizar directamente con los datos proporcionados
+    // Los formularios ya manejan el upload de la imagen
     const updatesWithTimestamp = {
-      ...finalUpdates,
+      ...updates,
       updated_at: new Date().toISOString()
     };
 

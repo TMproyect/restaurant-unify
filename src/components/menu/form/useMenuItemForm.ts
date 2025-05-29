@@ -124,7 +124,7 @@ export const useMenuItemForm = (
         
         if (uploadResult.success && uploadResult.imageUrl) {
           imageUrl = uploadResult.imageUrl;
-          console.log('📦 Imagen procesada correctamente');
+          console.log('📦 Imagen procesada correctamente:', imageUrl);
         } else if (uploadResult.error) {
           toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
           setIsLoading(false);
@@ -138,7 +138,7 @@ export const useMenuItemForm = (
         }
       }
       
-      // Build item data for submission
+      // Build item data for submission - now with processed URL
       const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
         name: data.name,
         description: data.description || '',
@@ -153,13 +153,19 @@ export const useMenuItemForm = (
       
       let success: boolean;
       
-      // Create or update the menu item
+      // Create or update the menu item - services no longer process images
       if (item) {
         const updatedItem = await updateMenuItem(item.id, itemData);
         success = !!updatedItem;
+        if (success) {
+          console.log('✅ Item actualizado exitosamente:', updatedItem);
+        }
       } else {
         const newItem = await createMenuItem(itemData);
         success = !!newItem;
+        if (success) {
+          console.log('✅ Item creado exitosamente:', newItem);
+        }
       }
       
       if (success) {

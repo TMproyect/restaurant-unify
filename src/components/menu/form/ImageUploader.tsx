@@ -25,6 +25,25 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.log('🖼️ ImageUploader - File selected from input:', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified
+      });
+      
+      // Validate file type and size before passing
+      if (!file.type.startsWith('image/')) {
+        console.error('🖼️ ImageUploader - Invalid file type:', file.type);
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        console.error('🖼️ ImageUploader - File too large:', file.size);
+        return;
+      }
+      
+      // Pass the file object directly without any modification
       onFileSelected(file);
     }
   };
@@ -60,6 +79,25 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
+        console.log('🖼️ ImageUploader - File dropped:', {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: file.lastModified
+        });
+        
+        // Validate file type and size before passing
+        if (!file.type.startsWith('image/')) {
+          console.error('🖼️ ImageUploader - Invalid dropped file type:', file.type);
+          return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+          console.error('🖼️ ImageUploader - Dropped file too large:', file.size);
+          return;
+        }
+        
+        // Pass the file object directly without any modification
         onFileSelected(file);
       }
     };

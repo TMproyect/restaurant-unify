@@ -58,6 +58,7 @@ export const useMenuItemForm = (
   // Set initial image preview if item has an image
   useEffect(() => {
     if (item?.image_url) {
+      console.log('📝 Form - Setting initial image preview:', item.image_url);
       setImagePreview(item.image_url);
     }
   }, [item]);
@@ -66,9 +67,11 @@ export const useMenuItemForm = (
   useEffect(() => {
     const ensureStorageInitialized = async () => {
       try {
+        console.log('📝 Form - Initializing storage...');
         await initializeStorage();
+        console.log('📝 Form - Storage initialized successfully');
       } catch (error) {
-        console.error("Error al inicializar almacenamiento:", error);
+        console.error("📝 Form - Error al inicializar almacenamiento:", error);
       }
     };
     
@@ -77,29 +80,51 @@ export const useMenuItemForm = (
 
   // Handle image selection
   const handleFileSelection = (file: File) => {
-    if (!file) return;
+    console.log('📝 Form - handleFileSelection called with file:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      constructor: file.constructor.name
+    });
     
+    if (!file) {
+      console.error('📝 Form - No file provided to handleFileSelection');
+      return;
+    }
+    
+    // Validate file type - this should already be done in ImageUploader but double-check
     if (!file.type.match('image.*')) {
+      console.error('📝 Form - Invalid file type:', file.type);
       toast.error('Solo se permiten archivos de imagen');
       return;
     }
     
+    // Validate file size - this should already be done in ImageUploader but double-check
     if (file.size > 5 * 1024 * 1024) {
+      console.error('📝 Form - File too large:', file.size);
       toast.error('La imagen no debe superar los 5MB');
       return;
     }
     
+    console.log('📝 Form - Setting imageFile state...');
     setImageFile(file);
     
+    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
+      const result = e.target?.result as string;
+      console.log('📝 Form - Preview created, length:', result?.length);
+      setImagePreview(result);
+    };
+    reader.onerror = (e) => {
+      console.error('📝 Form - Error creating preview:', e);
     };
     reader.readAsDataURL(file);
   };
 
   // Clear selected image
   const clearImage = () => {
+    console.log('📝 Form - Clearing image...');
     setImageFile(null);
     setImagePreview(null);
     setUploadProgress(0);
@@ -107,15 +132,34 @@ export const useMenuItemForm = (
 
   // Handle form submission
   const onSubmit = async (data: MenuItemFormValues) => {
+    console.log('📝 Form - Form submission started with data:', data);
+    console.log('📝 Form - Current imageFile state:', {
+      hasFile: !!imageFile,
+      fileName: imageFile?.name,
+      fileType: imageFile?.type,
+      fileSize: imageFile?.size
+    });
+    
     setIsLoading(true);
     try {
       // Ensure storage is initialized before uploading images
+      console.log('📝 Form - Ensuring storage is initialized...');
       await initializeStorage();
       
       let imageUrl = item?.image_url;
+      console.log('📝 Form - Current imageUrl:', imageUrl);
       
       // Upload image if a new one has been selected
       if (imageFile) {
+        console.log('📝 Form - Starting image upload process...');
+        console.log('📝 Form - File details before upload:', {
+          name: imageFile.name,
+          type: imageFile.type,
+          size: imageFile.size,
+          lastModified: imageFile.lastModified,
+          constructor: imageFile.constructor.name
+        });
+        
         // Simulate progress of upload
         const progressInterval = setInterval(() => {
           setUploadProgress((prev) => {
@@ -125,28 +169,30 @@ export const useMenuItemForm = (
         }, 100);
         
         // Generate unique filename with proper extension
-        const fileExtension = imageFile.name.split('.').pop();
+        const fileExtension = imageFile.name.split('.').pop() || 'jpg';
         const uniqueFileName = `${generateUUID()}.${fileExtension}`;
+        console.log('📝 Form - Generated filename:', uniqueFileName);
         
+        console.log('📝 Form - Calling uploadMenuItemImage...');
         const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
         
         clearInterval(progressInterval);
         setUploadProgress(100);
         
+        console.log('📝 Form - Upload result:', uploadResult);
+        
         if (uploadResult.success && uploadResult.imageUrl) {
           imageUrl = uploadResult.imageUrl;
-          console.log('📦 Imagen procesada correctamente:', imageUrl);
-        } else if (uploadResult.error) {
+          console.log('📝 Form - Image uploaded successfully, new URL:', imageUrl);
+        } else {
+          console.error('📝 Form - Upload failed:', uploadResult.error);
           toast.error(`Error al procesar la imagen: ${uploadResult.error}`);
           setIsLoading(false);
           setUploadProgress(0);
           return;
-        } else {
-          toast.error('Error al procesar la imagen');
-          setIsLoading(false);
-          setUploadProgress(0);
-          return;
         }
+      } else {
+        console.log('📝 Form - No new image to upload, keeping existing URL');
       }
       
       // Build item data for submission
@@ -162,20 +208,39 @@ export const useMenuItemForm = (
         image_url: imageUrl,
       };
       
+      console.log('📝 Form - Final item data for save:', {
+        ...itemData,
+        image_url: itemData.image_url ? 'URL presente' : 'Sin URL'
+      });
+      
       let success: boolean;
       
       // Create or update the menu item
       if (item) {
+        console.log('📝 Form - Updating existing item with ID:', item.id);
         const updatedItem = await updateMenuItem(item.id, itemData);
         success = !!updatedItem;
         if (success) {
-          console.log('✅ Item actualizado exitosamente:', updatedItem);
+          console.log('📝 Form - Item updated successfully:', {
+            id: updatedItem?.id,
+            name: updatedItem?.name,
+            hasImageUrl: !!updatedItem?.image_url
+          });
+        } else {
+          console.error('📝 Form - Failed to update item');
         }
       } else {
+        console.log('📝 Form - Creating new item...');
         const newItem = await createMenuItem(itemData);
         success = !!newItem;
         if (success) {
-          console.log('✅ Item creado exitosamente:', newItem);
+          console.log('📝 Form - Item created successfully:', {
+            id: newItem?.id,
+            name: newItem?.name,
+            hasImageUrl: !!newItem?.image_url
+          });
+        } else {
+          console.error('📝 Form - Failed to create item');
         }
       }
       
@@ -183,6 +248,7 @@ export const useMenuItemForm = (
         toast.success(item ? 'Elemento actualizado con éxito' : 'Elemento creado con éxito');
         
         // Notify other components about the update
+        console.log('📝 Form - Dispatching menuItemsUpdated event');
         window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
         
         onClose(true);
@@ -190,7 +256,7 @@ export const useMenuItemForm = (
         toast.error(item ? 'Error al actualizar el elemento' : 'Error al crear el elemento');
       }
     } catch (error) {
-      console.error('Error saving menu item:', error);
+      console.error('📝 Form - Error in form submission:', error);
       toast.error('Error al guardar el elemento');
     } finally {
       setIsLoading(false);

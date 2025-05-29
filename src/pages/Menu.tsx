@@ -2,17 +2,16 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import MenuDataLoader from '@/components/menu/MenuDataLoader';
-import MenuStorageInitializer from '@/components/menu/MenuStorageInitializer';
 import MenuHeader from '@/components/menu/MenuHeader';
 import MenuTabs from '@/components/menu/MenuTabs';
+import SilentStorageInitializer from '@/components/menu/SilentStorageInitializer';
 
 const Menu: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4">
+        <SilentStorageInitializer />
         <MenuHeader />
-        
-        <MenuStorageInitializer />
         
         <MenuDataLoader>
           {({ categories, loading, refreshCategories }) => (

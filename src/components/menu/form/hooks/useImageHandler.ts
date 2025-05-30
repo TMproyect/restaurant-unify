@@ -51,28 +51,28 @@ export const useImageHandler = (itemImageUrl?: string) => {
     setUploadProgress(0);
   };
 
-  // Upload image with progress tracking and enhanced error handling
+  // Simplified upload process
   const uploadImage = async (currentImageUrl?: string): Promise<string | undefined> => {
-    console.log('🖼️ ImageHandler - ⭐ Starting enhanced upload process');
+    console.log('🖼️ ImageHandler - Starting simplified upload process');
 
     try {
-      // Set progress to indicate processing
-      setUploadProgress(25);
+      // Quick progress indication
+      setUploadProgress(50);
 
       const result = await ImageUploadService.handleMenuItemImageUpload(
         imageFile,
         currentImageUrl
       );
 
-      // Set progress to complete
+      // Complete progress
       setUploadProgress(100);
 
-      console.log('🖼️ ImageHandler - ✅ Enhanced upload completed successfully');
+      console.log('🖼️ ImageHandler - ✅ Upload completed successfully');
       return result;
 
     } catch (error) {
       setUploadProgress(0);
-      console.error('🖼️ ImageHandler - ❌ Enhanced upload failed:', error);
+      console.error('🖼️ ImageHandler - Upload failed:', error);
       throw error;
     }
   };

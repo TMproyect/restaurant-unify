@@ -31,7 +31,7 @@ export const useMenuItemForm = (
     },
   });
 
-  // Use the enhanced image handler hook
+  // Use the simplified image handler hook
   const {
     imageFile,
     imagePreview,
@@ -41,12 +41,12 @@ export const useMenuItemForm = (
     uploadImage,
   } = useImageHandler(item?.image_url);
 
-  // Use the enhanced form submission hook
+  // Use the form submission hook
   const { submitForm } = useMenuFormSubmission();
 
-  // Enhanced form submission with improved flow and error handling
+  // Simplified form submission
   const onSubmit = async (data: MenuItemFormValues) => {
-    console.log('📝 Form - ⭐ STARTING ENHANCED COMPLETE FORM SUBMISSION PROCESS');
+    console.log('📝 Form - Starting simplified form submission');
     console.log('📝 Form - Form data:', {
       name: data.name,
       price: data.price,
@@ -57,47 +57,41 @@ export const useMenuItemForm = (
     
     setIsLoading(true);
     
-    // Set up timeout protection with optimized time
+    // Shorter timeout
     const timeoutId = setTimeout(() => {
-      console.error('📝 Form - ⏰ SUBMISSION TIMEOUT - Process taking too long');
+      console.error('📝 Form - Submission timeout');
       setIsLoading(false);
       toast.error('El proceso está tomando demasiado tiempo. Intente de nuevo.');
-    }, 30000); // Optimized to 30 seconds for enhanced upload
+    }, 15000); // Reduced from 30 to 15 seconds
     
     try {
-      // STEP 1: Upload image and get verified URL with enhanced validation
-      console.log('📝 Form - 🔄 STEP 1: Processing image upload with enhanced validation...');
+      // STEP 1: Upload image if needed
+      console.log('📝 Form - Processing image...');
       const finalImageUrl = await uploadImage(item?.image_url);
       
-      console.log('📝 Form - ✅ STEP 1 COMPLETE: Enhanced image processing result:', {
+      console.log('📝 Form - Image processing result:', {
         hasUrl: !!finalImageUrl,
-        urlPreview: finalImageUrl ? finalImageUrl.substring(0, 50) + '...' : 'No URL',
-        previousUrl: item?.image_url ? 'Had previous' : 'No previous'
+        urlPreview: finalImageUrl ? finalImageUrl.substring(0, 50) + '...' : 'No URL'
       });
       
-      // STEP 2: Submit form with the verified image URL
-      console.log('📝 Form - 🔄 STEP 2: Submitting to database with enhanced verification...');
+      // STEP 2: Submit form
+      console.log('📝 Form - Submitting to database...');
       const success = await submitForm(data, finalImageUrl, item, onClose);
       
-      console.log('📝 Form - ✅ STEP 2 COMPLETE: Enhanced database submission result:', success);
-      
       if (success) {
-        console.log('📝 Form - 🎉 ENHANCED COMPLETE SUBMISSION SUCCESSFUL');
+        console.log('📝 Form - ✅ Form submission successful');
       } else {
-        console.log('📝 Form - ❌ ENHANCED SUBMISSION FAILED');
+        console.log('📝 Form - ❌ Form submission failed');
       }
       
     } catch (error) {
-      console.error('📝 Form - ❌ EXCEPTION IN ENHANCED COMPLETE SUBMISSION PROCESS:', error);
+      console.error('📝 Form - Exception in form submission:', error);
       
-      // Show specific error message based on error type
       if (error instanceof Error) {
-        if (error.message.includes('bucket') || error.message.includes('storage')) {
-          toast.error('Error de configuración de almacenamiento. Contacte al administrador.');
-        } else if (error.message.includes('image') || error.message.includes('upload')) {
-          toast.error('Error al procesar la imagen. Verifique el archivo e intente de nuevo.');
+        if (error.message.includes('image') || error.message.includes('upload')) {
+          toast.error('Error al procesar la imagen. Intente de nuevo.');
         } else {
-          toast.error('Error en el proceso de guardado. Intente de nuevo.');
+          toast.error('Error al guardar el elemento. Intente de nuevo.');
         }
       } else {
         toast.error('Error desconocido. Intente de nuevo.');
@@ -105,7 +99,7 @@ export const useMenuItemForm = (
     } finally {
       clearTimeout(timeoutId);
       setIsLoading(false);
-      console.log('📝 Form - 🏁 ENHANCED FORM SUBMISSION PROCESS FINALIZED');
+      console.log('📝 Form - Form submission process completed');
     }
   };
 

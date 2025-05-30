@@ -10,14 +10,14 @@ export interface UploadResult {
 }
 
 /**
- * Service for handling image uploads with enhanced validation and error handling
+ * Simplified image upload service
  */
 export class ImageUploadService {
   /**
-   * Uploads an image file and returns the verified URL
+   * Direct upload without complex validations
    */
   static async uploadImage(imageFile: File): Promise<UploadResult> {
-    console.log('📤 ImageUpload - ⭐ Starting enhanced upload process');
+    console.log('📤 ImageUpload - Starting simple upload process');
     console.log('📤 ImageUpload - File details:', {
       name: imageFile.name,
       type: imageFile.type,
@@ -31,23 +31,16 @@ export class ImageUploadService {
 
       console.log('📤 ImageUpload - Generated filename:', uniqueFileName);
 
-      // Use enhanced upload service
+      // Direct upload
       const result = await EnhancedImageUploadService.uploadImage(imageFile, uniqueFileName);
 
       if (!result.success) {
-        const errorMsg = result.error || 'Error desconocido en upload';
-        console.error('📤 ImageUpload - ❌ Enhanced upload failed:', {
-          error: errorMsg,
-          debugInfo: result.debugInfo
-        });
-        
-        toast.error(`Error al subir imagen: ${errorMsg}`);
-        return { success: false, error: errorMsg };
+        console.error('📤 ImageUpload - Upload failed:', result.error);
+        toast.error(`Error al subir imagen: ${result.error}`);
+        return { success: false, error: result.error };
       }
 
-      console.log('📤 ImageUpload - ✅ Enhanced upload successful');
-      console.log('📤 ImageUpload - Debug info:', result.debugInfo);
-
+      console.log('📤 ImageUpload - ✅ Upload successful');
       toast.success('Imagen subida exitosamente');
 
       return {
@@ -56,7 +49,7 @@ export class ImageUploadService {
       };
 
     } catch (error) {
-      console.error('📤 ImageUpload - ❌ Exception during upload:', error);
+      console.error('📤 ImageUpload - Exception:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       toast.error(`Error al procesar imagen: ${errorMsg}`);
       return { success: false, error: errorMsg };
@@ -64,7 +57,7 @@ export class ImageUploadService {
   }
 
   /**
-   * Handles the complete upload process for menu items
+   * Simplified menu item image upload
    */
   static async handleMenuItemImageUpload(
     imageFile: File | null,

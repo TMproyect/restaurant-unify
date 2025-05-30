@@ -1,8 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import { initializeStorage, uploadMenuItemImage } from '@/services/storage/index';
-import { generateUUID } from '../utils/formUtils';
+import { validateImageFile, createImagePreview } from '../utils/imageValidation';
+import { ImageUploadService } from '../services/imageUploadService';
 
 export const useImageHandler = (itemImageUrl?: string) => {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -17,63 +16,31 @@ export const useImageHandler = (itemImageUrl?: string) => {
     }
   }, [itemImageUrl]);
 
-  // Initialize storage on hook load
-  useEffect(() => {
-    const ensureStorageInitialized = async () => {
-      try {
-        console.log('🖼️ ImageHandler - Initializing storage...');
-        await initializeStorage();
-        console.log('🖼️ ImageHandler - Storage initialized successfully');
-      } catch (error) {
-        console.error("🖼️ ImageHandler - Error al inicializar almacenamiento:", error);
-      }
-    };
-    
-    ensureStorageInitialized();
-  }, []);
-
-  // Handle image selection
-  const handleFileSelection = (file: File) => {
+  // Handle image selection with validation
+  const handleFileSelection = async (file: File) => {
     console.log('🖼️ ImageHandler - handleFileSelection called with file:', {
       name: file.name,
       type: file.type,
-      size: file.size,
-      constructor: file.constructor.name
+      size: file.size
     });
-    
-    if (!file) {
-      console.error('🖼️ ImageHandler - No file provided to handleFileSelection');
+
+    // Validate file
+    const validation = validateImageFile(file);
+    if (!validation.isValid) {
+      console.error('🖼️ ImageHandler - File validation failed:', validation.error);
       return;
     }
-    
-    // Validate file type
-    if (!file.type.match('image.*')) {
-      console.error('🖼️ ImageHandler - Invalid file type:', file.type);
-      toast.error('Solo se permiten archivos de imagen');
-      return;
-    }
-    
-    // Validate file size
-    if (file.size > 5 * 1024 * 1024) {
-      console.error('🖼️ ImageHandler - File too large:', file.size);
-      toast.error('La imagen no debe superar los 5MB');
-      return;
-    }
-    
+
     console.log('🖼️ ImageHandler - Setting imageFile state...');
     setImageFile(file);
-    
+
     // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      console.log('🖼️ ImageHandler - Preview created, length:', result?.length);
-      setImagePreview(result);
-    };
-    reader.onerror = (e) => {
-      console.error('🖼️ ImageHandler - Error creating preview:', e);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const preview = await createImagePreview(file);
+      setImagePreview(preview);
+    } catch (error) {
+      console.error('🖼️ ImageHandler - Error creating preview:', error);
+    }
   };
 
   // Clear selected image
@@ -84,130 +51,29 @@ export const useImageHandler = (itemImageUrl?: string) => {
     setUploadProgress(0);
   };
 
-  // Verify URL is accessible with retry logic
-  const verifyImageUrlWithRetry = async (url: string, maxRetries = 3): Promise<boolean> => {
-    console.log('🖼️ ImageHandler - Starting URL verification with retry logic');
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🖼️ ImageHandler - Verification attempt ${attempt}/${maxRetries} for URL:`, url);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
-        
-        const response = await fetch(url, { 
-          method: 'HEAD',
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          console.log(`🖼️ ImageHandler - ✅ URL verification successful on attempt ${attempt}`);
-          return true;
-        } else {
-          console.warn(`🖼️ ImageHandler - ⚠️ URL verification failed on attempt ${attempt}, status:`, response.status);
-        }
-        
-      } catch (error) {
-        console.warn(`🖼️ ImageHandler - ⚠️ URL verification error on attempt ${attempt}:`, error);
-        
-        if (attempt < maxRetries) {
-          // Wait before retry (exponential backoff)
-          const waitTime = Math.pow(2, attempt) * 1000;
-          console.log(`🖼️ ImageHandler - Waiting ${waitTime}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-      }
-    }
-    
-    console.error('🖼️ ImageHandler - ❌ URL verification failed after all retries');
-    return false;
-  };
-
-  // Upload image with robust error handling and improved flow
+  // Upload image with progress tracking
   const uploadImage = async (currentImageUrl?: string): Promise<string | undefined> => {
-    console.log('🖼️ ImageHandler - ⭐ STARTING ROBUST UPLOAD PROCESS');
-    console.log('🖼️ ImageHandler - Upload state:', {
-      hasNewImage: !!imageFile,
-      currentUrl: currentImageUrl ? 'Present' : 'None',
-      fileName: imageFile?.name || 'N/A'
-    });
-    
-    // If no new image selected, return current URL
-    if (!imageFile) {
-      console.log('🖼️ ImageHandler - No new image to upload, returning current URL');
-      return currentImageUrl;
-    }
+    console.log('🖼️ ImageHandler - ⭐ Starting upload process');
 
-    console.log('🖼️ ImageHandler - 🔄 Processing new image upload...');
-    
     try {
-      // Reset progress to 0
-      setUploadProgress(0);
-      
-      // Ensure storage is initialized
-      console.log('🖼️ ImageHandler - Ensuring storage initialization...');
-      await initializeStorage();
-      
-      // Generate unique filename with proper extension
-      const fileExtension = imageFile.name.split('.').pop() || 'jpg';
-      const uniqueFileName = `${generateUUID()}.${fileExtension}`;
-      
-      console.log('🖼️ ImageHandler - Upload details:', {
-        originalName: imageFile.name,
-        generatedName: uniqueFileName,
-        type: imageFile.type,
-        size: imageFile.size
-      });
-      
-      // Upload the image
-      console.log('🖼️ ImageHandler - 🚀 Starting upload to Supabase Storage...');
-      const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
-      
-      console.log('🖼️ ImageHandler - Upload result received:', {
-        success: uploadResult.success,
-        hasUrl: !!uploadResult.imageUrl,
-        urlPreview: uploadResult.imageUrl ? uploadResult.imageUrl.substring(0, 50) + '...' : 'None',
-        error: uploadResult.error || 'None'
-      });
-      
-      if (!uploadResult.success || !uploadResult.imageUrl) {
-        setUploadProgress(0);
-        const errorMsg = uploadResult.error || 'Error desconocido en upload';
-        console.error('🖼️ ImageHandler - ❌ Upload failed:', errorMsg);
-        toast.error(`Error al subir imagen: ${errorMsg}`);
-        throw new Error(errorMsg);
-      }
-      
-      // Verify the uploaded URL with retry logic
-      console.log('🖼️ ImageHandler - 🔍 Verifying uploaded URL accessibility with retry...');
-      const isUrlAccessible = await verifyImageUrlWithRetry(uploadResult.imageUrl);
-      
-      if (!isUrlAccessible) {
-        console.warn('🖼️ ImageHandler - ⚠️ URL verification failed, but continuing with upload');
-        // Don't fail here - the upload was successful, URL might just need time to propagate
-        toast.warning('Imagen subida exitosamente. La imagen puede tardar unos momentos en aparecer.');
-      } else {
-        console.log('🖼️ ImageHandler - ✅ URL verification passed');
-      }
-      
+      // Set progress to indicate processing
+      setUploadProgress(10);
+
+      const result = await ImageUploadService.handleMenuItemImageUpload(
+        imageFile,
+        currentImageUrl
+      );
+
       // Set progress to complete
       setUploadProgress(100);
-      
-      console.log('🖼️ ImageHandler - ✅ UPLOAD PROCESS COMPLETED SUCCESSFULLY');
-      console.log('🖼️ ImageHandler - Final URL:', uploadResult.imageUrl);
-      
-      return uploadResult.imageUrl;
-      
+
+      console.log('🖼️ ImageHandler - ✅ Upload completed successfully');
+      return result;
+
     } catch (error) {
       setUploadProgress(0);
-      console.error('🖼️ ImageHandler - ❌ EXCEPTION IN UPLOAD PROCESS:', error);
-      
-      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
-      toast.error(`Error al procesar imagen: ${errorMsg}`);
-      
-      throw error; // Re-throw to be handled by the form submission
+      console.error('🖼️ ImageHandler - ❌ Upload failed:', error);
+      throw error;
     }
   };
 

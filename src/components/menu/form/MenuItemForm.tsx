@@ -35,12 +35,22 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     handleFileSelection,
     clearImage,
     onSubmit
-  } = useMenuItemForm(item, onClose);
+  } = useMenuItemForm(item, (saved) => handleClose(saved));
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open && !isLoading) {
+      handleClose(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (!isLoading) {
+      handleClose(false);
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) handleClose();
-    }}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -72,12 +82,17 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
             </div>
             
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={isLoading} className="gap-2">
                 {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {item ? 'Actualizar' : 'Crear'}
+                {isLoading ? 'Guardando...' : (item ? 'Actualizar' : 'Crear')}
               </Button>
             </DialogFooter>
           </form>

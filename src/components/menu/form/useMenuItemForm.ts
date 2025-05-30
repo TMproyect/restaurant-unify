@@ -139,6 +139,8 @@ export const useMenuItemForm = (
       
       // Notify other components
       window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+      
+      // Close dialog with success flag
       onClose(true);
       
     } catch (error) {

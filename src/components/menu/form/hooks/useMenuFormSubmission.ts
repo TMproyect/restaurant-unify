@@ -6,46 +6,65 @@ import { MenuItemFormValues } from '../schemas/menuItemFormSchema';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useMenuFormSubmission = () => {
-  // Verify the item was saved with the correct URL
-  const verifyItemSaved = async (
+  // Enhanced verification with multiple checks
+  const verifyItemSavedWithRetry = async (
     itemId: string, 
-    expectedImageUrl: string | undefined
+    expectedImageUrl: string | undefined,
+    maxRetries = 3
   ): Promise<boolean> => {
-    try {
-      console.log('📝 FormSubmission - 🔍 Verifying item was saved correctly...');
-      
-      const { data: savedItem, error } = await supabase
-        .from('menu_items')
-        .select('id, name, image_url')
-        .eq('id', itemId)
-        .single();
-      
-      if (error) {
-        console.error('📝 FormSubmission - Error verifying saved item:', error);
-        return false;
+    console.log('📝 FormSubmission - 🔍 Starting enhanced verification with retry...');
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📝 FormSubmission - Verification attempt ${attempt}/${maxRetries}`);
+        
+        const { data: savedItem, error } = await supabase
+          .from('menu_items')
+          .select('id, name, image_url')
+          .eq('id', itemId)
+          .single();
+        
+        if (error) {
+          console.error(`📝 FormSubmission - Error on attempt ${attempt}:`, error);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+          return false;
+        }
+        
+        const urlsMatch = savedItem.image_url === expectedImageUrl;
+        
+        console.log(`📝 FormSubmission - Verification attempt ${attempt} result:`, {
+          itemId: savedItem.id,
+          itemName: savedItem.name,
+          expectedUrl: expectedImageUrl ? `${expectedImageUrl.substring(0, 50)}...` : 'None',
+          actualUrl: savedItem.image_url ? `${savedItem.image_url.substring(0, 50)}...` : 'None',
+          urlsMatch
+        });
+        
+        if (urlsMatch) {
+          console.log('📝 FormSubmission - ✅ Enhanced verification PASSED');
+          return true;
+        } else {
+          console.warn(`📝 FormSubmission - ⚠️ URL mismatch on attempt ${attempt}`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        
+      } catch (error) {
+        console.error(`📝 FormSubmission - Exception on verification attempt ${attempt}:`, error);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
       }
-      
-      const urlsMatch = savedItem.image_url === expectedImageUrl;
-      
-      console.log('📝 FormSubmission - Verification result:', {
-        itemId: savedItem.id,
-        itemName: savedItem.name,
-        expectedUrl: expectedImageUrl ? `${expectedImageUrl.substring(0, 50)}...` : 'None',
-        actualUrl: savedItem.image_url ? `${savedItem.image_url.substring(0, 50)}...` : 'None',
-        urlsMatch
-      });
-      
-      if (!urlsMatch) {
-        console.error('📝 FormSubmission - ⚠️ URL MISMATCH DETECTED!');
-        console.error('📝 FormSubmission - Expected:', expectedImageUrl);
-        console.error('📝 FormSubmission - Actual:', savedItem.image_url);
-      }
-      
-      return urlsMatch;
-    } catch (error) {
-      console.error('📝 FormSubmission - Exception during verification:', error);
-      return false;
     }
+    
+    console.error('📝 FormSubmission - ❌ Enhanced verification FAILED after all retries');
+    return false;
   };
 
   const submitForm = async (
@@ -54,7 +73,7 @@ export const useMenuFormSubmission = () => {
     item: MenuItem | null,
     onClose: (saved: boolean) => void
   ): Promise<boolean> => {
-    console.log('📝 FormSubmission - ⭐ STARTING DATABASE SUBMISSION');
+    console.log('📝 FormSubmission - ⭐ STARTING ENHANCED DATABASE SUBMISSION');
     console.log('📝 FormSubmission - Submission details:', {
       name: data.name,
       price: data.price,
@@ -65,7 +84,7 @@ export const useMenuFormSubmission = () => {
       itemId: item?.id || 'NEW'
     });
     
-    // Build item data for submission
+    // Build item data for submission with CRITICAL URL
     const itemData: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'> = {
       name: data.name,
       description: data.description || '',
@@ -80,7 +99,7 @@ export const useMenuFormSubmission = () => {
     
     console.log('📝 FormSubmission - Final item data for database:', {
       ...itemData,
-      image_url: itemData.image_url ? `VALID URL: ${itemData.image_url.substring(0, 50)}...` : '❌ NO IMAGE URL'
+      image_url: itemData.image_url ? `✅ VALID URL: ${itemData.image_url.substring(0, 50)}...` : '❌ NO IMAGE URL'
     });
     
     try {
@@ -107,17 +126,17 @@ export const useMenuFormSubmission = () => {
         hasImageUrlInDb: !!result.image_url
       });
       
-      // Verify the URL was actually saved correctly
+      // Enhanced verification with retry logic
       if (imageUrl) {
-        console.log('📝 FormSubmission - 🔍 Performing additional verification...');
-        const verificationPassed = await verifyItemSaved(result.id, imageUrl);
+        console.log('📝 FormSubmission - 🔍 Performing enhanced verification with retry...');
+        const verificationPassed = await verifyItemSavedWithRetry(result.id, imageUrl);
         
         if (!verificationPassed) {
-          console.error('📝 FormSubmission - ❌ VERIFICATION FAILED: Image URL not saved correctly');
+          console.error('📝 FormSubmission - ❌ ENHANCED VERIFICATION FAILED: Image URL not saved correctly');
           toast.error('El elemento se guardó pero hubo un problema con la imagen. Verifique y edite si es necesario.');
           // Don't return false here - the item was saved, just warn the user
         } else {
-          console.log('📝 FormSubmission - ✅ VERIFICATION PASSED: Image URL saved correctly');
+          console.log('📝 FormSubmission - ✅ ENHANCED VERIFICATION PASSED: Image URL saved correctly');
         }
       }
       

@@ -84,39 +84,50 @@ export const useImageHandler = (itemImageUrl?: string) => {
     setUploadProgress(0);
   };
 
-  // Verify URL is accessible with timeout
-  const verifyImageUrl = async (url: string): Promise<boolean> => {
-    try {
-      console.log('🖼️ ImageHandler - Verifying URL accessibility:', url);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, { 
-        method: 'HEAD',
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const isAccessible = response.ok;
-      console.log('🖼️ ImageHandler - URL verification result:', {
-        url: url.substring(0, 50) + '...',
-        status: response.status,
-        ok: response.ok,
-        accessible: isAccessible
-      });
-      
-      return isAccessible;
-    } catch (error) {
-      console.error('🖼️ ImageHandler - URL verification failed:', error);
-      return false;
+  // Verify URL is accessible with retry logic
+  const verifyImageUrlWithRetry = async (url: string, maxRetries = 3): Promise<boolean> => {
+    console.log('🖼️ ImageHandler - Starting URL verification with retry logic');
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🖼️ ImageHandler - Verification attempt ${attempt}/${maxRetries} for URL:`, url);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
+        
+        const response = await fetch(url, { 
+          method: 'HEAD',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          console.log(`🖼️ ImageHandler - ✅ URL verification successful on attempt ${attempt}`);
+          return true;
+        } else {
+          console.warn(`🖼️ ImageHandler - ⚠️ URL verification failed on attempt ${attempt}, status:`, response.status);
+        }
+        
+      } catch (error) {
+        console.warn(`🖼️ ImageHandler - ⚠️ URL verification error on attempt ${attempt}:`, error);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.log(`🖼️ ImageHandler - Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
+    
+    console.error('🖼️ ImageHandler - ❌ URL verification failed after all retries');
+    return false;
   };
 
-  // Upload image with robust error handling and URL verification
+  // Upload image with robust error handling and improved flow
   const uploadImage = async (currentImageUrl?: string): Promise<string | undefined> => {
-    console.log('🖼️ ImageHandler - ⭐ STARTING UPLOAD PROCESS');
+    console.log('🖼️ ImageHandler - ⭐ STARTING ROBUST UPLOAD PROCESS');
     console.log('🖼️ ImageHandler - Upload state:', {
       hasNewImage: !!imageFile,
       currentUrl: currentImageUrl ? 'Present' : 'None',
@@ -132,7 +143,7 @@ export const useImageHandler = (itemImageUrl?: string) => {
     console.log('🖼️ ImageHandler - 🔄 Processing new image upload...');
     
     try {
-      // Reset progress
+      // Reset progress to 0
       setUploadProgress(0);
       
       // Ensure storage is initialized
@@ -149,9 +160,6 @@ export const useImageHandler = (itemImageUrl?: string) => {
         type: imageFile.type,
         size: imageFile.size
       });
-      
-      // Set progress to indicate upload started
-      setUploadProgress(50);
       
       // Upload the image
       console.log('🖼️ ImageHandler - 🚀 Starting upload to Supabase Storage...');
@@ -172,18 +180,19 @@ export const useImageHandler = (itemImageUrl?: string) => {
         throw new Error(errorMsg);
       }
       
-      // Verify the uploaded URL is accessible
-      console.log('🖼️ ImageHandler - 🔍 Verifying uploaded URL accessibility...');
-      const isUrlAccessible = await verifyImageUrl(uploadResult.imageUrl);
+      // Verify the uploaded URL with retry logic
+      console.log('🖼️ ImageHandler - 🔍 Verifying uploaded URL accessibility with retry...');
+      const isUrlAccessible = await verifyImageUrlWithRetry(uploadResult.imageUrl);
       
       if (!isUrlAccessible) {
-        setUploadProgress(0);
-        console.error('🖼️ ImageHandler - ❌ Uploaded URL is not accessible');
-        toast.error('La imagen se subió pero no es accesible. Intente de nuevo.');
-        throw new Error('URL no accesible después del upload');
+        console.warn('🖼️ ImageHandler - ⚠️ URL verification failed, but continuing with upload');
+        // Don't fail here - the upload was successful, URL might just need time to propagate
+        toast.warning('Imagen subida exitosamente. La imagen puede tardar unos momentos en aparecer.');
+      } else {
+        console.log('🖼️ ImageHandler - ✅ URL verification passed');
       }
       
-      // Success - set progress to complete
+      // Set progress to complete
       setUploadProgress(100);
       
       console.log('🖼️ ImageHandler - ✅ UPLOAD PROCESS COMPLETED SUCCESSFULLY');

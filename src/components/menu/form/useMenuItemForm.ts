@@ -31,7 +31,7 @@ export const useMenuItemForm = (
     },
   });
 
-  // Use the image handler hook
+  // Use the enhanced image handler hook
   const {
     imageFile,
     imagePreview,
@@ -43,12 +43,12 @@ export const useMenuItemForm = (
     setUploadProgress,
   } = useImageHandler(item?.image_url);
 
-  // Use the form submission hook
+  // Use the enhanced form submission hook
   const { submitForm } = useMenuFormSubmission();
 
-  // Handle form submission with timeout protection
+  // Enhanced form submission with improved flow
   const onSubmit = async (data: MenuItemFormValues) => {
-    console.log('📝 Form - ⭐ STARTING COMPLETE FORM SUBMISSION PROCESS');
+    console.log('📝 Form - ⭐ STARTING ENHANCED COMPLETE FORM SUBMISSION PROCESS');
     console.log('📝 Form - Form data:', {
       name: data.name,
       price: data.price,
@@ -59,46 +59,47 @@ export const useMenuItemForm = (
     
     setIsLoading(true);
     
-    // Set up timeout protection
+    // Set up timeout protection with reduced time
     const timeoutId = setTimeout(() => {
       console.error('📝 Form - ⏰ SUBMISSION TIMEOUT - Process taking too long');
       setIsLoading(false);
       toast.error('El proceso está tomando demasiado tiempo. Intente de nuevo.');
-    }, 60000); // 60 second timeout
+    }, 45000); // Reduced to 45 seconds
     
     try {
       // STEP 1: Upload image and get verified URL
-      console.log('📝 Form - 🔄 STEP 1: Processing image upload...');
+      console.log('📝 Form - 🔄 STEP 1: Processing image upload with enhanced logic...');
       const finalImageUrl = await uploadImage(item?.image_url);
       
-      console.log('📝 Form - ✅ STEP 1 COMPLETE: Image processing result:', {
+      console.log('📝 Form - ✅ STEP 1 COMPLETE: Enhanced image processing result:', {
         hasUrl: !!finalImageUrl,
         urlPreview: finalImageUrl ? finalImageUrl.substring(0, 50) + '...' : 'No URL',
         previousUrl: item?.image_url ? 'Had previous' : 'No previous'
       });
       
       // STEP 2: Submit form with the verified image URL
-      console.log('📝 Form - 🔄 STEP 2: Submitting to database...');
+      console.log('📝 Form - 🔄 STEP 2: Submitting to database with enhanced verification...');
       const success = await submitForm(data, finalImageUrl, item, onClose);
       
-      console.log('📝 Form - ✅ STEP 2 COMPLETE: Database submission result:', success);
+      console.log('📝 Form - ✅ STEP 2 COMPLETE: Enhanced database submission result:', success);
       
       if (success) {
-        console.log('📝 Form - 🎉 COMPLETE SUBMISSION SUCCESSFUL');
+        console.log('📝 Form - 🎉 ENHANCED COMPLETE SUBMISSION SUCCESSFUL');
         // Reset states on success
         setUploadProgress(0);
         setImageFile(null);
       } else {
-        console.log('📝 Form - ❌ SUBMISSION FAILED');
+        console.log('📝 Form - ❌ ENHANCED SUBMISSION FAILED');
       }
       
     } catch (error) {
-      console.error('📝 Form - ❌ EXCEPTION IN COMPLETE SUBMISSION PROCESS:', error);
+      console.error('📝 Form - ❌ EXCEPTION IN ENHANCED COMPLETE SUBMISSION PROCESS:', error);
       setUploadProgress(0);
+      toast.error('Error en el proceso de guardado. Intente de nuevo.');
     } finally {
       clearTimeout(timeoutId);
       setIsLoading(false);
-      console.log('📝 Form - 🏁 FORM SUBMISSION PROCESS FINALIZED');
+      console.log('📝 Form - 🏁 ENHANCED FORM SUBMISSION PROCESS FINALIZED');
     }
   };
 

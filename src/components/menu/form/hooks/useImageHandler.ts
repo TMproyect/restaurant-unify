@@ -6,7 +6,7 @@ import { ImageUploadService } from '../services/imageUploadService';
 export const useImageHandler = (itemImageUrl?: string) => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Set initial image preview if item has an image
   useEffect(() => {
@@ -18,11 +18,7 @@ export const useImageHandler = (itemImageUrl?: string) => {
 
   // Handle image selection with validation
   const handleFileSelection = async (file: File) => {
-    console.log('🖼️ ImageHandler - handleFileSelection called with file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size
-    });
+    console.log('🖼️ ImageHandler - File selected:', file.name);
 
     // Validate file
     const validation = validateImageFile(file);
@@ -31,7 +27,6 @@ export const useImageHandler = (itemImageUrl?: string) => {
       return;
     }
 
-    console.log('🖼️ ImageHandler - Setting imageFile state...');
     setImageFile(file);
 
     // Create preview
@@ -48,39 +43,40 @@ export const useImageHandler = (itemImageUrl?: string) => {
     console.log('🖼️ ImageHandler - Clearing image...');
     setImageFile(null);
     setImagePreview(null);
-    setUploadProgress(0);
+    setIsUploading(false);
   };
 
-  // Simplified upload process
+  // Simple upload process
   const uploadImage = async (currentImageUrl?: string): Promise<string | undefined> => {
-    console.log('🖼️ ImageHandler - Starting simplified upload process');
+    console.log('🖼️ ImageHandler - Starting upload');
+
+    if (!imageFile) {
+      return currentImageUrl;
+    }
 
     try {
-      // Quick progress indication
-      setUploadProgress(50);
+      setIsUploading(true);
 
       const result = await ImageUploadService.handleMenuItemImageUpload(
         imageFile,
         currentImageUrl
       );
 
-      // Complete progress
-      setUploadProgress(100);
-
-      console.log('🖼️ ImageHandler - ✅ Upload completed successfully');
+      console.log('🖼️ ImageHandler - ✅ Upload completed');
       return result;
 
     } catch (error) {
-      setUploadProgress(0);
       console.error('🖼️ ImageHandler - Upload failed:', error);
       throw error;
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return {
     imageFile,
     imagePreview,
-    uploadProgress,
+    isUploading,
     handleFileSelection,
     clearImage,
     uploadImage,

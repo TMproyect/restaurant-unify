@@ -1,7 +1,7 @@
 
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { generateUUID } from '../utils/formUtils';
-import { EnhancedImageUploadService } from '@/services/storage/operations/enhancedImageUpload';
 
 export interface UploadResult {
   success: boolean;
@@ -10,46 +10,59 @@ export interface UploadResult {
 }
 
 /**
- * Simplified image upload service
+ * Servicio simple y directo para subir imágenes
  */
 export class ImageUploadService {
+  private static readonly STORAGE_BUCKET = 'menu_images';
+
   /**
-   * Direct upload without complex validations
+   * Upload directo a Supabase sin validaciones complejas
    */
   static async uploadImage(imageFile: File): Promise<UploadResult> {
-    console.log('📤 ImageUpload - Starting simple upload process');
-    console.log('📤 ImageUpload - File details:', {
-      name: imageFile.name,
-      type: imageFile.type,
-      size: imageFile.size
-    });
+    console.log('📤 SimpleUpload - Starting upload:', imageFile.name);
 
     try {
-      // Generate unique filename
+      // Generar nombre único
       const fileExtension = imageFile.name.split('.').pop() || 'jpg';
-      const uniqueFileName = `${generateUUID()}.${fileExtension}`;
+      const uniqueFileName = `menu/${generateUUID()}.${fileExtension}`;
 
-      console.log('📤 ImageUpload - Generated filename:', uniqueFileName);
+      console.log('📤 SimpleUpload - Uploading to:', uniqueFileName);
 
-      // Direct upload
-      const result = await EnhancedImageUploadService.uploadImage(imageFile, uniqueFileName);
+      // Upload directo
+      const { data, error } = await supabase.storage
+        .from(this.STORAGE_BUCKET)
+        .upload(uniqueFileName, imageFile, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: imageFile.type
+        });
 
-      if (!result.success) {
-        console.error('📤 ImageUpload - Upload failed:', result.error);
-        toast.error(`Error al subir imagen: ${result.error}`);
-        return { success: false, error: result.error };
+      if (error) {
+        console.error('📤 SimpleUpload - Upload failed:', error);
+        toast.error(`Error al subir imagen: ${error.message}`);
+        return { success: false, error: error.message };
       }
 
-      console.log('📤 ImageUpload - ✅ Upload successful');
+      // Obtener URL pública
+      const { data: urlData } = supabase.storage
+        .from(this.STORAGE_BUCKET)
+        .getPublicUrl(data.path);
+
+      if (!urlData?.publicUrl) {
+        console.error('📤 SimpleUpload - No public URL generated');
+        return { success: false, error: 'Error generando URL pública' };
+      }
+
+      console.log('📤 SimpleUpload - ✅ Success! URL:', urlData.publicUrl);
       toast.success('Imagen subida exitosamente');
 
       return {
         success: true,
-        imageUrl: result.imageUrl
+        imageUrl: urlData.publicUrl
       };
 
     } catch (error) {
-      console.error('📤 ImageUpload - Exception:', error);
+      console.error('📤 SimpleUpload - Exception:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       toast.error(`Error al procesar imagen: ${errorMsg}`);
       return { success: false, error: errorMsg };
@@ -57,19 +70,16 @@ export class ImageUploadService {
   }
 
   /**
-   * Simplified menu item image upload
+   * Manejo simple para imágenes de items del menú
    */
   static async handleMenuItemImageUpload(
     imageFile: File | null,
     currentImageUrl?: string
   ): Promise<string | undefined> {
-    // If no new image, return current URL
     if (!imageFile) {
-      console.log('📤 ImageUpload - No new image, returning current URL');
       return currentImageUrl;
     }
 
-    console.log('📤 ImageUpload - Processing new image upload...');
     const result = await this.uploadImage(imageFile);
 
     if (!result.success) {

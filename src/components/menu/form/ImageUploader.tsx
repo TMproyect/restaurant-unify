@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { ImagePlus, Upload, X } from 'lucide-react';
+import { ImagePlus, Upload, X, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 interface ImageUploaderProps {
@@ -21,29 +21,25 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   
+  const isUploading = uploadProgress > 0;
+  
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log('🖼️ ImageUploader - File selected from input:', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        lastModified: file.lastModified
-      });
+      console.log('🖼️ ImageUploader - File selected:', file.name);
       
-      // Validate file type and size before passing
+      // Basic validation
       if (!file.type.startsWith('image/')) {
-        console.error('🖼️ ImageUploader - Invalid file type:', file.type);
+        console.error('🖼️ ImageUploader - Invalid file type');
         return;
       }
       
       if (file.size > 5 * 1024 * 1024) {
-        console.error('🖼️ ImageUploader - File too large:', file.size);
+        console.error('🖼️ ImageUploader - File too large');
         return;
       }
       
-      // Pass the file object directly without any modification
       onFileSelected(file);
     }
   };
@@ -53,9 +49,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
-        setIsDragging(true);
-      }
+      setIsDragging(true);
     };
     
     const handleDragLeave = (e: DragEvent) => {
@@ -67,9 +61,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!isDragging) {
-        setIsDragging(true);
-      }
     };
     
     const handleDrop = (e: DragEvent) => {
@@ -79,25 +70,19 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
-        console.log('🖼️ ImageUploader - File dropped:', {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          lastModified: file.lastModified
-        });
+        console.log('🖼️ ImageUploader - File dropped:', file.name);
         
-        // Validate file type and size before passing
+        // Basic validation
         if (!file.type.startsWith('image/')) {
-          console.error('🖼️ ImageUploader - Invalid dropped file type:', file.type);
+          console.error('🖼️ ImageUploader - Invalid dropped file type');
           return;
         }
         
         if (file.size > 5 * 1024 * 1024) {
-          console.error('🖼️ ImageUploader - Dropped file too large:', file.size);
+          console.error('🖼️ ImageUploader - Dropped file too large');
           return;
         }
         
-        // Pass the file object directly without any modification
         onFileSelected(file);
       }
     };
@@ -116,7 +101,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         dropZone.removeEventListener('drop', handleDrop);
       };
     }
-  }, [isDragging, onFileSelected]);
+  }, [onFileSelected]);
 
   return (
     <div className="space-y-2">
@@ -129,31 +114,27 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
           imagePreview ? "bg-background" : "bg-muted/30"
         )}
       >
-        {uploadProgress > 0 && uploadProgress < 100 && (
+        {isUploading && (
           <div className="absolute inset-0 bg-background/80 z-10 flex flex-col items-center justify-center">
-            <div className="w-full max-w-xs bg-muted rounded-full h-2.5 mb-2">
-              <div className="bg-primary h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-            </div>
-            <p className="text-sm text-muted-foreground">{`Subiendo... ${uploadProgress}%`}</p>
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">Subiendo imagen...</p>
           </div>
         )}
         
         {imagePreview ? (
           <div className="relative w-full h-full">
-            <div className="w-full h-full relative">
-              <img 
-                src={imagePreview} 
-                alt="Vista previa" 
-                className="w-full h-full object-contain"
-              />
-              <button 
-                type="button"
-                onClick={onClearImage}
-                className="absolute top-1 right-1 bg-destructive/90 hover:bg-destructive text-white p-1 rounded-full"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <img 
+              src={imagePreview} 
+              alt="Vista previa" 
+              className="w-full h-full object-contain"
+            />
+            <button 
+              type="button"
+              onClick={onClearImage}
+              className="absolute top-1 right-1 bg-destructive/90 hover:bg-destructive text-white p-1 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         ) : (
           <div 

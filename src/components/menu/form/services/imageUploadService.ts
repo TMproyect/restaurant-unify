@@ -1,8 +1,7 @@
 
 import { toast } from 'sonner';
-import { initializeStorage, uploadMenuItemImage } from '@/services/storage/index';
 import { generateUUID } from '../utils/formUtils';
-import { UrlVerificationService } from './urlVerificationService';
+import { EnhancedImageUploadService } from '@/services/storage/operations/enhancedImageUpload';
 
 export interface UploadResult {
   success: boolean;
@@ -11,14 +10,14 @@ export interface UploadResult {
 }
 
 /**
- * Service for handling image uploads with verification
+ * Service for handling image uploads with enhanced validation and error handling
  */
 export class ImageUploadService {
   /**
    * Uploads an image file and returns the verified URL
    */
   static async uploadImage(imageFile: File): Promise<UploadResult> {
-    console.log('📤 ImageUpload - ⭐ Starting upload process');
+    console.log('📤 ImageUpload - ⭐ Starting enhanced upload process');
     console.log('📤 ImageUpload - File details:', {
       name: imageFile.name,
       type: imageFile.type,
@@ -26,43 +25,34 @@ export class ImageUploadService {
     });
 
     try {
-      // Ensure storage is initialized
-      console.log('📤 ImageUpload - Ensuring storage initialization...');
-      await initializeStorage();
-
       // Generate unique filename
       const fileExtension = imageFile.name.split('.').pop() || 'jpg';
       const uniqueFileName = `${generateUUID()}.${fileExtension}`;
 
       console.log('📤 ImageUpload - Generated filename:', uniqueFileName);
 
-      // Upload to Supabase Storage
-      console.log('📤 ImageUpload - 🚀 Starting upload to Supabase...');
-      const uploadResult = await uploadMenuItemImage(imageFile, uniqueFileName);
+      // Use enhanced upload service
+      const result = await EnhancedImageUploadService.uploadImage(imageFile, uniqueFileName);
 
-      if (!uploadResult.success || !uploadResult.imageUrl) {
-        const errorMsg = uploadResult.error || 'Error desconocido en upload';
-        console.error('📤 ImageUpload - ❌ Upload failed:', errorMsg);
+      if (!result.success) {
+        const errorMsg = result.error || 'Error desconocido en upload';
+        console.error('📤 ImageUpload - ❌ Enhanced upload failed:', {
+          error: errorMsg,
+          debugInfo: result.debugInfo
+        });
+        
         toast.error(`Error al subir imagen: ${errorMsg}`);
         return { success: false, error: errorMsg };
       }
 
-      console.log('📤 ImageUpload - ✅ Upload successful, URL:', uploadResult.imageUrl);
+      console.log('📤 ImageUpload - ✅ Enhanced upload successful');
+      console.log('📤 ImageUpload - Debug info:', result.debugInfo);
 
-      // Verify URL accessibility (non-blocking)
-      console.log('📤 ImageUpload - 🔍 Verifying URL accessibility...');
-      const isAccessible = await UrlVerificationService.verifyUrlWithRetry(uploadResult.imageUrl);
-
-      if (!isAccessible) {
-        console.warn('📤 ImageUpload - ⚠️ URL verification failed, but continuing');
-        toast.warning('Imagen subida exitosamente. Puede tardar unos momentos en aparecer.');
-      } else {
-        console.log('📤 ImageUpload - ✅ URL verification passed');
-      }
+      toast.success('Imagen subida exitosamente');
 
       return {
         success: true,
-        imageUrl: uploadResult.imageUrl
+        imageUrl: result.imageUrl
       };
 
     } catch (error) {

@@ -17,6 +17,11 @@ export {
   initializeStorage
 } from './core/storageInitialization';
 
+// Bucket validation
+export {
+  BucketValidationService
+} from './core/bucketValidation';
+
 // Operations
 export {
   uploadMenuItemImage
@@ -25,6 +30,10 @@ export {
 export {
   deleteMenuItemImage
 } from './operations/imageManagement';
+
+export {
+  EnhancedImageUploadService
+} from './operations/enhancedImageUpload';
 
 // Content type repair functionality
 export {

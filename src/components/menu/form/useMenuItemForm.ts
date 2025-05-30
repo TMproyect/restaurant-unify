@@ -44,7 +44,7 @@ export const useMenuItemForm = (
   // Use the enhanced form submission hook
   const { submitForm } = useMenuFormSubmission();
 
-  // Enhanced form submission with improved flow
+  // Enhanced form submission with improved flow and error handling
   const onSubmit = async (data: MenuItemFormValues) => {
     console.log('📝 Form - ⭐ STARTING ENHANCED COMPLETE FORM SUBMISSION PROCESS');
     console.log('📝 Form - Form data:', {
@@ -62,11 +62,11 @@ export const useMenuItemForm = (
       console.error('📝 Form - ⏰ SUBMISSION TIMEOUT - Process taking too long');
       setIsLoading(false);
       toast.error('El proceso está tomando demasiado tiempo. Intente de nuevo.');
-    }, 20000); // Optimized to 20 seconds
+    }, 30000); // Optimized to 30 seconds for enhanced upload
     
     try {
-      // STEP 1: Upload image and get verified URL
-      console.log('📝 Form - 🔄 STEP 1: Processing image upload with enhanced logic...');
+      // STEP 1: Upload image and get verified URL with enhanced validation
+      console.log('📝 Form - 🔄 STEP 1: Processing image upload with enhanced validation...');
       const finalImageUrl = await uploadImage(item?.image_url);
       
       console.log('📝 Form - ✅ STEP 1 COMPLETE: Enhanced image processing result:', {
@@ -89,7 +89,19 @@ export const useMenuItemForm = (
       
     } catch (error) {
       console.error('📝 Form - ❌ EXCEPTION IN ENHANCED COMPLETE SUBMISSION PROCESS:', error);
-      toast.error('Error en el proceso de guardado. Intente de nuevo.');
+      
+      // Show specific error message based on error type
+      if (error instanceof Error) {
+        if (error.message.includes('bucket') || error.message.includes('storage')) {
+          toast.error('Error de configuración de almacenamiento. Contacte al administrador.');
+        } else if (error.message.includes('image') || error.message.includes('upload')) {
+          toast.error('Error al procesar la imagen. Verifique el archivo e intente de nuevo.');
+        } else {
+          toast.error('Error en el proceso de guardado. Intente de nuevo.');
+        }
+      } else {
+        toast.error('Error desconocido. Intente de nuevo.');
+      }
     } finally {
       clearTimeout(timeoutId);
       setIsLoading(false);

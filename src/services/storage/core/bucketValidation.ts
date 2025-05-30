@@ -73,25 +73,34 @@ export class BucketValidationService {
   }
   
   /**
-   * Attempts to repair the bucket using the database function
+   * Attempts to repair the bucket using available validation function
    */
   private static async attemptBucketRepair(): Promise<boolean> {
     try {
-      console.log('📦 BucketValidation - Attempting bucket repair...');
+      console.log('📦 BucketValidation - Attempting bucket validation...');
       
+      // Use the available function to check bucket configuration
       const { data, error } = await supabase
-        .rpc('verify_and_repair_menu_images_bucket');
+        .rpc('verify_menu_images_bucket_config');
       
       if (error) {
-        console.error('📦 BucketValidation - Repair function failed:', error);
+        console.error('📦 BucketValidation - Verification function failed:', error);
         return false;
       }
       
-      console.log('📦 BucketValidation - Repair result:', data);
-      return data?.status === 'repaired';
+      console.log('📦 BucketValidation - Verification result:', data);
+      
+      // Type guard to safely check the response
+      if (data && typeof data === 'object' && 'bucket_properly_configured' in data) {
+        const bucketConfig = data as { bucket_properly_configured: boolean };
+        return bucketConfig.bucket_properly_configured;
+      }
+      
+      console.warn('📦 BucketValidation - Unexpected response format from verification function');
+      return false;
       
     } catch (error) {
-      console.error('📦 BucketValidation - Exception during repair:', error);
+      console.error('📦 BucketValidation - Exception during verification:', error);
       return false;
     }
   }

@@ -1,19 +1,17 @@
 
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { ImagePlus, Upload, X, Loader2 } from 'lucide-react';
+import { ImagePlus, Upload, X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 interface ImageUploaderProps {
   imagePreview: string | null;
-  uploadProgress: number;
   onFileSelected: (file: File) => void;
   onClearImage: () => void;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
   imagePreview,
-  uploadProgress,
   onFileSelected,
   onClearImage,
 }) => {
@@ -21,25 +19,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   
-  const isUploading = uploadProgress > 0;
-  
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log('🖼️ ImageUploader - File selected:', file.name);
-      
-      // Basic validation
-      if (!file.type.startsWith('image/')) {
-        console.error('🖼️ ImageUploader - Invalid file type');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        console.error('🖼️ ImageUploader - File too large');
-        return;
-      }
-      
       onFileSelected(file);
     }
   };
@@ -70,19 +53,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
-        console.log('🖼️ ImageUploader - File dropped:', file.name);
-        
-        // Basic validation
-        if (!file.type.startsWith('image/')) {
-          console.error('🖼️ ImageUploader - Invalid dropped file type');
-          return;
-        }
-        
-        if (file.size > 5 * 1024 * 1024) {
-          console.error('🖼️ ImageUploader - Dropped file too large');
-          return;
-        }
-        
         onFileSelected(file);
       }
     };
@@ -114,13 +84,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
           imagePreview ? "bg-background" : "bg-muted/30"
         )}
       >
-        {isUploading && (
-          <div className="absolute inset-0 bg-background/80 z-10 flex flex-col items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-            <p className="text-sm text-muted-foreground">Subiendo imagen...</p>
-          </div>
-        )}
-        
         {imagePreview ? (
           <div className="relative w-full h-full">
             <img 

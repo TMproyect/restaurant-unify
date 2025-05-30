@@ -32,7 +32,6 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     form,
     isLoading,
     imagePreview,
-    uploadProgress,
     handleFileSelection,
     clearImage,
     onSubmit
@@ -64,7 +63,6 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
                 
                 <ImageUploader
                   imagePreview={imagePreview}
-                  uploadProgress={uploadProgress}
                   onFileSelected={handleFileSelection}
                   onClearImage={clearImage}
                 />

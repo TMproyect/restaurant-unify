@@ -57,7 +57,7 @@ export const useImageHandler = (itemImageUrl?: string) => {
 
     try {
       // Set progress to indicate processing
-      setUploadProgress(10);
+      setUploadProgress(50);
 
       const result = await ImageUploadService.handleMenuItemImageUpload(
         imageFile,
@@ -84,7 +84,5 @@ export const useImageHandler = (itemImageUrl?: string) => {
     handleFileSelection,
     clearImage,
     uploadImage,
-    setImageFile,
-    setUploadProgress,
   };
 };

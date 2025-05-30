@@ -39,8 +39,6 @@ export const useMenuItemForm = (
     handleFileSelection,
     clearImage,
     uploadImage,
-    setImageFile,
-    setUploadProgress,
   } = useImageHandler(item?.image_url);
 
   // Use the enhanced form submission hook
@@ -59,12 +57,12 @@ export const useMenuItemForm = (
     
     setIsLoading(true);
     
-    // Set up timeout protection with reduced time
+    // Set up timeout protection with optimized time
     const timeoutId = setTimeout(() => {
       console.error('📝 Form - ⏰ SUBMISSION TIMEOUT - Process taking too long');
       setIsLoading(false);
       toast.error('El proceso está tomando demasiado tiempo. Intente de nuevo.');
-    }, 45000); // Reduced to 45 seconds
+    }, 20000); // Optimized to 20 seconds
     
     try {
       // STEP 1: Upload image and get verified URL
@@ -85,16 +83,12 @@ export const useMenuItemForm = (
       
       if (success) {
         console.log('📝 Form - 🎉 ENHANCED COMPLETE SUBMISSION SUCCESSFUL');
-        // Reset states on success
-        setUploadProgress(0);
-        setImageFile(null);
       } else {
         console.log('📝 Form - ❌ ENHANCED SUBMISSION FAILED');
       }
       
     } catch (error) {
       console.error('📝 Form - ❌ EXCEPTION IN ENHANCED COMPLETE SUBMISSION PROCESS:', error);
-      setUploadProgress(0);
       toast.error('Error en el proceso de guardado. Intente de nuevo.');
     } finally {
       clearTimeout(timeoutId);
@@ -112,7 +106,5 @@ export const useMenuItemForm = (
     handleFileSelection,
     clearImage,
     onSubmit,
-    setImageFile,
-    setUploadProgress,
   };
 };

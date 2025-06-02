@@ -108,8 +108,9 @@ export const useMenuItemForm = (
     }
   };
 
-  // Simple form submission
+  // Simple form submission with immediate dialog close and refresh
   const onSubmit = async (data: MenuItemFormValues) => {
+    console.log('🔄 Iniciando guardado de elemento del menú');
     setIsLoading(true);
     
     try {
@@ -160,10 +161,12 @@ export const useMenuItemForm = (
       console.log('✅ Elemento guardado exitosamente:', result.id);
       toast.success(item ? 'Elemento actualizado con éxito' : 'Elemento creado con éxito');
       
-      // Notify other components
+      // Trigger refresh immediately
+      console.log('🔄 Disparando evento de actualización');
       window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
       
-      // Close dialog immediately on success
+      // Force immediate dialog close with saved=true
+      console.log('🔄 Cerrando diálogo inmediatamente');
       onClose(true);
       
     } catch (error) {

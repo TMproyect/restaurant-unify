@@ -51,9 +51,17 @@ const MenuManager: React.FC<MenuManagerProps> = ({
   };
 
   const handleItemFormClose = (saved: boolean) => {
+    console.log('🔄 MenuManager: Form closed with saved:', saved);
+    
+    // Force form to close immediately
     setShowItemForm(false);
+    
+    // Force refresh if item was saved
     if (saved) {
-      refreshItems();
+      console.log('🔄 MenuManager: Forcing refresh due to saved item');
+      setTimeout(() => {
+        refreshItems();
+      }, 100); // Small delay to ensure DB is updated
     }
   };
 

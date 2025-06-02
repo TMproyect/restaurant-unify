@@ -62,11 +62,13 @@ export const useMenuItemForm = (
     setImagePreview(item?.image_url || null);
   };
 
-  // Simple upload to Supabase
+  // Improved upload to Supabase with better validation
   const uploadImageToSupabase = async (file: File): Promise<string | null> => {
     try {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const fileName = `menu/${Date.now()}.${fileExtension}`;
+
+      console.log('🖼️ Subiendo imagen:', fileName);
 
       const { data, error } = await supabase.storage
         .from('menu_images')
@@ -77,17 +79,29 @@ export const useMenuItemForm = (
         });
 
       if (error) {
-        console.error('Upload error:', error);
-        throw error;
+        console.error('❌ Error en upload:', error);
+        throw new Error(`Error al subir imagen: ${error.message}`);
       }
+
+      if (!data || !data.path) {
+        throw new Error('No se recibió la ruta del archivo subido');
+      }
+
+      console.log('✅ Imagen subida exitosamente:', data.path);
 
       const { data: urlData } = supabase.storage
         .from('menu_images')
         .getPublicUrl(data.path);
 
+      if (!urlData.publicUrl) {
+        throw new Error('No se pudo generar la URL pública de la imagen');
+      }
+
+      console.log('✅ URL pública generada:', urlData.publicUrl);
       return urlData.publicUrl;
+      
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('❌ Error completo en uploadImageToSupabase:', error);
       throw error;
     }
   };
@@ -101,9 +115,14 @@ export const useMenuItemForm = (
 
       // Upload image if new file selected
       if (imageFile) {
-        console.log('Uploading image...');
+        console.log('🖼️ Subiendo nueva imagen...');
         imageUrl = await uploadImageToSupabase(imageFile);
-        console.log('Image uploaded:', imageUrl);
+        
+        if (!imageUrl) {
+          throw new Error('No se pudo obtener la URL de la imagen subida');
+        }
+        
+        console.log('✅ Imagen procesada correctamente:', imageUrl.substring(0, 50) + '...');
       }
 
       // Prepare item data
@@ -123,18 +142,18 @@ export const useMenuItemForm = (
       let result: MenuItem | null = null;
       
       if (item) {
-        console.log('Updating item...');
+        console.log('🔄 Actualizando elemento...');
         result = await updateMenuItem(item.id, itemData);
       } else {
-        console.log('Creating item...');
+        console.log('➕ Creando nuevo elemento...');
         result = await createMenuItem(itemData);
       }
 
       if (!result) {
-        throw new Error('Failed to save item');
+        throw new Error('No se pudo guardar el elemento');
       }
 
-      console.log('Item saved successfully:', result.id);
+      console.log('✅ Elemento guardado exitosamente:', result.id);
       toast.success(item ? 'Elemento actualizado con éxito' : 'Elemento creado con éxito');
       
       // Notify other components
@@ -144,8 +163,9 @@ export const useMenuItemForm = (
       onClose(true);
       
     } catch (error) {
-      console.error('Error saving item:', error);
-      toast.error('Error al guardar el elemento');
+      console.error('❌ Error al guardar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al guardar: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

@@ -30,16 +30,22 @@ export const uploadMenuItemImage = async (
     
     console.log(`📤 Upload Service - Upload path:`, filePath);
     
-    // Configurar opciones de upload con contentType explícito
+    // Configurar opciones de upload SIN contentType explícito
     const uploadOptions = {
       cacheControl: '3600',
-      upsert: false,
-      contentType: validatedFile.type // ¡CRUCIAL! Usar el .type del File object validado
+      upsert: false
+      // ¡REMOVIDO! contentType - dejar que Supabase lo detecte automáticamente
     };
 
     console.log(`📤 Upload Service - Upload options:`, uploadOptions);
+    console.log(`📤 Upload Service - File object details:`, {
+      name: validatedFile.name,
+      type: validatedFile.type,
+      size: validatedFile.size,
+      lastModified: validatedFile.lastModified
+    });
     
-    // Subir el archivo usando el patrón correcto
+    // Subir el archivo usando el patrón correcto sin contentType explícito
     console.log(`📤 Upload Service - Calling supabase.storage.upload...`);
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)

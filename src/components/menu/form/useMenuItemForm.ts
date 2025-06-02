@@ -73,7 +73,7 @@ export const useMenuItemForm = (
     setImagePreview(item?.image_url || null);
   };
 
-  // Upload robusto a Supabase con validación explícita y contentType especificado
+  // Upload simplificado a Supabase sin contentType explícito
   const uploadImageToSupabase = async (fileToUpload: File): Promise<string | null> => {
     try {
       console.log('📤 Iniciando uploadImageToSupabase...');
@@ -88,17 +88,24 @@ export const useMenuItemForm = (
       const uniqueFileName = generateUniqueFileName(fileToUpload.name);
       const filePath = `menu/${uniqueFileName}`;
 
-      // Configurar opciones de upload con contentType explícito
+      // Configurar opciones de upload SIN contentType explícito
       const uploadOptions = {
         cacheControl: '3600',
-        upsert: false,
-        contentType: fileToUpload.type // ¡CRUCIAL! Usar el .type del File object validado
+        upsert: false
+        // ¡REMOVIDO! contentType - dejar que Supabase lo detecte automáticamente
       };
 
       console.log(`--- Iniciando subida a Supabase ---
         Ruta: ${filePath}
         Archivo: ${fileToUpload.name} (Tamaño: ${fileToUpload.size}, Tipo: ${fileToUpload.type})
-        Opciones: ${JSON.stringify(uploadOptions)}`);
+        Opciones: ${JSON.stringify(uploadOptions)}
+        File object details: ${JSON.stringify({
+          name: fileToUpload.name,
+          type: fileToUpload.type,
+          size: fileToUpload.size,
+          lastModified: fileToUpload.lastModified,
+          constructor: fileToUpload.constructor.name
+        })}`);
 
       const { data, error } = await supabase.storage
         .from('menu_images')

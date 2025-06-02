@@ -1,19 +1,21 @@
 
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { ImagePlus, Upload, X } from 'lucide-react';
+import { ImagePlus, Upload, X, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 interface ImageUploaderProps {
   imagePreview: string | null;
   onFileSelected: (file: File) => void;
   onClearImage: () => void;
+  isUploading?: boolean;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
   imagePreview,
   onFileSelected,
   onClearImage,
+  isUploading = false,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,10 +83,16 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         className={cn(
           "border-2 border-dashed rounded-md p-4 h-40 flex flex-col items-center justify-center relative transition-colors",
           isDragging ? "border-primary bg-primary/10" : "border-muted-foreground/25",
-          imagePreview ? "bg-background" : "bg-muted/30"
+          imagePreview ? "bg-background" : "bg-muted/30",
+          isUploading && "opacity-60 pointer-events-none"
         )}
       >
-        {imagePreview ? (
+        {isUploading ? (
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-primary">Subiendo imagen...</p>
+          </div>
+        ) : imagePreview ? (
           <div className="relative w-full h-full">
             <img 
               src={imagePreview} 

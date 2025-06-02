@@ -7,11 +7,8 @@ export const useMenuFormDialog = (onClose: (saved: boolean) => void) => {
   const handleClose = (saved: boolean = false) => {
     console.log('🔄 Dialog closing with saved:', saved);
     setIsOpen(false);
-    
-    // Small delay to allow dialog animation
-    setTimeout(() => {
-      onClose(saved);
-    }, 100);
+    // Close immediately without delay
+    onClose(saved);
   };
 
   // Close dialog when component unmounts

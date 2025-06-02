@@ -31,6 +31,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
   const {
     form,
     isLoading,
+    isUploadingImage,
     imagePreview,
     handleFileSelection,
     clearImage,
@@ -38,13 +39,13 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
   } = useMenuItemForm(item, (saved) => handleClose(saved));
 
   const handleDialogClose = (open: boolean) => {
-    if (!open && !isLoading) {
+    if (!open && !isLoading && !isUploadingImage) {
       handleClose(false);
     }
   };
 
   const handleCancel = () => {
-    if (!isLoading) {
+    if (!isLoading && !isUploadingImage) {
       handleClose(false);
     }
   };
@@ -75,6 +76,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
                   imagePreview={imagePreview}
                   onFileSelected={handleFileSelection}
                   onClearImage={clearImage}
+                  isUploading={isUploadingImage}
                 />
                 
                 <AvailabilityControls form={form} />
@@ -86,13 +88,17 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
                 type="button" 
                 variant="outline" 
                 onClick={handleCancel}
-                disabled={isLoading}
+                disabled={isLoading || isUploadingImage}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading} className="gap-2">
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isLoading ? 'Guardando...' : (item ? 'Actualizar' : 'Crear')}
+              <Button 
+                type="submit" 
+                disabled={isLoading || isUploadingImage} 
+                className="gap-2"
+              >
+                {(isLoading || isUploadingImage) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isUploadingImage ? 'Subiendo imagen...' : isLoading ? 'Guardando...' : (item ? 'Actualizar' : 'Crear')}
               </Button>
             </DialogFooter>
           </form>

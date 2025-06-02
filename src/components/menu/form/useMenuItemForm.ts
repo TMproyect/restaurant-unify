@@ -15,6 +15,7 @@ export const useMenuItemForm = (
   onClose: (saved: boolean) => void
 ) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(item?.image_url || null);
 
@@ -33,7 +34,7 @@ export const useMenuItemForm = (
     },
   });
 
-  // Simple file selection with preview
+  // Improved file selection with preview
   const handleFileSelection = async (file: File) => {
     // Basic validation
     if (!file.type.startsWith('image/')) {
@@ -48,15 +49,16 @@ export const useMenuItemForm = (
 
     setImageFile(file);
 
-    // Create preview
+    // Create preview immediately
     const reader = new FileReader();
     reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
+      const result = e.target?.result as string;
+      setImagePreview(result);
     };
     reader.readAsDataURL(file);
   };
 
-  // Clear image
+  // Clear image completely
   const clearImage = () => {
     setImageFile(null);
     setImagePreview(item?.image_url || null);
@@ -115,6 +117,7 @@ export const useMenuItemForm = (
 
       // Upload image if new file selected
       if (imageFile) {
+        setIsUploadingImage(true);
         console.log('🖼️ Subiendo nueva imagen...');
         imageUrl = await uploadImageToSupabase(imageFile);
         
@@ -123,6 +126,7 @@ export const useMenuItemForm = (
         }
         
         console.log('✅ Imagen procesada correctamente:', imageUrl.substring(0, 50) + '...');
+        setIsUploadingImage(false);
       }
 
       // Prepare item data
@@ -159,7 +163,7 @@ export const useMenuItemForm = (
       // Notify other components
       window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
       
-      // Close dialog with success flag
+      // Close dialog immediately on success
       onClose(true);
       
     } catch (error) {
@@ -168,12 +172,14 @@ export const useMenuItemForm = (
       toast.error(`Error al guardar: ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      setIsUploadingImage(false);
     }
   };
 
   return {
     form,
     isLoading,
+    isUploadingImage,
     imageFile,
     imagePreview,
     handleFileSelection,

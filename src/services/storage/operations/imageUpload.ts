@@ -1,14 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { STORAGE_BUCKET } from '../core/storageConfig';
+import { validateSelectedFile, generateUniqueFileName } from '@/components/menu/form/utils/fileValidation';
 
 export const uploadMenuItemImage = async (
   file: File,
-  fileName: string
+  fileName?: string
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> => {
   try {
     console.log(`📤 Upload Service - Starting upload:`, {
-      fileName,
+      fileName: fileName || 'auto-generated',
       originalName: file.name,
       type: file.type,
       size: file.size,
@@ -16,30 +17,33 @@ export const uploadMenuItemImage = async (
       isFile: file instanceof File
     });
 
-    // Validate the file object
-    if (!(file instanceof File)) {
-      console.error('📤 Upload Service - Invalid file object, not a File instance');
-      return { success: false, error: 'Objeto de archivo inválido' };
+    // Validación estricta del File object
+    const validatedFile = validateSelectedFile(file);
+    if (!validatedFile) {
+      console.error('📤 Upload Service - File validation failed');
+      return { success: false, error: 'Archivo inválido' };
     }
 
-    if (!file.type || !file.type.startsWith('image/')) {
-      console.error('📤 Upload Service - Invalid file type:', file.type);
-      return { success: false, error: 'Tipo de archivo no válido' };
-    }
-
-    // Crear la ruta completa dentro del bucket usando el prefijo 'menu/'
-    const filePath = `menu/${fileName}`;
+    // Generar nombre único si no se proporciona
+    const finalFileName = fileName || generateUniqueFileName(validatedFile.name);
+    const filePath = `menu/${finalFileName}`;
+    
     console.log(`📤 Upload Service - Upload path:`, filePath);
+    
+    // Configurar opciones de upload con contentType explícito
+    const uploadOptions = {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: validatedFile.type // ¡CRUCIAL! Usar el .type del File object validado
+    };
+
+    console.log(`📤 Upload Service - Upload options:`, uploadOptions);
     
     // Subir el archivo usando el patrón correcto
     console.log(`📤 Upload Service - Calling supabase.storage.upload...`);
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
-      });
+      .upload(filePath, validatedFile, uploadOptions);
 
     if (error) {
       console.error('📤 Upload Service - Supabase upload error:', error);

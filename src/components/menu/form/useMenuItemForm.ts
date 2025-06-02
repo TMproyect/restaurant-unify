@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MenuItem } from '@/services/menu/menuItemTypes';
 import { menuItemFormSchema, MenuItemFormValues } from './schemas/menuItemFormSchema';
 import { createMenuItem, updateMenuItem } from '@/services/menu/menuItemMutations';
+import { validateSelectedFile, generateUniqueFileName } from './utils/fileValidation';
 
 export type { MenuItemFormValues } from './schemas/menuItemFormSchema';
 
@@ -34,28 +35,36 @@ export const useMenuItemForm = (
     },
   });
 
-  // Improved file selection with preview
+  // Manejo de selección de archivo con validación estricta
   const handleFileSelection = async (file: File) => {
-    // Basic validation
-    if (!file.type.startsWith('image/')) {
-      toast.error('Solo se permiten archivos de imagen');
+    console.log('🔄 handleFileSelection recibió archivo:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      isFile: file instanceof File
+    });
+
+    // Validación estricta adicional (por seguridad, aunque ImageUploader ya validó)
+    const validatedFile = validateSelectedFile(file);
+    if (!validatedFile) {
+      console.error('❌ Archivo no pasó la validación en handleFileSelection');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen no debe superar los 5MB');
-      return;
-    }
+    setImageFile(validatedFile);
 
-    setImageFile(file);
-
-    // Create preview immediately
+    // Create preview immediately con el archivo validado
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
+      console.log('✅ Vista previa creada, longitud:', result?.length);
       setImagePreview(result);
     };
-    reader.readAsDataURL(file);
+    reader.onerror = (e) => {
+      console.error('❌ Error creando vista previa:', e);
+      toast.error('Error al crear vista previa de la imagen');
+    };
+    reader.readAsDataURL(validatedFile);
   };
 
   // Clear image completely
@@ -64,33 +73,50 @@ export const useMenuItemForm = (
     setImagePreview(item?.image_url || null);
   };
 
-  // Improved upload to Supabase with better validation
-  const uploadImageToSupabase = async (file: File): Promise<string | null> => {
+  // Upload robusto a Supabase con validación explícita y contentType especificado
+  const uploadImageToSupabase = async (fileToUpload: File): Promise<string | null> => {
     try {
-      const fileExtension = file.name.split('.').pop() || 'jpg';
-      const fileName = `menu/${Date.now()}.${fileExtension}`;
+      console.log('📤 Iniciando uploadImageToSupabase...');
 
-      console.log('🖼️ Subiendo imagen:', fileName);
+      // Validación de seguridad adicional del File object
+      if (!(fileToUpload instanceof File)) {
+        console.error('🚨 CRÍTICO (upload): Se intentó subir algo que no es un File object validado.', fileToUpload);
+        throw new Error("Intento de subir un objeto de archivo inválido.");
+      }
+
+      // Generar nombre único preservando la extensión
+      const uniqueFileName = generateUniqueFileName(fileToUpload.name);
+      const filePath = `menu/${uniqueFileName}`;
+
+      // Configurar opciones de upload con contentType explícito
+      const uploadOptions = {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: fileToUpload.type // ¡CRUCIAL! Usar el .type del File object validado
+      };
+
+      console.log(`--- Iniciando subida a Supabase ---
+        Ruta: ${filePath}
+        Archivo: ${fileToUpload.name} (Tamaño: ${fileToUpload.size}, Tipo: ${fileToUpload.type})
+        Opciones: ${JSON.stringify(uploadOptions)}`);
 
       const { data, error } = await supabase.storage
         .from('menu_images')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type
-        });
+        .upload(filePath, fileToUpload, uploadOptions);
 
       if (error) {
-        console.error('❌ Error en upload:', error);
-        throw new Error(`Error al subir imagen: ${error.message}`);
+        console.error('❌ Error detallado de Supabase Storage al subir:', JSON.stringify(error, null, 2));
+        throw new Error(`Error al subir imagen a Supabase: ${error.message}`);
       }
 
-      if (!data || !data.path) {
-        throw new Error('No se recibió la ruta del archivo subido');
+      if (!data?.path) {
+        console.error('❌ No se recibió la ruta del archivo subido, data:', data);
+        throw new Error('No se pudo obtener la ruta del archivo subido');
       }
 
-      console.log('✅ Imagen subida exitosamente:', data.path);
+      console.log('✅ Subida a Supabase exitosa:', data);
 
+      // Obtener la URL pública usando la ruta devuelta por la subida
       const { data: urlData } = supabase.storage
         .from('menu_images')
         .getPublicUrl(data.path);

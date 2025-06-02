@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { ImagePlus, Upload, X, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { validateSelectedFile } from './utils/fileValidation';
 
 interface ImageUploaderProps {
   imagePreview: string | null;
@@ -21,15 +22,26 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   
-  // Handle file input change
+  // Handle file input change con validación estricta
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileSelected(file);
+    const rawFile = e.target.files?.[0];
+    if (rawFile) {
+      console.log('📁 Archivo seleccionado desde input:', rawFile);
+      
+      // Aplicar validación estricta inmediatamente
+      const validatedFile = validateSelectedFile(rawFile);
+      if (validatedFile) {
+        // Solo si la validación es exitosa, proceder
+        onFileSelected(validatedFile);
+      }
+      // Si la validación falla, validateSelectedFile ya habrá mostrado el error
     }
+    
+    // Limpiar el input para permitir seleccionar el mismo archivo de nuevo
+    e.target.value = '';
   };
   
-  // Handle drop zone events
+  // Handle drop zone events con validación estricta
   React.useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
@@ -54,8 +66,16 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       setIsDragging(false);
       
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        onFileSelected(file);
+        const rawFile = e.dataTransfer.files[0];
+        console.log('📁 Archivo arrastrado:', rawFile);
+        
+        // Aplicar validación estricta inmediatamente
+        const validatedFile = validateSelectedFile(rawFile);
+        if (validatedFile) {
+          // Solo si la validación es exitosa, proceder
+          onFileSelected(validatedFile);
+        }
+        // Si la validación falla, validateSelectedFile ya habrá mostrado el error
       }
     };
     

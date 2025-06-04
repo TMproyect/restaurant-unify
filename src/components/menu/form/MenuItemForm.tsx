@@ -38,25 +38,13 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     resetForm,
   } = useMenuItemForm(item, handleClose);
 
-  // Auto-reset cuando se abre el formulario
+  // Reset form when dialog opens - simple dependency array
   useEffect(() => {
     if (isOpen) {
       console.log('🔄 Dialog opened, resetting form');
       resetForm();
     }
-  }, [isOpen, resetForm]);
-
-  // Timeout absoluto de seguridad (15 segundos)
-  useEffect(() => {
-    if (isLoading) {
-      const timeoutId = setTimeout(() => {
-        console.log('🚨 Emergency timeout triggered');
-        resetForm();
-      }, 15000);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isLoading, resetForm]);
+  }, [isOpen]); // Removed resetForm from dependencies to prevent loop
 
   const handleDialogClose = (open: boolean) => {
     if (!open && !isLoading) {
@@ -76,7 +64,6 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
           <DialogTitle className="flex items-center gap-2">
             {item ? 'Editar Producto' : 'Añadir Nuevo Producto'}
             
-            {/* Botón de reset manual */}
             <Button
               type="button"
               variant="ghost"
@@ -90,11 +77,6 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
           </DialogTitle>
           <DialogDescription>
             Complete el formulario para {item ? 'actualizar' : 'crear'} un producto del menú.
-            {isLoading && (
-              <span className="text-yellow-600 block mt-1">
-                ⏳ Procesando... (máximo 15 segundos)
-              </span>
-            )}
           </DialogDescription>
         </DialogHeader>
         

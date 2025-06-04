@@ -52,7 +52,7 @@ export const BasicFields: React.FC<FormFieldsProps> = ({ form, categories }) => 
       <FormField
         control={form.control}
         name="price"
-        render={({ field: { value, onChange, ...field } }) => (
+        render={({ field }) => (
           <FormItem>
             <FormLabel>Precio (COP)</FormLabel>
             <FormControl>
@@ -61,8 +61,6 @@ export const BasicFields: React.FC<FormFieldsProps> = ({ form, categories }) => 
                 step="1000" 
                 min="0" 
                 placeholder="Precio en pesos" 
-                value={value === undefined ? '' : value}
-                onChange={onChange}
                 {...field}
               />
             </FormControl>

@@ -41,35 +41,38 @@ const MenuManager: React.FC<MenuManagerProps> = ({
 
   // Handlers para interacción con items
   const handleAddItem = () => {
+    console.log('🔄 MenuManager: Add item clicked');
     setSelectedItem(null);
     setShowItemForm(true);
   };
 
   const handleEditItem = (item: MenuItem) => {
+    console.log('🔄 MenuManager: Edit item clicked:', item.name);
     setSelectedItem(item);
     setShowItemForm(true);
   };
 
   const handleItemFormClose = (saved: boolean) => {
-    console.log('🔄 MenuManager: Form closed with saved:', saved);
+    console.log('🔄 MenuManager: Form close callback called with saved:', saved);
     
-    // Force form to close immediately
+    // Close form immediately
     setShowItemForm(false);
+    setSelectedItem(null);
     
-    // Force refresh if item was saved
+    // Refresh if saved
     if (saved) {
-      console.log('🔄 MenuManager: Forcing refresh due to saved item');
-      setTimeout(() => {
-        refreshItems();
-      }, 100); // Small delay to ensure DB is updated
+      console.log('🔄 MenuManager: Refreshing items due to save');
+      refreshItems();
     }
   };
 
   const confirmDelete = (item: MenuItem) => {
+    console.log('🔄 MenuManager: Delete requested for:', item.name);
     setItemToDelete(item);
   };
 
   const handleDeleteCancel = () => {
+    console.log('🔄 MenuManager: Delete cancelled');
     setItemToDelete(null);
   };
 
@@ -79,7 +82,13 @@ const MenuManager: React.FC<MenuManagerProps> = ({
     }
   };
 
-  // Renderizado de la UI
+  console.log('🔄 MenuManager: Render state:', {
+    showItemForm,
+    selectedItem: selectedItem?.name || null,
+    itemsCount: items.length,
+    loading
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col lg:flex-row justify-between gap-4">

@@ -574,6 +574,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_menu_images_bucket: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_all_profiles: {
         Args: Record<PropertyKey, never>
         Returns: {

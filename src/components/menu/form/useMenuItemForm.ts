@@ -35,115 +35,108 @@ export const useMenuItemForm = (
     },
   });
 
-  // Manejo de selección de archivo con validación estricta
+  // Manejo de selección de archivo con validación
   const handleFileSelection = async (file: File) => {
-    console.log('🔄 handleFileSelection recibió archivo:', {
+    console.log('🔄 Form: File selected:', {
       name: file.name,
       type: file.type,
       size: file.size,
       isFile: file instanceof File
     });
 
-    // Validación estricta adicional (por seguridad, aunque ImageUploader ya validó)
     const validatedFile = validateSelectedFile(file);
     if (!validatedFile) {
-      console.error('❌ Archivo no pasó la validación en handleFileSelection');
+      console.error('❌ Form: File validation failed');
       return;
     }
 
     setImageFile(validatedFile);
 
-    // Create preview immediately con el archivo validado
+    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      console.log('✅ Vista previa creada, longitud:', result?.length);
+      console.log('✅ Form: Preview created');
       setImagePreview(result);
     };
     reader.onerror = (e) => {
-      console.error('❌ Error creando vista previa:', e);
+      console.error('❌ Form: Error creating preview:', e);
       toast.error('Error al crear vista previa de la imagen');
     };
     reader.readAsDataURL(validatedFile);
   };
 
-  // Clear image completely
+  // Clear image
   const clearImage = () => {
+    console.log('🔄 Form: Clearing image');
     setImageFile(null);
     setImagePreview(item?.image_url || null);
   };
 
-  // Upload simplificado a Supabase sin contentType explícito
+  // Upload simplificado a Supabase
   const uploadImageToSupabase = async (fileToUpload: File): Promise<string | null> => {
     try {
-      console.log('📤 Iniciando uploadImageToSupabase...');
+      console.log('📤 Form: Starting image upload...');
 
-      // Validación de seguridad adicional del File object
       if (!(fileToUpload instanceof File)) {
-        console.error('🚨 CRÍTICO (upload): Se intentó subir algo que no es un File object validado.', fileToUpload);
-        throw new Error("Intento de subir un objeto de archivo inválido.");
+        throw new Error("Invalid file object for upload");
       }
 
-      // Generar nombre único preservando la extensión
       const uniqueFileName = generateUniqueFileName(fileToUpload.name);
       const filePath = `menu/${uniqueFileName}`;
 
-      // Configurar opciones de upload SIN contentType explícito
       const uploadOptions = {
         cacheControl: '3600',
         upsert: false
-        // ¡REMOVIDO! contentType - dejar que Supabase lo detecte automáticamente
       };
 
-      console.log(`--- Iniciando subida a Supabase ---
-        Ruta: ${filePath}
-        Archivo: ${fileToUpload.name} (Tamaño: ${fileToUpload.size}, Tipo: ${fileToUpload.type})
-        Opciones: ${JSON.stringify(uploadOptions)}
-        File object details: ${JSON.stringify({
-          name: fileToUpload.name,
-          type: fileToUpload.type,
-          size: fileToUpload.size,
-          lastModified: fileToUpload.lastModified,
-          constructor: fileToUpload.constructor.name
-        })}`);
+      console.log(`📤 Form: Uploading to path: ${filePath}`);
+      console.log(`📤 Form: File details:`, {
+        name: fileToUpload.name,
+        type: fileToUpload.type,
+        size: fileToUpload.size
+      });
 
       const { data, error } = await supabase.storage
         .from('menu_images')
         .upload(filePath, fileToUpload, uploadOptions);
 
       if (error) {
-        console.error('❌ Error detallado de Supabase Storage al subir:', JSON.stringify(error, null, 2));
-        throw new Error(`Error al subir imagen a Supabase: ${error.message}`);
+        console.error('❌ Form: Upload error:', error);
+        throw new Error(`Error uploading image: ${error.message}`);
       }
 
       if (!data?.path) {
-        console.error('❌ No se recibió la ruta del archivo subido, data:', data);
-        throw new Error('No se pudo obtener la ruta del archivo subido');
+        console.error('❌ Form: No path returned from upload');
+        throw new Error('No file path returned from upload');
       }
 
-      console.log('✅ Subida a Supabase exitosa:', data);
+      console.log('✅ Form: Upload successful, path:', data.path);
 
-      // Obtener la URL pública usando la ruta devuelta por la subida
       const { data: urlData } = supabase.storage
         .from('menu_images')
         .getPublicUrl(data.path);
 
       if (!urlData.publicUrl) {
-        throw new Error('No se pudo generar la URL pública de la imagen');
+        throw new Error('Could not generate public URL');
       }
 
-      console.log('✅ URL pública generada:', urlData.publicUrl);
+      console.log('✅ Form: Public URL generated:', urlData.publicUrl);
       return urlData.publicUrl;
       
     } catch (error) {
-      console.error('❌ Error completo en uploadImageToSupabase:', error);
+      console.error('❌ Form: Upload failed:', error);
       throw error;
     }
   };
 
-  // Simple form submission with immediate dialog close and refresh
+  // Envío del formulario simplificado con logging detallado
   const onSubmit = async (data: MenuItemFormValues) => {
-    console.log('🔄 Iniciando guardado de elemento del menú');
+    console.log('🔄 Form: Starting form submission');
+    console.log('🔄 Form: Form data:', data);
+    console.log('🔄 Form: Has image file:', !!imageFile);
+    console.log('🔄 Form: Is edit mode:', !!item);
+    
     setIsLoading(true);
     
     try {
@@ -151,16 +144,19 @@ export const useMenuItemForm = (
 
       // Upload image if new file selected
       if (imageFile) {
+        console.log('🖼️ Form: Uploading new image...');
         setIsUploadingImage(true);
-        console.log('🖼️ Subiendo nueva imagen...');
-        imageUrl = await uploadImageToSupabase(imageFile);
         
-        if (!imageUrl) {
-          throw new Error('No se pudo obtener la URL de la imagen subida');
+        try {
+          imageUrl = await uploadImageToSupabase(imageFile);
+          console.log('✅ Form: Image uploaded successfully:', imageUrl?.substring(0, 50) + '...');
+        } catch (uploadError) {
+          console.error('❌ Form: Image upload failed:', uploadError);
+          toast.error('Error al subir la imagen');
+          throw uploadError;
+        } finally {
+          setIsUploadingImage(false);
         }
-        
-        console.log('✅ Imagen procesada correctamente:', imageUrl.substring(0, 50) + '...');
-        setIsUploadingImage(false);
       }
 
       // Prepare item data
@@ -176,34 +172,36 @@ export const useMenuItemForm = (
         image_url: imageUrl,
       };
 
+      console.log('💾 Form: Saving item data:', itemData);
+
       // Save to database
       let result: MenuItem | null = null;
       
       if (item) {
-        console.log('🔄 Actualizando elemento...');
+        console.log('🔄 Form: Updating existing item with ID:', item.id);
         result = await updateMenuItem(item.id, itemData);
       } else {
-        console.log('➕ Creando nuevo elemento...');
+        console.log('➕ Form: Creating new item');
         result = await createMenuItem(itemData);
       }
 
       if (!result) {
-        throw new Error('No se pudo guardar el elemento');
+        throw new Error('Failed to save item - no result returned');
       }
 
-      console.log('✅ Elemento guardado exitosamente:', result.id);
+      console.log('✅ Form: Item saved successfully with ID:', result.id);
       toast.success(item ? 'Elemento actualizado con éxito' : 'Elemento creado con éxito');
       
-      // Trigger refresh immediately
-      console.log('🔄 Disparando evento de actualización');
+      // Trigger refresh
+      console.log('🔄 Form: Triggering refresh event');
       window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
       
-      // Force immediate dialog close with saved=true
-      console.log('🔄 Cerrando diálogo inmediatamente');
+      // Force dialog close
+      console.log('🔄 Form: Closing dialog with saved=true');
       onClose(true);
       
     } catch (error) {
-      console.error('❌ Error al guardar:', error);
+      console.error('❌ Form: Submission failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       toast.error(`Error al guardar: ${errorMessage}`);
     } finally {

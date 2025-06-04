@@ -26,6 +26,8 @@ interface MenuItemFormProps {
 }
 
 export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, onClose }) => {
+  console.log('🔄 MenuItemForm: Rendering with item:', item?.name || 'NEW');
+  
   const { isOpen, handleClose } = useMenuFormDialog(onClose);
   
   const {
@@ -36,19 +38,39 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     handleFileSelection,
     clearImage,
     onSubmit
-  } = useMenuItemForm(item, (saved) => handleClose(saved));
+  } = useMenuItemForm(item, (saved) => {
+    console.log('🔄 MenuItemForm: useMenuItemForm callback called with saved:', saved);
+    handleClose(saved);
+  });
 
   const handleDialogClose = (open: boolean) => {
+    console.log('🔄 MenuItemForm: Dialog close requested, open:', open);
     if (!open && !isLoading && !isUploadingImage) {
+      console.log('🔄 MenuItemForm: Allowing dialog close');
       handleClose(false);
+    } else {
+      console.log('🔄 MenuItemForm: Blocking dialog close - loading in progress');
     }
   };
 
   const handleCancel = () => {
+    console.log('🔄 MenuItemForm: Cancel button clicked');
     if (!isLoading && !isUploadingImage) {
       handleClose(false);
     }
   };
+
+  const handleFormSubmit = (data: any) => {
+    console.log('🔄 MenuItemForm: Form submit triggered');
+    onSubmit(data);
+  };
+
+  console.log('🔄 MenuItemForm: Render state:', {
+    isOpen,
+    isLoading,
+    isUploadingImage,
+    hasImagePreview: !!imagePreview
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
@@ -63,7 +85,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <BasicFields form={form} categories={categories} />

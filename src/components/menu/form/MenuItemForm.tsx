@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { MenuItem } from '@/services/menu/menuItemTypes';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { useMenuItemForm } from './useMenuItemForm';
@@ -37,27 +37,36 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     imagePreview,
     handleFileSelection,
     clearImage,
-    onSubmit
+    onSubmit,
+    emergencyReset
   } = useMenuItemForm(item, (saved) => {
     console.log('🔄 MenuItemForm: useMenuItemForm callback called with saved:', saved);
     handleClose(saved);
   });
 
+  const isProcessing = isLoading || isUploadingImage;
+
   const handleDialogClose = (open: boolean) => {
     console.log('🔄 MenuItemForm: Dialog close requested, open:', open);
-    if (!open && !isLoading && !isUploadingImage) {
+    if (!open && !isProcessing) {
       console.log('🔄 MenuItemForm: Allowing dialog close');
       handleClose(false);
-    } else {
-      console.log('🔄 MenuItemForm: Blocking dialog close - loading in progress');
+    } else if (!open && isProcessing) {
+      console.log('🔄 MenuItemForm: Blocking dialog close - processing in progress');
     }
   };
 
   const handleCancel = () => {
     console.log('🔄 MenuItemForm: Cancel button clicked');
-    if (!isLoading && !isUploadingImage) {
+    if (!isProcessing) {
       handleClose(false);
     }
+  };
+
+  const handleEmergencyExit = () => {
+    console.log('🚨 MenuItemForm: Emergency exit triggered');
+    emergencyReset();
+    handleClose(false);
   };
 
   const handleFormSubmit = (data: any) => {
@@ -69,6 +78,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     isOpen,
     isLoading,
     isUploadingImage,
+    isProcessing,
     hasImagePreview: !!imagePreview
   });
 
@@ -77,12 +87,36 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {item ? 'Editar Plato' : 'Añadir Nuevo Plato'}
+            {item ? 'Editar Producto' : 'Añadir Nuevo Producto'}
           </DialogTitle>
           <DialogDescription>
-            Complete el formulario para {item ? 'actualizar' : 'crear'} un plato del menú.
+            Complete el formulario para {item ? 'actualizar' : 'crear'} un producto del menú.
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Indicador de estado de procesamiento mejorado */}
+        {isProcessing && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm text-blue-800">
+                  {isUploadingImage ? 'Subiendo imagen...' : 'Guardando producto...'}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleEmergencyExit}
+                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+              >
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Cancelar Forzado
+              </Button>
+            </div>
+          </div>
+        )}
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
@@ -110,17 +144,19 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
                 type="button" 
                 variant="outline" 
                 onClick={handleCancel}
-                disabled={isLoading || isUploadingImage}
+                disabled={isProcessing}
               >
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
-                disabled={isLoading || isUploadingImage} 
+                disabled={isProcessing} 
                 className="gap-2"
               >
-                {(isLoading || isUploadingImage) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isUploadingImage ? 'Subiendo imagen...' : isLoading ? 'Guardando...' : (item ? 'Actualizar' : 'Crear')}
+                {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isUploadingImage ? 'Subiendo imagen...' : 
+                 isLoading ? 'Guardando...' : 
+                 (item ? 'Actualizar' : 'Crear')}
               </Button>
             </DialogFooter>
           </form>

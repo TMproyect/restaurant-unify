@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { MenuItem } from '@/services/menu/menuItemTypes';
-import { MenuItemFormValues } from './schemas/menuItemFormSchema';
-import { useImageUpload } from './hooks/useImageUpload';
-import { useMenuFormState } from './hooks/useMenuFormState';
-import { MenuItemOperations } from './services/menuItemOperations';
+import { menuItemFormSchema, MenuItemFormValues } from './schemas/menuItemFormSchema';
+import { createMenuItem, updateMenuItem } from '@/services/menu/menuItemMutations';
+import { uploadMenuItemImage } from '@/services/storage/operations/imageUpload';
 
 export type { MenuItemFormValues } from './schemas/menuItemFormSchema';
 
@@ -14,136 +15,105 @@ export const useMenuItemForm = (
   onClose: (saved: boolean) => void
 ) => {
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Use separate hooks for focused responsibilities
-  const { form } = useMenuFormState(item);
-  const {
-    isUploading: isUploadingImage,
-    imageFile,
-    imagePreview,
-    handleFileSelection,
-    clearImage,
-    uploadImageWithTimeout,
-    forceReset,
-    autoReset
-  } = useImageUpload();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    item?.image_url || null
+  );
 
-  // Auto-reset cuando se abre/cierra el formulario
-  useEffect(() => {
-    console.log('🔄 Form: Auto-resetting states on form initialization');
-    autoReset();
+  const form = useForm<MenuItemFormValues>({
+    resolver: zodResolver(menuItemFormSchema),
+    defaultValues: {
+      name: item?.name || '',
+      description: item?.description || '',
+      price: item?.price || 0,
+      category_id: item?.category_id || '',
+      available: item?.available ?? true,
+      popular: item?.popular ?? false,
+      allergens: item?.allergens || [],
+      sku: item?.sku || '',
+    },
+  });
+
+  const handleFileSelection = (file: File) => {
+    console.log('File selected:', file.name);
+    setImageFile(file);
     
-    // Initialize preview with existing image
-    if (item?.image_url && !imagePreview) {
-      clearImage(item.image_url);
-    }
-  }, [item?.id, autoReset, item?.image_url, imagePreview, clearImage]);
+    // Create preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
-  // Resetear estados cuando hay errores persistentes
-  const handleErrorRecovery = React.useCallback(() => {
-    console.log('🚨 Form: Performing error recovery');
-    setIsLoading(false);
-    autoReset();
-    form.clearErrors();
-    toast.info('Estados limpiados. Intente nuevamente.');
-  }, [autoReset, form]);
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(item?.image_url || null);
+  };
 
-  /**
-   * Main submission handler with improved error handling
-   */
   const onSubmit = async (data: MenuItemFormValues) => {
-    console.log('🚀 Form: Starting submission process');
-    console.log('📋 Form: Form data:', data);
-    console.log('🖼️ Form: Has image file:', !!imageFile);
-    console.log('📝 Form: Is edit mode:', !!item);
-    
+    console.log('Form submitted:', data);
     setIsLoading(true);
     
     try {
-      let savedItem: MenuItem | null = null;
-      let finalImageUrl: string | null = item?.image_url || null;
+      let imageUrl = item?.image_url || null;
 
-      // PASO 1: Intentar subir imagen SOLO si hay archivo nuevo
+      // Upload image if there's a new file
       if (imageFile) {
-        console.log('📤 Form: Attempting image upload...');
-        
-        try {
-          const uploadedUrl = await uploadImageWithTimeout();
-          if (uploadedUrl) {
-            finalImageUrl = uploadedUrl;
-            console.log('✅ Form: Image uploaded successfully');
-            toast.success('Imagen subida correctamente');
-          } else {
-            console.log('⚠️ Form: Image upload failed, continuing without new image');
-            toast.warning('No se pudo subir la imagen, pero el producto se guardará');
-          }
-        } catch (uploadError) {
-          console.error('❌ Form: Image upload error:', uploadError);
-          toast.warning('Error al subir imagen, guardando producto sin ella');
-          // Continuar con la creación del producto
+        console.log('Uploading image...');
+        const uploadResult = await uploadMenuItemImage(imageFile);
+        if (uploadResult.success && uploadResult.imageUrl) {
+          imageUrl = uploadResult.imageUrl;
+          console.log('Image uploaded successfully');
+        } else {
+          console.warn('Image upload failed, continuing without image');
+          toast.warning('No se pudo subir la imagen, pero el producto se guardará');
         }
+      }
+
+      // Create/update product
+      const itemData = {
+        name: data.name,
+        description: data.description || '',
+        price: data.price,
+        category_id: data.category_id,
+        available: data.available,
+        popular: data.popular,
+        allergens: data.allergens || [],
+        sku: data.sku || '',
+        image_url: imageUrl,
+      };
+
+      let result;
+      if (item) {
+        result = await updateMenuItem(item.id, itemData);
+        toast.success('Producto actualizado con éxito');
       } else {
-        console.log('ℹ️ Form: No new image to upload');
+        result = await createMenuItem(itemData);
+        toast.success('Producto creado con éxito');
       }
 
-      // PASO 2: Guardar el producto (SIEMPRE, independientemente del resultado del upload)
-      console.log('💾 Form: Saving menu item...');
-      savedItem = await MenuItemOperations.saveMenuItem(data, item, finalImageUrl);
-
-      if (!savedItem) {
-        throw new Error('Failed to save menu item');
+      if (result) {
+        // Trigger refresh
+        window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+        onClose(true);
       }
 
-      // PASO 3: Éxito completo
-      console.log('🎉 Form: Process completed successfully');
-      MenuItemOperations.showSuccessMessage(!!item);
-      MenuItemOperations.triggerRefresh();
-      
-      // Limpiar estados antes de cerrar
-      console.log('🧹 Form: Cleaning up before closing');
-      autoReset();
-      form.reset();
-      
-      // Cerrar diálogo
-      console.log('🚪 Form: Closing dialog with saved=true');
-      onClose(true);
-      
     } catch (error) {
-      console.error('❌ Form: Complete submission failed:', error);
-      MenuItemOperations.showErrorMessage(error);
-      
-      // En caso de error, ofrecer recuperación automática
-      setTimeout(() => {
-        handleErrorRecovery();
-      }, 2000);
-      
+      console.error('Error saving item:', error);
+      toast.error('Error al guardar el producto');
     } finally {
-      console.log('🧹 Form: Cleaning up loading states');
       setIsLoading(false);
     }
-  };
-
-  /**
-   * Emergency reset function for stuck states
-   */
-  const emergencyReset = () => {
-    console.log('🚨 Form: Emergency reset triggered');
-    setIsLoading(false);
-    forceReset();
-    form.reset();
-    form.clearErrors();
-    toast.info('Todos los estados fueron reseteados. Puede intentar de nuevo.');
   };
 
   return {
     form,
     isLoading,
-    isUploadingImage,
     imageFile,
     imagePreview,
     handleFileSelection,
     clearImage,
     onSubmit,
-    emergencyReset,
   };
 };

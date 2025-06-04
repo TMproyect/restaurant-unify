@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { MenuItem } from '@/services/menu/menuItemTypes';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { useMenuItemForm } from './useMenuItemForm';
@@ -35,7 +35,28 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     handleFileSelection,
     clearImage,
     onSubmit,
+    resetForm,
   } = useMenuItemForm(item, handleClose);
+
+  // Auto-reset cuando se abre el formulario
+  useEffect(() => {
+    if (isOpen) {
+      console.log('🔄 Dialog opened, resetting form');
+      resetForm();
+    }
+  }, [isOpen, resetForm]);
+
+  // Timeout absoluto de seguridad (15 segundos)
+  useEffect(() => {
+    if (isLoading) {
+      const timeoutId = setTimeout(() => {
+        console.log('🚨 Emergency timeout triggered');
+        resetForm();
+      }, 15000);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isLoading, resetForm]);
 
   const handleDialogClose = (open: boolean) => {
     if (!open && !isLoading) {
@@ -43,15 +64,37 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
     }
   };
 
+  const handleManualReset = () => {
+    console.log('🔄 Manual reset triggered');
+    resetForm();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
             {item ? 'Editar Producto' : 'Añadir Nuevo Producto'}
+            
+            {/* Botón de reset manual */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleManualReset}
+              disabled={isLoading}
+              className="ml-auto"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
           </DialogTitle>
           <DialogDescription>
             Complete el formulario para {item ? 'actualizar' : 'crear'} un producto del menú.
+            {isLoading && (
+              <span className="text-yellow-600 block mt-1">
+                ⏳ Procesando... (máximo 15 segundos)
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -84,6 +127,17 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
               >
                 Cancelar
               </Button>
+              
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={handleManualReset}
+                disabled={isLoading}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
+              
               <Button 
                 type="submit" 
                 disabled={isLoading} 

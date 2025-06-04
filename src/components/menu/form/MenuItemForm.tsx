@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { MenuItem } from '@/services/menu/menuItemTypes';
 import { MenuCategory } from '@/services/menu/categoryService';
 import { useMenuItemForm } from './useMenuItemForm';
@@ -94,26 +94,40 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({ item, categories, on
           </DialogDescription>
         </DialogHeader>
         
-        {/* Indicador de estado de procesamiento mejorado */}
+        {/* Indicador de estado mejorado */}
         {isProcessing && (
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                 <span className="text-sm text-blue-800">
-                  {isUploadingImage ? 'Subiendo imagen...' : 'Guardando producto...'}
+                  {isUploadingImage 
+                    ? 'Subiendo imagen... (puede tardar hasta 60 segundos)' 
+                    : 'Guardando producto...'}
                 </span>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleEmergencyExit}
-                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-              >
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Cancelar Forzado
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={emergencyReset}
+                  className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Resetear
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEmergencyExit}
+                  className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Salir Forzado
+                </Button>
+              </div>
             </div>
           </div>
         )}

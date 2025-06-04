@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { uploadMenuItemImage } from '@/services/storage/operations/imageUpload';
 import { validateSelectedFile } from '../utils/fileValidation';
@@ -9,7 +9,7 @@ export const useImageUpload = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const handleFileSelection = async (file: File) => {
+  const handleFileSelection = useCallback(async (file: File) => {
     console.log('🖼️ Upload Hook: File selected for upload:', {
       name: file.name,
       type: file.type,
@@ -34,39 +34,40 @@ export const useImageUpload = () => {
     reader.onerror = (e) => {
       console.error('❌ Upload Hook: Error creating preview:', e);
       toast.error('Error al crear vista previa de la imagen');
+      // Reset states on preview error
+      setImageFile(null);
+      setImagePreview(null);
     };
     reader.readAsDataURL(validatedFile);
-  };
+  }, []);
 
-  const clearImage = (fallbackUrl?: string) => {
+  const clearImage = useCallback((fallbackUrl?: string) => {
     console.log('🗑️ Upload Hook: Clearing image, fallback URL:', fallbackUrl || 'none');
     setImageFile(null);
     setImagePreview(fallbackUrl || null);
-  };
+  }, []);
 
-  const uploadImageWithTimeout = async (): Promise<string | null> => {
+  const uploadImageWithTimeout = useCallback(async (): Promise<string | null> => {
     if (!imageFile) {
       console.log('ℹ️ Upload Hook: No image file to upload');
       return null;
     }
 
-    console.log('🚀 Upload Hook: Starting upload with timeout...');
+    console.log('🚀 Upload Hook: Starting upload with 60s timeout...');
     setIsUploading(true);
 
     try {
-      // Crear una promesa de timeout
+      // Timeout más largo: 60 segundos
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Upload timeout after 30 seconds'));
-        }, 30000);
+          reject(new Error('Upload timeout after 60 seconds'));
+        }, 60000);
       });
 
-      // Crear la promesa de upload
       const uploadPromise = uploadMenuItemImage(imageFile);
 
-      console.log('⏱️ Upload Hook: Racing upload vs timeout...');
+      console.log('⏱️ Upload Hook: Racing upload vs 60s timeout...');
       
-      // Correr ambas promesas, la primera que resuelva gana
       const result = await Promise.race([uploadPromise, timeoutPromise]);
 
       if (!result.success) {
@@ -82,8 +83,13 @@ export const useImageUpload = () => {
       console.error('❌ Upload Hook: Upload failed with error:', error);
       
       if (error instanceof Error && error.message.includes('timeout')) {
-        toast.error('La subida de imagen tardó demasiado. Intente con una imagen más pequeña.');
+        console.log('⏰ Upload Hook: Timeout detected, showing user-friendly message');
+        toast.error('La subida de imagen tardó más de 60 segundos. El producto se creará sin imagen.');
+      } else if (error instanceof Error && error.message.includes('storage')) {
+        console.log('💾 Upload Hook: Storage error detected');
+        toast.error('Error en el sistema de almacenamiento. El producto se creará sin imagen.');
       } else {
+        console.log('❓ Upload Hook: Other error detected');
         toast.error('Error al subir la imagen. El producto se creará sin imagen.');
       }
       
@@ -92,14 +98,22 @@ export const useImageUpload = () => {
       console.log('🏁 Upload Hook: Cleaning up upload state');
       setIsUploading(false);
     }
-  };
+  }, [imageFile]);
 
-  const forceReset = () => {
+  const forceReset = useCallback(() => {
     console.log('🔄 Upload Hook: Force resetting all states');
     setIsUploading(false);
     setImageFile(null);
     setImagePreview(null);
-  };
+  }, []);
+
+  // Función de reseteo automático más robusta
+  const autoReset = useCallback(() => {
+    console.log('🔄 Upload Hook: Auto resetting all states');
+    setIsUploading(false);
+    setImageFile(null);
+    setImagePreview(null);
+  }, []);
 
   return {
     isUploading,
@@ -108,6 +122,7 @@ export const useImageUpload = () => {
     handleFileSelection,
     clearImage,
     uploadImageWithTimeout,
-    forceReset
+    forceReset,
+    autoReset
   };
 };

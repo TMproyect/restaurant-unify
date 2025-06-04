@@ -5,11 +5,11 @@ import { MenuItemFormValues } from '../schemas/menuItemFormSchema';
 import { createMenuItem, updateMenuItem } from '@/services/menu/menuItemMutations';
 
 /**
- * Service for menu item CRUD operations
+ * Service for menu item CRUD operations with improved error handling
  */
 export class MenuItemOperations {
   /**
-   * Creates or updates a menu item without depending on upload
+   * Creates or updates a menu item with robust error handling
    */
   static async saveMenuItem(
     data: MenuItemFormValues, 
@@ -53,6 +53,18 @@ export class MenuItemOperations {
 
     } catch (error) {
       console.error('❌ Operations: Error saving item:', error);
+      
+      // Mejorar el manejo de errores específicos
+      if (error instanceof Error) {
+        if (error.message.includes('network')) {
+          throw new Error('Error de conexión. Verifique su internet.');
+        } else if (error.message.includes('validation')) {
+          throw new Error('Datos inválidos. Verifique los campos.');
+        } else if (error.message.includes('permission')) {
+          throw new Error('No tiene permisos para realizar esta acción.');
+        }
+      }
+      
       throw error;
     }
   }
@@ -62,7 +74,11 @@ export class MenuItemOperations {
    */
   static triggerRefresh(): void {
     console.log('🔄 Operations: Triggering refresh event');
-    window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+    try {
+      window.dispatchEvent(new CustomEvent('menuItemsUpdated'));
+    } catch (error) {
+      console.error('❌ Operations: Error triggering refresh:', error);
+    }
   }
 
   /**
@@ -74,10 +90,18 @@ export class MenuItemOperations {
   }
 
   /**
-   * Shows error toast with message
+   * Shows error toast with improved message
    */
   static showErrorMessage(error: unknown): void {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    let errorMessage = 'Error desconocido';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    console.error('❌ Operations: Showing error message:', errorMessage);
     toast.error(`Error al guardar producto: ${errorMessage}`);
   }
 }
